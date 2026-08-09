@@ -19,7 +19,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t flex items-center justify-around px-1 z-50">
+    <nav id="tour-bottom-nav" className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t flex items-center justify-around px-1 z-50">
       {navItems.map((item) => {
         const isActive = pathname === item.href;
         const Icon = item.icon;

@@ -195,7 +195,7 @@ function PerformanceContent() {
       </header>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div id="tour-perf-overview" className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card className="border border-border shadow-md rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 p-4">
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase text-primary/60">Avg Mastery</p>
@@ -218,7 +218,7 @@ function PerformanceContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Radar Chart */}
-        <Card className="lg:col-span-2 border border-border shadow-xl rounded-[2rem] overflow-hidden bg-background">
+        <Card id="tour-perf-radar" className="lg:col-span-2 border border-border shadow-xl rounded-[2rem] overflow-hidden bg-background">
           <CardHeader className="bg-muted border-b px-8 py-6">
             <CardTitle className="font-black text-3xl tracking-tight text-foreground">
               Proficiency Radar
@@ -412,7 +412,7 @@ function PerformanceContent() {
       )}
 
       {/* Technical Breakdown */}
-      <section className="space-y-6">
+      <section id="tour-perf-subjects" className="space-y-6">
         <h2 className="text-2xl font-black font-headline flex items-center gap-3 uppercase tracking-tight">
           <Award className="w-6 h-6 text-primary" />
           Technical Breakdown

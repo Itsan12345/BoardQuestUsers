@@ -13,6 +13,8 @@ import { getUserProfile } from '@/app/actions/user';
 import { getLevelProgress } from '@/lib/badge-system';
 
 import { NotificationBell } from '@/components/navigation/NotificationBell';
+import { TourButton } from '@/components/tour/TourButton';
+import { TourProvider } from '@/components/tour/TourProvider';
 
 export function LayoutContent({ 
   children, 
@@ -58,67 +60,72 @@ export function LayoutContent({
   }
 
   return (
-    <div className="relative flex flex-col min-h-screen w-full pb-20 lg:pb-0">
-      {/* Professional Overlapping Top Navigation */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-4 lg:px-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger className="text-muted-foreground hover:text-primary transition-colors hidden lg:flex" />
-          <Link href="/" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
-            <div className="p-1.5 rounded-lg">
-              <img
-                src="/images/boardquestlogo2.png"
-                alt="BoardQuest Logo"
-                className="h-6 w-6"
-              />
-            </div>
-            <span className="font-black text-foreground leading-none text-base lg:text-lg" style={{ fontFamily: "'Akira Expanded', sans-serif" }}>BoardQuest</span>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3 lg:gap-4">
-          {/* Dynamic Notification Bell */}
-          <NotificationBell user={user} />
-
-          <div className="flex flex-col items-end text-right hidden sm:flex min-w-[120px]">
-            {user ? (
-              <>
-                <span className="text-xs lg:text-sm font-black text-foreground leading-tight tracking-tight uppercase">{user.name}</span>
-                <span className="text-[10px] text-primary font-bold uppercase tracking-widest whitespace-nowrap mt-0.5">
-                  Lvl {user.level} Aspirant
-                </span>
-              </>
-            ) : (
-              <>
-                <div className="h-4 w-24 bg-muted animate-pulse rounded mb-1" />
-                <div className="h-3 w-16 bg-muted animate-pulse rounded" />
-              </>
-            )}
+    <TourProvider isLoggedIn={isLoggedIn}>
+      <div className="relative flex flex-col min-h-screen w-full pb-20 lg:pb-0">
+        {/* Professional Overlapping Top Navigation */}
+        <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-3 sm:px-4 lg:px-6 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <SidebarTrigger className="text-muted-foreground hover:text-primary transition-colors hidden lg:flex" />
+            <Link href="/" className="flex items-center gap-1 hover:opacity-80 transition-opacity min-w-0">
+              <div className="p-1 sm:p-1.5 rounded-lg shrink-0">
+                <img
+                  src="/images/boardquestlogo2.png"
+                  alt="BoardQuest Logo"
+                  className="h-5 w-5 sm:h-6 sm:w-6"
+                />
+              </div>
+              <span className="font-black text-foreground leading-none text-sm sm:text-base lg:text-lg truncate" style={{ fontFamily: "'Akira Expanded', sans-serif" }}>BoardQuest</span>
+            </Link>
           </div>
-          <Link href="/profile">
-            <Avatar className="h-8 w-8 lg:h-9 lg:w-9 border border-border shadow-sm hover:ring-2 ring-primary/20 transition-all cursor-pointer">
-              <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'default'}`} />
-              <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-black">
-                {user?.name?.substring(0, 2).toUpperCase() || 'AR'}
-              </AvatarFallback>
-            </Avatar>
-          </Link>
-        </div>
-      </header>
 
-      <div className="flex flex-1 pt-16">
-        {/* Sidebar visible only on desktop */}
-        <div className="hidden lg:block">
-          <AppSidebar />
-        </div>
-        <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
-          {children}
-        </main>
-      </div>
+          <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-3.5 shrink-0">
+            {/* Interactive Feature Guide Tour Button */}
+            <TourButton />
 
-      {/* Bottom Nav visible only on mobile/tablet */}
-      <div className="lg:hidden">
-        <BottomNav />
+            {/* Dynamic Notification Bell */}
+            <NotificationBell user={user} />
+
+            <div className="flex flex-col items-end text-right hidden sm:flex min-w-[120px]">
+              {user ? (
+                <>
+                  <span className="text-xs lg:text-sm font-black text-foreground leading-tight tracking-tight uppercase">{user.name}</span>
+                  <span className="text-[10px] text-primary font-bold uppercase tracking-widest whitespace-nowrap mt-0.5">
+                    Lvl {user.level} Aspirant
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="h-4 w-24 bg-muted animate-pulse rounded mb-1" />
+                  <div className="h-3 w-16 bg-muted animate-pulse rounded" />
+                </>
+              )}
+            </div>
+            <Link href="/profile">
+              <Avatar className="h-8 w-8 lg:h-9 lg:w-9 border border-border shadow-sm hover:ring-2 ring-primary/20 transition-all cursor-pointer">
+                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'default'}`} />
+                <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-black">
+                  {user?.name?.substring(0, 2).toUpperCase() || 'AR'}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+          </div>
+        </header>
+
+        <div className="flex flex-1 pt-16">
+          {/* Sidebar visible only on desktop */}
+          <div className="hidden lg:block">
+            <AppSidebar />
+          </div>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
+            {children}
+          </main>
+        </div>
+
+        {/* Bottom Nav visible only on mobile/tablet */}
+        <div className="lg:hidden">
+          <BottomNav />
+        </div>
       </div>
-    </div>
+    </TourProvider>
   );
 }

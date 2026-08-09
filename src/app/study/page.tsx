@@ -285,7 +285,7 @@ export default function StudyPage() {
 
   return (
     <div className="min-h-full pb-20 lg:pb-12 bg-background">
-      <header className="bg-background border-b px-6 py-8 lg:py-10">
+      <header id="tour-study-header" className="bg-background border-b px-6 py-8 lg:py-10">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div className="space-y-1.5">
@@ -299,7 +299,7 @@ export default function StudyPage() {
 
             {/* Dynamic Review Center Program Final Deadline Stat Card (Clean Minimalist Design) */}
             {program ? (
-              <div className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-4 lg:p-5 shadow-sm space-y-2.5 w-full sm:w-auto min-w-[280px] lg:min-w-[340px]">
+              <div id="tour-study-program" className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-4 lg:p-5 shadow-sm space-y-2.5 w-full sm:w-auto min-w-[280px] lg:min-w-[340px]">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -358,7 +358,7 @@ export default function StudyPage() {
       </header>
 
       <main className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto">
-        <aside className="lg:col-span-4 space-y-4">
+        <aside id="tour-study-subjects" className="lg:col-span-4 space-y-4">
           <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-2">Laboratory Disciplines</h2>
           <div className="grid grid-cols-1 gap-3">
             {curriculum.map((cat) => {
@@ -411,7 +411,7 @@ export default function StudyPage() {
         </aside>
 
         <section className="lg:col-span-8 space-y-6">
-          <Card className="border border-border shadow-sm rounded-[2rem] bg-muted border-2 border-border overflow-hidden">
+          <Card id="tour-study-metrics" className="border border-border shadow-sm rounded-[2rem] bg-muted border-2 border-border overflow-hidden">
             <CardHeader className="pb-4 space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="space-y-1">

@@ -1,5 +1,7 @@
 
 import type {Metadata} from 'next';
+import 'driver.js/dist/driver.css';
+import '@/styles/tour-theme.css';
 import './globals.css';
 import {Toaster} from '@/components/ui/toaster';
 import { SidebarProvider } from '@/components/ui/sidebar';

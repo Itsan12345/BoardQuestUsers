@@ -92,7 +92,7 @@ function DashboardContent() {
   return (
     <div className="min-h-full bg-background p-6 lg:p-8 space-y-8" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* Hero Section */}
-      <section className="space-y-6">
+      <section id="tour-dashboard-hero" className="space-y-6">
         <div className="space-y-3">
           <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Master Your Boards,<br />
@@ -115,7 +115,7 @@ function DashboardContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Current Course - Full Width */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
+          <Card id="tour-dashboard-studyplan" className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
             <CardContent className="p-8 space-y-6">
               <div className="space-y-1">
                 <p className="text-xs font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Current Course</p>
@@ -186,7 +186,7 @@ function DashboardContent() {
         </div>
 
         {/* Right Sidebar - Daily Target & Missions */}
-        <div className="space-y-6">
+        <div id="tour-dashboard-dailygoal" className="space-y-6">
           {/* Daily Question Target Meter */}
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
             <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">

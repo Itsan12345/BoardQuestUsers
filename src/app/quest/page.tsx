@@ -2021,7 +2021,7 @@ export default function LearningQuest() {
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-[6px] transition-all duration-600" />
 
-      <header className="px-6 md:px-8 pt-6 md:pt-8 pb-4 space-y-1 relative z-10">
+      <header id="tour-quest-header" className="px-6 md:px-8 pt-6 md:pt-8 pb-4 space-y-1 relative z-10">
         <div className="absolute top-6 right-6 md:top-8 md:right-8 z-50">
           <Button
             variant="outline"
@@ -2054,7 +2054,7 @@ export default function LearningQuest() {
         </p>
       </header>
 
-      <div className="flex-1 flex flex-col justify-center py-6 md:py-10 relative z-10 overflow-hidden">
+      <div id="tour-quest-map" className="flex-1 flex flex-col justify-center py-6 md:py-10 relative z-10 overflow-hidden">
         {categoriesLoading || dynamicCategories.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[400px] md:min-h-[500px] space-y-3">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
@@ -2120,7 +2120,7 @@ export default function LearningQuest() {
         )}
       </div>
 
-      <div className="px-6 md:px-8 mt-6 md:mt-10 relative z-20">
+      <div id="tour-quest-inventory" className="px-6 md:px-8 mt-6 md:mt-10 relative z-20">
         <div className="flex justify-center w-full mt-4">
           <button
             onClick={() => {

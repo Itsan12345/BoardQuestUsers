@@ -65,7 +65,7 @@ export function AppSidebar() {
   const isCollapsed = mounted ? state === "collapsed" : false;
 
   return (
-    <Sidebar collapsible="icon" className="border-r bg-white shadow-none">
+    <Sidebar id="tour-sidebar-nav" collapsible="icon" className="border-r bg-white shadow-none">
       <SidebarContent className={cn(
         "gap-0 pt-20 transition-all duration-300",
         isCollapsed ? "px-1" : "px-3"

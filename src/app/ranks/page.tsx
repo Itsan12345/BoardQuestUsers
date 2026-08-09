@@ -52,7 +52,7 @@ function LeaderboardContent() {
         <p className="text-muted-foreground">Top aspirants preparing for the MedTech Licensure Examination.</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div id="tour-ranks-overview" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="border border-border shadow-md bg-background p-6 text-center space-y-2">
           <Medal className="w-8 h-8 text-yellow-500 mx-auto" />
           <p className="text-xs font-bold text-muted-foreground uppercase">Expedition Level</p>
@@ -70,7 +70,7 @@ function LeaderboardContent() {
         </Card>
       </div>
 
-      <Card className="border border-border shadow-xl overflow-hidden rounded-3xl">
+      <Card id="tour-ranks-table" className="border border-border shadow-xl overflow-hidden rounded-3xl">
         <CardHeader className="bg-muted/30 border-b">
           <CardTitle className="text-lg font-headline">Regional Rankings</CardTitle>
         </CardHeader>

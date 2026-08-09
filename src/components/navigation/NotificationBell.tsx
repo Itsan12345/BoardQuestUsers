@@ -86,10 +86,11 @@ export function NotificationBell({ user }: NotificationBellProps) {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[92vw] sm:w-96 max-h-[80vh] overflow-y-auto p-0 rounded-2xl border border-border shadow-2xl bg-background"
+        collisionPadding={10}
+        className="w-[calc(100vw-20px)] max-w-[360px] sm:w-96 max-h-[75vh] sm:max-h-[80vh] overflow-y-auto p-0 rounded-2xl border border-border shadow-2xl bg-background"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+        <div className="flex items-center justify-between p-3.5 sm:p-4 border-b border-border bg-muted/30">
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-sm text-foreground">Notifications</h3>
             {unreadCount > 0 && (
