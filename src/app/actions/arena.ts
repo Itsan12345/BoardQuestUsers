@@ -24,11 +24,13 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
       return [];
     }
 
+    const isBossBattle = mode === 'boss-battle';
+
     const allQuestions = await prisma.question.findMany({
       where: {
         categoryId: category.id,
         status: 'APPROVED',
-        ...(specificDifficulty ? { difficulty: specificDifficulty } : {})
+        ...(!isBossBattle && specificDifficulty ? { difficulty: specificDifficulty } : {})
       } as any,
       select: {
         id: true,
@@ -41,7 +43,20 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
     });
 
     if (allQuestions.length === 0) {
-      return [];
+      // Fallback: fetch any approved questions for this category
+      const fallback = await prisma.question.findMany({
+        where: { categoryId: category.id, status: 'APPROVED' },
+        select: {
+          id: true,
+          question: true,
+          choices: true,
+          correctAnswer: true,
+          difficulty: true,
+          type: true,
+        }
+      });
+      if (fallback.length === 0) return [];
+      allQuestions.push(...fallback);
     }
 
     let selected = [...allQuestions];
@@ -141,6 +156,20 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
     }
 
     selected = finalSelection;
+
+    // In boss battle mode, loop the question pool if total available questions < 50
+    // so the battle NEVER runs out of questions before the boss or player HP reaches 0!
+    if (isBossBattle && selected.length > 0 && selected.length < 50) {
+      const basePool = [...selected];
+      let extendedPool = [...selected];
+      while (extendedPool.length < 50) {
+        extendedPool = extendedPool.concat(basePool.map((q, idx) => ({
+          ...q,
+          id: `${q.id}_cycle_${extendedPool.length + idx}`
+        })));
+      }
+      selected = extendedPool;
+    }
 
     return selected.map((q: any) => {
       const options = q.choices || q.options || [];

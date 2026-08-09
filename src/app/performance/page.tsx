@@ -17,7 +17,7 @@ import { Progress } from '@/components/ui/progress';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { getUserStats } from '@/app/actions/user';
 import { getStudyPlans } from '@/app/actions/study-plan';
-import { getSubjectMetrics } from '@/app/actions/study';
+import { getSubjectMetrics, getCategories } from '@/app/actions/study';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
@@ -28,7 +28,8 @@ const ICON_MAP: Record<string, any> = {
   "Microbiology": Database,
   "Immunology & Serology and Immunohematology": Stethoscope,
   "Clinical Microscopy & Parasitology": FlaskConical,
-  "Histopathology & MT Laws": ShieldAlert
+  "Histopathology & MT Laws": ShieldAlert,
+  "Histopathology and Medtech Laws": ShieldAlert
 };
 
 const RADAR_LABELS: Record<string, string> = {
@@ -37,8 +38,21 @@ const RADAR_LABELS: Record<string, string> = {
   "Microbiology": "Microbiology",
   "Immunology & Serology and Immunohematology": "Immunochem",
   "Clinical Microscopy & Parasitology": "Microscopy",
-  "Histopathology & MT Laws": "Histopath"
+  "Histopathology & MT Laws": "Histopath",
+  "Histopathology and Medtech Laws": "Histopath"
 };
+
+function getSubjectIcon(subject: string) {
+  if (ICON_MAP[subject]) return ICON_MAP[subject];
+  const lower = subject.toLowerCase();
+  if (lower.includes('chem')) return FlaskConical;
+  if (lower.includes('hemat')) return Microscope;
+  if (lower.includes('microb')) return Database;
+  if (lower.includes('immuno') || lower.includes('serolog')) return Stethoscope;
+  if (lower.includes('microscop') || lower.includes('parasit')) return FlaskConical;
+  if (lower.includes('histo') || lower.includes('law')) return ShieldAlert;
+  return Database;
+}
 
 const STATUS_COLORS: Record<string, string> = {
   "Mastered": "bg-green-100 text-green-700 border-green-300",
@@ -58,6 +72,7 @@ function PerformanceContent() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [subjectMetrics, setSubjectMetrics] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [nextObjective, setNextObjective] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [performanceHistory, setPerformanceHistory] = useState<any[]>([]);
@@ -65,25 +80,32 @@ function PerformanceContent() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [stats, plans, metrics] = await Promise.all([
+        const [stats, plans, metrics, dbCategories] = await Promise.all([
           getUserStats(),
           getStudyPlans(),
-          getSubjectMetrics()
+          getSubjectMetrics(),
+          getCategories()
         ]);
 
         setUser(stats);
         setSubjectMetrics(metrics || []);
 
+        const fetchedCategoryNames = dbCategories && dbCategories.length > 0
+          ? dbCategories.map((c: any) => c.name)
+          : (metrics && metrics.length > 0 ? metrics.map((m: any) => m.subject) : SUBJECT_AREAS);
+
+        setCategories(fetchedCategoryNames);
+
         // Process performance history from achievements
         if (stats?.achievements) {
-          const performanceData = SUBJECT_AREAS.map(subject => {
+          const performanceData = fetchedCategoryNames.map((subject: string) => {
             const subjectAchievements = stats.achievements.filter((a: any) => a.type === 'quest_completion' && a.subject === subject);
             const accuracyScores = subjectAchievements
               .filter((a: any) => a.accuracy)
               .map((a: any) => a.accuracy);
 
             return {
-              subject: subject.split(' ')[0],
+              subject: RADAR_LABELS[subject] || (subject.length > 12 ? subject.split(' ')[0] : subject),
               avgAccuracy: accuracyScores.length > 0
                 ? Math.round(accuracyScores.reduce((a: number, b: number) => a + b, 0) / accuracyScores.length)
                 : 0,
@@ -128,13 +150,17 @@ function PerformanceContent() {
     );
   }
 
-  // Build mastery data with real metrics
-  const fullMastery = SUBJECT_AREAS.map(subjectName => {
+  // Build mastery data dynamically with real metrics fetched from MongoDB Category collection
+  const activeCategories = categories.length > 0
+    ? categories
+    : (subjectMetrics.length > 0 ? subjectMetrics.map((m: any) => m.subject) : SUBJECT_AREAS);
+
+  const fullMastery = activeCategories.map(subjectName => {
     const metrics = subjectMetrics.find((m: any) => m.subject === subjectName);
     return {
       subject: subjectName,
       shortName: subjectName.split(' ')[0],
-      radarLabel: RADAR_LABELS[subjectName] || subjectName,
+      radarLabel: RADAR_LABELS[subjectName] || (subjectName.length > 12 ? subjectName.split(' ')[0] : subjectName),
       completion: metrics?.completion || 0,
       mastery: metrics?.mastery || 0,
       status: metrics?.masteryStatus || "Not Started",
@@ -393,7 +419,7 @@ function PerformanceContent() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {fullMastery.map((item: any) => {
-            const Icon = ICON_MAP[item.subject] || Database;
+            const Icon = getSubjectIcon(item.subject);
             return (
               <Card
                 key={item.subject}

@@ -3,22 +3,70 @@
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 
+const CURRICULUM_LESSONS_MAP: Record<string, { id: string; title: string; duration: string }[]> = {
+  'Clinical Chemistry': [
+    { id: 'cc1', title: 'Carbohydrate Metabolism & Disorders', duration: '45m' },
+    { id: 'cc2', title: 'Lipid Profile & Lipoproteins', duration: '60m' },
+    { id: 'cc3', title: 'Renal Function Tests & NPNs', duration: '40m' },
+  ],
+  'Hematology': [
+    { id: 'hem1', title: 'RBC Morphology & Anemias', duration: '50m' },
+    { id: 'hem2', title: 'WBC Disorders & Leukemias', duration: '75m' },
+  ],
+  'Microbiology': [
+    { id: 'mic1', title: 'Bacteriology: Gram Positives', duration: '65m' },
+    { id: 'mic2', title: 'Enterobacteriaceae & Non-fermenters', duration: '90m' },
+  ],
+  'Immunology & Serology and Immunohematology': [
+    { id: 'bb1', title: 'ABO & Rh Blood Group Systems', duration: '55m' },
+    { id: 'bb2', title: 'Blood Component Therapy', duration: '50m' },
+  ],
+  'Clinical Microscopy & Parasitology': [
+    { id: 'cm1', title: 'Routine Urinalysis: Physical & Chemical', duration: '40m' },
+    { id: 'cm2', title: 'CSF & Other Body Fluids Analysis', duration: '50m' },
+  ],
+  'Histopathology & MT Laws': [
+    { id: 'hp1', title: 'Tissue Fixation & Processing', duration: '50m' },
+    { id: 'law1', title: 'RA 5527: Phil MedTech Act of 1969', duration: '45m' },
+  ],
+  'Histopathology and Medtech Laws': [
+    { id: 'hp1', title: 'Tissue Fixation & Processing', duration: '50m' },
+    { id: 'law1', title: 'RA 5527: Phil MedTech Act of 1969', duration: '45m' },
+  ],
+};
+
+export async function getCurriculumLessonsForSubject(subject: string) {
+  if (CURRICULUM_LESSONS_MAP[subject]) {
+    return CURRICULUM_LESSONS_MAP[subject];
+  }
+  const clean = subject.trim().toLowerCase();
+  for (const [key, lessons] of Object.entries(CURRICULUM_LESSONS_MAP)) {
+    if (key.trim().toLowerCase() === clean) {
+      return lessons;
+    }
+  }
+  const slug = subject.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  return [
+    { id: `${slug}-1`, title: `${subject} Fundamentals & Core Concepts`, duration: '45m' },
+    { id: `${slug}-2`, title: `${subject} Protocols & Comprehensive Review`, duration: '60m' },
+  ];
+}
+
 export async function syncSubjectMastery(userId: string, subject: string) {
   try {
-    const totalLessonsMap: Record<string, number> = {
-      'Clinical Chemistry': 3,
-      'Hematology': 2,
-      'Microbiology': 2,
-      'Immunology & Serology and Immunohematology': 2,
-      'Clinical Microscopy & Parasitology': 2,
-      'Histopathology & MT Laws': 2,
-    };
-    const totalLessons = totalLessonsMap[subject] || 0;
+    const lessons = await getCurriculumLessonsForSubject(subject);
+    const validLessonIds = lessons.map(l => l.id);
+    const totalLessons = lessons.length;
 
     const completedLessons = await prisma.lessonCompletion.count({
-      where: { userId, subject, status: 'completed' },
+      where: {
+        userId,
+        subject,
+        status: 'completed',
+        lessonId: { in: validLessonIds }
+      },
     });
-    const completion = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+    const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
 
     const examResults = await prisma.examResult.findMany({
       where: { userId, subject },
@@ -39,10 +87,10 @@ export async function syncSubjectMastery(userId: string, subject: string) {
     proficiency = Math.round(proficiency);
 
     let status = "Not Started";
-    if (proficiency === 0) status = "Not Started";
-    else if (proficiency < 75) status = "In Training";
-    else if (proficiency < 85) status = "Proficient";
-    else status = "Mastered";
+    if (mastery >= 90 || proficiency >= 90) status = "Mastered";
+    else if (mastery >= 75 || proficiency >= 75) status = "Proficient";
+    else if (mastery >= 60 || proficiency >= 60) status = "In Training";
+    else status = "Not Started";
 
     await prisma.subjectMastery.upsert({
       where: { userId_subject: { userId, subject } },
@@ -75,8 +123,38 @@ export async function getCategories(): Promise<{ id: string; name: string }[]> {
 
     return JSON.parse(JSON.stringify(categories));
   } catch (error) {
-    console.error('Failed to fetch categories:', error);
-    return [];
+    console.warn('Failed to fetch categories from DB, using standard fallback list:', error);
+    return [
+      { id: '1', name: 'Clinical Chemistry' },
+      { id: '2', name: 'Microbiology' },
+      { id: '3', name: 'Hematology' },
+      { id: '4', name: 'Immunology & Serology and Immunohematology' },
+      { id: '5', name: 'Clinical Microscopy & Parasitology' },
+      { id: '6', name: 'Histopathology and Medtech Laws' },
+    ];
+  }
+}
+
+export async function getUserLessonCompletions(): Promise<Record<string, string>> {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return {};
+
+    const completions = await prisma.lessonCompletion.findMany({
+      where: { userId },
+      select: { lessonId: true, status: true }
+    });
+
+    const completionMap: Record<string, string> = {};
+    completions.forEach(c => {
+      completionMap[c.lessonId] = c.status;
+    });
+
+    return completionMap;
+  } catch (error) {
+    console.warn('Failed to get user lesson completions:', error);
+    return {};
   }
 }
 
@@ -89,55 +167,61 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       return [];
     }
 
-    const dbCategories = await prisma.category.findMany({
-      select: { name: true },
-      orderBy: { createdAt: 'asc' }
-    });
+    let subjects = [
+      'Clinical Chemistry',
+      'Microbiology',
+      'Hematology',
+      'Immunology & Serology and Immunohematology',
+      'Clinical Microscopy & Parasitology',
+      'Histopathology and Medtech Laws',
+    ];
 
-    const subjects = dbCategories.length > 0
-      ? dbCategories.map(c => c.name)
-      : [
-          'Clinical Chemistry',
-          'Hematology',
-          'Microbiology',
-          'Immunology & Serology and Immunohematology',
-          'Clinical Microscopy & Parasitology',
-          'Histopathology & MT Laws',
-        ];
+    try {
+      const dbCategories = await prisma.category.findMany({
+        select: { name: true },
+        orderBy: { createdAt: 'asc' }
+      });
+      if (dbCategories && dbCategories.length > 0) {
+        subjects = dbCategories.map(c => c.name);
+      }
+    } catch (dbErr) {
+      console.warn('Database timeout on category fetch, using fallback subjects list:', dbErr);
+    }
 
     const metrics: SubjectMetrics[] = [];
 
     for (const subject of subjects) {
-      const totalLessonsMap: Record<string, number> = {
-        'Clinical Chemistry': 3,
-        'Hematology': 2,
-        'Microbiology': 2,
-        'Immunology & Serology and Immunohematology': 2,
-        'Clinical Microscopy & Parasitology': 2,
-        'Histopathology & MT Laws': 2,
-      };
+      const lessons = await getCurriculumLessonsForSubject(subject);
+      const validLessonIds = lessons.map(l => l.id);
+      const totalLessons = lessons.length;
 
-      const totalLessons = totalLessonsMap[subject] || 2;
+      let completedLessons = 0;
+      let examResults: { accuracy: number }[] = [];
 
-      const completedLessons = await prisma.lessonCompletion.count({
-        where: {
-          userId,
-          subject,
-          status: 'completed',
-        },
-      });
+      try {
+        completedLessons = await prisma.lessonCompletion.count({
+          where: {
+            userId,
+            subject,
+            status: 'completed',
+            lessonId: { in: validLessonIds },
+          },
+        });
 
-      const completion = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+        examResults = await prisma.examResult.findMany({
+          where: {
+            userId,
+            subject,
+          },
+          select: {
+            accuracy: true,
+          },
+        });
+      } catch (innerErr) {
+        console.warn(`Database timeout fetching progress for ${subject}:`, innerErr);
+      }
 
-      const examResults = await prisma.examResult.findMany({
-        where: {
-          userId,
-          subject,
-        },
-        select: {
-          accuracy: true,
-        },
-      });
+      const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
 
       let mastery = 0;
       if (examResults.length > 0) {
@@ -146,19 +230,19 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       }
 
       let masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' = 'Not Started';
-      if (mastery === 0) {
-        masteryStatus = 'Not Started';
-      } else if (mastery < 75) {
-        masteryStatus = 'In Training';
-      } else if (mastery < 85) {
-        masteryStatus = 'Proficient';
-      } else {
+      if (mastery >= 90) {
         masteryStatus = 'Mastered';
+      } else if (mastery >= 75) {
+        masteryStatus = 'Proficient';
+      } else if (mastery >= 60) {
+        masteryStatus = 'In Training';
+      } else {
+        masteryStatus = 'Not Started';
       }
 
       metrics.push({
         subject,
-        completion: Math.round(completion),
+        completion,
         mastery: Math.round(mastery),
         masteryStatus,
       });

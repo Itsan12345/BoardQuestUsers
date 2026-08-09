@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ export interface ChapterWorldMapProps {
   onLaunchExpedition: (nodeId: string, difficulty: 'EASY' | 'MEDIUM' | 'HARD') => void;
   onClose: () => void;
   nodeStars: Record<string, number>;
+  nodeClears?: Record<string, { EASY?: boolean; MEDIUM?: boolean; HARD?: boolean }>;
 }
 
 export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
@@ -37,20 +39,55 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
   onLaunchExpedition,
   onClose,
   nodeStars,
+  nodeClears = {},
 }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM');
 
-  // Node Lock Helper: Node 1 is always unlocked. Node N requires Node N-1 to have >0 stars.
+  // Node Lock Helper: Node 1 is always unlocked.
+  // Node N unlocks ONLY IF Node N-1 has defeated EASY, MEDIUM, and HARD!
   const isNodeUnlocked = (index: number): boolean => {
     if (index === 0) return true;
     const prevNodeId = subjectNodes[index - 1]?.id;
-    return prevNodeId ? (nodeStars[prevNodeId] || 0) > 0 : false;
+    if (!prevNodeId) return false;
+
+    const clears = nodeClears[prevNodeId];
+    if (clears) {
+      return !!(clears.EASY && clears.MEDIUM && clears.HARD);
+    }
+    return (nodeStars[prevNodeId] || 0) >= 3;
+  };
+
+  // Helper to check if a specific difficulty is unlocked for a node:
+  // EASY is unlocked by default when node is unlocked.
+  // MEDIUM requires EASY to be cleared first.
+  // HARD requires MEDIUM to be cleared first.
+  const isDifficultyUnlocked = (nodeId: string, diff: 'EASY' | 'MEDIUM' | 'HARD'): boolean => {
+    const clears = nodeClears[nodeId] || {};
+    if (diff === 'EASY') return true;
+    if (diff === 'MEDIUM') return !!clears.EASY;
+    if (diff === 'HARD') return !!(clears.EASY && clears.MEDIUM);
+    return false;
   };
 
   const selectedNode = subjectNodes.find(n => n.id === selectedNodeId) || subjectNodes[0];
   const selectedNodeIndex = subjectNodes.findIndex(n => n.id === selectedNode.id);
   const isSelectedUnlocked = isNodeUnlocked(selectedNodeIndex);
-  const currentStars = selectedNode ? (nodeStars[selectedNode.id] || 0) : 0;
+  const selectedNodeClears = nodeClears[selectedNode.id] || {};
+  const currentStars = (selectedNodeClears.EASY ? 1 : 0) + (selectedNodeClears.MEDIUM ? 1 : 0) + (selectedNodeClears.HARD ? 1 : 0) || (nodeStars[selectedNode.id] || 0);
+
+  // Auto-select the next un-cleared unlocked difficulty when selected node changes
+  React.useEffect(() => {
+    const clears = nodeClears[selectedNode.id] || {};
+    if (!clears.EASY) {
+      setSelectedDifficulty('EASY');
+    } else if (!clears.MEDIUM) {
+      setSelectedDifficulty('MEDIUM');
+    } else {
+      setSelectedDifficulty('HARD');
+    }
+  }, [selectedNode.id, nodeClears]);
+
+  const isCurrentDiffUnlocked = isDifficultyUnlocked(selectedNode.id, selectedDifficulty);
 
   return (
     <div className="w-full h-full min-h-screen bg-[#160d08] text-white p-3 sm:p-6 font-bytebounce relative animate-in fade-in duration-200 overflow-hidden flex flex-col justify-between">
@@ -62,7 +99,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
             {selectedSubject} Overworld Trail
           </h2>
           <p className="text-[9px] min-[375px]:text-[11px] sm:text-sm text-amber-200/80 font-sans mt-0.5 leading-tight truncate sm:whitespace-normal">
-            Master Chapter 1 to unlock subsequent expedition chapters along the path!
+            Defeat Easy ➔ Medium ➔ Hard in Chapter 1 to unlock Chapter 2 along the path!
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -78,104 +115,150 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
         </div>
       </div>
 
-      {/* 16-Bit Horizontal Trail Node Track Canvas */}
-      <div className="relative w-full flex-1 bg-[#23170c] border-4 sm:border-6 border-[#4a2e16] rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl flex flex-col justify-center overflow-x-auto sm:overflow-hidden no-scrollbar my-2.5 sm:my-4">
+      {/* 16-Bit Gamified Overworld Map Canvas */}
+      <div className="relative w-full aspect-[2.38/1] max-h-[58vh] bg-[#23170c] border-4 sm:border-6 border-[#4a2e16] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col justify-center overflow-hidden my-auto shrink-0">
 
-        {/* Background Grid Texture */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#3e2b19] via-[#24170d] to-[#120a05] opacity-90" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#3a2514_1px,transparent_1px),linear-gradient(to_bottom,#3a2514_1px,transparent_1px)] bg-[size:20px_20px] sm:bg-[size:24px_24px] opacity-25" />
+        {/* Pixel-Art World Map Landscape Background - Full Width Original Aspect Ratio */}
+        {selectedSubject.toLowerCase().includes('chem') ? (
+          <Image
+            src="/ui/ClinicalChem_worldmap.png"
+            alt="Clinical Chemistry World Map"
+            fill
+            className="object-fill object-center"
+            style={{ imageRendering: 'pixelated' }}
+            unoptimized
+            priority
+          />
+        ) : (
+          <>
+            {/* Thematic Grid Texture for other subjects */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#3e2b19] via-[#24170d] to-[#120a05] opacity-90" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#3a2514_1px,transparent_1px),linear-gradient(to_bottom,#3a2514_1px,transparent_1px)] bg-[size:20px_20px] sm:bg-[size:24px_24px] opacity-25" />
+          </>
+        )}
 
-        {/* Horizontal Connecting Nodes Track */}
-        <div className="relative z-10 flex items-center justify-between gap-1.5 sm:gap-4 my-1 sm:my-2 px-1 sm:px-6 min-w-[310px] sm:min-w-0">
+        {/* Subtle Ambient Overlay */}
+        <div className="absolute inset-0 bg-black/5 pointer-events-none" />
+
+        {/* SVG Connecting Diagonal Golden Trail */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {/* Shadow Path */}
+          <path
+            d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
+            fill="none"
+            stroke="#804d00"
+            strokeWidth="5"
+            strokeLinecap="square"
+          />
+          {/* Border Path */}
+          <path
+            d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
+            fill="none"
+            stroke="#b8860b"
+            strokeWidth="3.5"
+            strokeLinecap="square"
+          />
+          {/* Main Glowing Golden Trail */}
+          <path
+            d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
+            fill="none"
+            stroke="#ffd700"
+            strokeWidth="2.2"
+            strokeLinecap="square"
+          />
+        </svg>
+
+        {/* Diagonal Gamified Nodes */}
+        <div className="absolute inset-0 z-20 pointer-events-none">
           {subjectNodes.map((node, index) => {
             const unlocked = isNodeUnlocked(index);
-            const stars = nodeStars[node.id] || 0;
+            const clears = nodeClears[node.id] || {};
+            const stars = (clears.EASY ? 1 : 0) + (clears.MEDIUM ? 1 : 0) + (clears.HARD ? 1 : 0) || (nodeStars[node.id] || 0);
             const isSelected = selectedNodeId === node.id;
             const isBossNode = index === subjectNodes.length - 1;
 
+            // Responsive Diagonal Positions placed down on the meadow ground
+            const nodeCoords = [
+              { left: '6%', top: '83%' },
+              { left: '48%', top: '70%' },
+              { left: '81%', top: '76%' },
+            ][index] || { left: `${(index + 1) * 25}%`, top: '75%' };
+
             return (
-              <React.Fragment key={node.id}>
-                {/* Horizontal Connecting Connector Line */}
-                {index > 0 && (
-                  <div className="flex-1 h-1.5 sm:h-2 min-w-[10px] sm:min-w-0 relative flex items-center">
-                    <div
+              <div
+                key={node.id}
+                style={{ left: nodeCoords.left, top: nodeCoords.top }}
+                className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer group pointer-events-auto z-30"
+                onClick={() => onSelectNode(node.id)}
+              >
+                {/* Floating Star Badges above Node */}
+                <div className="flex items-center gap-0.5 bg-black/85 px-1.5 py-0.5 rounded-full border border-amber-500/50 shadow-lg mb-1">
+                  {[1, 2, 3].map((s) => (
+                    <span
+                      key={s}
                       className={cn(
-                        "w-full h-1 sm:h-1.5 rounded-full transition-all duration-500",
-                        unlocked
-                          ? "bg-gradient-to-r from-amber-500 to-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]"
-                          : "bg-[#382618] border border-dashed border-[#5c3e21]"
+                        "text-[9px] sm:text-xs leading-none",
+                        s <= stars ? "text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.9)]" : "text-slate-600 opacity-40"
                       )}
-                    />
-                  </div>
-                )}
-
-                {/* Node Pin Marker */}
-                <div
-                  onClick={() => onSelectNode(node.id)}
-                  className="flex flex-col items-center cursor-pointer group relative z-20 shrink-0"
-                >
-                  {/* Floating Star Badges above Node */}
-                  <div className="flex items-center gap-0.5 bg-black/80 px-1 sm:px-1.5 py-0.5 rounded-full border border-amber-500/40 shadow-md mb-0.5 sm:mb-1">
-                    {[1, 2, 3].map((s) => (
-                      <span key={s} className={cn("text-[8px] sm:text-xs", s <= stars ? "text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.8)]" : "text-slate-600 opacity-40")}>
-                        ★
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Node Button Icon */}
-                  <div
-                    className={cn(
-                      "w-9 h-9 min-[375px]:w-10 min-[375px]:h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-sm min-[375px]:text-base sm:text-2xl border-2 sm:border-4 font-mono transition-all duration-200 shadow-xl group-hover:scale-105 relative",
-                      !unlocked
-                        ? "bg-[#1a120c] border-[#4a321d] text-slate-500 opacity-60"
-                        : isSelected
-                          ? "bg-gradient-to-b from-amber-400 to-amber-600 border-amber-200 text-black scale-105 shadow-[0_0_12px_rgba(245,158,11,0.5)] ring-2 ring-amber-400/60"
-                          : stars > 0
-                            ? "bg-[#2d4327] border-emerald-400 text-emerald-200 hover:border-amber-400"
-                            : "bg-[#251b14] border-[#6b4728] text-amber-200 hover:border-amber-400"
-                    )}
-                  >
-                    {!unlocked ? (
-                      <Lock className="w-3.5 h-3.5 sm:w-6 sm:h-6 text-slate-400" />
-                    ) : (
-                      <span>{isBossNode ? (node.bossIcon || '👑') : node.nodeNumber}</span>
-                    )}
-                  </div>
-
-                  {/* Node Title Badge */}
-                  <div className={cn(
-                    "mt-0.5 sm:mt-1 px-1 sm:px-1.5 py-0.5 rounded text-[8px] min-[375px]:text-[9px] sm:text-[11px] font-bold tracking-tight text-center transition-all whitespace-nowrap",
-                    !unlocked
-                      ? "text-slate-500"
-                      : isSelected
-                        ? "bg-amber-500 text-black font-black"
-                        : "text-amber-300/80 group-hover:text-amber-200"
-                  )}>
-                    {unlocked ? `Ch. ${node.nodeNumber}` : `🔒 Ch. ${node.nodeNumber}`}
-                  </div>
+                    >
+                      ★
+                    </span>
+                  ))}
                 </div>
-              </React.Fragment>
+
+                {/* Chunky Pixelated Square Yellow RPG Node Box */}
+                <div
+                  className={cn(
+                    "aspect-square w-8 min-[375px]:w-9 sm:w-14 md:w-13 rounded-sm flex items-center justify-center font-bytebounce transition-all duration-200 shadow-xl active:scale-95 relative cursor-pointer",
+                    !unlocked
+                      ? "bg-[#1a120c]/90 border-2 border-slate-700 text-slate-500 shadow-[0_3px_0_0_#0d0805]"
+                      : isSelected
+                        ? "bg-[#ffe066] border-2 border-[#b87a00] text-[#7a3b00] shadow-[0_3px_0_0_#804d00,0_0_15px_rgba(255,215,0,0.7)] ring-1.5 ring-white/90"
+                        : "bg-[#ffd700] border-2 border-[#b8860b] text-[#7a3b00] shadow-[0_3px_0_0_#804d00,0_0_8px_rgba(255,215,0,0.3)] hover:brightness-110"
+                  )}
+                >
+                  {!unlocked ? (
+                    <Lock className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-slate-400" />
+                  ) : (
+                    <span className="text-lg sm:text-2xl md:text-3xl font-black leading-none drop-shadow-[1px_1px_0_#fff]">
+                      {node.nodeNumber}
+                    </span>
+                  )}
+
+                  {isBossNode && unlocked && (
+                    <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-red-600 rounded-full border border-yellow-300 flex items-center justify-center text-[7px] sm:text-[8px] shadow-md animate-pulse">
+                      👑
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Node Chapter Label */}
+                <p
+                  className={cn(
+                    "text-[8px] sm:text-xs font-mono font-bold mt-1 text-center bg-black/70 px-1.5 py-0.5 rounded border border-white/10 transition-colors shadow",
+                    isSelected ? "text-amber-300 border-amber-400/60" : unlocked ? "text-amber-100/90" : "text-slate-500"
+                  )}
+                >
+                  Ch.{node.nodeNumber}
+                </p>
+              </div>
             );
           })}
         </div>
-
       </div>
 
-      {/* Bottom Selected Node Parchment Inspection & Launch Panel */}
+      {/* Bottom Node Inspector Banner */}
       {selectedNode && (
-        <div className="mt-2 sm:mt-2.5 bg-[#2a1c10] border-2 sm:border-4 border-[#5c3e21] p-2.5 sm:p-4 rounded-xl sm:rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 sm:gap-3 shadow-2xl relative overflow-hidden shrink-0">
-          <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-transparent to-transparent pointer-events-none" />
+        <div className="bg-[#24170d] border-2 sm:border-4 border-[#4a2e16] rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 shrink-0 relative overflow-hidden">
 
-          <div className="space-y-1 min-w-0 flex-1 relative z-10">
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          {/* Left Details Panel */}
+          <div className="space-y-1 sm:space-y-1.5 flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[9px] sm:text-xs px-1.5 sm:px-2 py-0.5 font-mono",
-                  isSelectedUnlocked
-                    ? "bg-amber-500/20 text-amber-300 border-amber-400/50"
-                    : "bg-red-500/20 text-red-400 border-red-500/50"
+                  "text-[8.5px] sm:text-xs font-mono font-bold uppercase px-2 py-0.5",
+                  isSelectedUnlocked ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-red-950/40 text-red-400 border-red-800/40"
                 )}
               >
                 {isSelectedUnlocked ? `CHAPTER #${selectedNode.nodeNumber} UNLOCKED` : `🔒 CHAPTER #${selectedNode.nodeNumber} LOCKED`}
@@ -204,36 +287,51 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
           {/* Difficulty Selector & Launch Action */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto relative z-10">
             {isSelectedUnlocked && (
-              <div className="flex items-center bg-black/60 p-0.5 sm:p-1 rounded-xl border border-amber-500/30 w-full sm:w-auto justify-stretch sm:justify-center">
-                {(['EASY', 'MEDIUM', 'HARD'] as const).map((diff) => (
-                  <button
-                    key={diff}
-                    onClick={() => setSelectedDifficulty(diff)}
-                    className={cn(
-                      "flex-1 sm:flex-none px-2 sm:px-2.5 py-1 text-[9px] sm:text-xs font-mono rounded-lg transition-all uppercase font-bold text-center",
-                      selectedDifficulty === diff
-                        ? diff === 'EASY' ? "bg-emerald-500 text-black shadow-md" : diff === 'HARD' ? "bg-red-500 text-white shadow-md" : "bg-amber-500 text-black shadow-md"
-                        : "text-slate-400 hover:text-white"
-                    )}
-                  >
-                    {diff}
-                  </button>
-                ))}
+              <div className="flex items-center bg-black/60 p-0.5 sm:p-1 rounded-xl border border-amber-500/30 w-full sm:w-auto justify-stretch sm:justify-center gap-1">
+                {(['EASY', 'MEDIUM', 'HARD'] as const).map((diff) => {
+                  const isCleared = !!selectedNodeClears[diff];
+                  const isDiffUnlocked = isDifficultyUnlocked(selectedNode.id, diff);
+                  return (
+                    <button
+                      key={diff}
+                      disabled={!isDiffUnlocked}
+                      onClick={() => isDiffUnlocked && setSelectedDifficulty(diff)}
+                      className={cn(
+                        "flex-1 sm:flex-none px-2 sm:px-2.5 py-1 text-[9px] sm:text-xs font-mono rounded-lg transition-all uppercase font-bold text-center flex items-center justify-center gap-1",
+                        !isDiffUnlocked
+                          ? "bg-black/40 text-slate-600 border border-slate-800 cursor-not-allowed opacity-50"
+                          : selectedDifficulty === diff
+                            ? diff === 'EASY' ? "bg-emerald-500 text-black shadow-md ring-1 ring-emerald-300" : diff === 'HARD' ? "bg-red-500 text-white shadow-md ring-1 ring-red-300" : "bg-amber-500 text-black shadow-md ring-1 ring-amber-300"
+                            : isCleared
+                              ? "bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-900/60"
+                              : "text-slate-300 hover:text-white"
+                      )}
+                    >
+                      {!isDiffUnlocked && <Lock className="w-2.5 h-2.5 text-slate-500 shrink-0" />}
+                      <span>{diff}</span>
+                      {isCleared && <span className="text-emerald-400 font-black">✓</span>}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
             <Button
               size="lg"
-              disabled={!isSelectedUnlocked}
-              onClick={() => isSelectedUnlocked && onLaunchExpedition(selectedNode.id, selectedDifficulty)}
+              disabled={!isSelectedUnlocked || !isCurrentDiffUnlocked}
+              onClick={() => isSelectedUnlocked && isCurrentDiffUnlocked && onLaunchExpedition(selectedNode.id, selectedDifficulty)}
               className={cn(
                 "w-full sm:w-auto font-bytebounce text-xs sm:text-sm uppercase tracking-wider h-9 sm:h-11 px-4 sm:px-5 border-2 shrink-0 active:scale-95 transition-transform",
-                isSelectedUnlocked
+                isSelectedUnlocked && isCurrentDiffUnlocked
                   ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black border-yellow-200 shadow-[0_0_20px_rgba(245,158,11,0.5)]"
                   : "bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed opacity-70"
               )}
             >
-              {isSelectedUnlocked ? "LAUNCH EXPEDITION ⚔️" : "🔒 LOCKED (Master Prev Chapter)"}
+              {!isSelectedUnlocked
+                ? `🔒 CHAPTER LOCKED (Defeat Easy, Med & Hard in Ch.${selectedNode.nodeNumber - 1})`
+                : !isCurrentDiffUnlocked
+                  ? `🔒 ${selectedDifficulty} LOCKED (Defeat ${selectedDifficulty === 'MEDIUM' ? 'Easy' : 'Medium'} First)`
+                  : `LAUNCH ${selectedDifficulty} EXPEDITION ⚔️`}
             </Button>
           </div>
         </div>

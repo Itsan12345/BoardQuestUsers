@@ -44,7 +44,8 @@ import { ChapterWorldMap } from '@/components/quiz/ChapterWorldMap';
 import { SUBJECT_AREAS, XP_PER_QUESTION } from '@/lib/game-logic';
 import { provideExamFeedback } from '@/ai/flows/provide-exam-feedback';
 import { getQuestQuestions } from '@/app/actions/arena';
-import { completeQuest } from '@/app/actions/quest';
+import { completeQuest, getNodeStarsAction, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
+import { getCategories } from '@/app/actions/study';
 import { getUserProfile, saveUserInventory, purchaseReagentAction } from '@/app/actions/user';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
 import { useToast } from '@/hooks/use-toast';
@@ -128,8 +129,78 @@ const SUBJECT_METADATA: Record<string, {
     difficulty: 3,
     biome: "The Citadel of Codes",
     description: "Where science meets the letter of the law. Preserve the ethics."
+  },
+  "Histopathology and Medtech Laws": {
+    name: "Histopathology and Medtech Laws",
+    icon: ShieldAlert,
+    color: "bg-accent",
+    enemy: "Legal Beholder",
+    imageUrl: "/images/Hispatho256.png",
+    backgroundUrl: "/images/Hispatho256_bg.png",
+    difficulty: 3,
+    biome: "The Citadel of Codes",
+    description: "Where science meets the letter of the law. Preserve the ethics."
+  },
+  "Histopathology & Medtech Laws": {
+    name: "Histopathology & Medtech Laws",
+    icon: ShieldAlert,
+    color: "bg-accent",
+    enemy: "Legal Beholder",
+    imageUrl: "/images/Hispatho256.png",
+    backgroundUrl: "/images/Hispatho256_bg.png",
+    difficulty: 3,
+    biome: "The Citadel of Codes",
+    description: "Where science meets the letter of the law. Preserve the ethics."
   }
 };
+
+function getSubjectMeta(subjectName: string) {
+  if (SUBJECT_METADATA[subjectName]) {
+    return SUBJECT_METADATA[subjectName];
+  }
+  const lower = subjectName.toLowerCase();
+  if (lower.includes('histopath') || lower.includes('medtech laws') || lower.includes('mt laws')) {
+    return {
+      name: subjectName,
+      icon: ShieldAlert,
+      color: "bg-accent",
+      enemy: "Legal Beholder",
+      imageUrl: "/images/Hispatho256.png",
+      backgroundUrl: "/images/Hispatho256_bg.png",
+      difficulty: 3,
+      biome: "The Citadel of Codes",
+      description: "Where science meets the letter of the law. Preserve the ethics."
+    };
+  }
+  if (lower.includes('microscopy') || lower.includes('parasito')) {
+    return SUBJECT_METADATA["Clinical Microscopy & Parasitology"];
+  }
+  if (lower.includes('chem')) {
+    return SUBJECT_METADATA["Clinical Chemistry"];
+  }
+  if (lower.includes('hema') && !lower.includes('immuno')) {
+    return SUBJECT_METADATA["Hematology"];
+  }
+  if (lower.includes('microbio')) {
+    return SUBJECT_METADATA["Microbiology"];
+  }
+  if (lower.includes('immuno') || lower.includes('serology')) {
+    return SUBJECT_METADATA["Immunology & Serology and Immunohematology"];
+  }
+
+  return {
+    name: subjectName,
+    icon: FlaskConical,
+    color: "bg-primary",
+    enemy: "Exam Guardian",
+    imageUrl: "/images/Hispatho256.png",
+    backgroundUrl: "/images/Hispatho256_bg.png",
+    arenaBackgroundUrl: "/ui/background_clinicalchem.png",
+    difficulty: 3,
+    biome: "Laboratory Science Realm",
+    description: `Master topics in ${subjectName} to prove your expertise.`
+  };
+}
 
 type UserAnswerRecord = {
   questionIndex: number;
@@ -154,7 +225,28 @@ export default function LearningQuest() {
   const [mobileModalStep, setMobileModalStep] = useState<'info' | 'action'>('info');
   const [score, setScore] = useState(0);
   const [fetchingExplanations, setFetchingExplanations] = useState<Record<number, boolean>>({});
-  const [selectedSubject, setSelectedSubject] = useState(SUBJECT_AREAS[0]);
+  const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Fetch dynamic categories directly from MongoDB Category collection
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const cats = await getCategories();
+        if (cats && cats.length > 0) {
+          const names = cats.map(c => c.name);
+          setDynamicCategories(names);
+          setSelectedSubject(names[0]);
+        }
+      } catch (err) {
+        console.error("Error loading categories from MongoDB:", err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    }
+    loadCategories();
+  }, []);
 
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -229,28 +321,38 @@ export default function LearningQuest() {
   const [selectedNodeId, setSelectedNodeId] = useState<string>('cc-1');
   const [showChapterMap, setShowChapterMap] = useState<boolean>(false);
   const [nodeStars, setNodeStars] = useState<Record<string, number>>({});
+  const [nodeClears, setNodeClears] = useState<Record<string, { EASY?: boolean; MEDIUM?: boolean; HARD?: boolean }>>({});
 
   const CHAPTER_NODES_PER_SUBJECT: Record<string, SubjectNodeConfig[]> = {
     "Clinical Chemistry": [
-      { id: 'cc-1', nodeNumber: 1, title: 'Carbohydrates & Diabetes', subtopic: 'Glucose Metabolism & HbA1c', minionName: 'Acid Slime', minionIcon: '🧪', miniBossName: 'Hyperglycemic Mutant', miniBossIcon: '🧬', bossName: 'Hyperglycemic Specter', bossIcon: '⚗️' },
-      { id: 'cc-2', nodeNumber: 2, title: 'Lipids & Lipoproteins', subtopic: 'Cholesterol, Triglycerides & HDL', minionName: 'Lipid Core', minionIcon: '💧', miniBossName: 'Athero Golem', miniBossIcon: '🪨', bossName: 'Lipoprotein Titan', bossIcon: '🩸' },
-      { id: 'cc-3', nodeNumber: 3, title: 'Enzymology & Cardiac Markers', subtopic: 'CK-MB, Troponin & AST', minionName: 'Kinase Swarm', minionIcon: '⚡', miniBossName: 'Ischemia Fiend', miniBossIcon: '🔥', bossName: 'Myocardial Colossus', bossIcon: '💔' },
-      { id: 'cc-4', nodeNumber: 4, title: 'Electrolytes & Acid-Base', subtopic: 'Sodium, Potassium & Blood pH', minionName: 'Ion Spark', minionIcon: '✨', miniBossName: 'Acidotic Shade', miniBossIcon: '🌪️', bossName: 'Renal Behemoth', bossIcon: '⚡' },
-      { id: 'cc-5', nodeNumber: 5, title: 'Comprehensive Board Challenge', subtopic: 'All Clinical Chemistry Topics', minionName: 'Lab Sentinel', minionIcon: '🛡️', miniBossName: 'Board Examiner Specter', miniBossIcon: '📜', bossName: 'The Licensure Colossus', bossIcon: '👑' },
+      { id: 'cc-1', nodeNumber: 1, title: 'Carbohydrates & Lipids', subtopic: 'Glucose Metabolism, HbA1c & Lipoproteins', minionName: 'Acid Slime', minionIcon: '🧪', miniBossName: 'Hyperglycemic Mutant', miniBossIcon: '🧬', bossName: 'Hyperglycemic Specter', bossIcon: '⚗️' },
+      { id: 'cc-2', nodeNumber: 2, title: 'Enzymology & Electrolytes', subtopic: 'Troponin, CK-MB, AST, Potassium & Blood pH', minionName: 'Kinase Swarm', minionIcon: '⚡', miniBossName: 'Ischemia Fiend', miniBossIcon: '🔥', bossName: 'Renal Behemoth', bossIcon: '💔' },
+      { id: 'cc-3', nodeNumber: 3, title: '👑 The Licensure Colossus (FINAL BOSS)', subtopic: 'Comprehensive Clinical Chemistry Licensure Challenge', minionName: 'Lab Sentinel', minionIcon: '🛡️', miniBossName: 'Board Examiner Specter', miniBossIcon: '📜', bossName: 'The Licensure Colossus', bossIcon: '👑' },
     ],
     "Microbiology": [
-      { id: 'mb-1', nodeNumber: 1, title: 'Bacteriology & Gram Staining', subtopic: 'Gram Positive & Negative Cocci', minionName: 'Microbe Swarm', minionIcon: '🦠', miniBossName: 'Staph Sentinel', miniBossIcon: '🧬', bossName: 'Gram Positive Overlord', bossIcon: '👾' },
-      { id: 'mb-2', nodeNumber: 2, title: 'Mycology & Parasitology', subtopic: 'Fungi, Mold & Protozoa', minionName: 'Spore Cloud', minionIcon: '🍄', miniBossName: 'Amoeba Stalker', miniBossIcon: '🐙', bossName: 'Parasitic Hydra', bossIcon: '🐉' },
-      { id: 'mb-3', nodeNumber: 3, title: 'Virology & Serology', subtopic: 'Viral Replication & Antigens', minionName: 'Virion Particle', minionIcon: '🔮', miniBossName: 'Retrovirus Fiend', miniBossIcon: '💥', bossName: 'Viral Apex Lord', bossIcon: '👑' },
-      { id: 'mb-4', nodeNumber: 4, title: 'Antimicrobial Susceptibility', subtopic: 'MIC & Antibiotic Resistance', minionName: 'Resistant Strain', minionIcon: '💊', miniBossName: 'Superbug Golem', miniBossIcon: '🪨', bossName: 'MRSA Behemoth', bossIcon: '☣️' },
-      { id: 'mb-5', nodeNumber: 5, title: 'Comprehensive Microbiology', subtopic: 'All Microbiology Topics', minionName: 'Culture Sentinel', minionIcon: '🛡️', miniBossName: 'Lab Director Phantom', miniBossIcon: '📜', bossName: 'Pathogen Sovereign', bossIcon: '👑' },
+      { id: 'mb-1', nodeNumber: 1, title: 'Bacteriology & Gram Staining', subtopic: 'Gram Positive & Negative Cocci & Bacilli', minionName: 'Microbe Swarm', minionIcon: '🦠', miniBossName: 'Staph Sentinel', miniBossIcon: '🧬', bossName: 'Gram Positive Overlord', bossIcon: '👾' },
+      { id: 'mb-2', nodeNumber: 2, title: 'Mycology, Virology & Parasitology', subtopic: 'Fungi, Viral Replication, Antigens & Protozoa', minionName: 'Spore Cloud', minionIcon: '🍄', miniBossName: 'Retrovirus Fiend', miniBossIcon: '💥', bossName: 'Viral Apex Lord', bossIcon: '🐉' },
+      { id: 'mb-3', nodeNumber: 3, title: '👑 Pathogen Sovereign (FINAL BOSS)', subtopic: 'Antimicrobial Resistance & Comprehensive Microbiology', minionName: 'Resistant Strain', minionIcon: '💊', miniBossName: 'Lab Director Phantom', miniBossIcon: '📜', bossName: 'Pathogen Sovereign', bossIcon: '👑' },
     ],
     "Hematology": [
-      { id: 'hem-1', nodeNumber: 1, title: 'RBC Anomalies & Anemias', subtopic: 'Hemoglobin & Microcytic Anemia', minionName: 'Sickle Cell', minionIcon: '🩸', miniBossName: 'Anemia Shade', miniBossIcon: '👻', bossName: 'Erythrocyte Colossus', bossIcon: '👑' },
-      { id: 'hem-2', nodeNumber: 2, title: 'WBC Disorders & Leukemias', subtopic: 'Neutrophils & Acute Leukemia', minionName: 'Blast Cell', minionIcon: '💥', miniBossName: 'Leukemic Fiend', miniBossIcon: '⚡', bossName: 'White Cell Warlord', bossIcon: '🗡️' },
-      { id: 'hem-3', nodeNumber: 3, title: 'Hemostasis & Coagulation', subtopic: 'Platelets, PT & PTT Pathways', minionName: 'Clot Particle', minionIcon: '🧱', miniBossName: 'Thrombus Beast', miniBossIcon: '🐉', bossName: 'Coagulation Overlord', bossIcon: '🛡️' },
-      { id: 'hem-4', nodeNumber: 4, title: 'Bone Marrow Evaluation', subtopic: 'M:E Ratio & Hematopoiesis', minionName: 'Marrow Stem', minionIcon: '🌱', miniBossName: 'Precursor Golem', miniBossIcon: '🪨', bossName: 'Hematopoietic Archon', bossIcon: '✨' },
-      { id: 'hem-5', nodeNumber: 5, title: 'Comprehensive Hematology', subtopic: 'All Hematology Topics', minionName: 'Smear Sentinel', minionIcon: '🔬', miniBossName: 'Hematopathologist Ghost', miniBossIcon: '📜', bossName: 'Heme Sovereign', bossIcon: '👑' },
+      { id: 'hem-1', nodeNumber: 1, title: 'RBC Anomalies & Anemias', subtopic: 'Hemoglobin Synthesis & Microcytic Anemias', minionName: 'Sickle Cell', minionIcon: '🩸', miniBossName: 'Anemia Shade', miniBossIcon: '👻', bossName: 'Erythrocyte Colossus', bossIcon: '👑' },
+      { id: 'hem-2', nodeNumber: 2, title: 'WBC Disorders & Leukemias', subtopic: 'Neutrophils, Acute/Chronic Leukemias & Bone Marrow', minionName: 'Blast Cell', minionIcon: '💥', miniBossName: 'Leukemic Fiend', miniBossIcon: '⚡', bossName: 'White Cell Warlord', bossIcon: '🗡️' },
+      { id: 'hem-3', nodeNumber: 3, title: '👑 Heme Sovereign (FINAL BOSS)', subtopic: 'Hemostasis, Coagulation Cascades & Comprehensive Exam', minionName: 'Clot Particle', minionIcon: '🧱', miniBossName: 'Hematopathologist Ghost', miniBossIcon: '📜', bossName: 'Heme Sovereign', bossIcon: '👑' },
+    ],
+    "Immunology & Serology and Immunohematology": [
+      { id: 'is-1', nodeNumber: 1, title: 'Immunity & Serological Testing', subtopic: 'Innate/Adaptive Immunity, ELISA & Agglutination', minionName: 'Lymphocyte Swarm', minionIcon: '🛡️', miniBossName: 'Antigen Titan', miniBossIcon: '🧬', bossName: 'Immune Archon', bossIcon: '👑' },
+      { id: 'is-2', nodeNumber: 2, title: 'ABO & Rh Blood Group System', subtopic: 'Blood Group Antigens, Antibodies & Rh Discrepancies', minionName: 'ABO Antigen', minionIcon: '🩸', miniBossName: 'Rh Aggressive Golem', miniBossIcon: '🪨', bossName: 'Immunohematology Colossus', bossIcon: '👑' },
+      { id: 'is-3', nodeNumber: 3, title: '👑 Licensure Immuno Sovereign (FINAL BOSS)', subtopic: 'Transfusion Reactions, Crossmatching & Blood Bank', minionName: 'Hemolytic Cell', minionIcon: '💥', miniBossName: 'Serology Examiner Phantom', miniBossIcon: '📜', bossName: 'Licensure Immuno Sovereign', bossIcon: '👑' },
+    ],
+    "Clinical Microscopy & Parasitology": [
+      { id: 'cm-1', nodeNumber: 1, title: 'Urinalysis Physical & Chemical Exam', subtopic: 'Color, Clarity, Specific Gravity & Reagents', minionName: 'Reagent Strip Slime', minionIcon: '🧪', miniBossName: 'Nitrite Spectre', miniBossIcon: '👻', bossName: 'Clinical Microscopy Overlord', bossIcon: '👑' },
+      { id: 'cm-2', nodeNumber: 2, title: 'Microscopic Sediments & Body Fluids', subtopic: 'Casts, Crystals, Synovial, Serous & CSF Analysis', minionName: 'Hyaline Cast', minionIcon: '💧', miniBossName: 'Oxalate Golem', miniBossIcon: '🪨', bossName: 'Sediment Colossus', bossIcon: '🩸' },
+      { id: 'cm-3', nodeNumber: 3, title: '👑 Microscopy Sovereign (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', minionName: 'Protozoan Cyst', minionIcon: '🦠', miniBossName: 'Pathology Director Phantom', miniBossIcon: '📜', bossName: 'Microscopy Sovereign', bossIcon: '👑' },
+    ],
+    "Histopathology and Medtech Laws": [
+      { id: 'hp-1', nodeNumber: 1, title: 'Tissue Processing, Microtomy & Staining', subtopic: 'Formalin Fixation, Sectioning & H&E Staining', minionName: 'Formalin Slime', minionIcon: '🧪', miniBossName: 'Paraffin Golem', miniBossIcon: '🪨', bossName: 'Fixation Overlord', bossIcon: '👑' },
+      { id: 'hp-2', nodeNumber: 2, title: 'RA 5527 & MedTech Ethics', subtopic: 'Philippine Medical Technology Act of 1969', minionName: 'Statute Page', minionIcon: '📜', miniBossName: 'Legal Guardian', miniBossIcon: '🛡️', bossName: 'Jurisprudence Archon', bossIcon: '⚖️' },
+      { id: 'hp-3', nodeNumber: 3, title: '👑 Licensure Juris Archon (FINAL BOSS)', subtopic: 'Biosafety, Lab Quality Assurance & Comprehensive Challenge', minionName: 'Biohazard Swarm', minionIcon: '☣️', miniBossName: 'Board Examiner Phantom', miniBossIcon: '📜', bossName: 'Licensure Juris Archon', bossIcon: '👑' },
     ],
   };
 
@@ -258,7 +360,7 @@ export default function LearningQuest() {
     return CHAPTER_NODES_PER_SUBJECT[subject] || [
       { id: `${subject}-1`, nodeNumber: 1, title: `${subject} Foundations`, subtopic: 'Core Diagnostic Principles', minionName: 'Lab Minion', minionIcon: '🧪', miniBossName: 'Diagnostic Spectre', miniBossIcon: '👻', bossName: `${subject} Overlord`, bossIcon: '👑' },
       { id: `${subject}-2`, nodeNumber: 2, title: `${subject} Advanced Concepts`, subtopic: 'Pathology & Testing Methodologies', minionName: 'Reagent Swarm', minionIcon: '💧', miniBossName: 'Assay Golem', miniBossIcon: '🪨', bossName: `${subject} Titan`, bossIcon: '⚡' },
-      { id: `${subject}-3`, nodeNumber: 3, title: `${subject} Comprehensive Board Exam`, subtopic: 'All Subject Topics Review', minionName: 'Board Sentinel', minionIcon: '🛡️', miniBossName: 'Senior Examiner Specter', miniBossIcon: '📜', bossName: `Master ${subject} Colossus`, bossIcon: '👑' },
+      { id: `${subject}-3`, nodeNumber: 3, title: `👑 ${subject} Sovereign (FINAL BOSS)`, subtopic: 'Comprehensive Licensure Board Challenge', minionName: 'Board Sentinel', minionIcon: '🛡️', miniBossName: 'Senior Examiner Specter', miniBossIcon: '📜', bossName: `Master ${subject} Colossus`, bossIcon: '👑' },
     ];
   };
 
@@ -274,14 +376,22 @@ export default function LearningQuest() {
     return Math.floor(baseHp * (1 + (Math.max(1, level) - 1) * 0.12) * modeMul);
   };
 
-  // Load Saved Node Stars from localStorage
+  // Load Saved Node Stars & Clears from Database (User Scoped)
   useEffect(() => {
-    try {
-      const savedStars = localStorage.getItem('boardquest_node_stars');
-      if (savedStars) {
-        setNodeStars(JSON.parse(savedStars));
-      }
-    } catch (e) { }
+    async function loadNodeStarsAndClears() {
+      try {
+        const result = await getNodeClearsAction();
+        if (result) {
+          setNodeClears(result.nodeClears || {});
+          setNodeStars(result.nodeStars || {});
+          try {
+            localStorage.setItem('boardquest_node_clears', JSON.stringify(result.nodeClears || {}));
+            localStorage.setItem('boardquest_node_stars', JSON.stringify(result.nodeStars || {}));
+          } catch (e) { }
+        }
+      } catch (e) { }
+    }
+    loadNodeStarsAndClears();
   }, []);
   const [floatingTexts, setFloatingTexts] = useState<{ id: string, target: 'player' | 'enemy', text: string, color: string }[]>([]);
   const [hitFlash, setHitFlash] = useState(false);
@@ -728,19 +838,24 @@ export default function LearningQuest() {
     }
   }, [introPhase, isStarted]);
 
-  // Scroll selected item into view
+  // Scroll selected item into view naturally from the left
   useEffect(() => {
     if (carouselRef.current) {
-      const selectedButton = carouselRef.current.querySelector(`button:nth-child(${SUBJECT_AREAS.indexOf(selectedSubject) + 1})`);
+      const selectedIdx = dynamicCategories.indexOf(selectedSubject);
+      const selectedButton = carouselRef.current.querySelector(`button:nth-child(${selectedIdx + 1})`) as HTMLElement;
       if (selectedButton) {
-        selectedButton.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'center'
-        });
+        if (selectedIdx === 0) {
+          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          selectedButton.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest'
+          });
+        }
       }
     }
-  }, [selectedSubject]);
+  }, [selectedSubject, dynamicCategories]);
 
   const startQuest = async (limit: number = 50, specificDifficulty?: string) => {
     setIsLoading(true);
@@ -791,7 +906,7 @@ export default function LearningQuest() {
       setBattleOutcome(null);
       setShowBattleLog(false);
 
-      const activeBg = SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl;
+      const activeBg = getSubjectMeta(selectedSubject)?.arenaBackgroundUrl || getSubjectMeta(selectedSubject)?.backgroundUrl;
       if (quizMode === 'boss-battle' && activeBg) {
         setIntroPhase('cutscene');
       } else {
@@ -867,27 +982,35 @@ export default function LearningQuest() {
       } else {
         // normal
         if (isCorrect) {
-          if (!bossShieldActive) {
+          if (!bossShieldActive || battleStage !== 3) {
             enemyDmg = baseDamage;
           } else {
-            // Shield absorbed the hit
+            // Shield absorbed the hit (Only Chapter Boss at Stage 3 has shield!)
             enemyDmg = 0;
-            toast({ title: "Shield Absorbed Attack!", description: "Normal attacks deal 0 damage while the shield is active.", variant: "destructive" });
+            toast({ title: "Shield Absorbed Attack! 🛡️", description: "Normal attacks deal 0 damage while the Boss shield is active. Use Heavy Attack to shatter it!", variant: "destructive" });
           }
         } else {
           playerDmg += baseDamage;
         }
       }
 
-      // Aggressive Phase 2: (Boss <= 60% HP and > 20% HP) -> Double damage on player mistake
-      if (!isCorrect && enemyHealth <= 60 && enemyHealth > 20) {
+      // Aggressive Phase 2: ONLY the Stage 3 Boss has aggressive phases! (Boss <= 60% HP and > 20% HP) -> Double damage on player mistake
+      if (battleStage === 3 && !isCorrect && enemyHealth <= 60 && enemyHealth > 20) {
         playerDmg *= 2;
       }
 
-      // Poison Infliction Mechanics
-      if (!isCorrect && Math.random() < 0.25) {
+      // Poison Infliction Mechanics:
+      // Minion (Stage 1) -> NEVER poisons
+      // Mini-Boss (Stage 2) & Boss (Stage 3) -> Inflict poison debuffs on player mistakes
+      if (battleStage >= 2 && !isCorrect && Math.random() < 0.25) {
         newPoisonedState = true;
-        toast({ title: "POISONED!", description: "The boss inflicted a toxic wound! Defend to cure it.", variant: "destructive" });
+        toast({
+          title: "POISONED! ☠️",
+          description: battleStage === 2
+            ? "The Mini-Boss inflicted a toxic debuff! Use Defend to cure it."
+            : "The Chapter Boss inflicted a toxic debuff! Use Defend to cure it.",
+          variant: "destructive"
+        });
       }
 
       // Buffered Saline Consumable Effect (Nullifies 1st Poison/Debuff)
@@ -898,16 +1021,18 @@ export default function LearningQuest() {
           addFloatingText('player', 'DEBUFF NULLIFIED! 🧪💧', 'text-emerald-400');
           toast({
             title: "Buffered Saline Activated! 🧪💧",
-            description: "Your Buffered Saline neutralized the boss's toxic affliction!",
+            description: "Your Buffered Saline neutralized the toxic affliction!",
           });
           setInventory(prev => ({ ...prev, buffered_saline: Math.max(0, (prev.buffered_saline || 0) - 1) }));
         }
       }
 
-      // Boss casts shield every 4 turns
-      if ((turnCount + 1) % 4 === 0 && enemyHealth > 0) {
+      // Shield Mechanics: ONLY the Stage 3 Chapter Boss casts shield! (Every 4 turns)
+      if (battleStage === 3 && (turnCount + 1) % 4 === 0 && enemyHealth > 0) {
         newShieldState = true;
-        toast({ title: "Boss Casts Shield!", description: "The boss puts up a magical shield. Only Heavy attacks can shatter it!", variant: "destructive" });
+        toast({ title: "Boss Casts Shield! 🛡️", description: "The Chapter Boss puts up a magical shield. Only Heavy attacks can shatter it!", variant: "destructive" });
+      } else if (battleStage < 3) {
+        newShieldState = false;
       }
 
     } else {
@@ -947,15 +1072,17 @@ export default function LearningQuest() {
       if (quizMode === 'boss-battle' && nextHp <= 0) {
         if (battleStage === 1) {
           setBattleStage(2);
+          setBossShieldActive(false);
           const stage2Hp = calculateEnemyStageHp(2, userLevel, bossDifficulty || 'MEDIUM');
           setEnemyHealth(stage2Hp);
           addFloatingText('enemy', '👾 MINION DEFEATED! 👹 MINI-BOSS ENTERS!', 'text-amber-300');
           toast({
             title: "👾 Stage 1 Clear!",
-            description: "You defeated the Lab Minion! Prepare to face the Mini-Boss!",
+            description: "You defeated the Minion! Prepare to face the Mini-Boss!",
           });
         } else if (battleStage === 2) {
           setBattleStage(3);
+          setBossShieldActive(false);
           const stage3Hp = calculateEnemyStageHp(3, userLevel, bossDifficulty || 'MEDIUM');
           setEnemyHealth(stage3Hp);
           addFloatingText('enemy', '👹 MINI-BOSS DEFEATED! 👑 CHAPTER BOSS APPEARS!', 'text-red-400');
@@ -1034,8 +1161,21 @@ export default function LearningQuest() {
     let finalOutcome = outcome;
     if (!finalOutcome) {
       if (quizMode === 'boss-battle') {
-        finalOutcome = enemyHealth > 0 ? 'defeat' : 'victory';
-        if (finalOutcome === 'defeat') setPlayerHealth(0); // Visually wipe out player due to stamina exhaustion
+        if (enemyHealth <= 0) {
+          finalOutcome = 'victory';
+        } else if (playerHealth <= 0) {
+          finalOutcome = 'defeat';
+        } else {
+          // If questions ended while player survived with HP > 0, judge outcome by accuracy!
+          const actualTotal = userAnswers.length || finalScore || 1;
+          const calcAcc = (finalScore / actualTotal) * 100;
+          finalOutcome = calcAcc >= 60 ? 'victory' : 'defeat';
+          if (finalOutcome === 'victory') {
+            setEnemyHealth(0);
+          } else {
+            setPlayerHealth(0);
+          }
+        }
       } else {
         // In Learning/Test mode, force a visual victor based on the final score
         finalOutcome = finalScore > questions.length / 2 ? 'victory' : 'defeat';
@@ -1082,6 +1222,35 @@ export default function LearningQuest() {
     setIsSavingResults(true);
 
     try {
+      // Calculate difficulty clears: Defeating Easy, Medium, and Hard unlocks next chapter node!
+      const actualTotal = quizMode === 'boss-battle' ? (userAnswers.length || score) : questions.length;
+      const accuracyPercent = actualTotal > 0 ? Math.round((score / actualTotal) * 100) : 0;
+      const isVictory = quizMode === 'boss-battle' ? battleOutcome === 'victory' : accuracyPercent >= 60;
+
+      if (selectedNodeId && isVictory) {
+        const currentDiff = (bossDifficulty || 'MEDIUM').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD';
+        saveNodeClearAction(selectedNodeId, currentDiff, selectedSubject);
+        setNodeClears(prevClears => {
+          const prevNodeClears = prevClears[selectedNodeId] || {};
+          const updatedNodeClears = { ...prevNodeClears, [currentDiff]: true };
+          const updatedClearsMap = { ...prevClears, [selectedNodeId]: updatedNodeClears };
+          try {
+            localStorage.setItem('boardquest_node_clears', JSON.stringify(updatedClearsMap));
+          } catch (e) { }
+
+          const totalStars = (updatedNodeClears.EASY ? 1 : 0) + (updatedNodeClears.MEDIUM ? 1 : 0) + (updatedNodeClears.HARD ? 1 : 0);
+          setNodeStars(prevStars => {
+            const updatedStarsMap = { ...prevStars, [selectedNodeId]: Math.max(prevStars[selectedNodeId] || 0, totalStars) };
+            try {
+              localStorage.setItem('boardquest_node_stars', JSON.stringify(updatedStarsMap));
+            } catch (e) { }
+            return updatedStarsMap;
+          });
+
+          return updatedClearsMap;
+        });
+      }
+
       const result = await completeQuest({
         score,
         totalQuestions: questions.length,
@@ -1111,8 +1280,10 @@ export default function LearningQuest() {
         setTimeout(() => setThankYouDialogOpen(true), 200);
 
         toast({
-          title: "Quest Completed!",
-          description: result.message,
+          title: quizMode === 'boss-battle' ? "👑 Chapter Boss Conquered!" : "Quest Completed!",
+          description: quizMode === 'boss-battle'
+            ? `⚔️ Glorious Victory! You vanquished the boss and conquered this chapter in ${selectedSubject}!`
+            : result.message,
         });
       } else {
         toast({
@@ -1132,7 +1303,7 @@ export default function LearningQuest() {
     }
   };
 
-  const subjectMeta = SUBJECT_METADATA[selectedSubject];
+  const subjectMeta = getSubjectMeta(selectedSubject);
   const EnemyIcon = subjectMeta.icon;
 
   if (isFinished) {
@@ -1800,7 +1971,7 @@ export default function LearningQuest() {
         isFullscreen ? "h-screen w-screen" : ""
       )}
       style={{
-        backgroundImage: `url('${SUBJECT_METADATA[selectedSubject]?.backgroundUrl || ''}')`,
+        backgroundImage: `url('${(getSubjectMeta(selectedSubject)).backgroundUrl || ''}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'local',
@@ -1844,60 +2015,69 @@ export default function LearningQuest() {
       </header>
 
       <div className="flex-1 flex flex-col justify-center py-6 md:py-10 relative z-10 overflow-hidden">
-        <div ref={carouselRef} className="flex overflow-x-auto gap-4 md:gap-8 px-8 md:px-12 no-scrollbar snap-x snap-mandatory items-center min-h-[400px] md:min-h-[500px]">
-          {SUBJECT_AREAS.map((subject) => {
-            const meta = SUBJECT_METADATA[subject];
-            const isSelected = selectedSubject === subject;
-            const Icon = meta.icon;
+        {categoriesLoading || dynamicCategories.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-[400px] md:min-h-[500px] space-y-3">
+            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            <p className="text-white font-bytebounce text-lg tracking-widest uppercase">
+              Loading Quest Regions...
+            </p>
+          </div>
+        ) : (
+          <div ref={carouselRef} className="flex overflow-x-auto gap-4 md:gap-8 px-8 md:px-12 no-scrollbar snap-x snap-mandatory items-center min-h-[400px] md:min-h-[500px]">
+            {dynamicCategories.map((subject) => {
+              const meta = getSubjectMeta(subject);
+              const isSelected = selectedSubject === subject;
+              const Icon = meta.icon;
 
-            return (
-              <button
-                key={subject}
-                onClick={() => setSelectedSubject(subject)}
-                className={cn(
-                  "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center",
-                  isSelected ? "scale-100 w-64 md:w-80" : "scale-75 w-48 md:w-56 opacity-35"
-                )}
-              >
-                <div className="relative w-full flex flex-col items-center">
-                  <div className={cn(
-                    "relative w-full aspect-square transition-all duration-500",
-                    isSelected ? "animate-float" : ""
-                  )}>
-                    {meta.imageUrl ? (
-                      <div className="relative w-full h-full transform hover:scale-105 transition-transform">
-                        <Image src={meta.imageUrl} alt={subject} fill className="object-contain" priority={isSelected} />
-                      </div>
-                    ) : (
-                      <div className={cn("w-full h-full rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 flex flex-col items-center justify-center text-white shadow-2xl relative overflow-hidden group border-4 border-white/50", meta.color)}>
-                        <Icon className="w-10 h-10 md:w-12 md:h-12" />
-                      </div>
-                    )}
-                  </div>
+              return (
+                <button
+                  key={subject}
+                  onClick={() => setSelectedSubject(subject)}
+                  className={cn(
+                    "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center",
+                    isSelected ? "scale-100 w-64 md:w-80" : "scale-75 w-48 md:w-56 opacity-35"
+                  )}
+                >
+                  <div className="relative w-full flex flex-col items-center">
+                    <div className={cn(
+                      "relative w-full aspect-square transition-all duration-500",
+                      isSelected ? "animate-float" : ""
+                    )}>
+                      {meta.imageUrl ? (
+                        <div className="relative w-full h-full transform hover:scale-105 transition-transform">
+                          <Image src={meta.imageUrl} alt={subject} fill className="object-contain" priority={isSelected} />
+                        </div>
+                      ) : (
+                        <div className={cn("w-full h-full rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 flex flex-col items-center justify-center text-white shadow-2xl relative overflow-hidden group border-4 border-white/50", meta.color)}>
+                          <Icon className="w-10 h-10 md:w-12 md:h-12" />
+                        </div>
+                      )}
+                    </div>
 
-                  <div className={cn("mt-2 text-center space-y-3 md:space-y-2 transition-all", isSelected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}>
-                    <div className="space-y-1 w-full px-2">
-                      <p className="text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80" style={{ fontFamily: "'Poppins', sans-serif" }}>{meta.biome}</p>
-                      <h3 className="text-3xl sm:text-4xl md:text-[3rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
-                    </div>
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={cn("w-3 h-3 md:w-4 md:h-4", i < meta.difficulty ? "text-primary fill-primary" : "text-white/30")} />
-                        ))}
+                    <div className={cn("mt-2 text-center space-y-3 md:space-y-2 transition-all", isSelected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}>
+                      <div className="space-y-1 w-full px-2">
+                        <p className="text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80" style={{ fontFamily: "'Poppins', sans-serif" }}>{meta.biome}</p>
+                        <h3 className="text-3xl sm:text-4xl md:text-[3rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-1 flex items-center gap-1 text-[8px] md:text-[10px]">
-                          <Target className="w-2.5 h-2.5 md:w-3 md:h-3" /> {meta.enemy}
-                        </Badge>
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className={cn("w-3 h-3 md:w-4 md:h-4", i < meta.difficulty ? "text-primary fill-primary" : "text-white/30")} />
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-1 flex items-center gap-1 text-[8px] md:text-[10px]">
+                            <Target className="w-2.5 h-2.5 md:w-3 md:h-3" /> {meta.enemy}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="px-6 md:px-8 mt-6 md:mt-10 relative z-20">
@@ -2025,22 +2205,22 @@ export default function LearningQuest() {
                     {/* INFO SECTION */}
                     <div className={cn("flex-1 flex flex-col justify-center md:justify-end relative md:pt-2", mobileModalStep === 'action' ? "hidden md:flex" : "flex")}>
                       {quizMode === 'learning' && (
-                        <div className="flex-1 flex flex-col space-y-2 min-[375px]:space-y-3 md:space-y-3.5 overflow-hidden justify-center md:justify-end items-center">
+                        <div className="flex-1 flex flex-col space-y-2 min-[375px]:space-y-3 md:space-y-5 overflow-hidden justify-center md:justify-end items-center">
                           <div className="text-center space-y-0.5">
-                            <p className="text-white/90 text-[9px] min-[375px]:text-[11px] sm:text-sm md:text-md max-w-lg mx-auto font-bold leading-tight min-[375px]:leading-snug sm:leading-relaxed" style={{ textShadow: '1px 1px 0 #000' }}>
-                              Hone your skills in a low-pressure environment. The AI Tutor provides immediate rationale after every answer. Master the basics before facing the real challenge.
+                            <p className="text-white/90 text-[9px] min-[375px]:text-[11px] sm:text-xs md:text-lg max-w-lg mx-auto font-bold leading-tight min-[375px]:leading-snug sm:leading-relaxed" style={{ textShadow: '1px 1px 0 #000' }}>
+                              Hone your skills with immediate AI Tutor rationale after every answer. Master the basics at your own pace.
                             </p>
                           </div>
 
                           {/* 3 PNG Banners for Learning Mode */}
-                          <div className="flex flex-row justify-center items-center gap-1.5 min-[375px]:gap-2.5 md:gap-1 w-full px-1 min-[375px]:px-2 md:px-4">
-                            <div className="relative flex-1 h-12 min-[375px]:h-14 sm:h-20 md:h-24 transition-transform">
+                          <div className="flex flex-row justify-center items-center gap-1.5 min-[375px]:gap-2.5 md:gap-1 w-full px-1 min-[375px]:px-2 md:px-12">
+                            <div className="relative flex-1 h-12 min-[375px]:h-14 sm:h-20 md:h-22 transition-transform">
                               <Image src="/ui/IMMIEDIATEFEEDBACK_BANNER.png" alt="Immediate Feedback" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
                             </div>
-                            <div className="relative flex-1 h-12 min-[375px]:h-14 sm:h-20 md:h-24 transition-transform">
+                            <div className="relative flex-1 h-12 min-[375px]:h-14 sm:h-20 md:h-22 transition-transform">
                               <Image src="/ui/AITUTORANALYSIS_BANNER.png" alt="AI Tutor Analysis" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
                             </div>
-                            <div className="relative flex-1 h-12 min-[375px]:h-14 sm:h-20 md:h-24 transition-transform">
+                            <div className="relative flex-1 h-12 min-[375px]:h-14 sm:h-20 md:h-22 transition-transform">
                               <Image src="/ui/PRECISIONTRAINING_BANNER.png" alt="Precision Training" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
                             </div>
                           </div>
@@ -2048,24 +2228,23 @@ export default function LearningQuest() {
                       )}
 
                       {quizMode === 'test' && (
-                        <div className="flex-1 flex flex-col space-y-1 sm:space-y-2 md:space-y-5 overflow-hidden justify-center items-center">
-                          <div className="text-center space-y-0.5 sm:space-y-1">
-                            <p className="text-white/90 text-[9px] min-[375px]:text-[11px] sm:text-xs md:text-sm max-w-lg mx-auto font-bold leading-tight min-[375px]:leading-snug sm:leading-relaxed" style={{ textShadow: '1px 1px 0 #000' }}>
+                        <div className="flex-1 flex flex-col space-y-2 min-[375px]:space-y-3 md:space-y-4.5 overflow-hidden justify-center md:justify-end items-center">
+                          <div className="text-center space-y-0.5">
+                            <p className="text-white/90 text-[9px] min-[375px]:text-[11px] sm:text-sm md:text-lg max-w-lg mx-auto font-bold leading-tight min-[375px]:leading-snug sm:leading-relaxed" style={{ textShadow: '1px 1px 0 #000' }}>
                               A grueling test of endurance. No immediate feedback, no second chances. Only your final score matters.
                             </p>
                           </div>
-                          <div className="grid grid-cols-3 min-[375px]:flex min-[375px]:flex-row min-[375px]:flex-wrap min-[375px]:justify-center sm:grid sm:grid-cols-3 gap-1 min-[375px]:gap-1.5 md:gap-4 max-w-2xl mx-auto w-full">
-                            <div className="bg-white/5 border border-white/10 rounded-full sm:rounded-xl px-1 min-[375px]:px-2.5 py-1 sm:p-3 flex items-center sm:flex-col justify-center text-center gap-0.5 min-[375px]:gap-1.5 sm:gap-2">
-                              <Clock className="w-2.5 h-2.5 min-[375px]:w-3.5 min-[375px]:h-3.5 md:w-6 md:h-6 text-orange-400 shrink-0" />
-                              <p className="text-[5.5px] min-[375px]:text-[8px] md:text-[10px] uppercase font-bold text-white tracking-tighter min-[375px]:tracking-wider whitespace-nowrap">Continuous Flow</p>
+
+                          {/* 3 PNG Banners for Test Mode */}
+                          <div className="flex flex-row justify-center items-center gap-1.5 min-[375px]:gap-2.5 md:gap-1 w-full px-1 min-[375px]:px-2 md:px-12">
+                            <div className="relative flex-1 h-12 min-[375px]:h-14 sm:h-20 md:h-22 transition-transform">
+                              <Image src="/ui/CONTINUOUSFLOW-btn.png" alt="Continuous Flow" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
                             </div>
-                            <div className="bg-white/5 border border-white/10 rounded-full sm:rounded-xl px-1 min-[375px]:px-2.5 py-1 sm:p-3 flex items-center sm:flex-col justify-center text-center gap-0.5 min-[375px]:gap-1.5 sm:gap-2">
-                              <Trophy className="w-2.5 h-2.5 min-[375px]:w-3.5 min-[375px]:h-3.5 md:w-6 md:h-6 text-yellow-400 shrink-0" />
-                              <p className="text-[5.5px] min-[375px]:text-[8px] md:text-[10px] uppercase font-bold text-white tracking-tighter min-[375px]:tracking-wider whitespace-nowrap">Graded Assessment</p>
+                            <div className="relative flex-1 h-12 min-[375px]:h-14 sm:h-20 md:h-22 transition-transform">
+                              <Image src="/ui/GRADEDASSESSMENT-btn.png" alt="Graded Assessment" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
                             </div>
-                            <div className="bg-white/5 border border-white/10 rounded-full sm:rounded-xl px-1 min-[375px]:px-2.5 py-1 sm:p-3 flex items-center sm:flex-col justify-center text-center gap-0.5 min-[375px]:gap-1.5 sm:gap-2">
-                              <Activity className="w-2.5 h-2.5 min-[375px]:w-3.5 min-[375px]:h-3.5 md:w-6 md:h-6 text-red-400 shrink-0" />
-                              <p className="text-[5.5px] min-[375px]:text-[8px] md:text-[10px] uppercase font-bold text-white tracking-tighter min-[375px]:tracking-wider whitespace-nowrap">Adaptive Difficulty</p>
+                            <div className="relative flex-1 h-12 min-[375px]:h-14 sm:h-20 md:h-22 transition-transform">
+                              <Image src="/ui/ADAPTIVEDIFFICULTY-btn.png" alt="Adaptive Difficulty" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
                             </div>
                           </div>
                         </div>
@@ -2130,16 +2309,46 @@ export default function LearningQuest() {
                               ))}
                             </div>
                           ) : (
-                            <div className="flex flex-wrap justify-center gap-1.5 md:gap-3 w-full">
-                              <Button onClick={() => startQuest(20)} className="flex-1 min-w-[100px] h-10 md:h-12 text-sm md:text-lg font-bytebounce border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 transition-transform">
-                                Quick (20)
-                              </Button>
-                              <Button onClick={() => startQuest(50)} className="flex-1 min-w-[100px] h-10 md:h-12 text-sm md:text-lg font-bytebounce border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-yellow-500 hover:bg-yellow-600 hover:-translate-y-0.5 transition-transform">
-                                Standard (50)
-                              </Button>
-                              <Button onClick={() => startQuest(100)} className="flex-1 min-w-[100px] h-10 md:h-12 text-sm md:text-lg font-bytebounce border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-red-500 hover:bg-red-600 hover:-translate-y-0.5 transition-transform">
-                                Full (100)
-                              </Button>
+                            <div className="flex flex-wrap justify-center items-center gap-1.5 min-[375px]:gap-2.5 md:gap-3 w-full max-w-xl mx-auto px-1 min-[375px]:px-2">
+                              <button
+                                onClick={() => startQuest(20)}
+                                className="relative flex-1 min-w-[65px] min-[375px]:min-w-[85px] md:min-w-[150px] max-w-[100px] min-[375px]:max-w-[130px] md:max-w-[195px] aspect-[2.7/1] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
+                              >
+                                <Image
+                                  src="/ui/Quick20-btn.png"
+                                  alt="Quick (20)"
+                                  fill
+                                  className="object-contain"
+                                  style={{ imageRendering: 'pixelated' }}
+                                  unoptimized
+                                />
+                              </button>
+                              <button
+                                onClick={() => startQuest(50)}
+                                className="relative flex-1 min-w-[65px] min-[375px]:min-w-[85px] md:min-w-[150px] max-w-[100px] min-[375px]:max-w-[130px] md:max-w-[195px] aspect-[2.7/1] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
+                              >
+                                <Image
+                                  src="/ui/STANDARD50-btn.png"
+                                  alt="Standard (50)"
+                                  fill
+                                  className="object-contain"
+                                  style={{ imageRendering: 'pixelated' }}
+                                  unoptimized
+                                />
+                              </button>
+                              <button
+                                onClick={() => startQuest(100)}
+                                className="relative flex-1 min-w-[65px] min-[375px]:min-w-[85px] md:min-w-[150px] max-w-[100px] min-[375px]:max-w-[130px] md:max-w-[195px] aspect-[2.7/1] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
+                              >
+                                <Image
+                                  src="/ui/FULL100-btn.png"
+                                  alt="Full (100)"
+                                  fill
+                                  className="object-contain"
+                                  style={{ imageRendering: 'pixelated' }}
+                                  unoptimized
+                                />
+                              </button>
                             </div>
                           )}
                         </>
@@ -2188,6 +2397,7 @@ export default function LearningQuest() {
             }}
             onClose={() => setShowChapterMap(false)}
             nodeStars={nodeStars}
+            nodeClears={nodeClears}
           />
         </DialogContent>
       </Dialog>

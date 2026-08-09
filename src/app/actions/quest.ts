@@ -188,10 +188,18 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
     // Record individual question attempts for Spaced Repetition logic
     if (params.userAnswers && params.userAnswers.length > 0) {
       await Promise.all(
-        params.userAnswers.map((ua) =>
-          (prisma as any).userQuestionAttempt.upsert({
+        params.userAnswers.map((ua) => {
+          if (!ua.questionId) return Promise.resolve();
+          // Extract base MongoDB ObjectId and strip any looping cycle suffixes like "_cycle_7"
+          const rawId = ua.questionId.split('_cycle_')[0].trim();
+          // Ensure rawId is a valid 24-char hex string
+          if (!/^[0-9a-fA-F]{24}$/.test(rawId)) {
+            return Promise.resolve();
+          }
+
+          return (prisma as any).userQuestionAttempt.upsert({
             where: {
-              userId_questionId: { userId, questionId: ua.questionId },
+              userId_questionId: { userId, questionId: rawId },
             },
             update: {
               attempts: { increment: 1 },
@@ -200,12 +208,12 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
             },
             create: {
               userId,
-              questionId: ua.questionId,
+              questionId: rawId,
               attempts: 1,
               correct: ua.isCorrect ? 1 : 0,
             },
-          })
-        )
+          }).catch((err: any) => console.warn('Question attempt record skipped:', err));
+        })
       );
     }
 
@@ -216,7 +224,9 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
 
     // Determine message
     let message = '';
-    if (earnedBadges.length === 0) {
+    if (params.questMode === 'boss-battle') {
+      message = `🎉 Glorious Victory! You conquered the chapter and defeated the boss in ${params.subject}!`;
+    } else if (earnedBadges.length === 0) {
       message = `Great effort! You scored ${params.score}/${params.totalQuestions} and earned ${totalXpEarned} XP.`;
     } else if (earnedBadges.length === 1) {
       message = `Excellent! You earned the ${earnedBadges[0].name} and gained ${totalXpEarned} XP!`;
@@ -233,14 +243,167 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
       message,
     };
   } catch (error) {
-    console.error('Failed to complete quest:', error);
+    console.error('Error completing quest:', error);
     return {
       success: false,
       earnedBadges: [],
       totalXp: 0,
       newLevel: 1,
       message: '',
-      error: 'Failed to save quest results. Please try again.',
+      error: 'Failed to complete quest. Please try again.',
     };
+  }
+}
+
+export interface NodeClearsResult {
+  nodeStars: Record<string, number>;
+  nodeClears: Record<string, { EASY?: boolean; MEDIUM?: boolean; HARD?: boolean }>;
+}
+
+export async function saveNodeClearAction(nodeId: string, difficulty: 'EASY' | 'MEDIUM' | 'HARD', subject: string) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return;
+
+    const diffUpper = difficulty.toUpperCase();
+
+    if ((prisma as any).questNodeCompletion) {
+      await (prisma as any).questNodeCompletion.upsert({
+        where: {
+          userId_nodeId_difficulty: {
+            userId,
+            nodeId,
+            difficulty: diffUpper,
+          },
+        },
+        update: {
+          status: 'completed',
+          subject,
+        },
+        create: {
+          userId,
+          nodeId,
+          difficulty: diffUpper,
+          subject,
+          status: 'completed',
+        },
+      });
+    } else {
+      // Direct MongoDB raw command fallback (works instantly without requiring dev server restart)
+      await (prisma as any).$runCommandRaw({
+        update: "QuestNodeCompletion",
+        updates: [
+          {
+            q: { userId: { $oid: userId }, nodeId, difficulty: diffUpper },
+            u: {
+              $set: {
+                userId: { $oid: userId },
+                nodeId,
+                difficulty: diffUpper,
+                subject,
+                status: "completed",
+                updatedAt: { $date: new Date().toISOString() }
+              },
+              $setOnInsert: {
+                createdAt: { $date: new Date().toISOString() }
+              }
+            },
+            upsert: true,
+          }
+        ]
+      });
+    }
+  } catch (error) {
+    console.error('Failed to save quest node clear:', error);
+  }
+}
+
+export async function getNodeClearsAction(): Promise<NodeClearsResult> {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return { nodeStars: {}, nodeClears: {} };
+
+    let completions: any[] = [];
+
+    if ((prisma as any).questNodeCompletion) {
+      completions = await (prisma as any).questNodeCompletion.findMany({
+        where: { userId, status: 'completed' },
+        select: { nodeId: true, difficulty: true }
+      });
+    } else {
+      const rawRes: any = await (prisma as any).$runCommandRaw({
+        find: "QuestNodeCompletion",
+        filter: { userId: { $oid: userId }, status: "completed" },
+        projection: { nodeId: 1, difficulty: 1, _id: 0 }
+      });
+      if (rawRes?.cursor?.firstBatch) {
+        completions = rawRes.cursor.firstBatch;
+      }
+    }
+
+    const nodeStarsMap: Record<string, number> = {};
+    const nodeClearsMap: Record<string, { EASY?: boolean; MEDIUM?: boolean; HARD?: boolean }> = {};
+
+    completions.forEach((comp) => {
+      const nodeId = comp.nodeId;
+      const diff = (comp.difficulty || '').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD';
+      if (!nodeId || !diff) return;
+
+      if (!nodeClearsMap[nodeId]) nodeClearsMap[nodeId] = {};
+      nodeClearsMap[nodeId][diff] = true;
+    });
+
+    Object.keys(nodeClearsMap).forEach((nodeId) => {
+      const clears = nodeClearsMap[nodeId];
+      const count = (clears.EASY ? 1 : 0) + (clears.MEDIUM ? 1 : 0) + (clears.HARD ? 1 : 0);
+      nodeStarsMap[nodeId] = count;
+    });
+
+    return { nodeStars: nodeStarsMap, nodeClears: nodeClearsMap };
+  } catch (error) {
+    console.error('Failed to fetch quest node clears:', error);
+    return { nodeStars: {}, nodeClears: {} };
+  }
+}
+
+export async function getNodeStarsAction(): Promise<Record<string, number>> {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return {};
+
+    const examResults = await prisma.examResult.findMany({
+      where: { userId },
+      select: { accuracy: true, subject: true }
+    });
+
+    const nodeStarsMap: Record<string, number> = {};
+
+    examResults.forEach((res) => {
+      if (!res.subject) return;
+      const acc = res.accuracy || 0;
+      let stars = 0;
+      if (acc >= 90) stars = 3;
+      else if (acc >= 75) stars = 2;
+      else if (acc >= 60) stars = 1;
+
+      if (stars > 0) {
+        const cleanSub = res.subject.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const prefix = cleanSub.includes('chem') ? 'cc'
+          : cleanSub.includes('hema') && !cleanSub.includes('immuno') ? 'hem'
+          : cleanSub.includes('microb') ? 'mb' : cleanSub;
+        const nodeId = `${prefix}-1`;
+        if (stars > (nodeStarsMap[nodeId] || 0)) {
+          nodeStarsMap[nodeId] = stars;
+        }
+      }
+    });
+
+    return nodeStarsMap;
+  } catch (error) {
+    console.error('Failed to fetch node stars:', error);
+    return {};
   }
 }

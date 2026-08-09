@@ -31,7 +31,7 @@ import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/
 import { CustomCalendar } from '@/components/ui/custom-calendar';
 import { cn } from '@/lib/utils';
 import { getStudyPlans, saveStudyPlan, getReviewCenterProgram, type ReviewCenterProgramData } from '@/app/actions/study-plan';
-import { getSubjectMetrics, getCategories, updateLessonStatus, type SubjectMetrics } from '@/app/actions/study';
+import { getSubjectMetrics, getCategories, updateLessonStatus, getUserLessonCompletions, type SubjectMetrics } from '@/app/actions/study';
 import { getUserProfile } from '@/app/actions/user';
 import { format, startOfDay, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -42,8 +42,8 @@ const INITIAL_CURRICULUM = [
     title: "Clinical Chemistry",
     icon: FlaskConical,
     lessons: [
-      { id: "cc1", title: "Carbohydrate Metabolism & Disorders", duration: "45m", status: "completed" },
-      { id: "cc2", title: "Lipid Profile & Lipoproteins", duration: "60m", status: "in-progress" },
+      { id: "cc1", title: "Carbohydrate Metabolism & Disorders", duration: "45m", status: "not-started" },
+      { id: "cc2", title: "Lipid Profile & Lipoproteins", duration: "60m", status: "not-started" },
       { id: "cc3", title: "Renal Function Tests & NPNs", duration: "40m", status: "not-started" }
     ]
   },
@@ -52,7 +52,7 @@ const INITIAL_CURRICULUM = [
     title: "Hematology",
     icon: Microscope,
     lessons: [
-      { id: "hem1", title: "RBC Morphology & Anemias", duration: "50m", status: "completed" },
+      { id: "hem1", title: "RBC Morphology & Anemias", duration: "50m", status: "not-started" },
       { id: "hem2", title: "WBC Disorders & Leukemias", duration: "75m", status: "not-started" }
     ]
   },
@@ -61,7 +61,7 @@ const INITIAL_CURRICULUM = [
     title: "Microbiology",
     icon: Database,
     lessons: [
-      { id: "mic1", title: "Bacteriology: Gram Positives", duration: "65m", status: "completed" },
+      { id: "mic1", title: "Bacteriology: Gram Positives", duration: "65m", status: "not-started" },
       { id: "mic2", title: "Enterobacteriaceae & Non-fermenters", duration: "90m", status: "not-started" }
     ]
   },
@@ -70,7 +70,7 @@ const INITIAL_CURRICULUM = [
     title: "Immunology & Serology and Immunohematology",
     icon: Stethoscope,
     lessons: [
-      { id: "bb1", title: "ABO & Rh Blood Group Systems", duration: "55m", status: "completed" },
+      { id: "bb1", title: "ABO & Rh Blood Group Systems", duration: "55m", status: "not-started" },
       { id: "bb2", title: "Blood Component Therapy", duration: "50m", status: "not-started" }
     ]
   },
@@ -79,7 +79,7 @@ const INITIAL_CURRICULUM = [
     title: "Clinical Microscopy & Parasitology",
     icon: FlaskConical,
     lessons: [
-      { id: "cm1", title: "Routine Urinalysis: Physical & Chemical", duration: "40m", status: "completed" },
+      { id: "cm1", title: "Routine Urinalysis: Physical & Chemical", duration: "40m", status: "not-started" },
       { id: "cm2", title: "CSF & Other Body Fluids Analysis", duration: "50m", status: "not-started" }
     ]
   },
@@ -88,7 +88,7 @@ const INITIAL_CURRICULUM = [
     title: "Histopathology & MT Laws",
     icon: ShieldAlert,
     lessons: [
-      { id: "hp1", title: "Tissue Fixation & Processing", duration: "50m", status: "completed" },
+      { id: "hp1", title: "Tissue Fixation & Processing", duration: "50m", status: "not-started" },
       { id: "law1", title: "RA 5527: Phil MedTech Act of 1969", duration: "45m", status: "not-started" }
     ]
   }
@@ -100,7 +100,8 @@ const ICON_MAP: Record<string, any> = {
   "Microbiology": Database,
   "Immunology & Serology and Immunohematology": Stethoscope,
   "Clinical Microscopy & Parasitology": FlaskConical,
-  "Histopathology & MT Laws": ShieldAlert
+  "Histopathology & MT Laws": ShieldAlert,
+  "Histopathology and Medtech Laws": ShieldAlert,
 };
 
 export default function StudyPage() {
@@ -120,12 +121,13 @@ export default function StudyPage() {
   useEffect(() => {
     setMounted(true);
     async function loadData() {
-      const [dbCategories, plans, metrics, programData, userProfile] = await Promise.all([
+      const [dbCategories, plans, metrics, programData, userProfile, lessonCompletionsMap] = await Promise.all([
         getCategories(),
         getStudyPlans(),
         getSubjectMetrics(),
         getReviewCenterProgram(),
-        getUserProfile()
+        getUserProfile(),
+        getUserLessonCompletions()
       ]);
 
       setProgram(programData);
@@ -134,36 +136,47 @@ export default function StudyPage() {
         setUserLastName(parts[parts.length - 1]);
       }
 
-      if (dbCategories && dbCategories.length > 0) {
-        const dynamicCurriculum = dbCategories.map((cat: any) => {
-          const existing = INITIAL_CURRICULUM.find(c => c.title.trim().toLowerCase() === cat.name.trim().toLowerCase());
-          if (existing) {
-            return {
-              ...existing,
-              id: cat.id || existing.id,
-              title: cat.name,
-            };
-          }
+      const baseList = (dbCategories && dbCategories.length > 0)
+        ? dbCategories
+        : INITIAL_CURRICULUM.map(c => ({ id: c.id, name: c.title }));
 
-          const slug = cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const dynamicCurriculum = baseList.map((cat: any) => {
+        const existing = INITIAL_CURRICULUM.find(c => c.title.trim().toLowerCase() === cat.name.trim().toLowerCase());
+        if (existing) {
           return {
-            id: slug,
+            ...existing,
+            id: cat.id || existing.id,
             title: cat.name,
-            icon: ICON_MAP[cat.name] || BookMarked,
-            lessons: [
-              { id: `${slug}-1`, title: `${cat.name} Fundamentals & Core Concepts`, duration: "45m", status: "not-started" },
-              { id: `${slug}-2`, title: `${cat.name} Protocols & Comprehensive Review`, duration: "60m", status: "not-started" }
-            ]
+            lessons: existing.lessons.map(lesson => ({
+              ...lesson,
+              status: lessonCompletionsMap[lesson.id] || 'not-started'
+            }))
           };
-        });
-
-        setCurriculum(dynamicCurriculum);
-        if (dynamicCurriculum.length > 0) {
-          setSelectedCategoryId(prev => {
-            const existsInNew = dynamicCurriculum.some(c => c.id === prev);
-            return existsInNew ? prev : dynamicCurriculum[0].id;
-          });
         }
+
+        const slug = cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const defaultLessons = [
+          { id: `${slug}-1`, title: `${cat.name} Fundamentals & Core Concepts`, duration: "45m" },
+          { id: `${slug}-2`, title: `${cat.name} Protocols & Comprehensive Review`, duration: "60m" }
+        ];
+
+        return {
+          id: slug,
+          title: cat.name,
+          icon: ICON_MAP[cat.name] || BookMarked,
+          lessons: defaultLessons.map(l => ({
+            ...l,
+            status: lessonCompletionsMap[l.id] || 'not-started'
+          }))
+        };
+      });
+
+      setCurriculum(dynamicCurriculum);
+      if (dynamicCurriculum.length > 0) {
+        setSelectedCategoryId(prev => {
+          const existsInNew = dynamicCurriculum.some(c => c.id === prev);
+          return existsInNew ? prev : dynamicCurriculum[0].id;
+        });
       }
 
       const dates: Record<string, Date> = {};
@@ -223,6 +236,17 @@ export default function StudyPage() {
   const handleSubmitLesson = async (lessonId: string) => {
     const updated = await updateLessonStatus(selectedCategory.title, lessonId, 'completed');
     if (updated) {
+      // Update local curriculum state immediately
+      setCurriculum(prev => prev.map(cat => {
+        if (cat.title === selectedCategory.title) {
+          return {
+            ...cat,
+            lessons: cat.lessons.map(l => l.id === lessonId ? { ...l, status: 'completed' } : l)
+          };
+        }
+        return cat;
+      }));
+
       // Refresh metrics
       const metrics = await getSubjectMetrics();
       const metricsMap: Record<string, SubjectMetrics> = {};

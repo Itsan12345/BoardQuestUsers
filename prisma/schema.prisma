@@ -175,7 +175,23 @@ model User {
   achievements       Achievement[]
   examResults        ExamResult[]
   lessonCompletions  LessonCompletion[]
+  questNodeCompletions QuestNodeCompletion[]
   questionAttempts   UserQuestionAttempt[]
+}
+
+model QuestNodeCompletion {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  subject    String   // Subject category (e.g., 'Clinical Chemistry')
+  nodeId     String   // Chapter Node ID (e.g., 'cc-1')
+  difficulty String   // 'EASY' | 'MEDIUM' | 'HARD'
+  status     String   @default("completed") // 'completed'
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, nodeId, difficulty])
 }
 
 model SubjectMastery {

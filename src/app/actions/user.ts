@@ -26,7 +26,23 @@ export async function getUserStats(): Promise<any> {
       }
     });
     
-    return user ? JSON.parse(JSON.stringify(user)) : null;
+    if (!user) return null;
+
+    const curriculumCount = await prisma.lessonCompletion.count({
+      where: {
+        userId,
+        status: 'completed',
+        NOT: {
+          lessonId: { contains: '_' }
+        }
+      }
+    });
+
+    const parsedUser = JSON.parse(JSON.stringify(user));
+    if (parsedUser._count) {
+      parsedUser._count.lessonCompletions = curriculumCount;
+    }
+    return parsedUser;
   } catch (error) {
     console.error('Failed to fetch user stats:', error);
     return null;
