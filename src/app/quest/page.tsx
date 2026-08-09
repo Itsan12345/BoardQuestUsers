@@ -48,6 +48,7 @@ import { completeQuest, getNodeStarsAction, getNodeClearsAction, saveNodeClearAc
 import { getCategories } from '@/app/actions/study';
 import { getUserProfile, saveUserInventory, purchaseReagentAction } from '@/app/actions/user';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
+import { playSfx } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -237,7 +238,21 @@ export default function LearningQuest() {
         if (cats && cats.length > 0) {
           const names = cats.map(c => c.name);
           setDynamicCategories(names);
-          setSelectedSubject(names[0]);
+
+          // Priority 1: URL search param ?subject=
+          const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+          const urlSubject = searchParams?.get('subject');
+
+          // Priority 2: Priority Focus Subject from Account Settings
+          const savedFocus = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null;
+
+          if (urlSubject && names.includes(urlSubject)) {
+            setSelectedSubject(urlSubject);
+          } else if (savedFocus && names.includes(savedFocus)) {
+            setSelectedSubject(savedFocus);
+          } else {
+            setSelectedSubject(names[0]);
+          }
         }
       } catch (err) {
         console.error("Error loading categories from MongoDB:", err);
@@ -491,6 +506,9 @@ export default function LearningQuest() {
   };
 
   const addFloatingText = (target: 'player' | 'enemy', text: string, color: string) => {
+    const floatingEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_floating_damage') !== 'false' : true;
+    if (!floatingEnabled) return;
+
     const id = Math.random().toString(36).substring(2, 9);
     setFloatingTexts(prev => [...prev, { id, target, text, color }]);
     setTimeout(() => {
@@ -941,8 +959,13 @@ export default function LearningQuest() {
 
     if (isCorrect) {
       setStreak(prev => prev + 1);
+      playSfx('correct');
+      if (quizMode === 'boss-battle') {
+        setTimeout(() => playSfx('attack'), 150);
+      }
     } else {
       setStreak(0);
+      playSfx('wrong');
     }
 
     const baseDamage = quizMode === 'boss-battle' ? 25 : 100 / (questions.length || 5);
@@ -1104,13 +1127,17 @@ export default function LearningQuest() {
       setPlayerHealth(prev => Math.max(0, prev - playerDmg));
       addFloatingText('player', `-${Math.ceil(playerDmg)} DMG!`, 'text-red-500');
       if (playerDmg >= baseDamage || quizMode === 'boss-battle') {
-        setHitFlash(true);
-        setTimeout(() => setHitFlash(false), 300);
+        const flashEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_hit_flash') !== 'false' : true;
+        if (flashEnabled) {
+          setHitFlash(true);
+          setTimeout(() => setHitFlash(false), 300);
+        }
       }
     }
 
     if (playerHeal > 0) {
       setIsAnimating("player");
+      playSfx('heal');
       const maxHp = quizMode === 'boss-battle' ? 200 + (userLevel * 5) : 100;
       setPlayerHealth(prev => Math.min(maxHp, prev + playerHeal));
       addFloatingText('player', `+${Math.ceil(playerHeal)} HEALED!`, 'text-green-400');
@@ -1188,6 +1215,12 @@ export default function LearningQuest() {
     }
     setBattleOutcome(finalOutcome!);
 
+    if (finalOutcome === 'victory') {
+      playSfx('victory');
+    } else {
+      playSfx('defeat');
+    }
+
     if (questStartTime) {
       const completionTime = Math.floor((Date.now() - questStartTime) / 1000);
       setQuestCompletionTime(completionTime);
@@ -1210,8 +1243,13 @@ export default function LearningQuest() {
     setTimeout(() => {
       setJudgementText(null);
       setIsFinished(true);
-      // Auto-open confidence dialog
-      setTimeout(() => setConfidenceDialogOpen(true), 300);
+
+      const confEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_confidence_prompts') !== 'false' : true;
+      if (confEnabled) {
+        setTimeout(() => setConfidenceDialogOpen(true), 300);
+      } else {
+        handleConfidenceSubmit('Steady');
+      }
     }, 2000);
   };
 
@@ -1278,6 +1316,8 @@ export default function LearningQuest() {
 
         // Open thank you dialog after a short delay
         setTimeout(() => setThankYouDialogOpen(true), 200);
+
+        window.dispatchEvent(new CustomEvent('bq_stats_updated'));
 
         toast({
           title: quizMode === 'boss-battle' ? "👑 Chapter Boss Conquered!" : "Quest Completed!",
@@ -2288,67 +2328,74 @@ export default function LearningQuest() {
                       {quizMode !== 'boss-battle' ? (
                         <>
                           <div className="w-full border-t border-white/20 my-1 md:my-1" />
-                          <h4 className="font-bytebounce text-white/90 text-sm min-[375px]:text-base md:text-xl tracking-widest text-center" style={{ textShadow: '1px 1px 0 #000' }}>Select Question Limit</h4>
+                          <div className="flex items-center justify-center gap-2">
+                            <h4 className="font-bytebounce text-white/90 text-sm min-[375px]:text-base md:text-xl tracking-widest text-center" style={{ textShadow: '1px 1px 0 #000' }}>Select Question Limit</h4>
+                          </div>
                           {quizMode === 'learning' ? (
                             <div className="flex flex-wrap justify-center items-center gap-1 min-[375px]:gap-1.5 md:gap-3 w-full">
-                              {[10, 20, 30, 40, 50].map((num) => (
-                                <button
-                                  key={num}
-                                  onClick={() => startQuest(num)}
-                                  className="relative flex-1 min-w-[42px] min-[375px]:min-w-[54px] md:min-w-[100px] max-w-[65px] min-[375px]:max-w-[85px] md:max-w-[130px] aspect-[2.6/1] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
-                                >
-                                  <Image
-                                    src={`/ui/${num}QUESTIONS-btn.png`}
-                                    alt={`${num} Questions`}
-                                    fill
-                                    className="object-contain"
-                                    style={{ imageRendering: 'pixelated' }}
-                                    unoptimized
-                                  />
-                                </button>
-                              ))}
+                              {[10, 20, 30, 40, 50].map((num) => {
+                                const savedQuota = typeof window !== 'undefined' ? parseInt(localStorage.getItem('bq_pref_daily_quota') || '50', 10) : 50;
+                                const isTargetGoal = savedQuota === num;
+                                return (
+                                  <button
+                                    key={num}
+                                    onClick={() => startQuest(num)}
+                                    className={cn(
+                                      "relative flex-1 min-w-[42px] min-[375px]:min-w-[54px] md:min-w-[100px] max-w-[65px] min-[375px]:max-w-[85px] md:max-w-[130px] aspect-[2.6/1] group hover:scale-105 active:scale-95 transition-all cursor-pointer",
+                                      isTargetGoal ? "scale-105 brightness-110 drop-shadow-[0_0_6px_rgba(255,215,0,0.85)]" : "hover:brightness-110"
+                                    )}
+                                  >
+                                    {isTargetGoal && (
+                                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20 pointer-events-none whitespace-nowrap bg-[#FFC700] text-black text-[7.5px] min-[375px]:text-[8.5px] md:text-[10px] font-bytebounce font-bold px-1 py-0 border border-black shadow-[1px_1px_0_0_rgba(0,0,0,1)] uppercase tracking-wider flex items-center gap-0.5">
+                                        SELECTED GOAL
+                                      </div>
+                                    )}
+                                    <Image
+                                      src={`/ui/${num}QUESTIONS-btn.png`}
+                                      alt={`${num} Questions`}
+                                      fill
+                                      className="object-contain"
+                                      style={{ imageRendering: 'pixelated' }}
+                                      unoptimized
+                                    />
+                                  </button>
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="flex flex-wrap justify-center items-center gap-1.5 min-[375px]:gap-2.5 md:gap-3 w-full max-w-xl mx-auto px-1 min-[375px]:px-2">
-                              <button
-                                onClick={() => startQuest(20)}
-                                className="relative flex-1 min-w-[65px] min-[375px]:min-w-[85px] md:min-w-[150px] max-w-[100px] min-[375px]:max-w-[130px] md:max-w-[195px] aspect-[2.7/1] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
-                              >
-                                <Image
-                                  src="/ui/Quick20-btn.png"
-                                  alt="Quick (20)"
-                                  fill
-                                  className="object-contain"
-                                  style={{ imageRendering: 'pixelated' }}
-                                  unoptimized
-                                />
-                              </button>
-                              <button
-                                onClick={() => startQuest(50)}
-                                className="relative flex-1 min-w-[65px] min-[375px]:min-w-[85px] md:min-w-[150px] max-w-[100px] min-[375px]:max-w-[130px] md:max-w-[195px] aspect-[2.7/1] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
-                              >
-                                <Image
-                                  src="/ui/STANDARD50-btn.png"
-                                  alt="Standard (50)"
-                                  fill
-                                  className="object-contain"
-                                  style={{ imageRendering: 'pixelated' }}
-                                  unoptimized
-                                />
-                              </button>
-                              <button
-                                onClick={() => startQuest(100)}
-                                className="relative flex-1 min-w-[65px] min-[375px]:min-w-[85px] md:min-w-[150px] max-w-[100px] min-[375px]:max-w-[130px] md:max-w-[195px] aspect-[2.7/1] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
-                              >
-                                <Image
-                                  src="/ui/FULL100-btn.png"
-                                  alt="Full (100)"
-                                  fill
-                                  className="object-contain"
-                                  style={{ imageRendering: 'pixelated' }}
-                                  unoptimized
-                                />
-                              </button>
+                              {[
+                                { count: 20, src: '/ui/Quick20-btn.png', alt: 'Quick (20)' },
+                                { count: 50, src: '/ui/STANDARD50-btn.png', alt: 'Standard (50)' },
+                                { count: 100, src: '/ui/FULL100-btn.png', alt: 'Full (100)' },
+                              ].map(({ count, src, alt }) => {
+                                const savedQuota = typeof window !== 'undefined' ? parseInt(localStorage.getItem('bq_pref_daily_quota') || '50', 10) : 50;
+                                const isTargetGoal = savedQuota === count;
+                                return (
+                                  <button
+                                    key={count}
+                                    onClick={() => startQuest(count)}
+                                    className={cn(
+                                      "relative flex-1 min-w-[65px] min-[375px]:min-w-[85px] md:min-w-[150px] max-w-[100px] min-[375px]:max-w-[130px] md:max-w-[195px] aspect-[2.7/1] group hover:scale-105 active:scale-95 transition-all cursor-pointer",
+                                      isTargetGoal ? "scale-105 brightness-110 drop-shadow-[0_0_8px_rgba(255,215,0,0.9)]" : "hover:brightness-110"
+                                    )}
+                                  >
+                                    {isTargetGoal && (
+                                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none whitespace-nowrap bg-[#FFC700] text-black text-[9px] min-[375px]:text-[10px] md:text-xs font-bytebounce font-bold px-1.5 py-0.5 border border-black shadow-[1px_1px_0_0_rgba(0,0,0,1)] uppercase tracking-wider flex items-center gap-0.5">
+                                        SELECTED GOAL
+                                      </div>
+                                    )}
+                                    <Image
+                                      src={src}
+                                      alt={alt}
+                                      fill
+                                      className="object-contain"
+                                      style={{ imageRendering: 'pixelated' }}
+                                      unoptimized
+                                    />
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </>
@@ -2356,15 +2403,55 @@ export default function LearningQuest() {
                         <>
                           <h4 className="font-bytebounce text-purple-300 text-xl tracking-widest text-center">Select Boss Difficulty</h4>
                           <div className="flex flex-wrap justify-center gap-1.5 md:gap-3 w-full">
-                            <Button onClick={() => startQuest(999, 'EASY')} className="flex-1 min-w-[90px] h-10 md:h-12 text-sm md:text-lg font-bytebounce border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 transition-transform">
-                              Easy
-                            </Button>
-                            <Button onClick={() => startQuest(999, 'MEDIUM')} className="flex-1 min-w-[90px] h-10 md:h-12 text-sm md:text-lg font-bytebounce border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-yellow-500 hover:bg-yellow-600 hover:-translate-y-0.5 transition-transform">
-                              Medium
-                            </Button>
-                            <Button onClick={() => startQuest(999, 'HARD')} className="flex-1 min-w-[90px] h-10 md:h-12 text-sm md:text-lg font-bytebounce border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-red-500 hover:bg-red-600 hover:-translate-y-0.5 transition-transform">
-                              Hard
-                            </Button>
+                            {(() => {
+                              const prefDiff = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_default_diff') || 'MEDIUM' : 'MEDIUM';
+                              return (
+                                <>
+                                  <Button
+                                    onClick={() => startQuest(999, 'EASY')}
+                                    className={cn(
+                                      "flex-1 min-w-[90px] h-10 md:h-12 text-sm md:text-lg font-bytebounce border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-green-500 hover:bg-green-600 hover:-translate-y-0.5 transition-transform relative",
+                                      prefDiff === 'EASY' && "border-amber-300 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]"
+                                    )}
+                                  >
+                                    {prefDiff === 'EASY' && (
+                                      <div className="absolute -top-2.5 right-1 z-20 bg-[#FFC700] text-black text-[8px] md:text-[9px] font-bytebounce font-bold px-1 py-0 border border-black shadow-[1px_1px_0_0_rgba(0,0,0,1)] uppercase tracking-wider">
+                                        ⭐ PRESET
+                                      </div>
+                                    )}
+                                    Easy
+                                  </Button>
+                                  <Button
+                                    onClick={() => startQuest(999, 'MEDIUM')}
+                                    className={cn(
+                                      "flex-1 min-w-[90px] h-10 md:h-12 text-sm md:text-lg font-bytebounce border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-yellow-500 hover:bg-yellow-600 hover:-translate-y-0.5 transition-transform relative",
+                                      prefDiff === 'MEDIUM' && "border-amber-300 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]"
+                                    )}
+                                  >
+                                    {prefDiff === 'MEDIUM' && (
+                                      <div className="absolute -top-2.5 right-1 z-20 bg-[#FFC700] text-black text-[8px] md:text-[9px] font-bytebounce font-bold px-1 py-0 border border-black shadow-[1px_1px_0_0_rgba(0,0,0,1)] uppercase tracking-wider">
+                                        ⭐ PRESET
+                                      </div>
+                                    )}
+                                    Medium
+                                  </Button>
+                                  <Button
+                                    onClick={() => startQuest(999, 'HARD')}
+                                    className={cn(
+                                      "flex-1 min-w-[90px] h-10 md:h-12 text-sm md:text-lg font-bytebounce border-2 border-black shadow-[2px_2px_0_0_rgba(0,0,0,1)] bg-red-500 hover:bg-red-600 hover:-translate-y-0.5 transition-transform relative",
+                                      prefDiff === 'HARD' && "border-amber-300 drop-shadow-[0_0_8px_rgba(255,215,0,0.8)]"
+                                    )}
+                                  >
+                                    {prefDiff === 'HARD' && (
+                                      <div className="absolute -top-2.5 right-1 z-20 bg-[#FFC700] text-black text-[8px] md:text-[9px] font-bytebounce font-bold px-1 py-0 border border-black shadow-[1px_1px_0_0_rgba(0,0,0,1)] uppercase tracking-wider">
+                                        ⭐ PRESET
+                                      </div>
+                                    )}
+                                    Hard
+                                  </Button>
+                                </>
+                              );
+                            })()}
                           </div>
                         </>
                       )}

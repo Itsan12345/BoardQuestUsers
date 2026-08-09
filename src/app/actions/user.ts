@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { startOfWeek } from 'date-fns';
+import bcrypt from 'bcryptjs';
+import clientPromise from '@/lib/mongodb-client';
 
 export async function getUserStats(): Promise<any> {
   try {
@@ -38,10 +40,21 @@ export async function getUserStats(): Promise<any> {
       }
     });
 
+    const today = startOfWeek(new Date());
+    const todayExamResults = await prisma.examResult.findMany({
+      where: {
+        userId,
+        timestamp: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+      },
+      select: { total: true }
+    });
+    const todayQuestions = todayExamResults.reduce((acc, curr) => acc + (curr.total || 0), 0);
+
     const parsedUser = JSON.parse(JSON.stringify(user));
     if (parsedUser._count) {
       parsedUser._count.lessonCompletions = curriculumCount;
     }
+    parsedUser.todayQuestions = todayQuestions;
     return parsedUser;
   } catch (error) {
     console.error('Failed to fetch user stats:', error);
@@ -77,12 +90,23 @@ export async function getUserProfile() {
     const userRank = usersWithHigherXp + 1;
     const rankingPercentage = Math.round(((totalUsers - usersWithHigherXp) / totalUsers) * 100);
 
+    // Calculate today's completed questions
+    const todayExamResults = await prisma.examResult.findMany({
+      where: {
+        userId,
+        timestamp: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+      },
+      select: { total: true }
+    });
+    const todayQuestions = todayExamResults.reduce((acc, curr) => acc + (curr.total || 0), 0);
+
     // Calculate class year from createdAt (year - 1)
     const classYear = new Date(user.createdAt).getFullYear() - 1;
     const classString = `MedTech Class of ${classYear}`;
 
     const result = {
       ...user,
+      todayQuestions,
       classString,
       userRank,
       rankingPercentage
@@ -357,3 +381,174 @@ export async function purchaseReagentAction(itemId: string, cost: number, newInv
     return { success: false, error: 'Purchase failed' };
   }
 }
+
+export async function updateUserProfileDetails(data: {
+  name: string;
+  location?: string;
+}) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return { success: false, error: 'Not authenticated' };
+
+    if (!data.name || data.name.trim().length === 0) {
+      return { success: false, error: 'Name cannot be empty' };
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: data.name.trim(),
+        location: data.location?.trim() || 'Philippines',
+      }
+    });
+
+    revalidatePath('/profile');
+    revalidatePath('/dashboard');
+    return { success: true, user: JSON.parse(JSON.stringify(updatedUser)) };
+  } catch (error) {
+    console.error('Failed to update user profile details:', error);
+    return { success: false, error: 'Failed to update profile' };
+  }
+}
+
+export async function changeUserPassword(data: {
+  currentPassword: string;
+  newPassword: string;
+}) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return { success: false, error: 'Not authenticated' };
+
+    if (!data.newPassword || data.newPassword.length < 6) {
+      return { success: false, error: 'New password must be at least 6 characters long' };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) return { success: false, error: 'User not found' };
+
+    const isMatch = await bcrypt.compare(data.currentPassword, user.password);
+    if (!isMatch) {
+      return { success: false, error: 'Incorrect current password' };
+    }
+
+    const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword
+      }
+    });
+
+    return { success: true, message: 'Password updated successfully' };
+  } catch (error) {
+    console.error('Failed to change user password:', error);
+    return { success: false, error: 'Failed to update password' };
+  }
+}
+
+export async function exportUserStudyData() {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return { success: false, error: 'Not authenticated' };
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        mastery: true,
+        achievements: true,
+        examResults: true,
+        lessonCompletions: true,
+      }
+    });
+
+    if (!user) return { success: false, error: 'User not found' };
+
+    const exportData = {
+      aspirantName: user.name,
+      email: user.email,
+      level: user.level,
+      totalXp: user.xp,
+      streakDays: user.streak,
+      location: user.location,
+      exportedAt: new Date().toISOString(),
+      subjectMasteries: user.mastery.map(m => ({
+        subject: m.subject,
+        proficiency: `${m.proficiency}%`,
+        status: m.status
+      })),
+      completedLessonsCount: user.lessonCompletions.length,
+      achievementsCount: user.achievements.length,
+      achievements: user.achievements.map(a => ({
+        task: a.task,
+        xp: a.xp,
+        badge: a.badge,
+        earnedDate: a.timestamp
+      })),
+      mockExamResults: user.examResults.map(e => ({
+        subject: e.subject,
+        score: e.score,
+        total: e.total,
+        percentage: `${Math.round((e.score / (e.total || 1)) * 100)}%`,
+        date: e.timestamp
+      }))
+    };
+
+    return { success: true, data: exportData };
+  } catch (error) {
+    console.error('Failed to export study data:', error);
+    return { success: false, error: 'Failed to generate study export' };
+  }
+}
+
+export async function getUserSettingsAction() {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return null;
+
+    const client = await clientPromise;
+    const db = client.db();
+    const settings = await db.collection('UserSettings').findOne({ userId });
+    return settings ? JSON.parse(JSON.stringify(settings)) : null;
+  } catch (error) {
+    console.error('Failed to get user settings from MongoDB:', error);
+    return null;
+  }
+}
+
+export async function saveUserSettingsAction(settingsData: any) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return { success: false, error: 'Not authenticated' };
+
+    const client = await clientPromise;
+    const db = client.db();
+    await db.collection('UserSettings').updateOne(
+      { userId },
+      {
+        $set: {
+          ...settingsData,
+          userId,
+          updatedAt: new Date()
+        }
+      },
+      { upsert: true }
+    );
+
+    revalidatePath('/profile');
+    revalidatePath('/');
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save user settings to MongoDB:', error);
+    return { success: false, error: 'Failed to save settings' };
+  }
+}
+

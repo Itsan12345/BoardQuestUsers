@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BADGES, BadgeId, getLevelProgress, getRankTitle } from '@/lib/badge-system';
 import { calculatePlayerStats } from '@/lib/game-logic';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AccountSettingsDialog } from '@/components/profile/AccountSettingsDialog';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -207,6 +208,7 @@ function ProfileContent() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewAllBadgesOpen, setViewAllBadgesOpen] = useState(false);
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'earned' | 'locked'>('all');
 
   useEffect(() => {
@@ -234,6 +236,15 @@ function ProfileContent() {
       }
     }
     loadProfile();
+
+    const handleSync = () => {
+      loadProfile();
+    };
+
+    window.addEventListener('bq_settings_updated', handleSync);
+    return () => {
+      window.removeEventListener('bq_settings_updated', handleSync);
+    };
   }, [router]);
 
   async function handleLogout() {
@@ -318,6 +329,7 @@ function ProfileContent() {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => setAccountSettingsOpen(true)}
                     className="flex-1 md:flex-none rounded-xl border-[#8B0000] text-[#8B0000] font-semibold text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4"
                   >
                     <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Account Settings
@@ -771,6 +783,18 @@ function ProfileContent() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Account Settings Dialog */}
+      {userProfile && (
+        <AccountSettingsDialog
+          open={accountSettingsOpen}
+          onOpenChange={setAccountSettingsOpen}
+          userProfile={userProfile}
+          onProfileUpdated={(updatedUser) => {
+            setUserProfile((prev) => (prev ? { ...prev, ...updatedUser } : null));
+          }}
+        />
+      )}
     </div>
   );
 }

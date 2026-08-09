@@ -171,10 +171,28 @@ export default function StudyPage() {
         };
       });
 
+      // Check URL param ?subject= or Focus Subject from settings
+      const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const urlSubject = searchParams?.get('subject');
+      const savedFocus = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null;
+      const prioritySubject = urlSubject || savedFocus;
+
+      if (prioritySubject) {
+        dynamicCurriculum.sort((a: any, b: any) => {
+          if (a.title.toLowerCase() === prioritySubject.toLowerCase()) return -1;
+          if (b.title.toLowerCase() === prioritySubject.toLowerCase()) return 1;
+          return 0;
+        });
+      }
+
       setCurriculum(dynamicCurriculum);
       if (dynamicCurriculum.length > 0) {
         setSelectedCategoryId(prev => {
-          const existsInNew = dynamicCurriculum.some(c => c.id === prev);
+          if (prioritySubject) {
+            const matched = dynamicCurriculum.find((c: any) => c.title.toLowerCase() === prioritySubject.toLowerCase());
+            if (matched) return matched.id;
+          }
+          const existsInNew = dynamicCurriculum.some((c: any) => c.id === prev);
           return existsInNew ? prev : dynamicCurriculum[0].id;
         });
       }
@@ -366,12 +384,19 @@ export default function StudyPage() {
                     <Icon className="h-6 w-6" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn(
-                      "font-semibold text-sm uppercase tracking-tight truncate",
-                      isActive ? "text-primary" : "text-foreground"
-                    )}>
-                      {cat.title}
-                    </p>
+                    <div className="flex items-center gap-1.5 justify-between">
+                      <p className={cn(
+                        "font-semibold text-sm uppercase tracking-tight truncate",
+                        isActive ? "text-primary" : "text-foreground"
+                      )}>
+                        {cat.title}
+                      </p>
+                      {typeof window !== 'undefined' && localStorage.getItem('bq_pref_focus_subject')?.toLowerCase() === cat.title.toLowerCase() && (
+                        <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[8px] px-1.5 py-0 shrink-0">
+                          ⭐ Focus
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-1">
                       <CalendarIcon className="w-3 h-3 text-muted-foreground" />
                       <span className="text-[10px] font-semibold text-muted-foreground uppercase">

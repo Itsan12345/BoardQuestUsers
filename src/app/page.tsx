@@ -21,6 +21,8 @@ function DashboardContent() {
   const [userRank, setUserRank] = useState<number | null>(null);
   const [dailyMissions, setDailyMissions] = useState<any[]>([]);
   const [nextMilestone, setNextMilestone] = useState<{ subject: string; date: Date } | null>(null);
+  const [dailyQuota, setDailyQuota] = useState<number>(50);
+  const [focusSubject, setFocusSubject] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +47,15 @@ function DashboardContent() {
           const activePlan = futurePlans.length > 0 ? futurePlans[0] : plans[plans.length - 1];
           setNextMilestone({ subject: activePlan.subject, date: new Date(activePlan.targetDate) });
         }
+
+        // Load preferences from localStorage
+        try {
+          const savedQuota = localStorage.getItem('bq_pref_daily_quota');
+          if (savedQuota) setDailyQuota(parseInt(savedQuota, 10));
+
+          const savedSubject = localStorage.getItem('bq_pref_focus_subject');
+          if (savedSubject) setFocusSubject(savedSubject);
+        } catch (e) { }
       } catch (error) {
         console.error('Failed to load dashboard:', error);
       } finally {
@@ -52,6 +63,18 @@ function DashboardContent() {
       }
     }
     loadData();
+
+    const handleSync = () => {
+      loadData();
+    };
+
+    window.addEventListener('bq_settings_updated', handleSync);
+    window.addEventListener('bq_stats_updated', handleSync);
+
+    return () => {
+      window.removeEventListener('bq_settings_updated', handleSync);
+      window.removeEventListener('bq_stats_updated', handleSync);
+    };
   }, []);
 
   const totalMastery = user?.mastery?.length > 0
@@ -111,13 +134,20 @@ function DashboardContent() {
                 </div>
               </div>
 
-              {nextMilestone && (
-                <Link href="/study" className="block">
-                  <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                    Continue: {nextMilestone.subject}
-                  </Button>
-                </Link>
-              )}
+              {(() => {
+                const continueSubject = focusSubject || nextMilestone?.subject || 'Clinical Chemistry';
+                return (
+                  <Link href={`/study?subject=${encodeURIComponent(continueSubject)}`} className="block">
+                    <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      {focusSubject ? (
+                        <>⭐ Continue Focus: {continueSubject} <ChevronRight className="w-4 h-4" /></>
+                      ) : (
+                        <>Continue: {continueSubject} <ChevronRight className="w-4 h-4" /></>
+                      )}
+                    </Button>
+                  </Link>
+                );
+              })()}
             </CardContent>
           </Card>
 
@@ -155,8 +185,43 @@ function DashboardContent() {
           </Card>
         </div>
 
-        {/* Right Sidebar - Daily Missions */}
+        {/* Right Sidebar - Daily Target & Missions */}
         <div className="space-y-6">
+          {/* Daily Question Target Meter */}
+          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
+            <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
+              <p className="text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
+              <Badge className="bg-[#8B0000] text-white text-[10px] font-bold px-2 py-0.5">
+                {user?.todayQuestions || 0} / {dailyQuota} Qs
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-6 space-y-3">
+              {(() => {
+                const todayDone = user?.todayQuestions || 0;
+                const percent = Math.min(100, Math.round((todayDone / (dailyQuota || 1)) * 100));
+                return (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Today's Progress</span>
+                      <span className="font-semibold text-foreground">{percent}% Completed</span>
+                    </div>
+                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#8B0000]/80 to-[#8B0000] rounded-full transition-all duration-700"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {percent >= 100
+                        ? '🎉 Daily question goal achieved! Excellent discipline.'
+                        : `${Math.max(0, dailyQuota - todayDone)} questions remaining to hit today's study target.`}
+                    </p>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
             <CardHeader className="pb-4 border-b border-border">
               <p className="text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Missions</p>

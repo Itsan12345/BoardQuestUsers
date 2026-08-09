@@ -12,6 +12,8 @@ import { useState, useEffect } from 'react';
 import { getUserProfile } from '@/app/actions/user';
 import { getLevelProgress } from '@/lib/badge-system';
 
+import { NotificationBell } from '@/components/navigation/NotificationBell';
+
 export function LayoutContent({ 
   children, 
   isLoggedIn 
@@ -34,7 +36,19 @@ export function LayoutContent({
       }
     }
     loadUser();
-  }, [isLoggedIn, pathname]); // Re-fetch on navigation to keep it somewhat fresh
+
+    const handleUpdate = () => {
+      loadUser();
+    };
+
+    window.addEventListener('bq_settings_updated', handleUpdate);
+    window.addEventListener('bq_stats_updated', handleUpdate);
+
+    return () => {
+      window.removeEventListener('bq_settings_updated', handleUpdate);
+      window.removeEventListener('bq_stats_updated', handleUpdate);
+    };
+  }, [isLoggedIn, pathname]); // Re-fetch on navigation and events
   
   // Hide navigation on auth pages
   const isAuthPage = pathname === '/login' || pathname === '/signup';
@@ -61,8 +75,11 @@ export function LayoutContent({
           </Link>
         </div>
 
-        <div className="flex items-center gap-3 lg:gap-5">
-          <div className="flex flex-col items-end text-right hidden sm:flex min-w-[140px]">
+        <div className="flex items-center gap-3 lg:gap-4">
+          {/* Dynamic Notification Bell */}
+          <NotificationBell user={user} />
+
+          <div className="flex flex-col items-end text-right hidden sm:flex min-w-[120px]">
             {user ? (
               <>
                 <span className="text-xs lg:text-sm font-black text-foreground leading-tight tracking-tight uppercase">{user.name}</span>
