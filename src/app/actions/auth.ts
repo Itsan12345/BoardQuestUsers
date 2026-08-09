@@ -6,23 +6,116 @@ import { cookies } from 'next/headers';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
 import bcrypt from 'bcryptjs';
 
-export async function signUp(formData: FormData) {
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
-  const name = formData.get('name') as string;
+import clientPromise from '@/lib/mongodb-client';
+import { sendVerificationEmail } from '@/lib/mail';
+
+export async function sendVerificationCode(email: string, name?: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return { success: false, error: 'Please provide a valid email address.' };
+  }
 
   try {
+    // 1. Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      return { success: false, error: 'An account with this email already exists. Please log in.' };
+    }
+
+    // 2. Generate 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+    // 3. Save to MongoDB EmailVerification collection
+    const client = await clientPromise;
+    const db = client.db();
+    await db.collection('EmailVerification').updateOne(
+      { email: normalizedEmail },
+      {
+        $set: {
+          email: normalizedEmail,
+          code,
+          expiresAt,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+
+    // 4. Send the verification email
+    const mailResult = await sendVerificationEmail({
+      email: normalizedEmail,
+      name,
+      code,
+    });
+
+    return {
+      success: true,
+      message: 'Verification code sent to your email.',
+      devCode: process.env.NODE_ENV === 'development' ? mailResult.devCode : undefined,
+    };
+  } catch (error) {
+    console.error('Send verification code error:', error);
+    return {
+      success: false,
+      error: 'Failed to send verification code. Please try again.',
+    };
+  }
+}
+
+export async function verifyEmailAndSignUp(formData: FormData) {
+  const email = (formData.get('email') as string || '').trim().toLowerCase();
+  const password = formData.get('password') as string;
+  const name = (formData.get('name') as string || '').trim();
+  const code = (formData.get('code') as string || '').trim();
+
+  if (!email || !password || !name || !code) {
+    return { success: false, error: 'All fields and the verification code are required.' };
+  }
+
+  try {
+    // 1. Verify code in database
+    const client = await clientPromise;
+    const db = client.db();
+    const verificationRecord = await db.collection('EmailVerification').findOne({ email });
+
+    if (!verificationRecord) {
+      return {
+        success: false,
+        error: 'No verification request found for this email. Please request a new code.',
+      };
+    }
+
+    if (new Date() > new Date(verificationRecord.expiresAt)) {
+      return {
+        success: false,
+        error: 'Verification code has expired. Please request a new code.',
+      };
+    }
+
+    if (verificationRecord.code !== code) {
+      return {
+        success: false,
+        error: 'Invalid verification code. Please check your email and try again.',
+      };
+    }
+
+    // 2. Check if user already registered in the meantime
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      return { success: false, error: 'Email already in use.' };
+      return { success: false, error: 'An account with this email already exists.' };
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user with Level 1, 0 XP
+    // 3. Create user with Level 1, 0 XP
     const user = await prisma.user.create({
       data: {
         email,
@@ -34,37 +127,54 @@ export async function signUp(formData: FormData) {
       },
     });
 
-    // Initialize Subject Mastery for all 6 areas at 0%
+    // Mark user as verified in MongoDB
+    await db.collection('User').updateOne(
+      { email },
+      { $set: { verified: true } }
+    );
+
+    // 4. Initialize Subject Mastery for all 6 areas at 0%
     await prisma.subjectMastery.createMany({
       data: SUBJECT_AREAS.map(subject => ({
         userId: user.id,
         subject,
         proficiency: 0,
         minScore: 0,
-        status: "In Training"
-      }))
+        status: 'In Training',
+      })),
     });
 
-    const cookieStore = await cookies();
-    cookieStore.set('user_id', user.id, {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 30,
-    });
-    
+    // 5. Clean up the used verification code
+    await db.collection('EmailVerification').deleteOne({ email });
+
+    // 6. Set session cookie
+    try {
+      const cookieStore = await cookies();
+      cookieStore.set('user_id', user.id, {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 30,
+      });
+    } catch {
+      // Cookies context not available in non-HTTP environments (e.g. testing)
+    }
+
     return { success: true, userId: user.id };
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('Verify & Signup error:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Error details:', errorMessage);
-    return { success: false, error: `Database connection failed: ${errorMessage}` };
+    return { success: false, error: `Account registration failed: ${errorMessage}` };
   }
 }
 
+export async function signUp(formData: FormData) {
+  return verifyEmailAndSignUp(formData);
+}
+
 export async function login(formData: FormData) {
-  const email = formData.get('email') as string;
+  const email = (formData.get('email') as string || '').trim().toLowerCase();
   const password = formData.get('password') as string;
 
   try {
@@ -80,6 +190,18 @@ export async function login(formData: FormData) {
 
     if (!isPasswordValid) {
       return { success: false, error: 'Invalid email or password.' };
+    }
+
+    // Check if user is verified
+    const client = await clientPromise;
+    const db = client.db();
+    const dbUser = await db.collection('User').findOne({ email });
+
+    if (dbUser && dbUser.verified === false) {
+      return {
+        success: false,
+        error: 'Your email is not verified. Please verify your email before logging in.',
+      };
     }
 
     const cookieStore = await cookies();
