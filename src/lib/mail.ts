@@ -173,3 +173,136 @@ export async function sendVerificationEmail({
     };
   }
 }
+
+interface SendPasswordResetEmailOptions {
+  email: string;
+  name?: string;
+  code: string;
+}
+
+/**
+ * Sends a sophisticated BoardQuest password recovery email with 6-digit OTP code.
+ */
+export async function sendPasswordResetEmail({
+  email,
+  name,
+  code,
+}: SendPasswordResetEmailOptions): Promise<SendEmailResult> {
+  const displayName = name ? name.trim() : 'Aspirant';
+  const transporter = createTransporter();
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>BoardQuest Password Recovery</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f8fafc;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0b0f19; padding: 40px 10px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" style="max-width: 520px; background-color: #111827; border: 1px solid #1f2937; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px -15px rgba(0,0,0,0.7);">
+                <!-- Header Banner -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #881337 0%, #be123c 50%, #991b1b 100%); padding: 36px 30px; text-align: center;">
+                    <div style="font-size: 28px; font-weight: 900; letter-spacing: 4px; color: #ffffff; text-transform: uppercase;">
+                      BOARDQUEST
+                    </div>
+                    <div style="font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #fecdd3; text-transform: uppercase; margin-top: 4px;">
+                      Security Protocol • Password Recovery
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Content Area -->
+                <tr>
+                  <td style="padding: 36px 32px 28px 32px; text-align: center;">
+                    <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 800; color: #f9fafb;">
+                      Hello, ${displayName}
+                    </h2>
+                    <p style="margin: 0 0 28px 0; font-size: 14px; line-height: 1.6; color: #9ca3af;">
+                      A request was received to reset the credentials for your BoardQuest account. Use the 6-digit recovery code below to set a new password:
+                    </p>
+
+                    <!-- OTP Box -->
+                    <div style="background-color: #1f2937; border: 2px dashed #be123c; border-radius: 16px; padding: 24px 16px; margin-bottom: 28px;">
+                      <div style="font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #fb7185; text-transform: uppercase; margin-bottom: 8px;">
+                        Password Recovery Code
+                      </div>
+                      <div style="font-size: 38px; font-weight: 900; letter-spacing: 10px; color: #ffffff; font-family: 'Courier New', monospace;">
+                        ${code}
+                      </div>
+                      <div style="font-size: 12px; color: #9ca3af; margin-top: 10px;">
+                        Expires in <strong style="color: #f43f5e;">15 minutes</strong>
+                      </div>
+                    </div>
+
+                    <p style="margin: 0 0 16px 0; font-size: 13px; color: #6b7280; line-height: 1.5;">
+                      If you did not request this password reset, you can safely disregard this email. Your current password will remain unchanged.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #0d131f; padding: 20px 30px; border-top: 1px solid #1f2937; text-align: center;">
+                    <p style="margin: 0; font-size: 11px; color: #4b5563; letter-spacing: 0.5px;">
+                      &copy; ${new Date().getFullYear()} BoardQuest. MedTech Gamified Board Review.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  if (!transporter) {
+    console.log('\n======================================================');
+    console.log(`[BoardQuest PASSWORD RESET - DEV MODE]`);
+    console.log(`Recipient: ${email}`);
+    console.log(`Aspirant: ${displayName}`);
+    console.log(`Reset Code: ${code}`);
+    console.log(`Valid for: 15 minutes`);
+    console.log('======================================================\n');
+    return {
+      success: true,
+      devCode: code,
+    };
+  }
+
+  try {
+    const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.GMAIL_USER || '"BoardQuest Security" <noreply@boardquest.com>';
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: email,
+      subject: `[BoardQuest] ${code} is your password reset code`,
+      text: `Hello ${displayName}, your 6-digit BoardQuest password recovery code is: ${code}. This code expires in 15 minutes.`,
+      html: htmlContent,
+    });
+
+    console.log(`\n[BoardQuest] Password reset email successfully delivered to ${email} (Message ID: ${info.messageId})\n`);
+
+    return {
+      success: true,
+      messageId: info.messageId,
+    };
+  } catch (error) {
+    console.error('Failed to send password reset email via transporter:', error);
+    // Dev fallback
+    console.log('\n======================================================');
+    console.log(`[BoardQuest PASSWORD RESET - FALLBACK]`);
+    console.log(`Recipient: ${email}`);
+    console.log(`Reset Code: ${code}`);
+    console.log('======================================================\n');
+    return {
+      success: true,
+      devCode: code,
+      error: error instanceof Error ? error.message : 'Failed to send email via SMTP transporter',
+    };
+  }
+}

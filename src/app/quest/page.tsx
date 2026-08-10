@@ -2329,10 +2329,10 @@ export default function LearningQuest() {
                         <>
                           <div className="w-full border-t border-white/20 my-1 md:my-1" />
                           <div className="flex items-center justify-center gap-2">
-                            <h4 className="font-bytebounce text-white/90 text-sm min-[375px]:text-base md:text-xl tracking-widest text-center" style={{ textShadow: '1px 1px 0 #000' }}>Select Question Limit</h4>
+                            <h4 className="font-bytebounce text-white/90 text-sm min-[375px]:text-base md:text-xl tracking-widest text-center mb-1 md:mb-0" style={{ textShadow: '1px 1px 0 #000' }}>Select Question Limit</h4>
                           </div>
                           {quizMode === 'learning' ? (
-                            <div className="flex flex-wrap justify-center items-center gap-1 min-[375px]:gap-1.5 md:gap-3 w-full">
+                            <div className="flex flex-wrap justify-center items-center gap-1 min-[375px]:gap-1.5 md:gap-3 w-full mt-2.5 md:mt-0">
                               {[10, 20, 30, 40, 50].map((num) => {
                                 const savedQuota = typeof window !== 'undefined' ? parseInt(localStorage.getItem('bq_pref_daily_quota') || '50', 10) : 50;
                                 const isTargetGoal = savedQuota === num;
@@ -2346,7 +2346,7 @@ export default function LearningQuest() {
                                     )}
                                   >
                                     {isTargetGoal && (
-                                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20 pointer-events-none whitespace-nowrap bg-[#FFC700] text-black text-[7.5px] min-[375px]:text-[8.5px] md:text-[10px] font-bytebounce font-bold px-1 py-0 border border-black shadow-[1px_1px_0_0_rgba(0,0,0,1)] uppercase tracking-wider flex items-center gap-0.5">
+                                      <div className="absolute -top-2.5 md:-top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none whitespace-nowrap bg-[#FFC700] text-black text-[6.5px] min-[375px]:text-[7.5px] md:text-[10px] font-bytebounce font-bold px-0.5 min-[375px]:px-1 py-0 border border-black shadow-[1px_1px_0_0_rgba(0,0,0,1)] uppercase tracking-wider flex items-center gap-0.5">
                                         SELECTED GOAL
                                       </div>
                                     )}
@@ -2363,7 +2363,7 @@ export default function LearningQuest() {
                               })}
                             </div>
                           ) : (
-                            <div className="flex flex-wrap justify-center items-center gap-1.5 min-[375px]:gap-2.5 md:gap-3 w-full max-w-xl mx-auto px-1 min-[375px]:px-2">
+                            <div className="flex flex-wrap justify-center items-center gap-1.5 min-[375px]:gap-2.5 md:gap-3 w-full max-w-xl mx-auto px-1 min-[375px]:px-2 mt-3.5 md:mt-0">
                               {[
                                 { count: 20, src: '/ui/Quick20-btn.png', alt: 'Quick (20)' },
                                 { count: 50, src: '/ui/STANDARD50-btn.png', alt: 'Standard (50)' },
@@ -2381,7 +2381,7 @@ export default function LearningQuest() {
                                     )}
                                   >
                                     {isTargetGoal && (
-                                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none whitespace-nowrap bg-[#FFC700] text-black text-[9px] min-[375px]:text-[10px] md:text-xs font-bytebounce font-bold px-1.5 py-0.5 border border-black shadow-[1px_1px_0_0_rgba(0,0,0,1)] uppercase tracking-wider flex items-center gap-0.5">
+                                      <div className="absolute -top-2.5 md:-top-3.5 left-1/2 -translate-x-1/2 z-20 pointer-events-none whitespace-nowrap bg-[#FFC700] text-black text-[7.5px] min-[375px]:text-[8.5px] md:text-xs font-bytebounce font-bold px-1 min-[375px]:px-1.5 py-0 md:py-0.5 border border-black shadow-[1px_1px_0_0_rgba(0,0,0,1)] uppercase tracking-wider flex items-center gap-0.5">
                                         SELECTED GOAL
                                       </div>
                                     )}
@@ -2470,7 +2470,7 @@ export default function LearningQuest() {
 
       {/* Chapter World Map Dialog */}
       <Dialog open={showChapterMap && !isStarted && !isFinished} onOpenChange={setShowChapterMap}>
-        <DialogContent container={fullscreenRef.current} className="w-screen h-screen max-w-none max-h-none border-none rounded-none p-0 bg-[#160d08] flex flex-col overflow-hidden z-50">
+        <DialogContent container={fullscreenRef.current} className="w-screen h-screen max-w-none max-h-none border-none rounded-none p-0 bg-[#160d08] flex flex-col overflow-hidden z-[100]">
           <DialogTitle className="sr-only">Chapter Overworld Map</DialogTitle>
           <ChapterWorldMap
             selectedSubject={selectedSubject}

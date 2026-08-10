@@ -53,7 +53,7 @@ export function LayoutContent({
   }, [isLoggedIn, pathname]); // Re-fetch on navigation and events
   
   // Hide navigation on auth pages
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
+  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password';
   
   if (isAuthPage) {
     return <div className="w-full min-h-screen">{children}</div>;

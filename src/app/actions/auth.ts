@@ -7,7 +7,7 @@ import { SUBJECT_AREAS } from '@/lib/game-logic';
 import bcrypt from 'bcryptjs';
 
 import clientPromise from '@/lib/mongodb-client';
-import { sendVerificationEmail } from '@/lib/mail';
+import { sendVerificationEmail, sendPasswordResetEmail } from '@/lib/mail';
 
 export async function sendVerificationCode(email: string, name?: string) {
   const normalizedEmail = email.trim().toLowerCase();
@@ -229,4 +229,146 @@ export async function logout() {
     secure: process.env.NODE_ENV === 'production',
     expires: new Date(0),
   });
+}
+
+export async function sendPasswordResetCode(email: string) {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return { success: false, error: 'Please provide a valid email address.' };
+  }
+
+  try {
+    // 1. Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        error: 'No account found with this email address. Please check your spelling.',
+      };
+    }
+
+    // 2. Generate 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes validity
+
+    // 3. Save OTP in MongoDB PasswordReset collection
+    const client = await clientPromise;
+    const db = client.db();
+    await db.collection('PasswordReset').updateOne(
+      { email: normalizedEmail },
+      {
+        $set: {
+          email: normalizedEmail,
+          code,
+          expiresAt,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+
+    // 4. Send email
+    const mailResult = await sendPasswordResetEmail({
+      email: normalizedEmail,
+      name: user.name,
+      code,
+    });
+
+    return {
+      success: true,
+      message: 'Password reset code has been dispatched to your email.',
+      devCode: process.env.NODE_ENV === 'development' ? mailResult.devCode : undefined,
+    };
+  } catch (error) {
+    console.error('Send password reset code error:', error);
+    return {
+      success: false,
+      error: 'Failed to send recovery code. Please try again in a few moments.',
+    };
+  }
+}
+
+export async function verifyAndResetPassword(formData: FormData) {
+  const email = ((formData.get('email') as string) || '').trim().toLowerCase();
+  const code = ((formData.get('code') as string) || '').trim();
+  const newPassword = (formData.get('password') as string) || '';
+  const confirmPassword = (formData.get('confirmPassword') as string) || '';
+
+  if (!email || !code || !newPassword || !confirmPassword) {
+    return { success: false, error: 'All fields and the recovery code are required.' };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return { success: false, error: 'Passwords do not match. Please verify and try again.' };
+  }
+
+  if (newPassword.length < 8) {
+    return { success: false, error: 'Password must be at least 8 characters long.' };
+  }
+
+  const hasNumber = /\d/.test(newPassword);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+
+  if (!hasNumber || !hasSpecial) {
+    return {
+      success: false,
+      error: 'Password must contain at least 1 number and 1 special character.',
+    };
+  }
+
+  try {
+    // 1. Verify reset code in MongoDB
+    const client = await clientPromise;
+    const db = client.db();
+    const resetRecord = await db.collection('PasswordReset').findOne({ email });
+
+    if (!resetRecord) {
+      return {
+        success: false,
+        error: 'No active password reset request found for this email. Please request a new code.',
+      };
+    }
+
+    if (new Date() > new Date(resetRecord.expiresAt)) {
+      return {
+        success: false,
+        error: 'The recovery code has expired. Please request a new code.',
+      };
+    }
+
+    if (resetRecord.code !== code) {
+      return {
+        success: false,
+        error: 'Invalid recovery code. Please check your email and try again.',
+      };
+    }
+
+    // 2. Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 3. Update user password
+    await prisma.user.update({
+      where: { email },
+      data: { password: hashedPassword },
+    });
+
+    // 4. Delete used reset record
+    await db.collection('PasswordReset').deleteOne({ email });
+
+    return {
+      success: true,
+      message: 'Password has been successfully reset. You may now log in.',
+    };
+  } catch (error) {
+    console.error('Verify & Reset password error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      error: `Password reset failed: ${errorMessage}`,
+    };
+  }
 }

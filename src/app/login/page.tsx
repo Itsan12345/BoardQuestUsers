@@ -82,7 +82,15 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground ml-1" style={{ fontFamily: "'Inter-bold', sans-serif"}}>Password</label>
+              <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-black uppercase text-muted-foreground" style={{ fontFamily: "'Inter-bold', sans-serif"}}>Password</label>
+                <Link
+                  href="/forgot-password"
+                  className="text-[10px] font-bold text-primary hover:underline uppercase tracking-wider"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 

@@ -90,35 +90,36 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
   const isCurrentDiffUnlocked = isDifficultyUnlocked(selectedNode.id, selectedDifficulty);
 
   return (
-    <div className="w-full h-full min-h-screen bg-[#160d08] text-white p-3 sm:p-6 font-bytebounce relative animate-in fade-in duration-200 overflow-hidden flex flex-col justify-between">
+    <div className="w-full h-full h-screen max-h-screen bg-[#160d08] text-white p-2.5 sm:p-5 md:p-6 font-bytebounce relative animate-in fade-in duration-200 overflow-hidden flex flex-col justify-between gap-2 sm:gap-4">
 
       {/* Top Parchment Header Bar */}
-      <div className="flex items-center justify-between border-b-2 sm:border-b-4 border-[#4a2e16] pb-2 sm:pb-3 mb-2 sm:mb-3 shrink-0 gap-2">
+      <div className="flex items-center justify-between border-b-2 sm:border-b-4 border-[#4a2e16] pb-1.5 sm:pb-3 shrink-0 gap-2">
         <div className="min-w-0 flex-1">
-          <h2 className="text-base min-[375px]:text-lg sm:text-4xl text-amber-400 tracking-wider leading-tight truncate drop-shadow-[2px_2px_0_#000]">
+          <h2 className="text-sm min-[360px]:text-base sm:text-2xl md:text-3xl lg:text-4xl text-amber-400 tracking-wider leading-tight truncate drop-shadow-[2px_2px_0_#000]">
             {selectedSubject} Overworld Trail
           </h2>
-          <p className="text-[9px] min-[375px]:text-[11px] sm:text-sm text-amber-200/80 font-sans mt-0.5 leading-tight truncate sm:whitespace-normal">
+          <p className="text-[8.5px] min-[360px]:text-[10px] sm:text-xs md:text-sm text-amber-200/80 font-sans mt-0.5 leading-tight truncate sm:whitespace-normal">
             Defeat Easy ➔ Medium ➔ Hard in Chapter 1 to unlock Chapter 2 along the path!
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className="hidden min-[375px]:inline-flex bg-amber-500/20 text-amber-300 border-amber-500/50 text-[10px] sm:text-sm px-3 py-1 uppercase font-mono shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Badge variant="outline" className="hidden sm:inline-flex bg-amber-500/20 text-amber-300 border-amber-500/50 text-[10px] sm:text-sm px-3 py-1 uppercase font-mono shadow-[0_0_10px_rgba(245,158,11,0.3)]">
             ⭐ PROGRESSION MODE
           </Badge>
           <button
             onClick={onClose}
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#4a2e16] border-2 border-amber-400 text-amber-200 flex items-center justify-center text-base sm:text-xl font-bold hover:bg-red-600 hover:text-white transition-colors shadow-lg"
+            aria-label="Close World Map"
+            className="w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-10 sm:h-10 rounded-full bg-[#4a2e16] border-2 border-amber-400 text-amber-200 flex items-center justify-center text-sm sm:text-xl font-bold hover:bg-red-600 hover:text-white transition-colors shadow-lg shrink-0 active:scale-95"
           >
-            <X className="w-4 h-4 sm:w-6 sm:h-6" />
+            <X className="w-3.5 h-3.5 sm:w-6 sm:h-6" />
           </button>
         </div>
       </div>
 
-      {/* 16-Bit Gamified Overworld Map Canvas */}
-      <div className="relative w-full aspect-[2.38/1] max-h-[58vh] bg-[#23170c] border-4 sm:border-6 border-[#4a2e16] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col justify-center overflow-hidden my-auto shrink-0">
+      {/* 16-Bit Gamified Overworld Map Canvas - Expanded on Mobile to Fill Gaps, 2.38/1 on Web */}
+      <div className="relative w-full flex-1 min-h-0 sm:flex-none sm:aspect-[2.38/1] sm:min-h-[220px] sm:max-h-[58vh] bg-[#23170c] border-3 sm:border-6 border-[#4a2e16] rounded-xl sm:rounded-3xl shadow-2xl flex flex-col justify-center overflow-hidden my-1 sm:my-auto shrink-0">
 
-        {/* Pixel-Art World Map Landscape Background - Full Width Original Aspect Ratio */}
+        {/* Pixel-Art World Map Landscape Background - Covers Full Height on Mobile, Full Width Aspect Ratio on Web */}
         {(() => {
           const s = selectedSubject.toLowerCase();
           const mapSrc = (s.includes('immuno') || s.includes('serolog'))
@@ -141,7 +142,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                 src={mapSrc}
                 alt={`${selectedSubject} World Map`}
                 fill
-                className="object-fill object-center"
+                className="object-cover sm:object-fill object-center"
                 style={{ imageRendering: 'pixelated' }}
                 unoptimized
                 priority
@@ -237,7 +238,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
               >
                 {/* Floating Star Badges above Node */}
                 <div className={cn(
-                  "flex items-center gap-0.5 bg-black/85 px-1.5 py-0.5 rounded-full shadow-lg mb-1 border",
+                  "flex items-center gap-0.5 bg-black/85 px-1 min-[360px]:px-1.5 py-0.5 rounded-full shadow-lg mb-0.5 sm:mb-1 border",
                   isChem
                     ? "border-pink-500/60"
                     : isImmuno
@@ -256,7 +257,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                     <span
                       key={s}
                       className={cn(
-                        "text-[9px] sm:text-xs leading-none",
+                        "text-[8px] min-[360px]:text-[9px] sm:text-xs leading-none",
                         s <= stars
                           ? isChem
                             ? "text-pink-300 drop-shadow-[0_0_4px_rgba(244,114,182,0.9)]"
@@ -280,7 +281,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                 {/* Chunky Pixelated Square RPG Node Box */}
                 <div
                   className={cn(
-                    "aspect-square w-8 min-[375px]:w-9 sm:w-14 md:w-13 rounded-sm flex items-center justify-center font-bytebounce transition-all duration-200 shadow-xl active:scale-95 relative cursor-pointer",
+                    "aspect-square w-7.5 min-[360px]:w-8.5 min-[400px]:w-10 sm:w-13 md:w-14 rounded-sm flex items-center justify-center font-bytebounce transition-all duration-200 shadow-xl active:scale-95 relative cursor-pointer",
                     !unlocked
                       ? "bg-[#1a120c]/90 border-2 border-slate-700 text-slate-500 shadow-[0_3px_0_0_#0d0805]"
                       : isChem
@@ -313,15 +314,15 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                   )}
                 >
                   {!unlocked ? (
-                    <Lock className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-slate-400" />
+                    <Lock className="w-3 h-3 min-[360px]:w-3.5 min-[360px]:h-3.5 sm:w-4.5 sm:h-4.5 text-slate-400" />
                   ) : (
-                    <span className="text-lg sm:text-2xl md:text-3xl font-black leading-none drop-shadow-[1px_1px_0_#fff]">
+                    <span className="text-base min-[360px]:text-lg sm:text-2xl md:text-3xl font-black leading-none drop-shadow-[1px_1px_0_#fff]">
                       {node.nodeNumber}
                     </span>
                   )}
 
                   {isBossNode && unlocked && (
-                    <div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-red-600 rounded-full border border-yellow-300 flex items-center justify-center text-[7px] sm:text-[8px] shadow-md animate-pulse">
+                    <div className="absolute -top-1 -right-1 sm:-top-1.5 sm:-right-1.5 w-3 h-3 min-[360px]:w-3.5 min-[360px]:h-3.5 sm:w-4 sm:h-4 bg-red-600 rounded-full border border-yellow-300 flex items-center justify-center text-[6px] min-[360px]:text-[7px] sm:text-[8px] shadow-md animate-pulse">
                       👑
                     </div>
                   )}
@@ -330,7 +331,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                 {/* Bottom Node Chapter Label */}
                 <p
                   className={cn(
-                    "text-[8px] sm:text-xs font-mono font-bold mt-1 text-center bg-black/70 px-1.5 py-0.5 rounded border transition-colors shadow",
+                    "text-[7px] min-[360px]:text-[8px] sm:text-xs font-mono font-bold mt-0.5 sm:mt-1 text-center bg-black/70 px-1 min-[360px]:px-1.5 py-0.5 rounded border transition-colors shadow",
                     isSelected
                       ? isChem
                         ? "text-pink-300 border-pink-400/60"
@@ -368,45 +369,45 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
 
       {/* Bottom Node Inspector Banner */}
       {selectedNode && (
-        <div className="bg-[#24170d] border-2 sm:border-4 border-[#4a2e16] rounded-xl sm:rounded-2xl p-2.5 sm:p-5 shadow-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 shrink-0 relative overflow-hidden">
+        <div className="bg-[#24170d] border-2 sm:border-4 border-[#4a2e16] rounded-xl sm:rounded-2xl p-2.5 sm:p-4 md:p-5 shadow-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-4 shrink-0 relative overflow-hidden">
 
           {/* Left Details Panel */}
           <div className="space-y-1 sm:space-y-1.5 flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[8.5px] sm:text-xs font-mono font-bold uppercase px-2 py-0.5",
+                  "text-[8px] min-[360px]:text-[9px] sm:text-xs font-mono font-bold uppercase px-1.5 sm:px-2 py-0.5",
                   isSelectedUnlocked ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-red-950/40 text-red-400 border-red-800/40"
                 )}
               >
-                {isSelectedUnlocked ? `CHAPTER #${selectedNode.nodeNumber} UNLOCKED` : `🔒 CHAPTER #${selectedNode.nodeNumber} LOCKED`}
+                {isSelectedUnlocked ? `CHAPTER #${selectedNode.nodeNumber} UNLOCKED` : `🔒 CH.${selectedNode.nodeNumber} LOCKED`}
               </Badge>
-              <h3 className="text-xs sm:text-xl font-bold text-amber-400 tracking-wider leading-tight truncate">{selectedNode.title}</h3>
+              <h3 className="text-xs min-[360px]:text-sm sm:text-lg md:text-xl font-bold text-amber-400 tracking-wider leading-tight truncate">{selectedNode.title}</h3>
               <div className="flex items-center gap-0.5">
                 {[1, 2, 3].map((s) => (
-                  <span key={s} className={cn("text-[10px] sm:text-sm", s <= currentStars ? "text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.8)]" : "text-slate-600 opacity-40")}>
+                  <span key={s} className={cn("text-[9px] sm:text-sm", s <= currentStars ? "text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.8)]" : "text-slate-600 opacity-40")}>
                     ★
                   </span>
                 ))}
               </div>
             </div>
 
-            <p className="text-[9px] sm:text-xs text-amber-100/90 font-sans leading-snug line-clamp-2 sm:line-clamp-none">{selectedNode.subtopic}</p>
+            <p className="text-[8.5px] min-[360px]:text-[9.5px] sm:text-xs text-amber-100/90 font-sans leading-snug line-clamp-1 sm:line-clamp-none">{selectedNode.subtopic}</p>
 
-            <div className="flex items-center gap-1 sm:gap-2 text-[8.5px] sm:text-xs text-amber-300/80 font-mono pt-0.5 flex-wrap">
-              <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10">👾 {selectedNode.minionName}</span>
-              <span>➔</span>
-              <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10">👹 {selectedNode.miniBossName}</span>
-              <span>➔</span>
-              <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-amber-500/40 text-amber-300 font-bold">👑 {selectedNode.bossName}</span>
+            <div className="flex items-center gap-1 sm:gap-2 text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs text-amber-300/80 font-mono pt-0.5 overflow-x-auto no-scrollbar whitespace-nowrap">
+              <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10 shrink-0">👾 {selectedNode.minionName}</span>
+              <span className="shrink-0">➔</span>
+              <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10 shrink-0">👹 {selectedNode.miniBossName}</span>
+              <span className="shrink-0">➔</span>
+              <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-amber-500/40 text-amber-300 font-bold shrink-0">👑 {selectedNode.bossName}</span>
             </div>
           </div>
 
           {/* Difficulty Selector & Launch Action */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto relative z-10">
             {isSelectedUnlocked && (
-              <div className="flex items-center bg-black/60 p-0.5 sm:p-1 rounded-xl border border-amber-500/30 w-full sm:w-auto justify-stretch sm:justify-center gap-1">
+              <div className="flex items-center bg-black/60 p-0.5 sm:p-1 rounded-lg sm:rounded-xl border border-amber-500/30 w-full sm:w-auto justify-stretch sm:justify-center gap-1">
                 {(['EASY', 'MEDIUM', 'HARD'] as const).map((diff) => {
                   const isCleared = !!selectedNodeClears[diff];
                   const isDiffUnlocked = isDifficultyUnlocked(selectedNode.id, diff);
@@ -416,7 +417,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                       disabled={!isDiffUnlocked}
                       onClick={() => isDiffUnlocked && setSelectedDifficulty(diff)}
                       className={cn(
-                        "flex-1 sm:flex-none px-2 sm:px-2.5 py-1 text-[9px] sm:text-xs font-mono rounded-lg transition-all uppercase font-bold text-center flex items-center justify-center gap-1",
+                        "flex-1 sm:flex-none px-2 sm:px-2.5 py-1 text-[8.5px] min-[360px]:text-[9.5px] sm:text-xs font-mono rounded-md sm:rounded-lg transition-all uppercase font-bold text-center flex items-center justify-center gap-1",
                         !isDiffUnlocked
                           ? "bg-black/40 text-slate-600 border border-slate-800 cursor-not-allowed opacity-50"
                           : selectedDifficulty === diff
@@ -440,16 +441,16 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
               disabled={!isSelectedUnlocked || !isCurrentDiffUnlocked}
               onClick={() => isSelectedUnlocked && isCurrentDiffUnlocked && onLaunchExpedition(selectedNode.id, selectedDifficulty)}
               className={cn(
-                "w-full sm:w-auto font-bytebounce text-xs sm:text-sm uppercase tracking-wider h-9 sm:h-11 px-4 sm:px-5 border-2 shrink-0 active:scale-95 transition-transform",
+                "w-full sm:w-auto font-bytebounce text-[11px] min-[360px]:text-xs sm:text-sm uppercase tracking-wider h-8 min-[360px]:h-9 sm:h-11 px-3 sm:px-5 border-2 shrink-0 active:scale-95 transition-transform flex items-center justify-center",
                 isSelectedUnlocked && isCurrentDiffUnlocked
                   ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black border-yellow-200 shadow-[0_0_20px_rgba(245,158,11,0.5)]"
                   : "bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed opacity-70"
               )}
             >
               {!isSelectedUnlocked
-                ? `🔒 CHAPTER LOCKED (Defeat Easy, Med & Hard in Ch.${selectedNode.nodeNumber - 1})`
+                ? `🔒 LOCKED (Clear Ch.${selectedNode.nodeNumber - 1} First)`
                 : !isCurrentDiffUnlocked
-                  ? `🔒 ${selectedDifficulty} LOCKED (Defeat ${selectedDifficulty === 'MEDIUM' ? 'Easy' : 'Medium'} First)`
+                  ? `🔒 ${selectedDifficulty} LOCKED`
                   : `LAUNCH ${selectedDifficulty} EXPEDITION ⚔️`}
             </Button>
           </div>
