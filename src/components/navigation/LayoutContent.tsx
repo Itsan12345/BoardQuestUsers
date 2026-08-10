@@ -85,21 +85,6 @@ export function LayoutContent({
             {/* Dynamic Notification Bell */}
             <NotificationBell user={user} />
 
-            <div className="flex flex-col items-end text-right hidden sm:flex min-w-[120px]">
-              {user ? (
-                <>
-                  <span className="text-xs lg:text-sm font-black text-foreground leading-tight tracking-tight uppercase">{user.name}</span>
-                  <span className="text-[10px] text-primary font-bold uppercase tracking-widest whitespace-nowrap mt-0.5">
-                    Lvl {user.level} Aspirant
-                  </span>
-                </>
-              ) : (
-                <>
-                  <div className="h-4 w-24 bg-muted animate-pulse rounded mb-1" />
-                  <div className="h-3 w-16 bg-muted animate-pulse rounded" />
-                </>
-              )}
-            </div>
             <Link href="/profile">
               <Avatar className="h-8 w-8 lg:h-9 lg:w-9 border border-border shadow-sm hover:ring-2 ring-primary/20 transition-all cursor-pointer">
                 <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'default'}`} />

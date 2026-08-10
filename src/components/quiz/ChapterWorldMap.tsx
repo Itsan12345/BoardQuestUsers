@@ -119,54 +119,91 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
       <div className="relative w-full aspect-[2.38/1] max-h-[58vh] bg-[#23170c] border-4 sm:border-6 border-[#4a2e16] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col justify-center overflow-hidden my-auto shrink-0">
 
         {/* Pixel-Art World Map Landscape Background - Full Width Original Aspect Ratio */}
-        {selectedSubject.toLowerCase().includes('chem') ? (
-          <Image
-            src="/ui/ClinicalChem_worldmap.png"
-            alt="Clinical Chemistry World Map"
-            fill
-            className="object-fill object-center"
-            style={{ imageRendering: 'pixelated' }}
-            unoptimized
-            priority
-          />
-        ) : (
-          <>
-            {/* Thematic Grid Texture for other subjects */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#3e2b19] via-[#24170d] to-[#120a05] opacity-90" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#3a2514_1px,transparent_1px),linear-gradient(to_bottom,#3a2514_1px,transparent_1px)] bg-[size:20px_20px] sm:bg-[size:24px_24px] opacity-25" />
-          </>
-        )}
+        {(() => {
+          const s = selectedSubject.toLowerCase();
+          const mapSrc = (s.includes('immuno') || s.includes('serolog'))
+            ? '/ui/ImmunoHematology_worldmap.png'
+            : s.includes('chem')
+              ? '/ui/ClinicalChem_worldmap.png'
+              : (s.includes('microscop') || s.includes('parasit'))
+                ? '/ui/ClinicalMicroscopy_worldmap.png'
+                : (s.includes('histo') || s.includes('patholog'))
+                  ? '/ui/Histopathology_worldmap.png'
+                  : s.includes('microb')
+                    ? '/ui/Microbiology_worldmap.png'
+                    : s.includes('hema')
+                      ? '/ui/Hematology_worldmap.png'
+                      : null;
+
+          if (mapSrc) {
+            return (
+              <Image
+                src={mapSrc}
+                alt={`${selectedSubject} World Map`}
+                fill
+                className="object-fill object-center"
+                style={{ imageRendering: 'pixelated' }}
+                unoptimized
+                priority
+              />
+            );
+          }
+
+          return (
+            <>
+              {/* Thematic Grid Texture for other subjects */}
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#3e2b19] via-[#24170d] to-[#120a05] opacity-90" />
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#3a2514_1px,transparent_1px),linear-gradient(to_bottom,#3a2514_1px,transparent_1px)] bg-[size:20px_20px] sm:bg-[size:24px_24px] opacity-25" />
+            </>
+          );
+        })()}
 
         {/* Subtle Ambient Overlay */}
         <div className="absolute inset-0 bg-black/5 pointer-events-none" />
 
-        {/* SVG Connecting Diagonal Golden Trail */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {/* Shadow Path */}
-          <path
-            d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
-            fill="none"
-            stroke="#804d00"
-            strokeWidth="5"
-            strokeLinecap="square"
-          />
-          {/* Border Path */}
-          <path
-            d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
-            fill="none"
-            stroke="#b8860b"
-            strokeWidth="3.5"
-            strokeLinecap="square"
-          />
-          {/* Main Glowing Golden Trail */}
-          <path
-            d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
-            fill="none"
-            stroke="#ffd700"
-            strokeWidth="2.2"
-            strokeLinecap="square"
-          />
-        </svg>
+        {/* SVG Connecting Diagonal Trail */}
+        {(() => {
+          const s = selectedSubject.toLowerCase();
+          const isMicroscopy = s.includes('microscop') || s.includes('parasit');
+          const isImmuno = s.includes('immuno') || s.includes('serolog');
+          const isHisto = s.includes('histo') || s.includes('patholog');
+          const isChem = s.includes('chem');
+          const isMicrobio = s.includes('microb') && !isMicroscopy;
+          const isHema = s.includes('hema') && !isImmuno;
+
+          const trailColor = isChem ? "#f472b6" : isImmuno ? "#38bdf8" : isHisto ? "#10b981" : isMicrobio ? "#a3e635" : isHema ? "#ef4444" : isMicroscopy ? "#f59e0b" : "#ffd700";
+          const trailBorder = isChem ? "#831843" : isImmuno ? "#0f172a" : isHisto ? "#064e3b" : isMicrobio ? "#365314" : isHema ? "#7f1d1d" : isMicroscopy ? "#78350f" : "#b8860b";
+          const trailShadow = isChem ? "#500724" : isImmuno ? "#020617" : isHisto ? "#022c22" : isMicrobio ? "#1a2e05" : isHema ? "#450a0a" : isMicroscopy ? "#451a03" : "#804d00";
+
+          return (
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
+              {/* Shadow Path */}
+              <path
+                d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
+                fill="none"
+                stroke={trailShadow}
+                strokeWidth="5"
+                strokeLinecap="square"
+              />
+              {/* Border Path */}
+              <path
+                d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
+                fill="none"
+                stroke={trailBorder}
+                strokeWidth="3.5"
+                strokeLinecap="square"
+              />
+              {/* Main Glowing Trail */}
+              <path
+                d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
+                fill="none"
+                stroke={trailColor}
+                strokeWidth="2.2"
+                strokeLinecap="square"
+              />
+            </svg>
+          );
+        })()}
 
         {/* Diagonal Gamified Nodes */}
         <div className="absolute inset-0 z-20 pointer-events-none">
@@ -176,6 +213,13 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
             const stars = (clears.EASY ? 1 : 0) + (clears.MEDIUM ? 1 : 0) + (clears.HARD ? 1 : 0) || (nodeStars[node.id] || 0);
             const isSelected = selectedNodeId === node.id;
             const isBossNode = index === subjectNodes.length - 1;
+            const s = selectedSubject.toLowerCase();
+            const isMicroscopy = s.includes('microscop') || s.includes('parasit');
+            const isImmuno = s.includes('immuno') || s.includes('serolog');
+            const isHisto = s.includes('histo') || s.includes('patholog');
+            const isChem = s.includes('chem');
+            const isMicrobio = s.includes('microb') && !isMicroscopy;
+            const isHema = s.includes('hema') && !isImmuno;
 
             // Responsive Diagonal Positions placed down on the meadow ground
             const nodeCoords = [
@@ -192,13 +236,40 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                 onClick={() => onSelectNode(node.id)}
               >
                 {/* Floating Star Badges above Node */}
-                <div className="flex items-center gap-0.5 bg-black/85 px-1.5 py-0.5 rounded-full border border-amber-500/50 shadow-lg mb-1">
+                <div className={cn(
+                  "flex items-center gap-0.5 bg-black/85 px-1.5 py-0.5 rounded-full shadow-lg mb-1 border",
+                  isChem
+                    ? "border-pink-500/60"
+                    : isImmuno
+                      ? "border-cyan-500/60"
+                      : isHisto
+                        ? "border-emerald-500/60"
+                        : isMicrobio
+                          ? "border-lime-500/60"
+                          : isHema
+                            ? "border-red-500/60"
+                            : isMicroscopy
+                              ? "border-amber-600/60"
+                              : "border-amber-500/50"
+                )}>
                   {[1, 2, 3].map((s) => (
                     <span
                       key={s}
                       className={cn(
                         "text-[9px] sm:text-xs leading-none",
-                        s <= stars ? "text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.9)]" : "text-slate-600 opacity-40"
+                        s <= stars
+                          ? isChem
+                            ? "text-pink-300 drop-shadow-[0_0_4px_rgba(244,114,182,0.9)]"
+                            : isImmuno
+                              ? "text-cyan-300 drop-shadow-[0_0_4px_rgba(56,189,248,0.9)]"
+                              : isHisto
+                                ? "text-emerald-300 drop-shadow-[0_0_4px_rgba(16,185,129,0.9)]"
+                                : isMicrobio
+                                  ? "text-lime-300 drop-shadow-[0_0_4px_rgba(163,230,53,0.9)]"
+                                  : isHema
+                                    ? "text-red-400 drop-shadow-[0_0_4px_rgba(239,68,68,0.9)]"
+                                    : "text-amber-400 drop-shadow-[0_0_4px_rgba(245,158,11,0.9)]"
+                          : "text-slate-600 opacity-40"
                       )}
                     >
                       ★
@@ -206,15 +277,39 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                   ))}
                 </div>
 
-                {/* Chunky Pixelated Square Yellow RPG Node Box */}
+                {/* Chunky Pixelated Square RPG Node Box */}
                 <div
                   className={cn(
                     "aspect-square w-8 min-[375px]:w-9 sm:w-14 md:w-13 rounded-sm flex items-center justify-center font-bytebounce transition-all duration-200 shadow-xl active:scale-95 relative cursor-pointer",
                     !unlocked
                       ? "bg-[#1a120c]/90 border-2 border-slate-700 text-slate-500 shadow-[0_3px_0_0_#0d0805]"
-                      : isSelected
-                        ? "bg-[#ffe066] border-2 border-[#b87a00] text-[#7a3b00] shadow-[0_3px_0_0_#804d00,0_0_15px_rgba(255,215,0,0.7)] ring-1.5 ring-white/90"
-                        : "bg-[#ffd700] border-2 border-[#b8860b] text-[#7a3b00] shadow-[0_3px_0_0_#804d00,0_0_8px_rgba(255,215,0,0.3)] hover:brightness-110"
+                      : isChem
+                        ? isSelected
+                          ? "bg-[#f472b6] border-2 border-[#831843] text-[#500724] shadow-[0_3px_0_0_#700a2a,0_0_16px_rgba(244,114,182,0.85)] ring-1.5 ring-pink-200"
+                          : "bg-[#db2777] border-2 border-[#831843] text-[#fff1f2] shadow-[0_3px_0_0_#700a2a,0_0_10px_rgba(219,39,119,0.4)] hover:brightness-110"
+                        : isImmuno
+                          ? isSelected
+                            ? "bg-[#38bdf8] border-2 border-[#0f172a] text-[#082f49] shadow-[0_3px_0_0_#075985,0_0_16px_rgba(56,189,248,0.85)] ring-1.5 ring-cyan-200"
+                            : "bg-[#0284c7] border-2 border-[#0f172a] text-[#f0f9ff] shadow-[0_3px_0_0_#075985,0_0_10px_rgba(2,132,199,0.4)] hover:brightness-110"
+                          : isHisto
+                            ? isSelected
+                              ? "bg-[#34d399] border-2 border-[#064e3b] text-[#022c22] shadow-[0_3px_0_0_#022c22,0_0_16px_rgba(52,211,153,0.85)] ring-1.5 ring-emerald-200"
+                              : "bg-[#059669] border-2 border-[#064e3b] text-[#ecfdf5] shadow-[0_3px_0_0_#022c22,0_0_10px_rgba(5,150,105,0.4)] hover:brightness-110"
+                            : isMicrobio
+                              ? isSelected
+                                ? "bg-[#a3e635] border-2 border-[#365314] text-[#14532d] shadow-[0_3px_0_0_#1a2e05,0_0_16px_rgba(163,230,53,0.85)] ring-1.5 ring-lime-200"
+                                : "bg-[#65a30d] border-2 border-[#365314] text-[#f7fee7] shadow-[0_3px_0_0_#1a2e05,0_0_10px_rgba(163,230,53,0.45)] hover:brightness-110"
+                              : isHema
+                                ? isSelected
+                                  ? "bg-[#f87171] border-2 border-[#7f1d1d] text-[#450a0a] shadow-[0_3px_0_0_#450a0a,0_0_16px_rgba(248,113,113,0.85)] ring-1.5 ring-red-200"
+                                  : "bg-[#dc2626] border-2 border-[#7f1d1d] text-[#fef2f2] shadow-[0_3px_0_0_#450a0a,0_0_10px_rgba(239,68,68,0.45)] hover:brightness-110"
+                                : isMicroscopy
+                                  ? isSelected
+                                    ? "bg-[#fbbf24] border-2 border-[#78350f] text-[#3d1a04] shadow-[0_3px_0_0_#5c2408,0_0_15px_rgba(251,191,36,0.75)] ring-1.5 ring-amber-200"
+                                    : "bg-[#d97706] border-2 border-[#78350f] text-[#3d1a04] shadow-[0_3px_0_0_#5c2408,0_0_10px_rgba(217,119,6,0.4)] hover:brightness-110"
+                                  : isSelected
+                                    ? "bg-[#ffe066] border-2 border-[#b87a00] text-[#7a3b00] shadow-[0_3px_0_0_#804d00,0_0_15px_rgba(255,215,0,0.7)] ring-1.5 ring-white/90"
+                                    : "bg-[#ffd700] border-2 border-[#b8860b] text-[#7a3b00] shadow-[0_3px_0_0_#804d00,0_0_8px_rgba(255,215,0,0.3)] hover:brightness-110"
                   )}
                 >
                   {!unlocked ? (
@@ -235,8 +330,32 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                 {/* Bottom Node Chapter Label */}
                 <p
                   className={cn(
-                    "text-[8px] sm:text-xs font-mono font-bold mt-1 text-center bg-black/70 px-1.5 py-0.5 rounded border border-white/10 transition-colors shadow",
-                    isSelected ? "text-amber-300 border-amber-400/60" : unlocked ? "text-amber-100/90" : "text-slate-500"
+                    "text-[8px] sm:text-xs font-mono font-bold mt-1 text-center bg-black/70 px-1.5 py-0.5 rounded border transition-colors shadow",
+                    isSelected
+                      ? isChem
+                        ? "text-pink-300 border-pink-400/60"
+                        : isImmuno
+                          ? "text-cyan-300 border-cyan-400/60"
+                          : isHisto
+                            ? "text-emerald-300 border-emerald-400/60"
+                            : isMicrobio
+                              ? "text-lime-300 border-lime-400/60"
+                              : isHema
+                                ? "text-red-300 border-red-400/60"
+                                : "text-amber-300 border-amber-400/60"
+                      : unlocked
+                        ? isChem
+                          ? "text-pink-100/90 border-white/10"
+                          : isImmuno
+                            ? "text-cyan-100/90 border-white/10"
+                            : isHisto
+                              ? "text-emerald-100/90 border-white/10"
+                              : isMicrobio
+                                ? "text-lime-100/90 border-white/10"
+                                : isHema
+                                  ? "text-red-100/90 border-white/10"
+                                  : "text-amber-100/90 border-white/10"
+                        : "text-slate-500 border-white/10"
                   )}
                 >
                   Ch.{node.nodeNumber}

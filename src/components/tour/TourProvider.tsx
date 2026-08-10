@@ -9,15 +9,15 @@ interface TourContextType {
 }
 
 const TourContext = createContext<TourContextType>({
-  startTour: () => {},
+  startTour: () => { },
 });
 
 export const useTour = () => useContext(TourContext);
 
-export function TourProvider({ 
+export function TourProvider({
   children,
-  isLoggedIn = true 
-}: { 
+  isLoggedIn = true
+}: {
   children: React.ReactNode;
   isLoggedIn?: boolean;
 }) {
