@@ -42,6 +42,7 @@ import {
   Laptop,
   Check,
   Calendar,
+  Compass,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -52,6 +53,7 @@ import {
   saveUserSettingsAction,
 } from '@/app/actions/user';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
+import { startTourByKey, isTourCompleted } from '@/lib/tour-config';
 import { cn } from '@/lib/utils';
 
 interface AccountSettingsDialogProps {
@@ -184,6 +186,36 @@ export function AccountSettingsDialog({
     }
     loadSettings();
   }, [userProfile]);
+
+  // Function to launch spotlight guide for the currently selected tab
+  const handleStartTabTour = (tabKey: string, force: boolean = false) => {
+    const tourKey = `settings_${tabKey}`;
+    startTourByKey(tourKey, force);
+  };
+
+  // Handle Tab Switch & trigger tab walkthrough on first visit
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    const tourKey = `settings_${newTab}`;
+    if (!isTourCompleted(tourKey)) {
+      setTimeout(() => {
+        startTourByKey(tourKey, false);
+      }, 350);
+    }
+  };
+
+  // Auto-start tour on first time opening Account Settings (default 'profile' tab)
+  useEffect(() => {
+    if (open) {
+      const tourKey = `settings_${activeTab}`;
+      if (!isTourCompleted(tourKey)) {
+        const timer = setTimeout(() => {
+          startTourByKey(tourKey, false);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [open]);
 
   // Handle Profile Update
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -459,7 +491,7 @@ export function AccountSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-7">
         <DialogHeader className="pb-4 border-b border-border">
-          <div className="flex items-center justify-between pr-6">
+          <div id="tour-settings-header" className="flex items-center justify-between pr-6">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-[#8B0000]/10 border border-[#8B0000]/20 rounded-2xl">
                 <Shield className="w-6 h-6 text-[#8B0000]" />
@@ -473,43 +505,61 @@ export function AccountSettingsDialog({
                 </DialogDescription>
               </div>
             </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleStartTabTour(activeTab, true)}
+              className="h-8 px-2.5 sm:px-3 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-semibold flex items-center gap-1.5 transition-all text-foreground/80 hover:text-primary shrink-0"
+              title="Explain current tab settings"
+            >
+              <Compass className="w-3.5 h-3.5 text-primary shrink-0 transition-transform group-hover:rotate-45" />
+              <span className="text-[11px] font-bold uppercase tracking-wider hidden sm:inline">Guide</span>
+            </Button>
           </div>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full pt-2">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full pt-2">
           {/* Tabs navigation bar */}
           <TabsList className="w-full flex flex-wrap h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/50 gap-1">
             <TabsTrigger
+              id="tour-settings-tab-profile"
               value="profile"
               className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <User className="w-3.5 h-3.5" /> Profile
             </TabsTrigger>
             <TabsTrigger
+              id="tour-settings-tab-goals"
               value="goals"
               className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <Target className="w-3.5 h-3.5" /> Goals
             </TabsTrigger>
             <TabsTrigger
+              id="tour-settings-tab-audio"
               value="audio"
               className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <Volume2 className="w-3.5 h-3.5" /> Audio & FX
             </TabsTrigger>
             <TabsTrigger
+              id="tour-settings-tab-alerts"
               value="alerts"
               className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <Bell className="w-3.5 h-3.5" /> Alerts
             </TabsTrigger>
             <TabsTrigger
+              id="tour-settings-tab-security"
               value="security"
               className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <Lock className="w-3.5 h-3.5" /> Security
             </TabsTrigger>
             <TabsTrigger
+              id="tour-settings-tab-records"
               value="records"
               className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
@@ -520,7 +570,7 @@ export function AccountSettingsDialog({
           {/* TAB 1: Profile & Academic Identity */}
           <TabsContent value="profile" className="pt-4 space-y-6">
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="p-4 bg-muted/30 border border-border rounded-2xl flex flex-col sm:flex-row items-center gap-4">
+              <div id="tour-profile-identity" className="p-4 bg-muted/30 border border-border rounded-2xl flex flex-col sm:flex-row items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-[#8B0000] text-white flex items-center justify-center text-xl font-bold border-4 border-primary/20 shadow-md">
                   {name
                     ? name
@@ -544,7 +594,7 @@ export function AccountSettingsDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div id="tour-profile-academic" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="name" className="text-xs font-semibold">
                     Full Name
@@ -616,6 +666,7 @@ export function AccountSettingsDialog({
 
               <div className="flex justify-end pt-3">
                 <Button
+                  id="tour-profile-save"
                   type="submit"
                   disabled={isSavingProfile}
                   className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
@@ -630,7 +681,7 @@ export function AccountSettingsDialog({
           {/* TAB 2: Study Goals & Targets */}
           <TabsContent value="goals" className="pt-4 space-y-5">
             <div className="space-y-4">
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
+              <div id="tour-goals-quota" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="text-sm font-semibold text-foreground">Daily Question Target</Label>
@@ -660,7 +711,7 @@ export function AccountSettingsDialog({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
+                <div id="tour-goals-focus" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
                   <Label className="text-sm font-semibold text-foreground">Priority Focus Subject</Label>
                   <p className="text-xs text-muted-foreground">Subject highlighted first in Study Arena</p>
                   <Select value={focusSubject} onValueChange={setFocusSubject}>
@@ -677,7 +728,7 @@ export function AccountSettingsDialog({
                   </Select>
                 </div>
 
-                <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
+                <div id="tour-goals-diff" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
                   <Label className="text-sm font-semibold text-foreground">Starting Quiz Difficulty</Label>
                   <p className="text-xs text-muted-foreground">Default combat difficulty in Boss Rush</p>
                   <Select value={defaultDifficulty} onValueChange={setDefaultDifficulty}>
@@ -693,7 +744,7 @@ export function AccountSettingsDialog({
                 </div>
               </div>
 
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
+              <div id="tour-goals-confidence" className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label className="text-sm font-semibold text-foreground">Confidence Rating Prompts</Label>
                   <p className="text-xs text-muted-foreground">
@@ -705,6 +756,7 @@ export function AccountSettingsDialog({
 
               <div className="flex justify-end pt-2">
                 <Button
+                  id="tour-goals-save"
                   type="button"
                   onClick={handleSaveGoals}
                   className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
@@ -718,7 +770,7 @@ export function AccountSettingsDialog({
           {/* TAB 3: Audio & RPG FX */}
           <TabsContent value="audio" className="pt-4 space-y-5">
             <div className="space-y-4">
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
+              <div id="tour-audio-sfx" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Volume2 className="w-4 h-4 text-[#8B0000]" />
@@ -735,7 +787,7 @@ export function AccountSettingsDialog({
                 />
               </div>
 
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
+              <div id="tour-audio-music" className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label className="text-sm font-semibold text-foreground">Background Ambient Music</Label>
                   <p className="text-xs text-muted-foreground">Enable medieval atmospheric music during dungeon quizzes</p>
@@ -743,24 +795,27 @@ export function AccountSettingsDialog({
                 <Switch checked={ambientMusic} onCheckedChange={setAmbientMusic} />
               </div>
 
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
-                <div className="space-y-0.5 pr-4">
-                  <Label className="text-sm font-semibold text-foreground">Floating Combat Text</Label>
-                  <p className="text-xs text-muted-foreground">Render animated pixel damage indicators when attacking</p>
+              <div id="tour-audio-combat" className="space-y-4 p-4 bg-muted/20 border border-border rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5 pr-4">
+                    <Label className="text-sm font-semibold text-foreground">Floating Combat Text</Label>
+                    <p className="text-xs text-muted-foreground">Render animated pixel damage indicators when attacking</p>
+                  </div>
+                  <Switch checked={floatingDamageText} onCheckedChange={setFloatingDamageText} />
                 </div>
-                <Switch checked={floatingDamageText} onCheckedChange={setFloatingDamageText} />
-              </div>
 
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
-                <div className="space-y-0.5 pr-4">
-                  <Label className="text-sm font-semibold text-foreground">Screen Flash on Damage</Label>
-                  <p className="text-xs text-muted-foreground">Red pulse screen flash when taking damage (toggle off for battery saver)</p>
+                <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                  <div className="space-y-0.5 pr-4">
+                    <Label className="text-sm font-semibold text-foreground">Screen Flash on Damage</Label>
+                    <p className="text-xs text-muted-foreground">Red pulse screen flash when taking damage (toggle off for battery saver)</p>
+                  </div>
+                  <Switch checked={hitScreenFlash} onCheckedChange={setHitScreenFlash} />
                 </div>
-                <Switch checked={hitScreenFlash} onCheckedChange={setHitScreenFlash} />
               </div>
 
               <div className="flex justify-end pt-2">
                 <Button
+                  id="tour-audio-save"
                   type="button"
                   onClick={handleSaveAudio}
                   className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
@@ -774,7 +829,7 @@ export function AccountSettingsDialog({
           {/* TAB 4: Notifications & Alerts */}
           <TabsContent value="alerts" className="pt-4 space-y-5">
             <div className="space-y-4">
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
+              <div id="tour-alerts-streak" className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
                 <div className="space-y-0.5 pr-4">
                   <div className="flex items-center gap-1.5">
                     <Label className="text-sm font-semibold text-foreground">Daily Streak Protection Alerts</Label>
@@ -785,7 +840,7 @@ export function AccountSettingsDialog({
                 <Switch checked={streakAlerts} onCheckedChange={setStreakAlerts} />
               </div>
 
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
+              <div id="tour-alerts-countdown" className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label className="text-sm font-semibold text-foreground">Board Exam Milestone Countdowns</Label>
                   <p className="text-xs text-muted-foreground">Receive weekly countdown milestones leading up to your target MTLE date</p>
@@ -793,7 +848,7 @@ export function AccountSettingsDialog({
                 <Switch checked={countdownAlerts} onCheckedChange={setCountdownAlerts} />
               </div>
 
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
+              <div id="tour-alerts-milestones" className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
                 <div className="space-y-0.5 pr-4">
                   <Label className="text-sm font-semibold text-foreground">Badge & Level-Up Milestones</Label>
                   <p className="text-xs text-muted-foreground">Instant alerts in the top nav when earning new badges or leveling up</p>
@@ -803,6 +858,7 @@ export function AccountSettingsDialog({
 
               <div className="flex justify-end pt-2">
                 <Button
+                  id="tour-alerts-save"
                   type="button"
                   onClick={handleSaveNotifications}
                   className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
@@ -816,7 +872,7 @@ export function AccountSettingsDialog({
           {/* TAB 5: Security & Password */}
           <TabsContent value="security" className="pt-4 space-y-5">
             <form onSubmit={handleChangePassword} className="space-y-4">
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
+              <div id="tour-security-password" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-semibold text-foreground">Update Password</Label>
                   <button
@@ -877,6 +933,7 @@ export function AccountSettingsDialog({
 
                 <div className="flex justify-end pt-2">
                   <Button
+                    id="tour-security-save"
                     type="submit"
                     disabled={isChangingPassword}
                     className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
@@ -888,7 +945,7 @@ export function AccountSettingsDialog({
               </div>
 
               {/* Active Session Info */}
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
+              <div id="tour-security-session" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Laptop className="w-4 h-4 text-[#8B0000]" />
@@ -908,7 +965,7 @@ export function AccountSettingsDialog({
           {/* TAB 6: Records & Data Export */}
           <TabsContent value="records" className="pt-4 space-y-5">
             <div className="space-y-4">
-              <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
+              <div id="tour-records-export" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-semibold text-sm text-foreground">Certified Study Transcript</h4>
@@ -926,7 +983,7 @@ export function AccountSettingsDialog({
                 </div>
               </div>
 
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-xs text-amber-900 dark:text-amber-300">
+              <div id="tour-records-mentor" className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-xs text-amber-900 dark:text-amber-300">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <strong className="block font-semibold">Academic Mentor Verification:</strong>

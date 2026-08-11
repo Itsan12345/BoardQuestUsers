@@ -226,6 +226,243 @@ export const TOUR_CONFIGS: Record<string, PageTourConfig> = {
       },
     ],
   },
+
+  settings_profile: {
+    key: 'settings_profile',
+    name: 'Profile & Academic Credentials',
+    path: '#settings-profile',
+    steps: [
+      {
+        element: '#tour-profile-identity',
+        popover: {
+          title: '🎖️ Aspirant Identity & Status',
+          description: 'Your level tier, class batch, and verified candidate status on BoardQuest.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-profile-academic',
+        popover: {
+          title: '🏛️ Academic & Exam Information',
+          description: 'Set your full name, university / review center, target MTLE season, and regional exam testing hub.',
+          side: 'top',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-profile-save',
+        popover: {
+          title: '💾 Save Profile Details',
+          description: 'Saves your academic identity and synchronizes it across all leaderboards and certificates.',
+          side: 'top',
+          align: 'end',
+        },
+      },
+    ],
+  },
+
+  settings_goals: {
+    key: 'settings_goals',
+    name: 'Study Goals & Targets',
+    path: '#settings-goals',
+    steps: [
+      {
+        element: '#tour-goals-quota',
+        popover: {
+          title: '🎯 Daily Question Target',
+          description: 'Choose your daily quota (20, 50, 100, or 150 questions) to maintain your review streak and earn bonus EXP.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-goals-focus',
+        popover: {
+          title: '🔬 Priority Focus Subject',
+          description: 'Designate the laboratory subject you want prioritized in your daily curriculum.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-goals-diff',
+        popover: {
+          title: '⚔️ Default Quiz Difficulty',
+          description: 'Set your baseline combat challenge: Easy (0.85x), Standard (1.0x), or Hardcore Examiner (1.25x).',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-goals-confidence',
+        popover: {
+          title: '⚡ Confidence Rating Prompts',
+          description: 'Evaluate your confidence (Shaky, Steady, Unyielding) per question to unlock bonus XP multipliers.',
+          side: 'top',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-goals-save',
+        popover: {
+          title: '💾 Save Study Preferences',
+          description: 'Applies your daily targets and difficulty parameters to all quiz arenas.',
+          side: 'top',
+          align: 'end',
+        },
+      },
+    ],
+  },
+
+  settings_audio: {
+    key: 'settings_audio',
+    name: 'Audio & RPG Combat Effects',
+    path: '#settings-audio',
+    steps: [
+      {
+        element: '#tour-audio-sfx',
+        popover: {
+          title: '🔊 Sound Effects (SFX) Volume',
+          description: 'Control the master volume for button clicks, attack strikes, and quiz audio feedback.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-audio-music',
+        popover: {
+          title: '🎵 Background Ambient Music',
+          description: 'Toggle atmospheric retro background tracks during study sessions and dungeon quests.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-audio-combat',
+        popover: {
+          title: '💥 Visual Damage FX & Screen Flash',
+          description: 'Toggle floating combat damage numbers and red screen flash pulses when taking monster damage.',
+          side: 'top',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-audio-save',
+        popover: {
+          title: '💾 Save Audio Preferences',
+          description: 'Applies your sound preferences immediately to the audio manager.',
+          side: 'top',
+          align: 'end',
+        },
+      },
+    ],
+  },
+
+  settings_alerts: {
+    key: 'settings_alerts',
+    name: 'Notification & Streak Alerts',
+    path: '#settings-alerts',
+    steps: [
+      {
+        element: '#tour-alerts-streak',
+        popover: {
+          title: '🔥 Daily Streak Protection Alert',
+          description: 'Receive an 8:00 PM reminder if you have not completed your daily review so your streak is never lost.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-alerts-countdown',
+        popover: {
+          title: '⏳ MTLE Board Exam Countdown',
+          description: 'Get weekly milestone countdown alerts leading up to your target board examination date.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-alerts-milestones',
+        popover: {
+          title: '🏅 Badge & Level-Up Alerts',
+          description: 'Instant notifications whenever you unlock rare achievement badges or reach new level tiers.',
+          side: 'top',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-alerts-save',
+        popover: {
+          title: '💾 Save Alert Preferences',
+          description: 'Updates your notification channels and alert triggers.',
+          side: 'top',
+          align: 'end',
+        },
+      },
+    ],
+  },
+
+  settings_security: {
+    key: 'settings_security',
+    name: 'Security & Password Credentials',
+    path: '#settings-security',
+    steps: [
+      {
+        element: '#tour-security-password',
+        popover: {
+          title: '🔑 Update Account Password',
+          description: 'Change your login password with real-time password strength evaluation.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-security-session',
+        popover: {
+          title: '🛡️ Active Session & TLS Security',
+          description: 'View your current encrypted web session and authentication status.',
+          side: 'top',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-security-save',
+        popover: {
+          title: '💾 Update Password',
+          description: 'Securely hashes and updates your credentials in MongoDB.',
+          side: 'top',
+          align: 'end',
+        },
+      },
+    ],
+  },
+
+  settings_records: {
+    key: 'settings_records',
+    name: 'Diagnostic Records & Study Transcript',
+    path: '#settings-records',
+    steps: [
+      {
+        element: '#tour-records-export',
+        popover: {
+          title: '📄 Certified Study Transcript Export',
+          description: 'Download a complete structured JSON record of your quiz attempts, subject mastery levels, and exam history.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-records-mentor',
+        popover: {
+          title: '🎓 Academic Mentor Verification',
+          description: 'Official transcripts can be shared with review center professors and mentors to verify exam readiness.',
+          side: 'top',
+          align: 'start',
+        },
+      },
+    ],
+  },
 };
 
 export function getPageTourConfig(pathname: string): PageTourConfig | null {
@@ -263,10 +500,10 @@ export function resetAllTours(): void {
   } catch { }
 }
 
-export function startTourForPage(pathname: string, force: boolean = false): boolean {
+export function startTourByKey(tourKey: string, force: boolean = false): boolean {
   if (typeof window === 'undefined') return false;
 
-  const config = getPageTourConfig(pathname);
+  const config = TOUR_CONFIGS[tourKey];
   if (!config) return false;
 
   if (!force && isTourCompleted(config.key)) {
@@ -332,4 +569,10 @@ export function startTourForPage(pathname: string, force: boolean = false): bool
 
   driverObj.drive();
   return true;
+}
+
+export function startTourForPage(pathname: string, force: boolean = false): boolean {
+  const config = getPageTourConfig(pathname);
+  if (!config) return false;
+  return startTourByKey(config.key, force);
 }

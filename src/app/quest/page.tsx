@@ -32,7 +32,8 @@ import {
   Biohazard,
   Flame,
   Package,
-  ShoppingBag
+  ShoppingBag,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -609,172 +610,269 @@ export default function LearningQuest() {
 
   const inventoryDialogJSX = (
     <Dialog open={inventoryDialogOpen} onOpenChange={setInventoryDialogOpen}>
-      <DialogContent container={isFullscreen ? (fullscreenRef.current || undefined) : undefined} className="w-[94vw] sm:max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar bg-[#1c2438] border-4 border-[#3b4763] text-white shadow-[0_0_30px_rgba(0,0,0,0.8)] p-3 sm:p-5 rounded-2xl z-[100] font-bytebounce">
+      <DialogContent
+        container={isFullscreen ? (fullscreenRef.current || undefined) : undefined}
+        className="w-[95vw] max-w-[340px] min-[375px]:max-w-[380px] sm:max-w-[460px] bg-transparent border-none p-0 text-white shadow-2xl z-[100] font-bytebounce flex items-center justify-center select-none [&>button]:hidden"
+      >
+        <DialogTitle className="sr-only">Inventory</DialogTitle>
 
-        {/* Header & XP Display */}
-        <div className="flex items-center justify-between border-b-2 border-[#3b4763] pb-2 sm:pb-2.5">
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="bg-[#2a354d] border-2 border-[#526287] p-1 sm:p-1.5 rounded-lg text-base sm:text-lg flex items-center justify-center shrink-0">
-              🧪
+        {/* Parchment / Leather Frame Container - Naturally scaled to fit content on all screens */}
+        <div className="relative w-full p-2.5 min-[360px]:p-3 sm:p-5 flex flex-col gap-1.5 sm:gap-2.5 overflow-hidden rounded-xl">
+          {/* Main Inventory Background */}
+          <Image
+            src="/ui/Inventory_bg.png"
+            alt="Inventory Background"
+            fill
+            className="object-fill object-center pointer-events-none"
+            style={{ imageRendering: 'pixelated' }}
+            unoptimized
+            priority
+          />
+
+          {/* Close Button */}
+          <button
+            onClick={() => setInventoryDialogOpen(false)}
+            aria-label="Close Inventory"
+            className="absolute top-2 right-2 sm:top-3 sm:right-3 w-5.5 h-5.5 min-[360px]:w-6 min-[360px]:h-6 sm:w-7 sm:h-7 bg-[#3d1a16] text-[#e8b298] hover:bg-red-700 hover:text-white rounded border border-[#693327] flex items-center justify-center font-bold text-[10px] sm:text-xs z-30 transition-colors active:scale-95 shadow-md"
+          >
+            <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          </button>
+
+          {/* Top Header Section */}
+          <div className="relative z-10 pt-0.5">
+            <div className="flex items-center justify-between gap-1.5 pr-6 sm:pr-8">
+              {/* Left: Satchel Icon + INVENTORY Title */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Image
+                  src="/ui/Inventory_icon.png"
+                  alt="Inventory Icon"
+                  width={28}
+                  height={28}
+                  className="w-5 h-5 sm:w-7 sm:h-7 object-contain shrink-0"
+                  style={{ imageRendering: 'pixelated' }}
+                  unoptimized
+                />
+                <h2 className="font-bytebounce text-xl min-[360px]:text-2xl sm:text-4xl text-[#3d1a16] tracking-wider leading-none drop-shadow-[1px_1px_0_#f4cfbd]">
+                  INVENTORY
+                </h2>
+              </div>
+
+              {/* Right: Available XP Pill */}
+              <div className="relative h-5.5 min-[360px]:h-6 sm:h-7.5 px-2 sm:px-2.5 flex items-center justify-center shrink-0">
+                <Image
+                  src="/ui/Inventory_available_exp.png"
+                  alt="Available EXP"
+                  fill
+                  className="object-fill"
+                  style={{ imageRendering: 'pixelated' }}
+                  unoptimized
+                />
+                <span className="relative z-10 font-bytebounce text-amber-300 text-[10px] min-[360px]:text-[11px] sm:text-sm font-bold flex items-center gap-0.5 tracking-wider leading-none drop-shadow-[1px_1px_0_#000]">
+                  ⚡ {userXp} XP
+                </span>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="font-bytebounce text-xl sm:text-3xl text-amber-400 tracking-wider flex items-center gap-1.5 leading-none">
-                REAGENT INVENTORY
-              </DialogTitle>
-              <p className="text-[9px] sm:text-[10px] text-slate-300 font-sans tracking-wide mt-0.5">Select a slot to Equip or Buy (LVL {userLevel} Pricing)</p>
+
+            {/* Top Divider */}
+            <div className="w-full h-[1.5px] sm:h-[2px] bg-[#3d1a16] mt-1 sm:mt-1.5 opacity-90" />
+          </div>
+
+          {/* Top Weekly Supply Banner */}
+          <div className="relative z-10 w-full h-6 min-[360px]:h-6.5 sm:h-7.5 px-2 sm:px-2.5 flex items-center justify-between shrink-0">
+            <Image
+              src="/ui/Inventory_weekly_bg.png"
+              alt="Weekly Supply Banner"
+              fill
+              className="object-fill"
+              style={{ imageRendering: 'pixelated' }}
+              unoptimized
+            />
+            <div className="relative z-10 flex items-center justify-between w-full text-white font-bytebounce text-[8.5px] min-[360px]:text-[9.5px] sm:text-xs px-0.5 leading-none">
+              <span className="text-amber-100 flex items-center gap-1">
+                Weekly Drop: <span className="text-emerald-400 font-bold">+1 Free Charge</span>
+              </span>
+              <span className="text-amber-300/90 font-mono text-[7.5px] min-[360px]:text-[8.5px] sm:text-[10px]">
+                Restock: <span className="text-amber-200 font-bold">{restockCountdown || 'Calculating...'}</span>
+              </span>
             </div>
           </div>
-          <div className="bg-[#0f172a] border border-amber-500/40 px-2 sm:px-2.5 py-1 rounded-lg text-right shrink-0">
-            <span className="text-[7.5px] sm:text-[8px] text-slate-400 uppercase tracking-wider block font-sans">Available XP</span>
-            <span className="text-amber-400 font-bytebounce text-xs sm:text-base flex items-center gap-0.5 justify-end">
-              ⚡ {userXp} XP
-            </span>
-          </div>
-        </div>
 
-        {/* Weekly Guild Restock Countdown Banner */}
-        <div className="mt-2.5 bg-[#111827] border border-[#3b4763] px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center justify-between text-xs gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-slate-300 font-sans text-[9px] sm:text-[10.5px] truncate">
-              Weekly Supply: <span className="text-emerald-400 font-bold">+1 Free Charge</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1 text-slate-400 font-mono text-[9px] sm:text-[10px] bg-[#1e293b] px-2 py-0.5 rounded border border-[#334155] shrink-0">
-            <span>Restock:</span>
-            <span className="text-amber-400 font-bold">{restockCountdown || 'Calculating...'}</span>
-          </div>
-        </div>
+          {/* 6x3 Inventory Slot Grid (18 Slots) */}
+          <div className="relative z-10">
+            <div className="grid grid-cols-6 gap-1 min-[360px]:gap-1.5 sm:gap-2">
+              {/* Consumable Item Slots */}
+              {CONSUMABLE_ITEMS_LIST.map((item) => {
+                const count = inventory[item.id] || 0;
+                const isEquipped = equippedItem === item.id;
+                const isSelected = selectedItemSlot === item.id;
 
-        {/* 16-Bit Pixel RPG Grid Container */}
-        <div className="mt-2.5 sm:mt-3 bg-[#111827] border-3 sm:border-4 border-[#374151] p-1.5 sm:p-2.5 rounded-xl shadow-inner relative">
-          {/* Stone Accents */}
-          <div className="absolute top-1 left-1 w-1.5 h-1.5 bg-[#4b5563] opacity-40" />
-          <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#4b5563] opacity-40" />
-          <div className="absolute bottom-1 left-1 w-1.5 h-1.5 bg-[#4b5563] opacity-40" />
-          <div className="absolute bottom-1 right-1 w-1.5 h-1.5 bg-[#4b5563] opacity-40" />
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setSelectedItemSlot(item.id)}
+                    className={cn(
+                      "relative aspect-square flex items-center justify-center transition-all duration-150 active:scale-95 group cursor-pointer",
+                      isSelected ? "scale-105 z-30" : "hover:scale-102"
+                    )}
+                  >
+                    {/* Slot Background */}
+                    <Image
+                      src="/ui/Inventory_slot.png"
+                      alt="Inventory Slot"
+                      fill
+                      className="object-fill pointer-events-none"
+                      style={{ imageRendering: 'pixelated' }}
+                      unoptimized
+                    />
 
-          {/* Grid Slots (6 columns x 3 rows = 18 slots) */}
-          <div className="grid grid-cols-6 gap-1 sm:gap-2">
-            {/* Render consumable item slots */}
-            {CONSUMABLE_ITEMS_LIST.map((item) => {
-              const count = inventory[item.id] || 0;
-              const isEquipped = equippedItem === item.id;
-              const isSelected = selectedItemSlot === item.id;
+                    {/* Item Icon */}
+                    <span
+                      className={cn(
+                        "relative z-20 text-base min-[360px]:text-lg sm:text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] transition-transform",
+                        isSelected && "scale-110 drop-shadow-[0_0_6px_rgba(251,191,36,0.85)]"
+                      )}
+                    >
+                      {item.icon}
+                    </span>
 
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setSelectedItemSlot(item.id)}
-                  className={cn(
-                    "relative aspect-square rounded-lg border-2 transition-all flex flex-col items-center justify-center p-0.5 sm:p-1 select-none group",
-                    isSelected
-                      ? "bg-[#252f48] border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.5)] scale-105"
-                      : isEquipped
-                        ? "bg-[#1e293b] border-emerald-400"
-                        : "bg-[#1e293b] border-[#334155] hover:border-slate-400 hover:bg-[#283549]"
-                  )}
+                    {/* Stack Count Badge */}
+                    <span className="absolute bottom-0.5 right-0.5 sm:right-1 z-30 font-bytebounce text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs font-bold text-amber-200 drop-shadow-[1px_1px_0_#000] leading-none">
+                      {count}/{MAX_REAGENT_CAP}
+                    </span>
+
+                    {/* Equipped Badge */}
+                    {isEquipped && (
+                      <span className="absolute top-0.5 left-0.5 z-30 bg-emerald-500 text-black text-[5.5px] min-[360px]:text-[6px] sm:text-[7px] font-black uppercase px-0.5 rounded border border-black animate-pulse leading-none">
+                        EQ
+                      </span>
+                    )}
+
+                    {/* 16-Bit Gamified RPG Reticle Corner Brackets & Floating Pointer */}
+                    {isSelected && (
+                      <>
+                        {/* Top-Left Bracket */}
+                        <div className="absolute -top-0.5 -left-0.5 z-40 w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 border-t-2 border-l-2 border-yellow-200 shadow-[0_0_4px_#f59e0b]" />
+                        {/* Top-Right Bracket */}
+                        <div className="absolute -top-0.5 -right-0.5 z-40 w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 border-t-2 border-r-2 border-yellow-200 shadow-[0_0_4px_#f59e0b]" />
+                        {/* Bottom-Left Bracket */}
+                        <div className="absolute -bottom-0.5 -left-0.5 z-40 w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 border-b-2 border-l-2 border-yellow-200 shadow-[0_0_4px_#f59e0b]" />
+                        {/* Bottom-Right Bracket */}
+                        <div className="absolute -bottom-0.5 -right-0.5 z-40 w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 border-b-2 border-r-2 border-yellow-200 shadow-[0_0_4px_#f59e0b]" />
+
+                        {/* Floating Retro RPG Cursor Triangle pointer above slot */}
+                        <div className="absolute -top-2 sm:-top-2.5 left-1/2 -translate-x-1/2 z-40 text-yellow-300 text-[7px] min-[360px]:text-[8px] sm:text-[10px] animate-bounce leading-none drop-shadow-[0_0_5px_#f59e0b] select-none pointer-events-none font-sans font-bold">
+                          ▼
+                        </div>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* 15 Empty Slots */}
+              {Array.from({ length: 15 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="relative aspect-square flex items-center justify-center opacity-90"
                 >
-                  {/* Icon */}
-                  <span className="text-lg sm:text-3xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{item.icon}</span>
-
-                  {/* Count Stack Badge (Bottom Right) */}
-                  <span className="absolute bottom-0.5 right-0.5 sm:right-1 font-bytebounce text-[10px] sm:text-sm font-black text-white drop-shadow-[1px_1px_0_#000]">
-                    {count}/{MAX_REAGENT_CAP}
+                  <Image
+                    src="/ui/Inventory_slot.png"
+                    alt="Empty Slot"
+                    fill
+                    className="object-fill pointer-events-none"
+                    style={{ imageRendering: 'pixelated' }}
+                    unoptimized
+                  />
+                  <span className="relative z-10 text-amber-900/30 text-[8px] sm:text-xs font-mono select-none">
+                    +
                   </span>
-
-                  {/* Equipped Tag Badge */}
-                  {isEquipped && (
-                    <span className="absolute top-0.5 left-0.5 bg-emerald-500 text-black text-[6px] sm:text-[7.5px] font-black uppercase px-0.5 sm:px-1 rounded shadow-sm border border-black animate-pulse">
-                      EQ
-                    </span>
-                  )}
-
-                  {/* Pixel Cursor Corner Brackets when selected */}
-                  {isSelected && (
-                    <>
-                      <div className="absolute -top-1 -left-1 w-1.5 h-1.5 sm:w-2 sm:h-2 border-t-2 border-l-2 border-amber-300" />
-                      <div className="absolute -top-1 -right-1 w-1.5 h-1.5 sm:w-2 sm:h-2 border-t-2 border-r-2 border-amber-300" />
-                      <div className="absolute -bottom-1 -left-1 w-1.5 h-1.5 sm:w-2 sm:h-2 border-b-2 border-l-2 border-amber-300" />
-                      <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 sm:w-2 sm:h-2 border-b-2 border-r-2 border-amber-300" />
-                    </>
-                  )}
-                </button>
-              );
-            })}
-
-            {/* Render 15 empty/locked grid slots */}
-            {Array.from({ length: 15 }).map((_, idx) => (
-              <div
-                key={idx}
-                className="aspect-square bg-[#0f172a]/70 border-2 border-[#1e293b] rounded-lg flex items-center justify-center text-slate-700 select-none"
-              >
-                <span className="text-[9px] sm:text-[10px] opacity-20 font-mono">+</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Selected Item Details & Command Action Panel */}
-        {activeSelectedItem && (
-          <div className="mt-2.5 sm:mt-3 bg-[#111827] border-2 border-[#3b4763] rounded-xl p-2.5 sm:p-4 relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-3">
-            <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
-              <div className="text-2xl sm:text-4xl p-1.5 sm:p-2 bg-[#1e293b] border-2 border-[#3b4763] rounded-xl shrink-0">
-                {activeSelectedItem.icon}
-              </div>
-              <div className="space-y-0.5 min-w-0 flex-1 font-sans">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="font-bold text-amber-300 font-bytebounce text-sm sm:text-lg tracking-wide">{activeSelectedItem.name}</h4>
-                  <span className="text-[7.5px] sm:text-[9px] font-black uppercase tracking-wider bg-white/10 px-1 sm:px-1.5 py-0.5 rounded text-amber-200">
-                    Stock: {inventory[activeSelectedItem.id] || 0}/{MAX_REAGENT_CAP}
-                  </span>
-                  {equippedItem === activeSelectedItem.id && (
-                    <span className="text-[7.5px] sm:text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-black px-1 sm:px-1.5 py-0.5 rounded border border-black animate-pulse">
-                      EQUIPPED
-                    </span>
-                  )}
                 </div>
-                <p className="text-[10px] sm:text-xs text-slate-200 font-semibold leading-tight">{activeSelectedItem.desc}</p>
-                <p className="text-[9.5px] sm:text-[11px] font-bold text-amber-400 leading-tight">✨ {activeSelectedItem.effect}</p>
-              </div>
-            </div>
-
-            {/* RPG Action Buttons */}
-            <div className="flex sm:flex-col gap-1.5 sm:gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-[#374151] sm:pl-3">
-              {equippedItem === activeSelectedItem.id ? (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => setEquippedItem(null)}
-                  className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white font-bytebounce text-xs sm:text-sm uppercase tracking-wider h-7 sm:h-8 px-2.5 sm:px-3 border border-red-400 shadow-md whitespace-nowrap"
-                >
-                  Unequip
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  disabled={(inventory[activeSelectedItem.id] || 0) <= 0}
-                  onClick={() => setEquippedItem(activeSelectedItem.id)}
-                  className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-black font-bytebounce text-xs sm:text-sm uppercase tracking-wider h-7 sm:h-8 px-2.5 sm:px-3 border border-emerald-300 disabled:opacity-30 shadow-md whitespace-nowrap"
-                >
-                  Equip
-                </Button>
-              )}
-
-              <Button
-                size="sm"
-                disabled={(inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP}
-                onClick={() => handleBuyReagent(activeSelectedItem.id, activeSelectedItem.name, activeSelectedItem.cost)}
-                className="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-black font-bytebounce text-xs sm:text-sm uppercase tracking-wider h-7 sm:h-8 px-2.5 sm:px-3 border border-amber-300 shadow-md flex items-center justify-center gap-1 whitespace-nowrap disabled:opacity-40"
-              >
-                {(inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP ? (
-                  `MAX CAP (5/5)`
-                ) : (
-                  `Buy +1 (⚡${activeSelectedItem.cost})`
-                )}
-              </Button>
+              ))}
             </div>
           </div>
-        )}
+
+          {/* Bottom Divider */}
+          <div className="relative z-10 w-full h-[1.5px] sm:h-[2px] bg-[#3d1a16] opacity-90" />
+
+          {/* Bottom Selected Item / Shop Action Panel */}
+          <div className="relative z-10 w-full min-h-[58px] min-[360px]:min-h-[64px] sm:min-h-[78px] p-1.5 min-[360px]:p-2 sm:p-2.5 flex items-center shrink-0">
+            <Image
+              src="/ui/Inventory_shop_bg.png"
+              alt="Inventory Shop Panel"
+              fill
+              className="object-fill"
+              style={{ imageRendering: 'pixelated' }}
+              unoptimized
+            />
+            {activeSelectedItem ? (
+              <div className="relative z-10 flex items-center justify-between gap-1.5 sm:gap-2.5 w-full">
+                {/* Left details */}
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                  <span className="text-xl min-[360px]:text-2xl sm:text-3xl shrink-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                    {activeSelectedItem.icon}
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                      <h4 className="font-bold text-amber-300 font-bytebounce text-[11px] min-[360px]:text-xs sm:text-base tracking-wide leading-tight truncate">
+                        {activeSelectedItem.name}
+                      </h4>
+                      <span className="text-[6.5px] min-[360px]:text-[7.5px] sm:text-[8.5px] font-black uppercase tracking-wider bg-black/40 px-1 py-0.5 rounded text-amber-200 border border-amber-500/30 leading-none">
+                        Stock: {inventory[activeSelectedItem.id] || 0}/{MAX_REAGENT_CAP}
+                      </span>
+                      {equippedItem === activeSelectedItem.id && (
+                        <span className="text-[6.5px] min-[360px]:text-[7.5px] sm:text-[8.5px] font-black uppercase tracking-wider bg-emerald-500 text-black px-1 py-0.5 rounded border border-black leading-none animate-pulse">
+                          EQUIPPED
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[7.5px] min-[360px]:text-[8.5px] sm:text-[10px] text-amber-100/90 font-sans leading-tight line-clamp-1">
+                      {activeSelectedItem.desc}
+                    </p>
+                    <p className="text-[7px] min-[360px]:text-[8px] sm:text-[9.5px] font-bold text-amber-300 leading-tight truncate">
+                      ✨ {activeSelectedItem.effect}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Action buttons */}
+                <div className="flex flex-col gap-1 sm:gap-1.5 shrink-0">
+                  {equippedItem === activeSelectedItem.id ? (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setEquippedItem(null)}
+                      className="bg-red-600 hover:bg-red-700 text-white font-bytebounce text-[9px] min-[360px]:text-[10px] sm:text-xs uppercase tracking-wider h-5.5 min-[360px]:h-6 sm:h-7 px-1.5 sm:px-2.5 border border-red-400 shadow-md whitespace-nowrap active:scale-95 leading-none"
+                    >
+                      Unequip
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      disabled={(inventory[activeSelectedItem.id] || 0) <= 0}
+                      onClick={() => setEquippedItem(activeSelectedItem.id)}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-black font-bytebounce text-[9px] min-[360px]:text-[10px] sm:text-xs uppercase tracking-wider h-5.5 min-[360px]:h-6 sm:h-7 px-1.5 sm:px-2.5 border border-emerald-300 disabled:opacity-30 shadow-md whitespace-nowrap active:scale-95 leading-none"
+                    >
+                      Equip
+                    </Button>
+                  )}
+
+                  <Button
+                    size="sm"
+                    disabled={(inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP}
+                    onClick={() => handleBuyReagent(activeSelectedItem.id, activeSelectedItem.name, activeSelectedItem.cost)}
+                    className="bg-amber-500 hover:bg-amber-600 text-black font-bytebounce text-[9px] min-[360px]:text-[10px] sm:text-xs uppercase tracking-wider h-5.5 min-[360px]:h-6 sm:h-7 px-1.5 sm:px-2.5 border border-amber-300 shadow-md flex items-center justify-center gap-0.5 whitespace-nowrap disabled:opacity-40 active:scale-95 leading-none"
+                  >
+                    {(inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP ? (
+                      `MAX (5/5)`
+                    ) : (
+                      `Buy +1 (⚡${activeSelectedItem.cost})`
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -1861,10 +1959,18 @@ export default function LearningQuest() {
                     variant="ghost"
                     size="icon"
                     onClick={() => setInventoryDialogOpen(true)}
-                    className="rounded-full text-amber-300 hover:bg-white/20 h-8 w-8 relative"
+                    className="rounded-full text-amber-300 hover:bg-white/20 h-8 w-8 relative flex items-center justify-center p-1 active:scale-95 transition-transform"
                     title="Open Reagent Inventory"
                   >
-                    <Package className="h-4 w-4" />
+                    <Image
+                      src="/ui/Inventory_icon.png"
+                      alt="Inventory"
+                      width={22}
+                      height={22}
+                      className="w-5 h-5 object-contain"
+                      style={{ imageRendering: 'pixelated' }}
+                      unoptimized
+                    />
                     {equippedItem && (
                       <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-black animate-pulse" />
                     )}
