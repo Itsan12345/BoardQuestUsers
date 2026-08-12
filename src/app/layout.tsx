@@ -5,12 +5,6 @@ import '@/styles/tour-theme.css';
 import './globals.css';
 import {Toaster} from '@/components/ui/toaster';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/navigation/AppSidebar';
-import { BottomNav } from '@/components/navigation/BottomNav';
-import { ShieldCheck } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { LayoutContent } from '@/components/navigation/LayoutContent';
 

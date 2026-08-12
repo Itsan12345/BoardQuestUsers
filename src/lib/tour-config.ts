@@ -520,16 +520,16 @@ export function startTourByKey(tourKey: string, force: boolean = false): boolean
       let targetSelector = step.element;
       let targetPopover = { ...step.popover };
 
-      // If targeting sidebar nav on mobile, adapt to bottom nav if available
+      // If targeting sidebar nav on mobile, adapt to mobile menu trigger if available
       if (targetSelector === '#tour-sidebar-nav' && isMobile) {
-        const bottomNavEl = document.querySelector('#tour-bottom-nav');
-        if (bottomNavEl) {
-          targetSelector = '#tour-bottom-nav';
+        const mobileTriggerEl = document.querySelector('#tour-mobile-nav-trigger');
+        if (mobileTriggerEl) {
+          targetSelector = '#tour-mobile-nav-trigger';
           targetPopover = {
             title: '🧭 Mobile Navigation',
-            description: 'Tap between Curriculum, Quests, Rankings, and your Profile anytime.',
-            side: 'top',
-            align: 'center',
+            description: 'Tap the menu to jump between your Study Curriculum, Quest Arena, Leaderboard, and Profile anytime.',
+            side: 'bottom',
+            align: 'start',
           };
         }
       }

@@ -4,8 +4,10 @@
 import { usePathname } from 'next/navigation';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/navigation/AppSidebar';
-import { BottomNav } from '@/components/navigation/BottomNav';
+import { MobileFloatingSidebar } from '@/components/navigation/MobileFloatingSidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -16,16 +18,17 @@ import { NotificationBell } from '@/components/navigation/NotificationBell';
 import { TourButton } from '@/components/tour/TourButton';
 import { TourProvider } from '@/components/tour/TourProvider';
 
-export function LayoutContent({ 
-  children, 
-  isLoggedIn 
-}: { 
-  children: React.ReactNode; 
+export function LayoutContent({
+  children,
+  isLoggedIn
+}: {
+  children: React.ReactNode;
   isLoggedIn: boolean;
 }) {
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [progress, setProgress] = useState<{ currentLevelXp: number, xpForNextLevel: number, percentage: number } | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -51,30 +54,42 @@ export function LayoutContent({
       window.removeEventListener('bq_stats_updated', handleUpdate);
     };
   }, [isLoggedIn, pathname]); // Re-fetch on navigation and events
-  
+
   // Hide navigation on auth pages
   const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password';
-  
+
   if (isAuthPage) {
     return <div className="w-full min-h-screen">{children}</div>;
   }
 
   return (
     <TourProvider isLoggedIn={isLoggedIn}>
-      <div className="relative flex flex-col min-h-screen w-full pb-20 lg:pb-0">
+      <div className="relative flex flex-col min-h-screen w-full">
         {/* Professional Overlapping Top Navigation */}
         <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-3 sm:px-4 lg:px-6 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
+            {/* Desktop Sidebar Toggle */}
             <SidebarTrigger className="text-muted-foreground hover:text-primary transition-colors hidden lg:flex" />
-            <Link href="/" className="flex items-center gap-1 hover:opacity-80 transition-opacity min-w-0">
-              <div className="p-1 sm:p-1.5 rounded-lg shrink-0">
-                <img
-                  src="/images/boardquestlogo2.png"
-                  alt="BoardQuest Logo"
-                  className="h-5 w-5 sm:h-6 sm:w-6"
-                />
-              </div>
-              <span className="font-black text-foreground leading-none text-sm sm:text-base lg:text-lg truncate" style={{ fontFamily: "'Akira Expanded', sans-serif" }}>BoardQuest</span>
+
+            {/* Mobile Floating Menu Hamburger Trigger */}
+            <Button
+              id="tour-mobile-nav-trigger"
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden text-neutral-700 hover:text-primary hover:bg-neutral-100 h-9 w-9 -ml-1 rounded-xl transition-colors"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+
+            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <img
+                src="/images/boardquestlogo2.png"
+                alt="BoardQuest Logo"
+                className=" h-7 w-7 sm:h-7 sm:w-7 mt-2"
+              />
+              <span className="font-black text-foreground leading-none text-base lg:text-lg hidden sm:inline-block" style={{ fontFamily: "'Akira Expanded', sans-serif" }}>BoardQuest</span>
             </Link>
           </div>
 
@@ -106,10 +121,12 @@ export function LayoutContent({
           </main>
         </div>
 
-        {/* Bottom Nav visible only on mobile/tablet */}
-        <div className="lg:hidden">
-          <BottomNav />
-        </div>
+        {/* Floating Sidebar Navigation on Mobile/Tablet */}
+        <MobileFloatingSidebar
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          user={user}
+        />
       </div>
     </TourProvider>
   );
