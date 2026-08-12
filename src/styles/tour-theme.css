@@ -224,3 +224,62 @@
     font-size: 11px !important;
   }
 }
+
+/* ==========================================================================
+   Dark Mode Overrides for Tour Popovers
+   ========================================================================== */
+.dark .driver-popover.bq-tour-popover {
+  background: #171922 !important;
+  color: #f3f4f6 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .driver-popover.bq-tour-popover .driver-popover-arrow {
+  border-color: #171922 !important;
+}
+
+.dark .driver-popover.bq-tour-popover .driver-popover-title {
+  color: #ffffff !important;
+}
+
+.dark .driver-popover.bq-tour-popover .driver-popover-description {
+  color: #9ca3af !important;
+}
+
+.dark .driver-popover.bq-tour-popover .driver-popover-close-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+}
+
+.dark .driver-popover.bq-tour-popover .driver-popover-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.dark .driver-popover.bq-tour-popover .driver-popover-footer {
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .driver-popover.bq-tour-popover .driver-popover-progress-text {
+  color: #fca5a5 !important;
+  background: rgba(185, 28, 28, 0.25) !important;
+  border-color: rgba(185, 28, 28, 0.4) !important;
+}
+
+.dark .driver-popover.bq-tour-popover .driver-popover-prev-btn {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.dark .driver-popover.bq-tour-popover .driver-popover-prev-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.dark .driver-stage {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.55), 0 0 30px rgba(239, 68, 68, 0.3) !important;
+}
+

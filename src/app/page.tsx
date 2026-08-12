@@ -129,7 +129,7 @@ function DashboardContent() {
                     {user?._count?.lessonCompletions || 0}/13 MODULES COMPLETED
                   </span>
                 </div>
-                <div className="w-full h-4 bg-slate-200 rounded-full overflow-hidden">
+                <div className="w-full h-4 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${totalMastery}%` }} />
                 </div>
               </div>
@@ -205,9 +205,9 @@ function DashboardContent() {
                       <span>Today's Progress</span>
                       <span className="font-semibold text-foreground">{percent}% Completed</span>
                     </div>
-                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                    <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border/60">
                       <div
-                        className="h-full bg-gradient-to-r from-[#8B0000]/80 to-[#8B0000] rounded-full transition-all duration-700"
+                        className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-700"
                         style={{ width: `${percent}%` }}
                       />
                     </div>
@@ -235,16 +235,16 @@ function DashboardContent() {
 
                   if (mission.isStreakMission) {
                     MissionIcon = Flame;
-                    iconBgColor = 'bg-orange-100';
-                    iconColor = 'text-orange-600';
+                    iconBgColor = 'bg-orange-100 dark:bg-orange-950/30';
+                    iconColor = 'text-orange-600 dark:text-orange-400';
                   } else if (mission.priority === 1) {
                     MissionIcon = Trophy;
-                    iconBgColor = 'bg-red-100';
-                    iconColor = 'text-primary';
+                    iconBgColor = 'bg-red-100 dark:bg-red-950/30';
+                    iconColor = 'text-primary dark:text-red-400';
                   } else if (mission.priority === 2) {
                     MissionIcon = Zap;
-                    iconBgColor = 'bg-yellow-100';
-                    iconColor = 'text-yellow-600';
+                    iconBgColor = 'bg-yellow-100 dark:bg-yellow-950/30';
+                    iconColor = 'text-yellow-600 dark:text-yellow-400';
                   }
 
                   return (

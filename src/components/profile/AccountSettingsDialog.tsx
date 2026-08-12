@@ -43,7 +43,11 @@ import {
   Check,
   Calendar,
   Compass,
+  Sun,
+  Moon,
+  Palette,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useToast } from '@/hooks/use-toast';
 import {
   updateUserProfileDetails,
@@ -79,6 +83,7 @@ export function AccountSettingsDialog({
   onProfileUpdated,
 }: AccountSettingsDialogProps) {
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('profile');
 
   // Form states - Profile
@@ -526,42 +531,49 @@ export function AccountSettingsDialog({
             <TabsTrigger
               id="tour-settings-tab-profile"
               value="profile"
-              className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <User className="w-3.5 h-3.5" /> Profile
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-goals"
               value="goals"
-              className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <Target className="w-3.5 h-3.5" /> Goals
             </TabsTrigger>
             <TabsTrigger
+              id="tour-settings-tab-appearance"
+              value="appearance"
+              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+            >
+              <Palette className="w-3.5 h-3.5" /> Appearance
+            </TabsTrigger>
+            <TabsTrigger
               id="tour-settings-tab-audio"
               value="audio"
-              className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <Volume2 className="w-3.5 h-3.5" /> Audio & FX
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-alerts"
               value="alerts"
-              className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <Bell className="w-3.5 h-3.5" /> Alerts
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-security"
               value="security"
-              className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <Lock className="w-3.5 h-3.5" /> Security
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-records"
               value="records"
-              className="flex-1 min-w-[110px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-[#8B0000] data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" /> Records
             </TabsTrigger>
@@ -989,6 +1001,120 @@ export function AccountSettingsDialog({
                   <strong className="block font-semibold">Academic Mentor Verification:</strong>
                   Your study transcripts can be shared with review center professors and mentors to verify diagnostic mastery prior to the board exams.
                 </div>
+              </div>
+            </div>
+          </TabsContent>
+          {/* TAB 7: Appearance & Theme Mode */}
+          <TabsContent value="appearance" className="pt-4 space-y-5">
+            <div className="space-y-4">
+              <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-primary" />
+                    <Label className="text-sm font-semibold text-foreground">Theme & Visual Experience</Label>
+                  </div>
+                  <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold capitalize">
+                    {theme || 'system'} mode active
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Select how BoardQuest looks across your desktop, tablet, and mobile devices.
+                </p>
+              </div>
+
+              {/* 3 Theme Choice Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                {/* Light Mode Card */}
+                <button
+                  type="button"
+                  onClick={() => setTheme('light')}
+                  className={cn(
+                    "relative p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 group active:scale-[0.98]",
+                    theme === 'light'
+                      ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md"
+                      : "bg-muted/20 border-border hover:bg-muted/40 hover:border-border/80"
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600">
+                      <Sun className="w-5 h-5" />
+                    </div>
+                    {theme === 'light' && (
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-bold">Active</Badge>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                      Light Mode
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      Crisp, high-clarity off-white theme ideal for well-lit daytime study environments.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Dark Mode Card */}
+                <button
+                  type="button"
+                  onClick={() => setTheme('dark')}
+                  className={cn(
+                    "relative p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 group active:scale-[0.98]",
+                    theme === 'dark'
+                      ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md"
+                      : "bg-muted/20 border-border hover:bg-muted/40 hover:border-border/80"
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                      <Moon className="w-5 h-5" />
+                    </div>
+                    {theme === 'dark' && (
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-bold">Active</Badge>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                      Dark Mode
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      Sophisticated obsidian palette crafted for eye comfort during late-night questing.
+                    </p>
+                  </div>
+                </button>
+
+                {/* System Auto Card */}
+                <button
+                  type="button"
+                  onClick={() => setTheme('system')}
+                  className={cn(
+                    "relative p-4 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 group active:scale-[0.98]",
+                    theme === 'system'
+                      ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md"
+                      : "bg-muted/20 border-border hover:bg-muted/40 hover:border-border/80"
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="w-10 h-10 rounded-xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-muted-foreground">
+                      <Laptop className="w-5 h-5" />
+                    </div>
+                    {theme === 'system' && (
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-bold">Active</Badge>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                      System Preference
+                    </h4>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      Automatically synchronizes with your device's operating system schedule.
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              <div className="p-3 bg-muted/30 border border-border rounded-xl flex items-center gap-2 text-xs text-muted-foreground">
+                <Check className="w-4 h-4 text-primary shrink-0" />
+                <span>Theme changes take effect instantly across all tabs and components without page reload.</span>
               </div>
             </div>
           </TabsContent>

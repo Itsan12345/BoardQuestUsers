@@ -25,20 +25,76 @@
     --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
-    --primary: 0 72% 35%; /* Deep Maroon */
+    --primary: 0 72% 35%; /* Deep Maroon #8B0000 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
+    --secondary: 0 0% 95%;
     --secondary-foreground: 0 72% 20%;
-    --muted: 0 0% 92%;
+    --muted: 0 0% 93%;
     --muted-foreground: 0 0% 45%;
     --accent: 0 72% 45%; /* Crimson/Lighter Maroon */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
     --ring: 0 72% 35%;
     --radius: 1.25rem;
+
+    /* Sidebar Variables (Light) */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 0 72% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 95%;
+    --sidebar-accent-foreground: 0 72% 20%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 72% 35%;
+
+    /* Chart Variables (Light) */
+    --chart-1: 0 72% 35%;
+    --chart-2: 217 91% 60%;
+    --chart-3: 142 71% 45%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 280 65% 60%;
+  }
+
+  .dark {
+    --background: 224 16% 9%; /* Deep Obsidian #111318 */
+    --foreground: 0 0% 96%;
+    --card: 224 16% 12%; /* Elevated Onyx #171922 */
+    --card-foreground: 0 0% 98%;
+    --popover: 224 16% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 75% 48%; /* Vibrant Crimson-Maroon for Dark Mode */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 224 14% 16%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 224 14% 17%;
+    --muted-foreground: 220 9% 65%;
+    --accent: 0 70% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 224 14% 20%;
+    --input: 224 14% 20%;
+    --ring: 0 75% 48%;
+
+    /* Sidebar Variables (Dark) */
+    --sidebar-background: 224 16% 10%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 75% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 14% 16%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 224 14% 18%;
+    --sidebar-ring: 0 75% 48%;
+
+    /* Chart Variables (Dark) */
+    --chart-1: 0 75% 55%;
+    --chart-2: 217 91% 65%;
+    --chart-3: 142 71% 50%;
+    --chart-4: 38 92% 55%;
+    --chart-5: 280 65% 65%;
   }
 }
 

@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { sendVerificationCode, verifyEmailAndSignUp } from '@/app/actions/auth';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -255,9 +256,12 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-      <Card className="max-w-md w-full border border-border shadow-2xl rounded-[2.5rem] overflow-hidden bg-background overflow-visible">
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+      <Card className="max-w-md w-full border border-border shadow-2xl rounded-[2.5rem] bg-card overflow-visible">
         <CardHeader className="p-8 pb-4 text-center space-y-1">
           <div className="flex items-center justify-center">
             <Image

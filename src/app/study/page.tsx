@@ -107,6 +107,7 @@ const ICON_MAP: Record<string, any> = {
 export default function StudyPage() {
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
+  const [focusSubject, setFocusSubject] = useState<string | null>(null);
   const [curriculum, setCurriculum] = useState(INITIAL_CURRICULUM);
   const [selectedCategoryId, setSelectedCategoryId] = useState(INITIAL_CURRICULUM[0].id);
   const [targetDates, setTargetDates] = useState<Record<string, Date>>({});
@@ -177,6 +178,10 @@ export default function StudyPage() {
       const savedFocus = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null;
       const prioritySubject = urlSubject || savedFocus;
 
+      if (savedFocus) {
+        setFocusSubject(savedFocus);
+      }
+
       if (prioritySubject) {
         dynamicCurriculum.sort((a: any, b: any) => {
           if (a.title.toLowerCase() === prioritySubject.toLowerCase()) return -1;
@@ -227,9 +232,19 @@ export default function StudyPage() {
     checkDesktop();
     window.addEventListener('resize', checkDesktop);
 
+    const handleSettingsUpdate = () => {
+      try {
+        const updatedFocus = localStorage.getItem('bq_pref_focus_subject');
+        setFocusSubject(updatedFocus);
+      } catch {}
+    };
+
+    window.addEventListener('bq_settings_updated', handleSettingsUpdate);
+
     return () => {
       clearInterval(metricsRefreshInterval);
       window.removeEventListener('resize', checkDesktop);
+      window.removeEventListener('bq_settings_updated', handleSettingsUpdate);
     };
   }, []);
 
@@ -391,7 +406,7 @@ export default function StudyPage() {
                       )}>
                         {cat.title}
                       </p>
-                      {typeof window !== 'undefined' && localStorage.getItem('bq_pref_focus_subject')?.toLowerCase() === cat.title.toLowerCase() && (
+                      {mounted && focusSubject && focusSubject.toLowerCase() === cat.title.toLowerCase() && (
                         <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[8px] px-1.5 py-0 shrink-0">
                           ⭐ Focus
                         </Badge>

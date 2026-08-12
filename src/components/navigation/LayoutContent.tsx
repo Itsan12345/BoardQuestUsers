@@ -17,6 +17,7 @@ import { getLevelProgress } from '@/lib/badge-system';
 import { NotificationBell } from '@/components/navigation/NotificationBell';
 import { TourButton } from '@/components/tour/TourButton';
 import { TourProvider } from '@/components/tour/TourProvider';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 export function LayoutContent({
   children,
@@ -59,14 +60,14 @@ export function LayoutContent({
   const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password';
 
   if (isAuthPage) {
-    return <div className="w-full min-h-screen">{children}</div>;
+    return <div className="w-full min-h-screen bg-background">{children}</div>;
   }
 
   return (
     <TourProvider isLoggedIn={isLoggedIn}>
-      <div className="relative flex flex-col min-h-screen w-full">
+      <div className="relative flex flex-col min-h-screen w-full bg-background text-foreground">
         {/* Professional Overlapping Top Navigation */}
-        <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-3 sm:px-4 lg:px-6 shadow-sm">
+        <header className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-border bg-background/90 backdrop-blur-md px-3 sm:px-4 lg:px-6 shadow-sm transition-colors">
           <div className="flex items-center gap-1.5 sm:gap-4 min-w-0">
             {/* Desktop Sidebar Toggle */}
             <SidebarTrigger className="text-muted-foreground hover:text-primary transition-colors hidden lg:flex" />
@@ -77,7 +78,7 @@ export function LayoutContent({
               variant="ghost"
               size="icon"
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden text-neutral-700 hover:text-primary hover:bg-neutral-100 h-9 w-9 -ml-1 rounded-xl transition-colors"
+              className="lg:hidden text-foreground hover:text-primary hover:bg-muted h-9 w-9 -ml-1 rounded-xl transition-colors"
               aria-label="Open navigation menu"
             >
               <Menu className="h-5 w-5" />
@@ -93,7 +94,10 @@ export function LayoutContent({
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-3.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-3 shrink-0">
+            {/* Theme Toggle (Desktop Only - Mobile uses Floating Sidebar) */}
+            <ThemeToggle className="hidden lg:inline-flex" />
+
             {/* Interactive Feature Guide Tour Button */}
             <TourButton />
 

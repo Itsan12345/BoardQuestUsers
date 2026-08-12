@@ -202,16 +202,16 @@ function PerformanceContent() {
             <p className="text-3xl font-black text-primary">{avgMastery}%</p>
           </div>
         </Card>
-        <Card className="border border-border shadow-md rounded-xl bg-gradient-to-br from-blue-100/40 to-blue-50 p-4">
+        <Card className="border border-border shadow-md rounded-xl bg-gradient-to-br from-blue-100/40 to-blue-50 dark:from-blue-950/40 dark:to-blue-900/20 p-4">
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase text-blue-700/60">Completion</p>
-            <p className="text-3xl font-black text-blue-700">{avgCompletion}%</p>
+            <p className="text-[10px] font-bold uppercase text-blue-700/60 dark:text-blue-400/60">Completion</p>
+            <p className="text-3xl font-black text-blue-700 dark:text-blue-400">{avgCompletion}%</p>
           </div>
         </Card>
-        <Card className="border border-border shadow-md rounded-xl bg-gradient-to-br from-green-100/40 to-green-50 p-4">
+        <Card className="border border-border shadow-md rounded-xl bg-gradient-to-br from-green-100/40 to-green-50 dark:from-green-950/40 dark:to-green-900/20 p-4">
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase text-green-700/60">Mastered</p>
-            <p className="text-3xl font-black text-green-700">{masteredCount}/{fullMastery.length}</p>
+            <p className="text-[10px] font-bold uppercase text-green-700/60 dark:text-green-400/60">Mastered</p>
+            <p className="text-3xl font-black text-green-700 dark:text-green-400">{masteredCount}/{fullMastery.length}</p>
           </div>
         </Card>
       </div>
@@ -237,32 +237,34 @@ function PerformanceContent() {
                   data={radarData}
                 >
                   <PolarGrid
-                    stroke="#d1d5db"
+                    stroke="currentColor"
                     strokeWidth={1}
-                    style={{ opacity: 0.6 }}
+                    className="text-muted-foreground/30"
                   />
                   <PolarAngleAxis
                     dataKey="subject"
                     tick={{
-                      fill: '#6b7280',
+                      fill: 'currentColor',
                       fontSize: 13,
                       fontWeight: 500,
                       fontFamily: "'Poppins', sans-serif"
                     }}
+                    className="text-muted-foreground"
                     tickLine={false}
                   />
                   <PolarRadiusAxis
                     angle={90}
                     domain={[0, 100]}
                     tick={false}
-                    axisLine={{ stroke: '#e5e7eb', strokeWidth: 1 }}
+                    axisLine={{ stroke: 'currentColor', strokeWidth: 1 }}
+                    className="text-muted-foreground/20"
                   />
                   <Radar
                     name="Mastery"
                     dataKey="mastery"
-                    stroke="#a85a6a"
-                    fill="#a85a6a"
-                    fillOpacity={0.6}
+                    stroke="hsl(var(--primary))"
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.45}
                     isAnimationActive={true}
                   />
                 </RadarChart>
@@ -396,11 +398,11 @@ function PerformanceContent() {
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={performanceHistory}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 12 }} />
-                  <YAxis domain={[0, 100]} tick={{ fill: '#6b7280' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" />
+                  <XAxis dataKey="subject" tick={{ fill: 'currentColor', fontSize: 12 }} className="text-muted-foreground" />
+                  <YAxis domain={[0, 100]} tick={{ fill: 'currentColor' }} className="text-muted-foreground" />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--popover-foreground))', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)' }}
                     formatter={(value) => `${value}%`}
                   />
                   <Bar dataKey="avgAccuracy" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />

@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { sendPasswordResetCode, verifyAndResetPassword } from '@/app/actions/auth';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { cn } from '@/lib/utils';
 
 export default function ForgotPasswordPage() {
@@ -254,10 +255,13 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] flex items-center justify-center p-4 py-8">
+    <div className="relative min-h-screen bg-background flex items-center justify-center p-4 py-8">
       <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
 
-      <Card className="max-w-md w-full border border-border shadow-2xl rounded-[2.5rem] overflow-hidden bg-background">
+      <Card className="max-w-md w-full border border-border shadow-2xl rounded-[2.5rem] overflow-hidden bg-card">
         <CardHeader className="p-8 pb-4 text-center space-y-1">
           <div className="flex items-center justify-center">
             <Image

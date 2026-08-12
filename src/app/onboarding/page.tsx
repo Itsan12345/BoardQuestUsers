@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
 import { saveStudyPlan } from '@/app/actions/study-plan';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 const FACULTY_DEADLINE = new Date(2025, 5, 30); // June 30, 2025
 
@@ -109,8 +110,11 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f8f8] flex items-center justify-center p-4 py-12">
-      <Card className="max-w-2xl w-full border border-border shadow-2xl rounded-[2.5rem] overflow-hidden bg-background">
+    <div className="relative min-h-screen bg-background flex items-center justify-center p-4 py-12">
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+      <Card className="max-w-2xl w-full border border-border shadow-2xl rounded-[2.5rem] overflow-hidden bg-card">
         <div className="h-2 bg-primary" />
         <CardHeader className="p-8 lg:p-12 text-center space-y-4">
           <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">

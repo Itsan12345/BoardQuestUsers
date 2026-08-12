@@ -7,6 +7,7 @@ import {Toaster} from '@/components/ui/toaster';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { cookies } from 'next/headers';
 import { LayoutContent } from '@/components/navigation/LayoutContent';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
 export const metadata: Metadata = {
   title: 'BoardQuest | MedTech Gamified Review',
@@ -22,20 +23,28 @@ export default async function RootLayer({
   const userId = cookieStore.get('user_id')?.value;
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased min-h-screen bg-background">
-        <SidebarProvider>
-          <LayoutContent isLoggedIn={!!userId}>
-            {children}
-          </LayoutContent>
-          <Toaster />
-        </SidebarProvider>
+      <body className="font-body antialiased min-h-screen bg-background text-foreground transition-colors duration-200">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          <SidebarProvider>
+            <LayoutContent isLoggedIn={!!userId}>
+              {children}
+            </LayoutContent>
+            <Toaster />
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+

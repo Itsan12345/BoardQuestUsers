@@ -355,9 +355,9 @@ function ProfileContent() {
                         {progress.currentLevelXp} <span className="text-muted-foreground">/ {progress.xpForNextLevel}</span>
                       </span>
                     </div>
-                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/60 shadow-inner">
+                    <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden border border-border/60 shadow-inner">
                       <div 
-                        className="h-full bg-gradient-to-r from-[#8B0000]/80 to-[#8B0000] rounded-full transition-all duration-1000 ease-out"
+                        className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-1000 ease-out"
                         style={{ width: `${progress.percentage}%` }}
                       />
                     </div>
@@ -465,22 +465,22 @@ function ProfileContent() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
-                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                <div className="flex items-center justify-between p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
                   <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 shrink-0" />
+                    <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400 shrink-0" />
                     <span className="font-semibold text-xs sm:text-sm text-foreground">{userProfile.streak} Days Streak</span>
                   </div>
-                  <Badge className="bg-yellow-100 text-yellow-700 font-semibold text-[10px]">+20% XP</Badge>
+                  <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-400 font-semibold text-[10px]">+20% XP</Badge>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs sm:text-sm min-w-0">
                     <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
-                    <span className="text-slate-600 font-medium truncate" title={userProfile.email}>{userProfile.email}</span>
+                    <span className="text-foreground/80 font-medium truncate" title={userProfile.email}>{userProfile.email}</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs sm:text-sm">
                     <CalendarIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
-                    <span className="text-slate-600 font-medium">
+                    <span className="text-foreground/80 font-medium">
                       Joined {format(new Date(userProfile.createdAt), 'MMMM yyy')}
                     </span>
                   </div>
@@ -578,9 +578,9 @@ function ProfileContent() {
                         {[...Array(lockedCount)].map((_, i) => (
                           <div
                             key={`locked-${i}`}
-                            className="aspect-[0.95/1] rounded-[18px] sm:rounded-[22px] bg-[#EBEBEB] border-2 border-transparent flex items-center justify-center p-3 sm:p-4"
+                            className="aspect-[0.95/1] rounded-[18px] sm:rounded-[22px] bg-muted/40 border-2 border-border/50 flex items-center justify-center p-3 sm:p-4"
                           >
-                            <Shield className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-[#8B0000] stroke-[2.2]" />
+                            <Shield className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-primary/40 stroke-[2.2]" />
                           </div>
                         ))}
                       </>
