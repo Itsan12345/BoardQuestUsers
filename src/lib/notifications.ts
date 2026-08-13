@@ -1,6 +1,6 @@
 "use client";
 
-export type NotificationType = 'streak_warning' | 'daily_goal' | 'milestone' | 'achievement';
+export type NotificationType = 'streak_warning' | 'streak_lost' | 'daily_goal' | 'milestone' | 'achievement';
 
 export interface AppNotification {
   id: string;
@@ -55,6 +55,26 @@ export function generateDynamicNotifications(user: any): AppNotification[] {
       actionLabel: 'Save Streak',
       isUrgent: true,
       read: readIds.includes(streakId),
+    });
+  }
+
+  // 1b. 💔 Daily Streak Lost / Broken Alert (When streak is broken and user hasn't played today)
+  if (streakAlertsEnabled && userStreak === 0 && todayQuestions === 0 && user?.streakBroken) {
+    const streakLostId = `streak_lost_${new Date().toISOString().slice(0, 10)}`;
+    const prevMsg = user?.previousStreak && user.previousStreak > 1
+      ? `Your ${user.previousStreak}-day study streak was lost because no review quest was completed yesterday.`
+      : `Your study streak was reset to 0 because no review quest was completed yesterday.`;
+
+    notifications.push({
+      id: streakLostId,
+      type: 'streak_lost',
+      title: '💔 Daily Streak Lost',
+      message: `${prevMsg} Complete a review quest today to ignite a brand new streak!`,
+      timestamp: 'Streak Broken',
+      link: '/quest',
+      actionLabel: 'Restart Streak',
+      isUrgent: true,
+      read: readIds.includes(streakLostId),
     });
   }
 

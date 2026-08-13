@@ -272,7 +272,13 @@ function DashboardContent() {
               <h4 className="font-semibold text-base sm:text-lg" style={{ fontFamily: "'Poppins', sans-serif" }}>Quest Streak</h4>
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="text-4xl sm:text-5xl font-bold" style={{ fontFamily: "'Poppins', sans-serif" }}>{user?.streak || 0}</div>
-                <div className="text-[10px] sm:text-xs font-normal uppercase leading-tight opacity-90" style={{ fontFamily: "'Poppins', sans-serif" }}>Days Active<br/> Consistent Review</div>
+                <div className="text-[10px] sm:text-xs font-normal uppercase leading-tight opacity-90" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  {user?.streak === 0 ? (
+                    <>Streak Reset<br/>Start Quest Today</>
+                  ) : (
+                    <>Days Active<br/>Consistent Review</>
+                  )}
+                </div>
               </div>
             </div>
           </Card>

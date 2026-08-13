@@ -68,19 +68,36 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
     }
 
     // Calculate streak dynamically before creating the new achievement
-    const lastAchievement = await prisma.achievement.findFirst({
-      where: { userId, type: 'quest' },
-      orderBy: { timestamp: 'desc' },
-    });
+    const [lastAchievement, lastExam] = await Promise.all([
+      prisma.achievement.findFirst({
+        where: { userId, type: 'quest' },
+        orderBy: { timestamp: 'desc' },
+        select: { timestamp: true }
+      }),
+      prisma.examResult.findFirst({
+        where: { userId },
+        orderBy: { timestamp: 'desc' },
+        select: { timestamp: true }
+      })
+    ]);
 
-    let newStreak = user.streak;
+    const lastTime = lastAchievement?.timestamp && lastExam?.timestamp
+      ? (new Date(lastAchievement.timestamp).getTime() > new Date(lastExam.timestamp).getTime() ? lastAchievement.timestamp : lastExam.timestamp)
+      : (lastAchievement?.timestamp || lastExam?.timestamp);
+
+    let newStreak = 1;
     const now = new Date();
     
-    if (lastAchievement) {
-      const diff = differenceInCalendarDays(now, lastAchievement.timestamp);
-      if (diff === 1) {
-        newStreak += 1;
-      } else if (diff > 1) {
+    if (lastTime) {
+      const diff = differenceInCalendarDays(now, new Date(lastTime));
+      if (diff === 0) {
+        // Already completed a quest/exam today: maintain current streak (at least 1)
+        newStreak = Math.max(1, user.streak || 0);
+      } else if (diff === 1) {
+        // Consecutive day: increment streak
+        newStreak = (user.streak || 0) + 1;
+      } else {
+        // Missed yesterday / more than 1 day passed: streak broken, starts fresh at 1
         newStreak = 1;
       }
     } else {

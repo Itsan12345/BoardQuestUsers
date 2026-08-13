@@ -32,12 +32,18 @@ export function LayoutContent({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    let isSubscribed = true;
+
     async function loadUser() {
       if (isLoggedIn) {
-        const profile = await getUserProfile();
-        if (profile) {
-          setUser(profile);
-          setProgress(getLevelProgress(profile.xp));
+        try {
+          const profile = await getUserProfile();
+          if (profile && isSubscribed) {
+            setUser(profile);
+            setProgress(getLevelProgress(profile.xp));
+          }
+        } catch (error) {
+          console.warn('Failed to load user profile in layout:', error);
         }
       }
     }
@@ -51,6 +57,7 @@ export function LayoutContent({
     window.addEventListener('bq_stats_updated', handleUpdate);
 
     return () => {
+      isSubscribed = false;
       window.removeEventListener('bq_settings_updated', handleUpdate);
       window.removeEventListener('bq_stats_updated', handleUpdate);
     };

@@ -4,9 +4,75 @@
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { startOfWeek } from 'date-fns';
+import { startOfWeek, differenceInCalendarDays } from 'date-fns';
 import bcrypt from 'bcryptjs';
 import clientPromise from '@/lib/mongodb-client';
+
+export interface StreakValidationResult {
+  streak: number;
+  streakBroken: boolean;
+  previousStreak?: number;
+}
+
+/**
+ * Validates and dynamically syncs the user's daily study streak.
+ * If the user has not completed a quest or exam within the 24-hour/daily cycle (daysDiff >= 2),
+ * the streak automatically resets to 0 in MongoDB and the returned state.
+ */
+export async function syncAndValidateUserStreak(userId: string, currentStreak: number): Promise<StreakValidationResult> {
+  try {
+    if (!userId) return { streak: 0, streakBroken: false };
+
+    const [lastAchievement, lastExam] = await Promise.all([
+      prisma.achievement.findFirst({
+        where: { userId, type: 'quest' },
+        orderBy: { timestamp: 'desc' },
+        select: { timestamp: true }
+      }),
+      prisma.examResult.findFirst({
+        where: { userId },
+        orderBy: { timestamp: 'desc' },
+        select: { timestamp: true }
+      })
+    ]);
+
+    const lastTime = lastAchievement?.timestamp && lastExam?.timestamp
+      ? (new Date(lastAchievement.timestamp).getTime() > new Date(lastExam.timestamp).getTime() ? lastAchievement.timestamp : lastExam.timestamp)
+      : (lastAchievement?.timestamp || lastExam?.timestamp);
+
+    if (!lastTime) {
+      if (currentStreak > 0) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { streak: 0 }
+        });
+        return { streak: 0, streakBroken: true, previousStreak: currentStreak };
+      }
+      return { streak: 0, streakBroken: false };
+    }
+
+    const now = new Date();
+    const daysDiff = differenceInCalendarDays(now, new Date(lastTime));
+
+    // If 2 or more calendar days have passed, the streak protection window expired
+    if (daysDiff >= 2) {
+      if (currentStreak > 0) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { streak: 0 }
+        });
+        return { streak: 0, streakBroken: true, previousStreak: currentStreak };
+      }
+      // Streak is 0 and previous quest was >= 2 days ago
+      return { streak: 0, streakBroken: true };
+    }
+
+    return { streak: currentStreak, streakBroken: false };
+  } catch (err) {
+    console.error('Error in syncAndValidateUserStreak:', err);
+    return { streak: currentStreak, streakBroken: false };
+  }
+}
 
 export async function getUserStats(): Promise<any> {
   try {
@@ -29,6 +95,12 @@ export async function getUserStats(): Promise<any> {
     });
     
     if (!user) return null;
+
+    // Dynamically validate and sync streak
+    const streakResult = await syncAndValidateUserStreak(user.id, user.streak);
+    user.streak = streakResult.streak;
+    (user as any).streakBroken = streakResult.streakBroken;
+    (user as any).previousStreak = streakResult.previousStreak;
 
     const curriculumCount = await prisma.lessonCompletion.count({
       where: {
@@ -80,6 +152,12 @@ export async function getUserProfile() {
     });
 
     if (!user) return null;
+
+    // Dynamically validate and sync streak
+    const streakResult = await syncAndValidateUserStreak(user.id, user.streak);
+    user.streak = streakResult.streak;
+    (user as any).streakBroken = streakResult.streakBroken;
+    (user as any).previousStreak = streakResult.previousStreak;
 
     // Calculate global ranking
     const totalUsers = await prisma.user.count();
@@ -249,6 +327,10 @@ export async function generateDailyMissions() {
     });
 
     if (!user || !user.studyPlans.length) return [];
+
+    // Dynamically validate and sync streak
+    const streakResult = await syncAndValidateUserStreak(user.id, user.streak);
+    user.streak = streakResult.streak;
 
     const today = new Date();
     const missions: any[] = [];
@@ -469,6 +551,9 @@ export async function exportUserStudyData() {
     });
 
     if (!user) return { success: false, error: 'User not found' };
+
+    const streakResult = await syncAndValidateUserStreak(user.id, user.streak);
+    user.streak = streakResult.streak;
 
     const exportData = {
       aspirantName: user.name,

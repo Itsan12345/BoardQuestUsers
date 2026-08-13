@@ -394,10 +394,11 @@ export default function LearningQuest() {
 
   // Load Saved Node Stars & Clears from Database (User Scoped)
   useEffect(() => {
+    let isMounted = true;
     async function loadNodeStarsAndClears() {
       try {
         const result = await getNodeClearsAction();
-        if (result) {
+        if (result && isMounted) {
           setNodeClears(result.nodeClears || {});
           setNodeStars(result.nodeStars || {});
           try {
@@ -405,9 +406,14 @@ export default function LearningQuest() {
             localStorage.setItem('boardquest_node_stars', JSON.stringify(result.nodeStars || {}));
           } catch (e) { }
         }
-      } catch (e) { }
+      } catch (e) {
+        console.warn('Failed to load node clears:', e);
+      }
     }
     loadNodeStarsAndClears();
+    return () => {
+      isMounted = false;
+    };
   }, []);
   const [floatingTexts, setFloatingTexts] = useState<{ id: string, target: 'player' | 'enemy', text: string, color: string }[]>([]);
   const [hitFlash, setHitFlash] = useState(false);
@@ -448,7 +454,9 @@ export default function LearningQuest() {
     try {
       localStorage.setItem('boardquest_reagent_inventory', JSON.stringify(inventory));
       localStorage.setItem('boardquest_equipped_reagent', equippedItem || 'none');
-      saveUserInventory(inventory, equippedItem);
+      saveUserInventory(inventory, equippedItem).catch(err => {
+        console.warn('Silent fallback for saveUserInventory:', err);
+      });
     } catch (e) {
       console.error('Error saving inventory to DB:', e);
     }
@@ -1450,37 +1458,37 @@ export default function LearningQuest() {
     return (
       <div
         ref={fullscreenRef}
-        className={cn("min-h-full flex flex-col bg-background", isFullscreen ? "h-screen w-screen overflow-y-auto" : "")}
+        className={cn("min-h-full flex flex-col bg-background text-foreground", isFullscreen ? "h-screen w-screen overflow-y-auto" : "")}
       >
-        <div className="flex-1 max-w-4xl w-full mx-auto py-8 md:py-12 px-4 md:px-6 space-y-8 md:space-y-12 animate-in fade-in zoom-in duration-500">
+        <div className="flex-1 max-w-4xl w-full mx-auto py-6 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 space-y-6 sm:space-y-8 md:space-y-12 animate-in fade-in zoom-in duration-500">
           {/* For standard learning/test modes, show the original header */}
           {quizMode !== 'boss-battle' && (
-            <header className="text-center space-y-4 md:space-y-6">
+            <header className="text-center space-y-3 sm:space-y-4 md:space-y-6">
               <div className="relative inline-block">
-                <div className="absolute inset-0 bg-primary/10 blur-2xl rounded-full scale-125 md:scale-150 animate-pulse" />
-                <div className="relative w-24 h-24 md:w-32 md:h-32 bg-background rounded-full flex items-center justify-center border-4 border-primary shadow-2xl mx-auto">
-                  {isVictor ? <Award className="w-12 h-12 md:w-16 md:h-16 text-primary" /> : <Skull className="w-12 h-12 md:w-16 md:h-16 text-muted-foreground" />}
+                <div className="absolute inset-0 bg-primary/15 blur-2xl rounded-full scale-125 md:scale-150 animate-pulse" />
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 bg-card rounded-full flex items-center justify-center border-4 border-primary shadow-2xl mx-auto">
+                  {isVictor ? <Award className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 text-primary" /> : <Skull className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 text-muted-foreground" />}
                 </div>
               </div>
 
               <div className="space-y-1">
-                <h2 className="text-3xl md:text-5xl font-black font-headline text-primary tracking-tighter">
+                <h2 className="text-2xl sm:text-3xl md:text-5xl font-black font-headline text-primary tracking-tighter">
                   {isVictor ? "BATTLE VICTORY" : "QUEST DEFEAT"}
                 </h2>
-                <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px] md:text-xs">
+                <p className="text-muted-foreground font-bold uppercase tracking-widest text-[9px] sm:text-[10px] md:text-xs">
                   Expedition for {selectedSubject}
                 </p>
               </div>
 
-              <div className="flex justify-center items-center gap-6 md:gap-12 py-4">
+              <div className="flex justify-center items-center gap-4 sm:gap-8 md:gap-12 py-3 sm:py-4">
                 <div className="text-center">
-                  <div className="text-2xl md:text-4xl font-black font-headline text-primary">{score}/{questions.length}</div>
-                  <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Accuracy</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-primary">{score}/{questions.length}</div>
+                  <div className="text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Accuracy</div>
                 </div>
-                <div className="h-10 md:h-12 w-px bg-border" />
+                <div className="h-8 sm:h-10 md:h-12 w-px bg-border" />
                 <div className="text-center">
-                  <div className="text-2xl md:text-4xl font-black font-headline text-accent">+{score * XP_PER_QUESTION}</div>
-                  <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">XP Earned</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-accent">+{score * XP_PER_QUESTION}</div>
+                  <div className="text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">XP Earned</div>
                 </div>
               </div>
             </header>
@@ -1488,38 +1496,46 @@ export default function LearningQuest() {
 
           {/* Dedicated Boss Battle Game Over Screen */}
           {quizMode === 'boss-battle' && !showBattleLog && (
-            <div className="flex flex-col items-center justify-center space-y-10 py-10 animate-in fade-in zoom-in duration-500">
+            <div className="flex flex-col items-center justify-center space-y-6 sm:space-y-8 md:space-y-10 py-6 sm:py-10 animate-in fade-in zoom-in duration-500">
               {/* The Outcome Banner */}
               <div className={cn(
-                "w-full max-w-2xl py-12 text-center rounded-[2rem] border-4 shadow-2xl",
-                battleOutcome === 'victory' ? "bg-green-100 border-green-500 shadow-green-200" : "bg-red-100 border-red-600 shadow-red-200"
+                "w-full max-w-2xl py-8 sm:py-12 px-4 sm:px-8 text-center rounded-2xl sm:rounded-[2rem] border-2 sm:border-4 shadow-2xl backdrop-blur-md transition-all",
+                battleOutcome === 'victory'
+                  ? "bg-emerald-500/10 dark:bg-emerald-950/40 border-emerald-500/50 shadow-emerald-500/10"
+                  : "bg-rose-500/10 dark:bg-rose-950/40 border-rose-500/50 shadow-rose-500/10"
               )}>
-                <h1 className={cn("text-5xl md:text-6xl font-black font-headline uppercase tracking-tight", battleOutcome === 'victory' ? "text-green-700" : "text-red-700")}>
+                <h1 className={cn(
+                  "text-3xl sm:text-5xl md:text-6xl font-black font-headline uppercase tracking-tight",
+                  battleOutcome === 'victory' ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                )}>
                   {battleOutcome === 'victory' ? 'VICTORY!' : 'DEFEAT!'}
                 </h1>
-                <p className={cn("text-base md:text-lg font-bold uppercase tracking-widest mt-4", battleOutcome === 'victory' ? "text-green-600" : "text-red-600")}>
-                  {battleOutcome === 'victory' ? 'The Boss has been vanquished!' : (playerHealth <= 0 && enemyHealth > 0) ? 'Your HP reached 0! The boss has defeated you!' : 'You have ran out of chances to defeat the Boss and failed'}
+                <p className={cn(
+                  "text-xs sm:text-base md:text-lg font-bold uppercase tracking-widest mt-2 sm:mt-4 leading-relaxed",
+                  battleOutcome === 'victory' ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"
+                )}>
+                  {battleOutcome === 'victory' ? 'The Boss has been vanquished!' : (playerHealth <= 0 && enemyHealth > 0) ? 'Your HP reached 0! The boss has defeated you!' : 'You have run out of chances to defeat the Boss and failed'}
                 </p>
               </div>
 
               {/* Boss Battle Stats */}
-              <div className="flex justify-center items-center gap-6 md:gap-12 py-4">
+              <div className="flex justify-center items-center gap-6 sm:gap-8 md:gap-12 py-2 sm:py-4">
                 <div className="text-center">
-                  <div className="text-2xl md:text-4xl font-black font-headline text-primary">{score}</div>
-                  <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Correct Answers</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-primary">{score}</div>
+                  <div className="text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Correct Answers</div>
                 </div>
-                <div className="h-10 md:h-12 w-px bg-border" />
+                <div className="h-8 sm:h-10 md:h-12 w-px bg-border" />
                 <div className="text-center">
-                  <div className="text-2xl md:text-4xl font-black font-headline text-accent">+{score * XP_PER_QUESTION}</div>
-                  <div className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">XP Earned</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-accent">+{score * XP_PER_QUESTION}</div>
+                  <div className="text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">XP Earned</div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row justify-center gap-4 w-full max-w-lg mt-4">
+              <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 w-full max-w-lg mt-2 sm:mt-4">
                 <Button
                   onClick={() => setShowBattleLog(true)}
-                  className="w-full h-14 md:h-16 text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] bg-amber-400 hover:bg-amber-500 text-black hover:-translate-y-1 transition-transform"
+                  className="w-full h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-amber-400 hover:bg-amber-500 text-black hover:-translate-y-0.5 active:scale-95 transition-all"
                 >
                   Review Battle Log
                 </Button>
@@ -1531,13 +1547,13 @@ export default function LearningQuest() {
           {(quizMode !== 'boss-battle' || showBattleLog) && (
             <>
               {score === 0 && (
-                <Card className="border border-border shadow-lg bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl overflow-hidden border-2 border-orange-200">
-                  <CardContent className="p-6 md:p-8 text-center space-y-4">
-                    <p className="text-lg md:text-xl font-black text-foreground">Tough Expedition, Aspirant! 💪</p>
-                    <p className="text-sm md:text-base text-foreground font-medium">
+                <Card className="border border-orange-500/30 dark:border-orange-500/40 shadow-lg bg-gradient-to-br from-orange-500/10 via-card to-rose-500/10 rounded-2xl overflow-hidden">
+                  <CardContent className="p-4 sm:p-6 md:p-8 text-center space-y-3 sm:space-y-4">
+                    <p className="text-base sm:text-lg md:text-xl font-black text-foreground">Tough Expedition, Aspirant! 💪</p>
+                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground font-medium leading-relaxed">
                       Even the greatest champions face setbacks. This is your learning moment! Every question you encounter strengthens your knowledge for the next quest.
                     </p>
-                    <p className="text-xs md:text-sm text-slate-600 font-semibold uppercase tracking-wide">
+                    <p className="text-[10px] sm:text-xs md:text-sm text-orange-600 dark:text-orange-400 font-semibold uppercase tracking-wide">
                       💡 Tip: Review the topics from this quest and try again. Better luck next time!
                     </p>
                   </CardContent>
@@ -1545,13 +1561,13 @@ export default function LearningQuest() {
               )}
 
               {score > 0 && score < Math.ceil(questions.length / 2) && (
-                <Card className="border border-border shadow-lg bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl overflow-hidden border-2 border-yellow-200">
-                  <CardContent className="p-6 md:p-8 text-center space-y-4">
-                    <p className="text-lg md:text-xl font-black text-foreground">Nice Effort, Aspirant! 🌟</p>
-                    <p className="text-sm md:text-base text-foreground font-medium">
+                <Card className="border border-amber-500/30 dark:border-amber-500/40 shadow-lg bg-gradient-to-br from-amber-500/10 via-card to-yellow-500/10 rounded-2xl overflow-hidden">
+                  <CardContent className="p-4 sm:p-6 md:p-8 text-center space-y-3 sm:space-y-4">
+                    <p className="text-base sm:text-lg md:text-xl font-black text-foreground">Nice Effort, Aspirant! 🌟</p>
+                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground font-medium leading-relaxed">
                       You're on the right path! You've grasped some key concepts. Keep reinforcing these topics and you'll see significant improvement on your next expedition.
                     </p>
-                    <p className="text-xs md:text-sm text-slate-600 font-semibold uppercase tracking-wide">
+                    <p className="text-[10px] sm:text-xs md:text-sm text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wide">
                       💡 Tip: Focus on the questions you missed—they're your learning opportunities!
                     </p>
                   </CardContent>
@@ -1559,13 +1575,13 @@ export default function LearningQuest() {
               )}
 
               {score >= Math.ceil(questions.length / 2) && score < questions.length && (
-                <Card className="border border-border shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl overflow-hidden border-2 border-blue-200">
-                  <CardContent className="p-6 md:p-8 text-center space-y-4">
-                    <p className="text-lg md:text-xl font-black text-foreground">Great Job, Aspirant! 🚀</p>
-                    <p className="text-sm md:text-base text-foreground font-medium">
+                <Card className="border border-sky-500/30 dark:border-sky-500/40 shadow-lg bg-gradient-to-br from-sky-500/10 via-card to-cyan-500/10 rounded-2xl overflow-hidden">
+                  <CardContent className="p-4 sm:p-6 md:p-8 text-center space-y-3 sm:space-y-4">
+                    <p className="text-base sm:text-lg md:text-xl font-black text-foreground">Great Job, Aspirant! 🚀</p>
+                    <p className="text-xs sm:text-sm md:text-base text-muted-foreground font-medium leading-relaxed">
                       You're demonstrating solid knowledge! You're well on your way to mastery. A few more focused study sessions and you'll be unstoppable. Keep up the momentum!
                     </p>
-                    <p className="text-xs md:text-sm text-slate-600 font-semibold uppercase tracking-wide">
+                    <p className="text-[10px] sm:text-xs md:text-sm text-sky-600 dark:text-sky-400 font-semibold uppercase tracking-wide">
                       💡 Tip: You're almost there! One more push to achieve perfect mastery.
                     </p>
                   </CardContent>
@@ -1573,16 +1589,16 @@ export default function LearningQuest() {
               )}
 
               {score === questions.length && score > 0 && (
-                <Card className="border border-border shadow-lg bg-gradient-to-br from-primary/10 via-yellow-50 to-primary/5 rounded-2xl overflow-hidden border-2 border-primary">
-                  <CardContent className="p-6 md:p-8 text-center space-y-4 animate-pulse">
-                    <p className="text-lg md:text-xl font-black bg-gradient-to-r from-primary to-yellow-600 bg-clip-text text-transparent">PERFECT SCORE! 👑✨</p>
-                    <p className="text-sm md:text-base text-foreground font-bold">
+                <Card className="border border-amber-500/50 dark:border-amber-400/60 shadow-xl bg-gradient-to-br from-amber-500/15 via-card to-yellow-500/15 rounded-2xl overflow-hidden">
+                  <CardContent className="p-4 sm:p-6 md:p-8 text-center space-y-3 sm:space-y-4">
+                    <p className="text-base sm:text-lg md:text-xl font-black bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 bg-clip-text text-transparent">PERFECT SCORE! 👑✨</p>
+                    <p className="text-xs sm:text-sm md:text-base text-foreground font-bold leading-relaxed">
                       PHENOMENAL! You've achieved PERFECT MASTERY! You are a true champion among aspirants. This is the peak of excellence—celebrate this victory!
                     </p>
                     <div className="flex justify-center gap-2 text-2xl animate-bounce">
                       🏆 ⭐ 🏆
                     </div>
-                    <p className="text-xs md:text-sm text-slate-600 font-semibold uppercase tracking-wide">
+                    <p className="text-[10px] sm:text-xs md:text-sm text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wide">
                       You've earned extra respect in the BoardQuest arena!
                     </p>
                   </CardContent>
@@ -1591,18 +1607,18 @@ export default function LearningQuest() {
 
               {/* Earned Badges Section */}
               {earnedBadges.length > 0 && (
-                <Card className="border border-border shadow-lg bg-gradient-to-br from-yellow-50 to-yellow-100/50 rounded-2xl overflow-hidden border-2 border-yellow-300">
-                  <CardContent className="p-6 md:p-8">
-                    <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-6 text-center">🏆 Badges Earned</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <Card className="border border-amber-500/30 dark:border-amber-400/30 shadow-lg bg-gradient-to-br from-amber-500/10 via-card to-yellow-500/10 rounded-2xl overflow-hidden">
+                  <CardContent className="p-4 sm:p-6 md:p-8">
+                    <p className="text-[10px] sm:text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-4 sm:mb-6 text-center">🏆 Badges Earned</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
                       {earnedBadges.map((badge) => (
                         <div
                           key={badge.id}
-                          className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-xl border-2 border-yellow-300 text-center space-y-1 animate-pulse"
+                          className="bg-card/80 dark:bg-card/50 p-3 sm:p-4 rounded-xl border border-amber-500/30 text-center space-y-1 shadow-sm"
                         >
                           <div className="text-2xl">✨</div>
                           <p className="font-bold text-xs md:text-sm text-foreground">{badge.title}</p>
-                          <p className="text-[9px] text-slate-600">{badge.name}</p>
+                          <p className="text-[9px] text-muted-foreground">{badge.name}</p>
                         </div>
                       ))}
                     </div>
@@ -1615,32 +1631,32 @@ export default function LearningQuest() {
 
           {/* Confidence Dialog */}
           <Dialog open={confidenceDialogOpen} onOpenChange={setConfidenceDialogOpen}>
-            <DialogContent className="sm:max-w-md border-2 border-primary/20 bg-gradient-to-br from-slate-50 to-white">
-              <DialogHeader className="text-center space-y-4">
-                <DialogTitle className="font-headline text-2xl">⚡ Aspirant's Conviction</DialogTitle>
-                <DialogDescription className="text-sm">How confident are you in your answers?</DialogDescription>
+            <DialogContent className="sm:max-w-md border border-border bg-card text-card-foreground shadow-2xl p-4 sm:p-6 rounded-2xl">
+              <DialogHeader className="text-center space-y-2 sm:space-y-3">
+                <DialogTitle className="font-headline text-xl sm:text-2xl text-foreground">⚡ Aspirant's Conviction</DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm text-muted-foreground">How confident are you in your answers?</DialogDescription>
               </DialogHeader>
-              <div className="grid grid-cols-3 gap-3 py-6">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 py-4 sm:py-6">
                 {[
                   {
                     level: 'Shaky',
                     emoji: '🔥',
-                    color: 'bg-red-50 border-red-200 hover:bg-red-100',
-                    selectedColor: 'bg-red-100 border-red-500 ring-2 ring-red-300',
+                    color: 'bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/20 text-rose-700 dark:text-rose-400',
+                    selectedColor: 'bg-rose-500/25 border-rose-500 ring-2 ring-rose-400 text-rose-800 dark:text-rose-300',
                     description: 'Low Confidence',
                   },
                   {
                     level: 'Steady',
                     emoji: '⚡',
-                    color: 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100',
-                    selectedColor: 'bg-yellow-100 border-yellow-500 ring-2 ring-yellow-300',
+                    color: 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400',
+                    selectedColor: 'bg-amber-500/25 border-amber-500 ring-2 ring-amber-400 text-amber-800 dark:text-amber-300',
                     description: 'Balanced Confidence',
                   },
                   {
                     level: 'Unyielding',
                     emoji: '💫',
-                    color: 'bg-primary/5 border-primary/30 hover:bg-primary/15',
-                    selectedColor: 'bg-primary/20 border-primary ring-2 ring-primary/50',
+                    color: 'bg-primary/10 border-primary/30 hover:bg-primary/20 text-primary',
+                    selectedColor: 'bg-primary/25 border-primary ring-2 ring-primary/60 text-primary',
                     description: 'High Confidence',
                   },
                 ].map((option) => (
@@ -1652,16 +1668,16 @@ export default function LearningQuest() {
                       }
                     }}
                     className={cn(
-                      'relative p-4 rounded-xl border-2 transition-all duration-200 text-center transform',
+                      'relative p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 text-center transform',
                       confidence === option.level ? option.selectedColor : option.color,
-                      !confidenceSubmitted && 'hover:scale-105'
+                      !confidenceSubmitted && 'hover:scale-105 active:scale-95'
                     )}
                     disabled={isSavingResults}
                   >
-                    <div className="space-y-2">
-                      <div className="text-3xl">{option.emoji}</div>
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <div className="text-2xl sm:text-3xl">{option.emoji}</div>
                       <div className="font-black text-xs leading-tight">{option.level}</div>
-                      <div className="text-[9px] text-muted-foreground font-bold">{option.description}</div>
+                      <div className="text-[8px] sm:text-[9px] opacity-80 font-bold">{option.description}</div>
                     </div>
                   </button>
                 ))}
@@ -1671,25 +1687,25 @@ export default function LearningQuest() {
 
           {/* Thank You Dialog */}
           <Dialog open={thankYouDialogOpen} onOpenChange={setThankYouDialogOpen}>
-            <DialogContent className="sm:max-w-md border-2 border-primary bg-gradient-to-br from-white via-slate-50 to-white animate-in fade-in zoom-in duration-500">
+            <DialogContent className="sm:max-w-md border border-primary/30 bg-card text-card-foreground shadow-2xl p-6 rounded-2xl animate-in fade-in zoom-in duration-500">
               <DialogTitle className="sr-only">Quest Completion</DialogTitle>
-              <div className="space-y-6 text-center py-8 px-2">
+              <div className="space-y-4 sm:space-y-6 text-center py-4 sm:py-8 px-2">
                 {/* Trophy Animation */}
                 <div className="flex justify-center">
                   <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse" />
-                    <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary/80 border-4 border-primary/30 shadow-2xl animate-bounce">
-                      <Trophy className="w-12 h-12 text-white" />
+                    <div className="relative inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-primary to-primary/80 border-4 border-primary/30 shadow-2xl animate-bounce">
+                      <Trophy className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
                     </div>
                   </div>
                 </div>
 
                 {/* Main Message */}
-                <div className="space-y-3">
-                  <p className="text-3xl md:text-4xl font-black font-headline text-primary tracking-tight">
+                <div className="space-y-2 sm:space-y-3">
+                  <p className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-primary tracking-tight">
                     Thank You, Aspirant!
                   </p>
-                  <p className="text-sm md:text-base text-foreground font-bold leading-relaxed">
+                  <p className="text-xs sm:text-sm md:text-base text-muted-foreground font-semibold leading-relaxed">
                     Your conviction has been recorded and your quest success has been logged to your profile!
                   </p>
                 </div>
@@ -1700,19 +1716,19 @@ export default function LearningQuest() {
 
           {/* AI Tutor Summary (Only show if not in Boss-Battle, or if reviewing the log) */}
           {(quizMode !== 'boss-battle' || showBattleLog) && (
-            <Card className="border border-border shadow-xl bg-background overflow-hidden rounded-[1.5rem] md:rounded-[2rem]">
-              <CardHeader className="bg-muted/30 border-b p-6 md:p-8">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <Card className="border border-border shadow-xl bg-card overflow-hidden rounded-2xl md:rounded-[2rem]">
+              <CardHeader className="bg-muted/40 border-b border-border p-4 sm:p-6 md:p-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                   <div>
-                    <CardTitle className="font-headline text-xl md:text-2xl flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                    <CardTitle className="font-headline text-lg sm:text-xl md:text-2xl flex items-center gap-2 text-foreground">
+                      <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
                       Battle Log
                     </CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-wider">
+                    <CardDescription className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-0.5">
                       Post-Battle Rationale
                     </CardDescription>
                   </div>
-                  <Badge variant="outline" className="border-primary/20 text-primary bg-background px-3 py-1 uppercase font-bold text-[8px] md:text-[10px]">
+                  <Badge variant="outline" className="border-primary/30 text-primary bg-primary/5 px-2.5 sm:px-3 py-1 uppercase font-bold text-[8px] sm:text-[9px] md:text-[10px]">
                     {quizMode} Mode Verified
                   </Badge>
                 </div>
@@ -1726,67 +1742,71 @@ export default function LearningQuest() {
                     const isCorrect = userAns.isCorrect;
 
                     return (
-                      <AccordionItem key={idx} value={`item-${idx}`} className="border-b last:border-0 px-2 md:px-4">
-                        <AccordionTrigger className="hover:no-underline py-4 md:py-6 px-2 md:px-4">
-                          <div className="flex items-start text-left gap-4 md:gap-6">
-                            <div className="mt-1 shrink-0">
+                      <AccordionItem key={idx} value={`item-${idx}`} className="border-b border-border last:border-0 px-2 md:px-4">
+                        <AccordionTrigger className="hover:no-underline py-3.5 sm:py-4 md:py-6 px-2 md:px-4">
+                          <div className="flex items-start text-left gap-3 sm:gap-4 md:gap-6">
+                            <div className="mt-0.5 sm:mt-1 shrink-0">
                               {isCorrect ? (
-                                <div className="bg-green-100 p-1.5 md:p-2 rounded-lg md:rounded-xl"><CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-600" /></div>
+                                <div className="bg-emerald-500/15 dark:bg-emerald-950/60 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-emerald-500/30">
+                                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400" />
+                                </div>
                               ) : (
-                                <div className="bg-red-100 p-1.5 md:p-2 rounded-lg md:rounded-xl"><XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-600" /></div>
+                                <div className="bg-rose-500/15 dark:bg-rose-950/60 p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-rose-500/30">
+                                  <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 dark:text-rose-400" />
+                                </div>
                               )}
                             </div>
-                            <div className="min-w-0">
-                              <p className="font-bold text-xs md:text-sm leading-snug line-clamp-1">{q.question}</p>
-                              <div className="flex gap-2 mt-1">
-                                <Badge variant={isCorrect ? "secondary" : "destructive"} className="text-[8px] h-3.5 font-black uppercase tracking-tighter">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-xs sm:text-sm text-foreground leading-snug line-clamp-2 sm:line-clamp-1">{q.question}</p>
+                              <div className="flex gap-1.5 sm:gap-2 mt-1.5 flex-wrap">
+                                <Badge variant={isCorrect ? "secondary" : "destructive"} className="text-[7.5px] sm:text-[8px] h-4 font-black uppercase tracking-tighter">
                                   {isCorrect ? "Mastered" : "Review"}
                                 </Badge>
-                                <Badge variant="outline" className="text-[8px] h-3.5 font-black uppercase tracking-tighter border-primary/20 text-primary">
+                                <Badge variant="outline" className="text-[7.5px] sm:text-[8px] h-4 font-black uppercase tracking-tighter border-primary/20 text-primary">
                                   {q.type?.replace('_', ' ') || "MCQ"}
                                 </Badge>
                               </div>
                             </div>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="px-4 md:px-6 pb-6 md:pb-8 pt-2">
-                          <div className="bg-muted/30 rounded-2xl md:rounded-3xl p-4 md:p-8 space-y-4 md:space-y-6 border border-primary/5">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-6">
-                              <div className="p-4 bg-background rounded-xl border shadow-sm">
-                                <p className="text-[9px] uppercase font-black text-muted-foreground mb-1">Aspirant Choice</p>
-                                <p className={cn("font-bold text-sm", isCorrect ? "text-green-600" : "text-red-600")}>
+                        <AccordionContent className="px-2 sm:px-4 md:px-6 pb-4 sm:pb-6 md:pb-8 pt-1">
+                          <div className="bg-muted/30 dark:bg-muted/20 rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-5 md:p-8 space-y-3 sm:space-y-4 md:space-y-6 border border-border">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 md:gap-6">
+                              <div className="p-3 sm:p-4 bg-card rounded-xl border border-border shadow-sm">
+                                <p className="text-[8px] sm:text-[9px] uppercase font-black text-muted-foreground mb-1">Aspirant Choice</p>
+                                <p className={cn("font-bold text-xs sm:text-sm", isCorrect ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                                   {q.type === 'TRUE_FALSE' && userAns?.selectedLetter
                                     ? (userAns.selectedLetter === 'A' ? 'True (Option A)' : userAns.selectedLetter === 'B' ? 'False (Option B)' : userAns.selectedLetter)
                                     : userAns?.selectedLetter ? `Option ${userAns.selectedLetter}` : 'None'}
                                 </p>
                               </div>
-                              <div className="p-4 bg-background rounded-xl border shadow-sm">
-                                <p className="text-[9px] uppercase font-black text-muted-foreground mb-1">Correct Rationale</p>
-                                <p className="font-bold text-sm text-primary">
+                              <div className="p-3 sm:p-4 bg-card rounded-xl border border-border shadow-sm">
+                                <p className="text-[8px] sm:text-[9px] uppercase font-black text-muted-foreground mb-1">Correct Rationale</p>
+                                <p className="font-bold text-xs sm:text-sm text-primary">
                                   {q.type === 'TRUE_FALSE'
                                     ? (q.correctAnswer === 'A' ? 'True (Option A)' : q.correctAnswer === 'B' ? 'False (Option B)' : q.correctAnswer)
                                     : `Option ${q.correctAnswer}`}
                                 </p>
                               </div>
                             </div>
-                            <div className="space-y-3">
-                              <h4 className="font-black font-headline text-primary flex items-center gap-2 uppercase text-[10px] tracking-widest">
+                            <div className="space-y-2 sm:space-y-3">
+                              <h4 className="font-black font-headline text-primary flex items-center gap-1.5 sm:gap-2 uppercase text-[9px] sm:text-[10px] tracking-widest">
                                 <BrainCircuit className="w-3.5 h-3.5" />
                                 AI LOGICAL ANALYSIS
                               </h4>
-                              <div className="bg-background/80 p-4 md:p-6 rounded-xl border-2 border-dashed border-primary/10">
+                              <div className="bg-card/90 dark:bg-card/60 p-3 sm:p-4 md:p-6 rounded-xl border border-dashed border-primary/20">
                                 {q.explanation ? (
-                                  <p className="text-xs md:text-sm leading-relaxed text-muted-foreground italic">
+                                  <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground italic">
                                     {q.explanation}
                                   </p>
                                 ) : fetchingExplanations[idx] ? (
-                                  <div className="flex items-center gap-3 py-2">
+                                  <div className="flex items-center gap-2 sm:gap-3 py-1.5 sm:py-2">
                                     <Loader2 className="w-3 h-3 text-primary animate-spin" />
-                                    <p className="text-[10px] font-bold text-primary animate-pulse">INTERPRETING DATA...</p>
+                                    <p className="text-[9px] sm:text-[10px] font-bold text-primary animate-pulse">INTERPRETING DATA...</p>
                                   </div>
                                 ) : (
                                   <div className="flex flex-col items-start gap-2">
-                                    <p className="text-xs md:text-sm leading-relaxed text-muted-foreground italic">
+                                    <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground italic">
                                       Want to know why this is the correct answer?
                                     </p>
                                     <Button
@@ -1812,19 +1832,19 @@ export default function LearningQuest() {
             </Card>
           )}
 
-          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pb-12 w-full max-w-xl mx-auto px-4 sm:px-0 mt-8">
+          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pb-12 w-full max-w-xl mx-auto px-2 sm:px-0 mt-6 sm:mt-8">
             <Button
               onClick={() => {
                 setIsStarted(false);
                 setIsFinished(false);
                 setShowBattleLog(false);
               }}
-              className="flex-1 h-14 md:h-16 text-lg md:text-2xl font-bytebounce tracking-widest border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] bg-primary hover:bg-primary/90 text-white hover:-translate-y-1 transition-transform whitespace-nowrap"
+              className="flex-1 h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-primary hover:bg-primary/90 text-primary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
             >
               Re-Enter Arena
             </Button>
             <Link href="/" className="flex-1 flex">
-              <Button className="w-full h-14 md:h-16 text-lg md:text-2xl font-bytebounce tracking-widest border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] bg-white hover:bg-slate-100 text-black hover:-translate-y-1 transition-transform whitespace-nowrap">
+              <Button className="w-full h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap">
                 Back to Dashboard
               </Button>
             </Link>
@@ -1862,18 +1882,18 @@ export default function LearningQuest() {
         <Dialog open={leaveConfirmDialogOpen} onOpenChange={setLeaveConfirmDialogOpen}>
           <DialogContent
             container={isFullscreen ? fullscreenRef.current : undefined}
-            className="sm:max-w-md border-2 border-destructive bg-gradient-to-br from-slate-50 to-white"
+            className="sm:max-w-md border border-destructive/40 bg-card text-card-foreground shadow-2xl p-4 sm:p-6 rounded-2xl"
           >
-            <DialogHeader className="text-center space-y-4">
-              <DialogTitle className="font-headline text-2xl text-destructive flex items-center justify-center gap-2">
-                <ShieldAlert className="w-6 h-6" />
+            <DialogHeader className="text-center space-y-2 sm:space-y-3">
+              <DialogTitle className="font-headline text-xl sm:text-2xl text-destructive flex items-center justify-center gap-2">
+                <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6" />
                 Retreat from Battle?
               </DialogTitle>
-              <DialogDescription className="text-sm font-bold text-slate-600 leading-relaxed">
+              <DialogDescription className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 Are you certain you wish to retreat? Leaving the arena now means you will forfeit all potential XP and badges from this session.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 mt-4 sm:mt-6">
               <Button
                 variant="outline"
                 className="flex-1 font-bold border-2"

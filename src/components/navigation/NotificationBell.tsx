@@ -115,7 +115,7 @@ export function NotificationBell({ user }: NotificationBellProps) {
           {notifications.length > 0 ? (
             notifications.map(n => {
               const Icon =
-                n.type === 'streak_warning'
+                n.type === 'streak_warning' || n.type === 'streak_lost'
                   ? Flame
                   : n.type === 'daily_goal'
                   ? Target
@@ -129,7 +129,9 @@ export function NotificationBell({ user }: NotificationBellProps) {
                   onClick={() => handleItemClick(n)}
                   className={cn(
                     'group relative p-3 rounded-xl border transition-all cursor-pointer flex flex-col gap-2',
-                    n.isUrgent
+                    n.type === 'streak_lost'
+                      ? 'bg-rose-500/10 border-rose-500/30 hover:border-rose-500/50 hover:bg-rose-500/15'
+                      : n.isUrgent
                       ? 'bg-red-500/5 border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10'
                       : n.type === 'achievement'
                       ? 'bg-amber-500/5 border-amber-500/25 hover:bg-amber-500/10'
@@ -143,7 +145,9 @@ export function NotificationBell({ user }: NotificationBellProps) {
                       <div
                         className={cn(
                           'p-1.5 rounded-lg shrink-0',
-                          n.isUrgent
+                          n.type === 'streak_lost'
+                            ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400'
+                            : n.isUrgent
                             ? 'bg-red-100 dark:bg-red-950 text-red-600'
                             : n.type === 'achievement'
                             ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
@@ -155,7 +159,9 @@ export function NotificationBell({ user }: NotificationBellProps) {
                       <span
                         className={cn(
                           'text-xs font-bold truncate',
-                          n.isUrgent
+                          n.type === 'streak_lost'
+                            ? 'text-rose-700 dark:text-rose-400'
+                            : n.isUrgent
                             ? 'text-red-700 dark:text-red-400'
                             : n.type === 'achievement'
                             ? 'text-amber-700 dark:text-amber-400'
@@ -191,7 +197,9 @@ export function NotificationBell({ user }: NotificationBellProps) {
                           size="sm"
                           className={cn(
                             'h-7 rounded-lg text-xs font-bold px-3 flex items-center gap-1',
-                            n.isUrgent
+                            n.type === 'streak_lost'
+                              ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                              : n.isUrgent
                               ? 'bg-red-600 hover:bg-red-700 text-white'
                               : n.type === 'achievement'
                               ? 'bg-amber-600 hover:bg-amber-700 text-white'
