@@ -494,21 +494,16 @@ export function AccountSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-7">
-        <DialogHeader className="pb-4 border-b border-border">
-          <div id="tour-settings-header" className="flex items-center justify-between pr-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[#8B0000]/10 border border-[#8B0000]/20 rounded-2xl">
-                <Shield className="w-6 h-6 text-[#8B0000]" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl sm:text-2xl font-bold text-foreground">
-                  Account Settings
-                </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Manage your academic credentials, review goals, and security preferences
-                </DialogDescription>
-              </div>
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-7">
+        <DialogHeader className="pb-4 border-b border-border text-left">
+          <div id="tour-settings-header" className="flex items-start sm:items-center justify-between pr-6 gap-3 text-left">
+            <div className="text-left">
+              <DialogTitle className="text-xl sm:text-2xl font-bold text-foreground text-left">
+                Account Settings
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5 text-left leading-relaxed">
+                Manage your academic credentials, review goals, and security preferences
+              </DialogDescription>
             </div>
 
             <Button
@@ -691,19 +686,20 @@ export function AccountSettingsDialog({
           </TabsContent>
 
           {/* TAB 2: Study Goals & Targets */}
-          <TabsContent value="goals" className="pt-4 space-y-5">
-            <div className="space-y-4">
-              <div id="tour-goals-quota" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
+          <TabsContent value="goals" className="pt-4 space-y-4 sm:space-y-5 w-full max-w-full overflow-hidden">
+            <div className="space-y-3 sm:space-y-4 w-full max-w-full">
+              {/* Daily Question Target */}
+              <div id="tour-goals-quota" className="p-3.5 sm:p-4 bg-muted/20 border border-border rounded-2xl space-y-3 w-full max-w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2">
+                  <div className="min-w-0">
                     <Label className="text-sm font-semibold text-foreground">Daily Question Target</Label>
                     <p className="text-xs text-muted-foreground">Target questions to complete every day</p>
                   </div>
-                  <Badge className="bg-[#8B0000] text-white text-xs font-bold px-2.5 py-0.5">
+                  <Badge className="bg-[#8B0000] text-white text-[11px] sm:text-xs font-bold px-2.5 py-0.5 w-fit shrink-0">
                     {dailyQuota} Questions/Day
                   </Badge>
                 </div>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
                   {['20', '50', '100', '150'].map(quota => (
                     <Button
                       key={quota}
@@ -712,8 +708,8 @@ export function AccountSettingsDialog({
                       variant={dailyQuota === quota ? 'default' : 'outline'}
                       onClick={() => setDailyQuota(quota)}
                       className={cn(
-                        'flex-1 rounded-xl text-xs font-semibold h-8',
-                        dailyQuota === quota && 'bg-[#8B0000] hover:bg-[#660000] text-white'
+                        'w-full rounded-xl text-xs font-bold h-9 sm:h-8 transition-all',
+                        dailyQuota === quota ? 'bg-[#8B0000] hover:bg-[#660000] text-white' : 'hover:bg-muted/80'
                       )}
                     >
                       {quota} Qs
@@ -722,15 +718,18 @@ export function AccountSettingsDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div id="tour-goals-focus" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
-                  <Label className="text-sm font-semibold text-foreground">Priority Focus Subject</Label>
-                  <p className="text-xs text-muted-foreground">Subject highlighted first in Study Arena</p>
+              {/* Priority Subject & Difficulty */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full max-w-full">
+                <div id="tour-goals-focus" className="p-3.5 sm:p-4 bg-muted/20 border border-border rounded-2xl space-y-2 min-w-0 overflow-hidden">
+                  <div className="min-w-0">
+                    <Label className="text-sm font-semibold text-foreground">Priority Focus Subject</Label>
+                    <p className="text-xs text-muted-foreground truncate">Subject highlighted first in Study Arena</p>
+                  </div>
                   <Select value={focusSubject} onValueChange={setFocusSubject}>
-                    <SelectTrigger className="rounded-xl h-9 text-xs">
-                      <SelectValue placeholder="Select focus subject" />
+                    <SelectTrigger className="rounded-xl h-9 text-xs w-full min-w-0 max-w-full overflow-hidden">
+                      <SelectValue placeholder="Select focus subject" className="truncate" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-w-[90vw] sm:max-w-sm">
                       {SUBJECT_AREAS.map(sub => (
                         <SelectItem key={sub} value={sub} className="text-xs">
                           {sub}
@@ -740,14 +739,16 @@ export function AccountSettingsDialog({
                   </Select>
                 </div>
 
-                <div id="tour-goals-diff" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
-                  <Label className="text-sm font-semibold text-foreground">Starting Quiz Difficulty</Label>
-                  <p className="text-xs text-muted-foreground">Default combat difficulty in Boss Rush</p>
+                <div id="tour-goals-diff" className="p-3.5 sm:p-4 bg-muted/20 border border-border rounded-2xl space-y-2 min-w-0 overflow-hidden">
+                  <div className="min-w-0">
+                    <Label className="text-sm font-semibold text-foreground">Starting Quiz Difficulty</Label>
+                    <p className="text-xs text-muted-foreground truncate">Default combat difficulty in Boss Rush</p>
+                  </div>
                   <Select value={defaultDifficulty} onValueChange={setDefaultDifficulty}>
-                    <SelectTrigger className="rounded-xl h-9 text-xs">
-                      <SelectValue placeholder="Select difficulty" />
+                    <SelectTrigger className="rounded-xl h-9 text-xs w-full min-w-0 max-w-full overflow-hidden">
+                      <SelectValue placeholder="Select difficulty" className="truncate" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-w-[90vw] sm:max-w-sm">
                       <SelectItem value="EASY" className="text-xs">Easy Mode (0.85x Damage)</SelectItem>
                       <SelectItem value="MEDIUM" className="text-xs">Standard Board Simulation (1.0x)</SelectItem>
                       <SelectItem value="HARD" className="text-xs">Hardcore Examiner Mode (1.25x)</SelectItem>
@@ -756,22 +757,24 @@ export function AccountSettingsDialog({
                 </div>
               </div>
 
-              <div id="tour-goals-confidence" className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
-                <div className="space-y-0.5 pr-4">
+              {/* Confidence Rating Prompts */}
+              <div id="tour-goals-confidence" className="p-3.5 sm:p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between gap-3 w-full max-w-full">
+                <div className="space-y-0.5 min-w-0 flex-1">
                   <Label className="text-sm font-semibold text-foreground">Confidence Rating Prompts</Label>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Prompt for confidence level (Shaky / Steady / Unyielding) to gain bonus XP multipliers
                   </p>
                 </div>
-                <Switch checked={confidencePrompts} onCheckedChange={setConfidencePrompts} />
+                <Switch checked={confidencePrompts} onCheckedChange={setConfidencePrompts} className="shrink-0" />
               </div>
 
-              <div className="flex justify-end pt-2">
+              {/* Save Button */}
+              <div className="flex justify-end pt-2 w-full">
                 <Button
                   id="tour-goals-save"
                   type="button"
                   onClick={handleSaveGoals}
-                  className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
+                  className="w-full sm:w-auto bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-bold text-xs px-5 h-10 sm:h-9 shadow-sm"
                 >
                   Save Study Preferences
                 </Button>
@@ -975,31 +978,61 @@ export function AccountSettingsDialog({
           </TabsContent>
 
           {/* TAB 6: Records & Data Export */}
-          <TabsContent value="records" className="pt-4 space-y-5">
-            <div className="space-y-4">
-              <div id="tour-records-export" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-semibold text-sm text-foreground">Certified Study Transcript</h4>
-                    <p className="text-xs text-muted-foreground">Download a complete structured record of subject masteries, mock exams, and earned badges</p>
+          <TabsContent value="records" className="pt-4 space-y-4">
+            <div className="space-y-3 sm:space-y-4">
+              {/* Main Transcript Card */}
+              <div id="tour-records-export" className="p-4 sm:p-5 bg-muted/20 border border-border rounded-2xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5">
+                      <FileSpreadsheet className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-bold text-sm text-foreground">Certified Study Transcript</h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Download a complete structured JSON record of your diagnostic mastery, mock exam results, and earned achievements.
+                      </p>
+                    </div>
                   </div>
+
                   <Button
                     type="button"
                     onClick={handleExportData}
                     disabled={isExporting}
-                    className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-4 h-9 flex items-center gap-1.5"
+                    className="w-full sm:w-auto shrink-0 bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-bold text-xs px-5 h-10 sm:h-9 flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all"
                   >
                     {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                     Export Data (JSON)
                   </Button>
                 </div>
+
+                {/* Included Records Summary Chips */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/50">
+                  <div className="p-2 rounded-lg bg-background/60 border border-border/40 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                    <span className="truncate">Subject Masteries</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-background/60 border border-border/40 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                    <span className="truncate">Mock Exam Scores</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-background/60 border border-border/40 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                    <span className="truncate">Earned Badges</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-background/60 border border-border/40 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                    <span className="truncate">XP & Rank History</span>
+                  </div>
+                </div>
               </div>
 
-              <div id="tour-records-mentor" className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-xs text-amber-900 dark:text-amber-300">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="block font-semibold">Academic Mentor Verification:</strong>
-                  Your study transcripts can be shared with review center professors and mentors to verify diagnostic mastery prior to the board exams.
+              {/* Mentor Verification Notice */}
+              <div id="tour-records-mentor" className="p-3.5 sm:p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-2.5 sm:gap-3 text-xs text-amber-900 dark:text-amber-300">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5 leading-relaxed">
+                  <strong className="font-semibold block sm:inline mr-1">Academic Mentor Verification:</strong>
+                  <span>Your study transcripts can be shared with review center professors and mentors to verify diagnostic mastery prior to the board exams.</span>
                 </div>
               </div>
             </div>

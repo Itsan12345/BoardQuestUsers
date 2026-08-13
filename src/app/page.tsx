@@ -90,46 +90,46 @@ function DashboardContent() {
   }
 
   return (
-    <div className="min-h-full bg-background p-6 lg:p-8 space-y-8" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-full bg-background p-3.5 sm:p-6 lg:p-8 space-y-6 sm:space-y-8" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* Hero Section */}
-      <section id="tour-dashboard-hero" className="space-y-6">
-        <div className="space-y-3">
-          <h1 className="text-4xl lg:text-5xl font-semibold tracking-tight leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <section id="tour-dashboard-hero" className="space-y-4 sm:space-y-6">
+        <div className="space-y-2 sm:space-y-3">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Master Your Boards,<br />
             <span className="text-primary font-semibold">Level Up Your Knowledge</span>
           </h1>
         </div>
         <Link href="/quest">
-          <Button size="lg" className="h-12 px-8 rounded-xl mt-4 text-sm font-medium shadow-lg bg-primary hover:bg-primary/90" style={{ fontFamily: "'Poppins', sans-serif" }}>
-            Start Quest <Zap className="h-5 w-5 ml-2 fill-current" />
+          <Button size="lg" className="h-11 sm:h-12 px-6 sm:px-8 rounded-xl mt-2 sm:mt-4 text-xs sm:text-sm font-medium shadow-lg bg-primary hover:bg-primary/90" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            Start Quest <Zap className="h-4 w-4 sm:h-5 sm:w-5 ml-2 fill-current" />
           </Button>
         </Link>
       </section>
 
       {/* Your Study Dashboard Section */}
-      <section className="space-y-0">
-        <h2 className="text-2xl lg:text-3xl font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Your Study Dashboard</h2>
-        <p className="text-sm text-muted-foreground font-normal">Real-time tracking of your journey to professional certification</p>
+      <section className="space-y-0.5">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Your Study Dashboard</h2>
+        <p className="text-xs sm:text-sm text-muted-foreground font-normal">Real-time tracking of your journey to professional certification</p>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
         {/* Current Course - Full Width */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-5 sm:space-y-6">
           <Card id="tour-dashboard-studyplan" className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
-            <CardContent className="p-8 space-y-6">
+            <CardContent className="p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Current Course</p>
-                <h3 className="text-xl font-medium text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>MedTech Board Mastery</h3>
+                <p className="text-[10px] sm:text-xs font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Current Course</p>
+                <h3 className="text-lg sm:text-xl font-medium text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>MedTech Board Mastery</h3>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-2 sm:gap-0">
-                  <span className="text-5xl font-bold text-primary" style={{ fontFamily: "'Poppins', sans-serif" }}>{totalMastery}%</span>
-                  <span className="text-xs font-normal text-muted-foreground uppercase tracking-widest sm:text-right" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-1 sm:gap-0">
+                  <span className="text-4xl sm:text-5xl font-bold text-primary" style={{ fontFamily: "'Poppins', sans-serif" }}>{totalMastery}%</span>
+                  <span className="text-[10px] sm:text-xs font-normal text-muted-foreground uppercase tracking-widest sm:text-right" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     {user?._count?.lessonCompletions || 0}/13 MODULES COMPLETED
                   </span>
                 </div>
-                <div className="w-full h-4 bg-muted rounded-full overflow-hidden">
+                <div className="w-full h-3 sm:h-4 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${totalMastery}%` }} />
                 </div>
               </div>
@@ -138,12 +138,11 @@ function DashboardContent() {
                 const continueSubject = focusSubject || nextMilestone?.subject || 'Clinical Chemistry';
                 return (
                   <Link href={`/study?subject=${encodeURIComponent(continueSubject)}`} className="block">
-                    <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                      {focusSubject ? (
-                        <>⭐ Continue Focus: {continueSubject} <ChevronRight className="w-4 h-4" /></>
-                      ) : (
-                        <>Continue: {continueSubject} <ChevronRight className="w-4 h-4" /></>
-                      )}
+                    <Button className="w-full min-h-11 h-auto py-2.5 px-3 sm:px-4 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 sm:gap-2 leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      <span className="truncate">
+                        {focusSubject ? `⭐ Focus: ${continueSubject}` : `Continue: ${continueSubject}`}
+                      </span>
+                      <ChevronRight className="w-4 h-4 shrink-0" />
                     </Button>
                   </Link>
                 );
@@ -153,31 +152,31 @@ function DashboardContent() {
 
           {/* Weekly Leaderboard */}
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
-            <CardHeader className="pb-6 border-b border-border">
-              <div className="flex items-center justify-between">
-                <p className="text-lg font-medium text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>Weekly Leaderboard</p>
-                <p className="text-xs font-normal text-muted-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-6 border-b border-border">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <p className="text-base sm:text-lg font-medium text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>Weekly Leaderboard</p>
+                <p className="text-[11px] sm:text-xs font-normal text-muted-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   {userRank ? `You placed ${userRank}${["th", "st", "nd", "rd"][((userRank % 100) - 20) % 10] || ["th", "st", "nd", "rd"][userRank % 100] || "th"} this week` : "No ranking this week"}
                 </p>
               </div>
             </CardHeader>
-            <CardContent className="p-8">
-              <div className="space-y-4">
+            <CardContent className="p-3 sm:p-6 lg:p-8">
+              <div className="space-y-3 sm:space-y-4">
                 {leaderboard.map((u, idx) => (
-                  <div key={idx} className="flex items-center gap-4 pb-4 last:pb-0 border-b border-border last:border-b-0">
+                  <div key={idx} className="flex items-center gap-2.5 sm:gap-4 pb-3 sm:pb-4 last:pb-0 border-b border-border last:border-b-0 min-w-0">
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="font-normal text-primary text-xs" style={{ fontFamily: "'Poppins', sans-serif" }}>#{idx + 1}</span>
+                      <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="font-semibold text-primary text-[10px] sm:text-xs" style={{ fontFamily: "'Poppins', sans-serif" }}>#{idx + 1}</span>
                       </div>
                     </div>
-                    <Avatar className="h-12 w-12 bg-primary/20 border-2 border-primary/10">
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white text-xs font-medium">{u.name[0]}</AvatarFallback>
+                    <Avatar className="h-9 w-9 sm:h-12 sm:w-12 bg-primary/20 border-2 border-primary/10 shrink-0">
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white text-[10px] sm:text-xs font-medium">{u.name[0]}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <p className="text-sm font-normal text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>{u.name}</p>
-                      <p className="text-xs font-normal text-muted-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>{u.xp.toLocaleString()} XP This Week</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm font-medium text-foreground truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>{u.name}</p>
+                      <p className="text-[10px] sm:text-xs font-normal text-muted-foreground truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>{u.xp.toLocaleString()} XP</p>
                     </div>
-                    {idx === 0 && <Trophy className="h-5 w-5 text-primary flex-shrink-0" />}
+                    {idx === 0 && <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />}
                   </div>
                 ))}
               </div>
@@ -186,16 +185,16 @@ function DashboardContent() {
         </div>
 
         {/* Right Sidebar - Daily Target & Missions */}
-        <div id="tour-dashboard-dailygoal" className="space-y-6">
+        <div id="tour-dashboard-dailygoal" className="space-y-5 sm:space-y-6">
           {/* Daily Question Target Meter */}
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
-            <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
-              <p className="text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
-              <Badge className="bg-[#8B0000] text-white text-[10px] font-bold px-2 py-0.5">
+            <CardHeader className="p-4 sm:p-6 pb-3 border-b border-border flex flex-row items-center justify-between">
+              <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
+              <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5">
                 {user?.todayQuestions || 0} / {dailyQuota} Qs
               </Badge>
             </CardHeader>
-            <CardContent className="p-6 space-y-3">
+            <CardContent className="p-4 sm:p-6 space-y-3">
               {(() => {
                 const todayDone = user?.todayQuestions || 0;
                 const percent = Math.min(100, Math.round((todayDone / (dailyQuota || 1)) * 100));
@@ -223,10 +222,10 @@ function DashboardContent() {
           </Card>
 
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
-            <CardHeader className="pb-4 border-b border-border">
-              <p className="text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Missions</p>
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-border">
+              <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Missions</p>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
               {dailyMissions.length > 0 ? (
                 dailyMissions.map((mission) => {
                   let MissionIcon = Target;
@@ -248,32 +247,32 @@ function DashboardContent() {
                   }
 
                   return (
-                    <div key={mission.id} className="flex items-start gap-3 pb-4 last:pb-0 border-b border-border last:border-b-0">
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${iconBgColor}`}>
-                        <MissionIcon className={`h-5 w-5 ${iconColor}`} />
+                    <div key={mission.id} className="flex items-start gap-2.5 sm:gap-3 pb-3 sm:pb-4 last:pb-0 border-b border-border last:border-b-0 min-w-0">
+                      <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${iconBgColor}`}>
+                        <MissionIcon className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColor}`} />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-normal text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>{mission.title}</p>
-                        <p className="text-xs font-normal text-muted-foreground uppercase mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>{mission.proficiency}% Proficiency • +{mission.xp} XP</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-normal text-foreground truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>{mission.title}</p>
+                        <p className="text-[10px] sm:text-xs font-normal text-muted-foreground uppercase mt-0.5" style={{ fontFamily: "'Poppins', sans-serif" }}>{mission.proficiency}% Proficiency • +{mission.xp} XP</p>
                       </div>
                     </div>
                   );
                 })
               ) : (
-                <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground font-normal" style={{ fontFamily: "'Poppins', sans-serif" }}>No active missions yet.</p>
-                  <p className="text-xs text-muted-foreground mt-1 font-normal" style={{ fontFamily: "'Poppins', sans-serif" }}>Set your study targets to generate personalized missions.</p>
+                <div className="text-center py-4 sm:py-6">
+                  <p className="text-xs sm:text-sm text-muted-foreground font-normal" style={{ fontFamily: "'Poppins', sans-serif" }}>No active missions yet.</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-normal" style={{ fontFamily: "'Poppins', sans-serif" }}>Set your study targets to generate personalized missions.</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="border border-border shadow-sm rounded-2xl bg-primary text-white p-6">
-            <div className="space-y-4">
-              <h4 className="font-semibold text-lg" style={{ fontFamily: "'Poppins', sans-serif" }}>Quest Streak</h4>
-              <div className="flex items-center gap-4">
-                <div className="text-5xl font-bold" style={{ fontFamily: "'Poppins', sans-serif" }}>{user?.streak || 0}</div>
-                <div className="text-xs font-normal uppercase leading-tight opacity-90" style={{ fontFamily: "'Poppins', sans-serif" }}>Days Active<br/> Consistent Review</div>
+          <Card className="border border-border shadow-sm rounded-2xl bg-primary text-white p-4 sm:p-6">
+            <div className="space-y-2 sm:space-y-4">
+              <h4 className="font-semibold text-base sm:text-lg" style={{ fontFamily: "'Poppins', sans-serif" }}>Quest Streak</h4>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="text-4xl sm:text-5xl font-bold" style={{ fontFamily: "'Poppins', sans-serif" }}>{user?.streak || 0}</div>
+                <div className="text-[10px] sm:text-xs font-normal uppercase leading-tight opacity-90" style={{ fontFamily: "'Poppins', sans-serif" }}>Days Active<br/> Consistent Review</div>
               </div>
             </div>
           </Card>

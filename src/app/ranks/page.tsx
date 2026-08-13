@@ -43,36 +43,36 @@ function LeaderboardContent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
-      <header className="text-center space-y-2">
-        <div className="bg-primary/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Trophy className="w-8 h-8 text-primary" />
+    <div className="max-w-4xl mx-auto py-6 sm:py-12 px-3 sm:px-4 space-y-6 sm:space-y-8">
+      <header className="text-center space-y-1.5 sm:space-y-2">
+        <div className="bg-primary/10 w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mx-auto mb-2 sm:mb-4">
+          <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
         </div>
-        <h1 className="text-3xl font-bold font-headline">Global Hall of Fame</h1>
-        <p className="text-muted-foreground">Top aspirants preparing for the MedTech Licensure Examination.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold font-headline">Global Hall of Fame</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Top aspirants preparing for the MedTech Licensure Examination.</p>
       </header>
 
-      <div id="tour-ranks-overview" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="border border-border shadow-md bg-background p-6 text-center space-y-2">
-          <Medal className="w-8 h-8 text-yellow-500 mx-auto" />
-          <p className="text-xs font-bold text-muted-foreground uppercase">Expedition Level</p>
-          <h3 className="text-3xl font-semibold">Lvl {user?.level || 1}</h3>
+      <div id="tour-ranks-overview" className="grid grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
+        <Card className="border border-border shadow-md bg-background p-2.5 sm:p-6 text-center space-y-1 sm:space-y-2">
+          <Medal className="w-5 h-5 sm:w-8 sm:h-8 text-yellow-500 mx-auto" />
+          <p className="text-[9px] sm:text-xs font-bold text-muted-foreground uppercase truncate">Expedition Level</p>
+          <h3 className="text-base sm:text-3xl font-semibold">Lvl {user?.level || 1}</h3>
         </Card>
-        <Card className="border border-border shadow-md bg-background p-6 text-center space-y-2">
-          <Star className="w-8 h-8 text-primary mx-auto" />
-          <p className="text-xs font-bold text-muted-foreground uppercase">Total XP</p>
-          <h3 className="text-3xl font-semibold">{user?.xp?.toLocaleString() || 0}</h3>
+        <Card className="border border-border shadow-md bg-background p-2.5 sm:p-6 text-center space-y-1 sm:space-y-2">
+          <Star className="w-5 h-5 sm:w-8 sm:h-8 text-primary mx-auto" />
+          <p className="text-[9px] sm:text-xs font-bold text-muted-foreground uppercase truncate">Total XP</p>
+          <h3 className="text-base sm:text-3xl font-semibold">{user?.xp?.toLocaleString() || 0}</h3>
         </Card>
-        <Card className="border border-border shadow-md bg-background p-6 text-center space-y-2">
-          <TrendingUp className="w-8 h-8 text-accent mx-auto" />
-          <p className="text-xs font-bold text-muted-foreground uppercase">Streak</p>
-          <h3 className="text-3xl font-semibold">{user?.streak || 0} Days</h3>
+        <Card className="border border-border shadow-md bg-background p-2.5 sm:p-6 text-center space-y-1 sm:space-y-2">
+          <TrendingUp className="w-5 h-5 sm:w-8 sm:h-8 text-accent mx-auto" />
+          <p className="text-[9px] sm:text-xs font-bold text-muted-foreground uppercase truncate">Streak</p>
+          <h3 className="text-base sm:text-3xl font-semibold">{user?.streak || 0} Days</h3>
         </Card>
       </div>
 
-      <Card id="tour-ranks-table" className="border border-border shadow-xl overflow-hidden rounded-3xl">
-        <CardHeader className="bg-muted/30 border-b">
-          <CardTitle className="text-lg font-headline">Regional Rankings</CardTitle>
+      <Card id="tour-ranks-table" className="border border-border shadow-xl overflow-hidden rounded-2xl sm:rounded-3xl">
+        <CardHeader className="p-4 sm:p-6 bg-muted/30 border-b">
+          <CardTitle className="text-base sm:text-lg font-headline">Regional Rankings</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border/50">
@@ -93,28 +93,28 @@ function LeaderboardContent() {
               const borderColor = borderColors[rank as keyof typeof borderColors] || 'border-border';
 
               return (
-                <div key={u.id} className={`flex items-center gap-6 p-6 transition-all duration-300 ${u.id === user?.id ? 'bg-primary/5' : 'hover:bg-muted/30'}`}>
-                  <div className={`w-10 flex justify-center items-center font-bold font-headline text-xl ${rankColor}`}>
-                    {rank === 1 ? <Trophy className="w-7 h-7" /> : 
-                     rank === 2 ? <Medal className="w-7 h-7" /> : 
-                     rank === 3 ? <Medal className="w-7 h-7" /> : rank}
+                <div key={u.id} className={`flex items-center gap-2.5 sm:gap-4 lg:gap-6 p-3 sm:p-5 lg:p-6 transition-all duration-300 min-w-0 ${u.id === user?.id ? 'bg-primary/5' : 'hover:bg-muted/30'}`}>
+                  <div className={`w-6 sm:w-8 lg:w-10 flex justify-center items-center font-bold font-headline text-sm sm:text-lg lg:text-xl shrink-0 ${rankColor}`}>
+                    {rank === 1 ? <Trophy className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" /> : 
+                     rank === 2 ? <Medal className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" /> : 
+                     rank === 3 ? <Medal className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" /> : rank}
                   </div>
-                  <Avatar className={`h-14 w-14 border-2 shadow-sm ${borderColor}`}>
-                    <AvatarFallback className={u.id === user?.id ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}>{u.name[0]}</AvatarFallback>
+                  <Avatar className={`h-9 w-9 sm:h-12 sm:w-12 lg:h-14 lg:w-14 border-2 shadow-sm shrink-0 ${borderColor}`}>
+                    <AvatarFallback className={u.id === user?.id ? 'bg-primary text-white text-xs sm:text-sm' : 'bg-muted text-muted-foreground text-xs sm:text-sm'}>{u.name[0]}</AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <p className="font-bold text-lg tracking-tight">{u.name}</p>
-                      {u.id === user?.id && <Badge className="bg-primary hover:bg-primary/90 text-[10px] h-5 px-2 rounded-full shadow-sm">You</Badge>}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-3 mb-0.5 sm:mb-1 min-w-0">
+                      <p className="font-bold text-xs sm:text-base lg:text-lg tracking-tight truncate">{u.name}</p>
+                      {u.id === user?.id && <Badge className="bg-primary hover:bg-primary/90 text-[9px] sm:text-[10px] h-4 sm:h-5 px-1.5 sm:px-2 rounded-full shadow-sm shrink-0">You</Badge>}
                     </div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/40 inline-block"></span>
-                      Level {u.level} {getRankTitle(u.level)}
+                    <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 truncate">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/40 inline-block shrink-0"></span>
+                      <span className="truncate">Level {u.level} {getRankTitle(u.level)}</span>
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-primary text-2xl tracking-tight">{u.xp.toLocaleString()}</p>
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total XP</p>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-primary text-sm sm:text-xl lg:text-2xl tracking-tight">{u.xp.toLocaleString()}</p>
+                    <p className="text-[8px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total XP</p>
                   </div>
                 </div>
               );
@@ -123,17 +123,17 @@ function LeaderboardContent() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between pt-4">
+      <div className="flex items-center justify-between pt-2 sm:pt-4 gap-2">
         <Button 
           variant="outline" 
           onClick={() => setPage(p => Math.max(1, p - 1))}
           disabled={page === 1}
-          className="rounded-full px-6 hover:bg-primary/5 hover:text-primary transition-colors"
+          className="rounded-full px-3 sm:px-6 text-xs sm:text-sm h-9 sm:h-10 hover:bg-primary/5 hover:text-primary transition-colors shrink-0"
         >
           Previous
         </Button>
-        <div className="flex items-center gap-2 bg-muted/30 px-4 py-2 rounded-full border border-border/50">
-          <span className="text-sm font-medium text-muted-foreground">
+        <div className="flex items-center gap-1 sm:gap-2 bg-muted/30 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full border border-border/50 text-center truncate">
+          <span className="text-xs sm:text-sm font-medium text-muted-foreground">
             Page <span className="text-foreground font-bold">{page}</span> of <span className="text-foreground font-bold">{Math.ceil(totalUsers / limit) || 1}</span>
           </span>
         </div>
@@ -141,7 +141,7 @@ function LeaderboardContent() {
           variant="outline" 
           onClick={() => setPage(p => p + 1)}
           disabled={page >= Math.ceil(totalUsers / limit)}
-          className="rounded-full px-6 hover:bg-primary/5 hover:text-primary transition-colors"
+          className="rounded-full px-3 sm:px-6 text-xs sm:text-sm h-9 sm:h-10 hover:bg-primary/5 hover:text-primary transition-colors shrink-0"
         >
           Next
         </Button>

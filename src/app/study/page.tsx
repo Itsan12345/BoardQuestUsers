@@ -300,11 +300,11 @@ export default function StudyPage() {
 
   return (
     <div className="min-h-full pb-20 lg:pb-12 bg-background">
-      <header id="tour-study-header" className="bg-background border-b px-6 py-8 lg:py-10">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-            <div className="space-y-1.5">
-              <h1 className="text-3xl lg:text-4xl font-black text-foreground tracking-tight leading-none uppercase" style={{ fontFamily: "'Inter-bold', sans-serif" }}>
+      <header id="tour-study-header" className="bg-background border-b px-4 py-5 sm:px-6 sm:py-8 lg:py-10">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6">
+            <div className="space-y-1 sm:space-y-1.5">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground tracking-tight leading-none uppercase" style={{ fontFamily: "'Inter-bold', sans-serif" }}>
                 Study <span className="text-primary">Curriculum</span>
               </h1>
               <p className="text-[10px] lg:text-xs font-semibold text-muted-foreground uppercase tracking-[0.2em]">
@@ -314,22 +314,22 @@ export default function StudyPage() {
 
             {/* Dynamic Review Center Program Final Deadline Stat Card (Clean Minimalist Design) */}
             {program ? (
-              <div id="tour-study-program" className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-4 lg:p-5 shadow-sm space-y-2.5 w-full sm:w-auto min-w-[280px] lg:min-w-[340px]">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                      <CalendarIcon className="w-3.5 h-3.5" />
+              <div id="tour-study-program" className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-3.5 sm:p-4 lg:p-5 shadow-sm space-y-2 w-full sm:w-auto min-w-0 sm:min-w-[280px] lg:min-w-[340px]">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                      <CalendarIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">Final Deadline</span>
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-primary">Final Deadline</span>
                   </div>
                   {(() => {
                     const daysLeft = differenceInDays(new Date(program.endDate), new Date());
                     return (
                       <span className={cn(
-                        "text-[9px] font-bold uppercase px-2.5 py-0.5 rounded-full tracking-wider border shrink-0",
+                        "text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider border shrink-0",
                         daysLeft <= 14 
-                          ? "bg-red-50 text-red-700 border-red-200" 
-                          : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/40" 
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40"
                       )}>
                         {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
                       </span>
@@ -338,12 +338,12 @@ export default function StudyPage() {
                 </div>
 
                 <div>
-                  <p className="text-xl lg:text-2xl font-black text-foreground tracking-tight leading-none">
+                  <p className="text-lg sm:text-xl lg:text-2xl font-black text-foreground tracking-tight leading-none">
                     {format(new Date(program.endDate), "MMMM dd, yyyy")}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate pt-0.5 border-t border-border/40">
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground truncate pt-0.5 border-t border-border/40">
                   <Building2 className="w-3 h-3 text-primary shrink-0" />
                   <span className="font-semibold text-foreground/90 capitalize truncate">{program.companyName}</span>
                   <span className="text-muted-foreground/60">•</span>
@@ -351,31 +351,31 @@ export default function StudyPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-card border-2 border-border rounded-2xl p-4 lg:p-5 flex items-center gap-3.5 text-foreground shadow-sm w-full sm:w-auto">
-                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <div className="bg-card border-2 border-border rounded-2xl p-3.5 sm:p-4 lg:p-5 flex items-center gap-3 text-foreground shadow-sm w-full sm:w-auto">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <AlertCircle className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Final Deadline</p>
+                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-muted-foreground">Final Deadline</p>
                   <p className="text-xs font-bold text-foreground">Loading schedule...</p>
                 </div>
               </div>
             )}
           </div>
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             <Input
               placeholder="Search concepts, protocols, or RA sections..."
-              className="pl-12 h-14 bg-muted border-2 border-border rounded-2xl focus-visible:ring-primary/20 text-sm font-medium"
+              className="pl-10 sm:pl-12 h-11 sm:h-14 bg-muted border-2 border-border rounded-xl sm:rounded-2xl focus-visible:ring-primary/20 text-xs sm:text-sm font-medium"
             />
           </div>
         </div>
       </header>
 
-      <main className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto">
-        <aside id="tour-study-subjects" className="lg:col-span-4 space-y-4">
-          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-2">Laboratory Disciplines</h2>
-          <div className="grid grid-cols-1 gap-3">
+      <main className="p-3.5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 max-w-7xl mx-auto">
+        <aside id="tour-study-subjects" className="lg:col-span-4 space-y-3 sm:space-y-4">
+          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 sm:px-2">Laboratory Disciplines</h2>
+          <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
             {curriculum.map((cat) => {
               const Icon = cat.icon;
               const isActive = selectedCategoryId === cat.id;
@@ -386,22 +386,22 @@ export default function StudyPage() {
                   key={cat.id}
                   onClick={() => setSelectedCategoryId(cat.id)}
                   className={cn(
-                    "w-full flex items-center gap-4 p-5 rounded-3xl transition-all text-left border-2",
+                    "w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 lg:p-5 rounded-2xl sm:rounded-3xl transition-all text-left border-2",
                     isActive
-                      ? "bg-background border-primary shadow-xl"
+                      ? "bg-background border-primary shadow-lg"
                       : "hover:bg-muted border-border bg-background"
                   )}
                 >
                   <div className={cn(
-                    "p-3 rounded-2xl shrink-0 transition-colors",
+                    "p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shrink-0 transition-colors",
                     isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
                   )}>
-                    <Icon className="h-6 w-6" />
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 justify-between">
                       <p className={cn(
-                        "font-semibold text-sm uppercase tracking-tight truncate",
+                        "font-semibold text-xs sm:text-sm uppercase tracking-tight truncate",
                         isActive ? "text-primary" : "text-foreground"
                       )}>
                         {cat.title}
@@ -412,9 +412,9 @@ export default function StudyPage() {
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <CalendarIcon className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
+                      <CalendarIcon className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase truncate">
                         {mounted && catDate ? format(catDate, "MMM dd, yyyy") : "No target set"}
                       </span>
                     </div>
@@ -425,15 +425,15 @@ export default function StudyPage() {
           </div>
         </aside>
 
-        <section className="lg:col-span-8 space-y-6">
-          <Card id="tour-study-metrics" className="border border-border shadow-sm rounded-[2rem] bg-muted border-2 border-border overflow-hidden">
-            <CardHeader className="pb-4 space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="space-y-1">
-                  <CardTitle className="font-headline font-semibold text-xl lg:text-2xl text-foreground uppercase">
+        <section className="lg:col-span-8 space-y-5 sm:space-y-6">
+          <Card id="tour-study-metrics" className="border border-border shadow-sm rounded-2xl sm:rounded-[2rem] bg-muted border-2 border-border overflow-hidden">
+            <CardHeader className="p-4 sm:p-6 pb-4 space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+                <div className="space-y-0.5 sm:space-y-1">
+                  <CardTitle className="font-headline font-semibold text-lg sm:text-xl lg:text-2xl text-foreground uppercase">
                     {selectedCategory.title}
                   </CardTitle>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Discipline Parameters</p>
+                  <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Discipline Parameters</p>
                 </div>
 
                 {isDesktop ? (
@@ -442,7 +442,7 @@ export default function StudyPage() {
                       <Button
                         variant="outline"
                         className={cn(
-                          "rounded-xl border-2 h-12 px-6 flex items-center gap-3 transition-all hover:shadow-lg hover:border-primary/40",
+                          "rounded-xl border-2 h-10 sm:h-12 px-4 sm:px-6 flex items-center gap-2 sm:gap-3 transition-all hover:shadow-lg hover:border-primary/40",
                           selectedDate ? "border-primary/30 bg-primary/10 text-primary shadow-md" : "border-border hover:border-slate-300"
                         )}
                         disabled={isSaving === selectedCategory.title}
@@ -480,7 +480,7 @@ export default function StudyPage() {
                       <Button
                         variant="outline"
                         className={cn(
-                          "rounded-xl border-2 h-12 px-6 flex items-center gap-3 transition-all hover:shadow-lg hover:border-primary/40",
+                          "w-full sm:w-auto rounded-xl border-2 h-10 sm:h-12 px-4 sm:px-6 flex items-center justify-center gap-2 sm:gap-3 transition-all hover:shadow-lg hover:border-primary/40",
                           selectedDate ? "border-primary/30 bg-primary/10 text-primary shadow-md" : "border-border hover:border-slate-300"
                         )}
                         disabled={isSaving === selectedCategory.title}
@@ -491,16 +491,16 @@ export default function StudyPage() {
                           <CalendarIcon className="w-4 h-4" />
                         )}
                         <div className="text-left">
-                          <p className="text-[8px] font-semibold uppercase text-muted-foreground leading-none mb-1">Target Date</p>
+                          <p className="text-[8px] font-semibold uppercase text-muted-foreground leading-none mb-0.5">Target Date</p>
                           <p className="text-xs font-semibold leading-none">
                             {mounted && selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Set Target"}
                           </p>
                         </div>
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="w-[90vw] max-w-sm rounded-3xl p-6 border-0 shadow-2xl gap-0">
+                    <DialogContent className="w-[90vw] max-w-sm rounded-3xl p-4 sm:p-6 border-0 shadow-2xl gap-0">
                       <div className="space-y-4 sm:space-y-6">
-                        <div className="space-y-1 border-b pb-4 text-center px-8">
+                        <div className="space-y-1 border-b pb-4 text-center px-4 sm:px-8">
                           <DialogTitle className="font-black text-sm sm:text-base uppercase text-foreground leading-tight">Select Target Date</DialogTitle>
                           <p className="text-xs text-muted-foreground font-semibold">For {selectedCategory.title}</p>
                         </div>
@@ -516,89 +516,90 @@ export default function StudyPage() {
                   </Dialog>
                 )}
               </div>
-              <div className="space-y-4 pt-2">
+              <div className="space-y-3 sm:space-y-4 pt-2">
                 {/* Completion Metric */}
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   <div className="flex justify-between items-end">
-                    <span className="text-xs font-semibold uppercase text-foreground flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-accent" />
+                    <span className="text-[11px] sm:text-xs font-semibold uppercase text-foreground flex items-center gap-1.5 sm:gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
                       Completion
                     </span>
-                    <span className="text-xs font-semibold text-foreground">
+                    <span className="text-[11px] sm:text-xs font-semibold text-foreground">
                       {subjectMetrics[selectedCategory.title]?.completion || 0}%
                     </span>
                   </div>
-                  <Progress value={subjectMetrics[selectedCategory.title]?.completion || 0} className="h-2.5 bg-secondary" />
+                  <Progress value={subjectMetrics[selectedCategory.title]?.completion || 0} className="h-2 sm:h-2.5 bg-secondary" />
                 </div>
 
                 {/* Mastery Metric */}
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   <div className="flex justify-between items-end">
-                    <span className="text-xs font-semibold uppercase text-primary flex items-center gap-2">
-                      <Brain className="w-4 h-4 text-primary" />
+                    <span className="text-[11px] sm:text-xs font-semibold uppercase text-primary flex items-center gap-1.5 sm:gap-2">
+                      <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                       Mastery (Quest Avg)
                     </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-foreground">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <span className="text-[11px] sm:text-xs font-semibold text-foreground">
                         {subjectMetrics[selectedCategory.title]?.mastery || 0}%
                       </span>
                       <span className={cn(
-                        "text-[9px] font-semibold px-2 py-1 rounded-full uppercase",
-                        subjectMetrics[selectedCategory.title]?.masteryStatus === 'Mastered' ? "bg-green-100 text-green-700" :
-                          subjectMetrics[selectedCategory.title]?.masteryStatus === 'Proficient' ? "bg-blue-100 text-blue-700" :
-                            subjectMetrics[selectedCategory.title]?.masteryStatus === 'In Training' ? "bg-orange-100 text-orange-700" :
-                              "bg-secondary text-slate-600"
+                        "text-[8px] sm:text-[9px] font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full uppercase",
+                        subjectMetrics[selectedCategory.title]?.masteryStatus === 'Mastered' ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" :
+                          subjectMetrics[selectedCategory.title]?.masteryStatus === 'Proficient' ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" :
+                            subjectMetrics[selectedCategory.title]?.masteryStatus === 'In Training' ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
+                              "bg-secondary text-slate-600 dark:text-slate-400"
                       )}>
                         {subjectMetrics[selectedCategory.title]?.masteryStatus || 'Not Started'}
                       </span>
                     </div>
                   </div>
-                  <Progress value={subjectMetrics[selectedCategory.title]?.mastery || 0} className="h-2.5 bg-secondary" />
-                  <p className="text-[9px] text-muted-foreground font-semibold">Based on your average performance in Quest Arena for this subject</p>
+                  <Progress value={subjectMetrics[selectedCategory.title]?.mastery || 0} className="h-2 sm:h-2.5 bg-secondary" />
+                  <p className="text-[8px] sm:text-[9px] text-muted-foreground font-semibold">Based on your average performance in Quest Arena for this subject</p>
                 </div>
               </div>
             </CardHeader>
           </Card>
 
-          <Card className="border border-border shadow-sm rounded-[2rem] bg-background border-2 border-border overflow-hidden">
-            <CardHeader className="bg-muted border-b p-6 lg:p-8">
-              <CardTitle className="font-headline text-lg font-semibold uppercase tracking-tight flex items-center gap-3">
-                <BookMarked className="w-5 h-5 text-primary" />
+          <Card className="border border-border shadow-sm rounded-2xl sm:rounded-[2rem] bg-background border-2 border-border overflow-hidden">
+            <CardHeader className="bg-muted border-b p-4 sm:p-6 lg:p-8">
+              <CardTitle className="font-headline text-base sm:text-lg font-semibold uppercase tracking-tight flex items-center gap-2.5 sm:gap-3">
+                <BookMarked className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 Intel Expedition Modules
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea className="h-[400px]">
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-border/60">
                   {selectedCategory.lessons.map((lesson, idx) => (
-                    <div key={lesson.id} className="p-6 flex items-center gap-5 hover:bg-muted transition-all cursor-pointer group">
+                    <div key={lesson.id} className="p-3.5 sm:p-5 lg:p-6 flex items-center gap-3 sm:gap-5 hover:bg-muted transition-all cursor-pointer group min-w-0">
                       <div className={cn(
-                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl font-semibold text-sm border-2 transition-all",
+                        "flex h-9 w-9 sm:h-11 sm:w-11 lg:h-12 lg:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl font-semibold text-xs sm:text-sm border-2 transition-all",
                         lesson.status === 'completed'
                           ? "bg-accent/10 border-accent/20 text-accent"
-                          : "bg-background border-border text-slate-300 group-hover:border-primary/20"
+                          : "bg-background border-border text-muted-foreground group-hover:border-primary/20"
                       )}>
                         {idx + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm lg:text-base text-foreground truncate">{lesson.title}</h4>
-                        <div className="flex items-center gap-4 text-[10px] font-semibold text-muted-foreground uppercase tracking-tighter">
-                          <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {lesson.duration} Intel</span>
+                        <h4 className="font-semibold text-xs sm:text-sm lg:text-base text-foreground leading-snug line-clamp-2 sm:truncate">{lesson.title}</h4>
+                        <div className="flex items-center gap-3 text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-tighter mt-0.5">
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration} Intel</span>
                         </div>
                       </div>
                       <button
                         onClick={() => handleSubmitLesson(lesson.id)}
                         className={cn(
-                          "h-10 w-10 flex items-center justify-center rounded-xl transition-all shadow-sm",
+                          "h-8 w-8 sm:h-10 sm:w-10 shrink-0 flex items-center justify-center rounded-lg sm:rounded-xl transition-all shadow-sm",
                           lesson.status === 'completed'
                             ? "bg-accent/20 text-accent"
                             : "bg-secondary text-muted-foreground group-hover:bg-primary group-hover:text-white"
                         )}
+                        aria-label="Toggle lesson completion"
                       >
                         {lesson.status === 'completed' ? (
-                          <CheckCircle2 className="h-6 w-6" />
+                          <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6" />
                         ) : (
-                          <PlayCircle className="h-6 w-6" />
+                          <PlayCircle className="h-5 w-5 sm:h-6 sm:w-6" />
                         )}
                       </button>
                     </div>
