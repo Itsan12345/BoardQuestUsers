@@ -9,7 +9,7 @@ interface CustomCalendarProps {
 }
 
 export function CustomCalendar({ selected, onSelect, disabled }: CustomCalendarProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(selected || new Date());
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
@@ -24,20 +24,16 @@ export function CustomCalendar({ selected, onSelect, disabled }: CustomCalendarP
     day = addDays(day, 1);
   }
 
-  const weeks: Date[][] = [];
-  for (let i = 0; i < days.length; i += 7) {
-    weeks.push(days.slice(i, i + 7));
-  }
-
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
-    <div className="w-full max-w-[320px] p-2 sm:p-4 mx-auto">
+    <div className="w-full max-w-[320px] p-2 sm:p-4 mx-auto select-none">
       {/* Header with Month/Year and Navigation */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <button
+          type="button"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          className="p-1.5 sm:p-2 hover:bg-secondary rounded-lg transition-colors text-slate-600 hover:text-foreground"
+          className="p-1.5 sm:p-2 hover:bg-secondary rounded-lg transition-colors text-foreground/70 hover:text-foreground"
         >
           <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
@@ -48,8 +44,9 @@ export function CustomCalendar({ selected, onSelect, disabled }: CustomCalendarP
         </div>
 
         <button
+          type="button"
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-          className="p-1.5 sm:p-2 hover:bg-secondary rounded-lg transition-colors text-slate-600 hover:text-foreground"
+          className="p-1.5 sm:p-2 hover:bg-secondary rounded-lg transition-colors text-foreground/70 hover:text-foreground"
         >
           <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
@@ -58,7 +55,7 @@ export function CustomCalendar({ selected, onSelect, disabled }: CustomCalendarP
       {/* Day Names */}
       <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 sm:mb-3">
         {dayNames.map((dayName) => (
-          <div key={dayName} className="text-center text-[10px] sm:text-xs font-bold uppercase text-slate-600 py-1 sm:py-2">
+          <div key={dayName} className="text-center text-[10px] sm:text-xs font-bold uppercase text-muted-foreground py-1 sm:py-2">
             {dayName}
           </div>
         ))}
@@ -74,13 +71,14 @@ export function CustomCalendar({ selected, onSelect, disabled }: CustomCalendarP
           return (
             <button
               key={idx}
+              type="button"
               onClick={() => !isDisabled && onSelect(day)}
               disabled={isDisabled}
               className={`
                 h-8 w-8 sm:h-9 sm:w-9 mx-auto rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center
-                ${!isCurrentMonth ? 'text-slate-300' : 'text-foreground'}
-                ${isSelected ? 'bg-primary text-white font-bold shadow-lg' : ''}
-                ${!isSelected && isCurrentMonth && !isDisabled ? 'hover:bg-secondary' : ''}
+                ${!isCurrentMonth ? 'text-muted-foreground/30' : 'text-foreground'}
+                ${isSelected ? 'bg-[#8B0000] text-white font-bold shadow-lg ring-2 ring-primary/20 scale-105' : ''}
+                ${!isSelected && isCurrentMonth && !isDisabled ? 'hover:bg-secondary cursor-pointer' : ''}
                 ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:cursor-pointer'}
               `}
             >

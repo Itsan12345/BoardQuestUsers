@@ -122,110 +122,126 @@ export default function StudyPage() {
   useEffect(() => {
     setMounted(true);
     async function loadData() {
-      const [dbCategories, plans, metrics, programData, userProfile, lessonCompletionsMap] = await Promise.all([
-        getCategories(),
-        getStudyPlans(),
-        getSubjectMetrics(),
-        getReviewCenterProgram(),
-        getUserProfile(),
-        getUserLessonCompletions()
-      ]);
+      try {
+        const [dbCategories, plans, metrics, programData, userProfile, lessonCompletionsMap] = await Promise.all([
+          getCategories().catch(() => []),
+          getStudyPlans().catch(() => []),
+          getSubjectMetrics().catch(() => []),
+          getReviewCenterProgram().catch(() => null),
+          getUserProfile().catch(() => null),
+          getUserLessonCompletions().catch(() => ({} as Record<string, string>))
+        ]);
 
-      setProgram(programData);
-      if (userProfile?.name) {
-        const parts = userProfile.name.trim().split(/\s+/);
-        setUserLastName(parts[parts.length - 1]);
-      }
+        const compMap: Record<string, string> = lessonCompletionsMap || {};
 
-      const baseList = (dbCategories && dbCategories.length > 0)
-        ? dbCategories
-        : INITIAL_CURRICULUM.map(c => ({ id: c.id, name: c.title }));
-
-      const dynamicCurriculum = baseList.map((cat: any) => {
-        const existing = INITIAL_CURRICULUM.find(c => c.title.trim().toLowerCase() === cat.name.trim().toLowerCase());
-        if (existing) {
-          return {
-            ...existing,
-            id: cat.id || existing.id,
-            title: cat.name,
-            lessons: existing.lessons.map(lesson => ({
-              ...lesson,
-              status: lessonCompletionsMap[lesson.id] || 'not-started'
-            }))
-          };
+        setProgram(programData);
+        if (userProfile?.name) {
+          const parts = userProfile.name.trim().split(/\s+/);
+          setUserLastName(parts[parts.length - 1]);
         }
 
-        const slug = cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        const defaultLessons = [
-          { id: `${slug}-1`, title: `${cat.name} Fundamentals & Core Concepts`, duration: "45m" },
-          { id: `${slug}-2`, title: `${cat.name} Protocols & Comprehensive Review`, duration: "60m" }
-        ];
+        const baseList = (dbCategories && dbCategories.length > 0)
+          ? dbCategories
+          : INITIAL_CURRICULUM.map(c => ({ id: c.id, name: c.title }));
 
-        return {
-          id: slug,
-          title: cat.name,
-          icon: ICON_MAP[cat.name] || BookMarked,
-          lessons: defaultLessons.map(l => ({
-            ...l,
-            status: lessonCompletionsMap[l.id] || 'not-started'
-          }))
-        };
-      });
-
-      // Check URL param ?subject= or Focus Subject from settings
-      const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const urlSubject = searchParams?.get('subject');
-      const savedFocus = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null;
-      const prioritySubject = urlSubject || savedFocus;
-
-      if (savedFocus) {
-        setFocusSubject(savedFocus);
-      }
-
-      if (prioritySubject) {
-        dynamicCurriculum.sort((a: any, b: any) => {
-          if (a.title.toLowerCase() === prioritySubject.toLowerCase()) return -1;
-          if (b.title.toLowerCase() === prioritySubject.toLowerCase()) return 1;
-          return 0;
-        });
-      }
-
-      setCurriculum(dynamicCurriculum);
-      if (dynamicCurriculum.length > 0) {
-        setSelectedCategoryId(prev => {
-          if (prioritySubject) {
-            const matched = dynamicCurriculum.find((c: any) => c.title.toLowerCase() === prioritySubject.toLowerCase());
-            if (matched) return matched.id;
+        const dynamicCurriculum = baseList.map((cat: any) => {
+          const existing = INITIAL_CURRICULUM.find(c => c.title.trim().toLowerCase() === cat.name.trim().toLowerCase());
+          if (existing) {
+            return {
+              ...existing,
+              id: cat.id || existing.id,
+              title: cat.name,
+              lessons: existing.lessons.map(lesson => ({
+                ...lesson,
+                status: compMap[lesson.id] || 'not-started'
+              }))
+            };
           }
-          const existsInNew = dynamicCurriculum.some((c: any) => c.id === prev);
-          return existsInNew ? prev : dynamicCurriculum[0].id;
+
+          const slug = cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const defaultLessons = [
+            { id: `${slug}-1`, title: `${cat.name} Fundamentals & Core Concepts`, duration: "45m" },
+            { id: `${slug}-2`, title: `${cat.name} Protocols & Comprehensive Review`, duration: "60m" }
+          ];
+
+          return {
+            id: slug,
+            title: cat.name,
+            icon: ICON_MAP[cat.name] || BookMarked,
+            lessons: defaultLessons.map(l => ({
+              ...l,
+              status: compMap[l.id] || 'not-started'
+            }))
+          };
         });
+
+        // Check URL param ?subject= or Focus Subject from settings
+        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+        const urlSubject = searchParams?.get('subject');
+        const savedFocus = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null;
+        const prioritySubject = urlSubject || savedFocus;
+
+        if (savedFocus) {
+          setFocusSubject(savedFocus);
+        }
+
+        if (prioritySubject) {
+          dynamicCurriculum.sort((a: any, b: any) => {
+            if (a.title.toLowerCase() === prioritySubject.toLowerCase()) return -1;
+            if (b.title.toLowerCase() === prioritySubject.toLowerCase()) return 1;
+            return 0;
+          });
+        }
+
+        setCurriculum(dynamicCurriculum);
+        if (dynamicCurriculum.length > 0) {
+          setSelectedCategoryId(prev => {
+            if (prioritySubject) {
+              const matched = dynamicCurriculum.find((c: any) => c.title.toLowerCase() === prioritySubject.toLowerCase());
+              if (matched) return matched.id;
+            }
+            const existsInNew = dynamicCurriculum.some((c: any) => c.id === prev);
+            return existsInNew ? prev : dynamicCurriculum[0].id;
+          });
+        }
+
+        const dates: Record<string, Date> = {};
+        if (plans && Array.isArray(plans)) {
+          plans.forEach((p: any) => {
+            dates[p.subject] = new Date(p.targetDate);
+          });
+        }
+        setTargetDates(dates);
+
+        const metricsMap: Record<string, SubjectMetrics> = {};
+        if (metrics && Array.isArray(metrics)) {
+          metrics.forEach((m: any) => {
+            metricsMap[m.subject] = m;
+          });
+        }
+        setSubjectMetrics(metricsMap);
+      } catch (err) {
+        console.warn('Could not load study curriculum data from server:', err);
+      } finally {
+        setLoading(false);
       }
-
-      const dates: Record<string, Date> = {};
-      plans.forEach((p: any) => {
-        dates[p.subject] = new Date(p.targetDate);
-      });
-      setTargetDates(dates);
-
-      const metricsMap: Record<string, SubjectMetrics> = {};
-      metrics.forEach((m: any) => {
-        metricsMap[m.subject] = m;
-      });
-      setSubjectMetrics(metricsMap);
-
-      setLoading(false);
     }
     loadData();
 
     // Refresh metrics every 30 seconds to keep them in sync across pages
     const metricsRefreshInterval = setInterval(async () => {
-      const metrics = await getSubjectMetrics();
-      const metricsMap: Record<string, SubjectMetrics> = {};
-      metrics.forEach(m => {
-        metricsMap[m.subject] = m;
-      });
-      setSubjectMetrics(metricsMap);
+      try {
+        const metrics = await getSubjectMetrics();
+        if (metrics && Array.isArray(metrics)) {
+          const metricsMap: Record<string, SubjectMetrics> = {};
+          metrics.forEach(m => {
+            metricsMap[m.subject] = m;
+          });
+          setSubjectMetrics(metricsMap);
+        }
+      } catch (err) {
+        // Silently ignore background polling network errors during dev reload
+      }
     }, 30000);
 
     const checkDesktop = () => setIsDesktop(window.innerWidth >= 768);
@@ -267,30 +283,42 @@ export default function StudyPage() {
   };
 
   const handleSubmitLesson = async (lessonId: string) => {
-    const updated = await updateLessonStatus(selectedCategory.title, lessonId, 'completed');
-    if (updated) {
-      // Update local curriculum state immediately
-      setCurriculum(prev => prev.map(cat => {
-        if (cat.title === selectedCategory.title) {
-          return {
-            ...cat,
-            lessons: cat.lessons.map(l => l.id === lessonId ? { ...l, status: 'completed' } : l)
-          };
-        }
-        return cat;
-      }));
+    try {
+      const updated = await updateLessonStatus(selectedCategory.title, lessonId, 'completed');
+      if (updated) {
+        // Update local curriculum state immediately
+        setCurriculum(prev => prev.map(cat => {
+          if (cat.title === selectedCategory.title) {
+            return {
+              ...cat,
+              lessons: cat.lessons.map(l => l.id === lessonId ? { ...l, status: 'completed' } : l)
+            };
+          }
+          return cat;
+        }));
 
-      // Refresh metrics
-      const metrics = await getSubjectMetrics();
-      const metricsMap: Record<string, SubjectMetrics> = {};
-      metrics.forEach(m => {
-        metricsMap[m.subject] = m;
-      });
-      setSubjectMetrics(metricsMap);
+        // Refresh metrics
+        try {
+          const metrics = await getSubjectMetrics();
+          if (metrics && Array.isArray(metrics)) {
+            const metricsMap: Record<string, SubjectMetrics> = {};
+            metrics.forEach(m => {
+              metricsMap[m.subject] = m;
+            });
+            setSubjectMetrics(metricsMap);
+          }
+        } catch {}
 
+        toast({
+          title: "Lesson Completed",
+          description: "Great work! Your progress has been saved.",
+        });
+      }
+    } catch (err) {
       toast({
-        title: "Lesson Completed",
-        description: "Great work! Your progress has been saved.",
+        variant: "destructive",
+        title: "Action Failed",
+        description: "Failed to update lesson status. Please check your connection and try again.",
       });
     }
   };

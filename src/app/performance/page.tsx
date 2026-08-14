@@ -81,10 +81,10 @@ function PerformanceContent() {
     async function loadData() {
       try {
         const [stats, plans, metrics, dbCategories] = await Promise.all([
-          getUserStats(),
-          getStudyPlans(),
-          getSubjectMetrics(),
-          getCategories()
+          getUserStats().catch(() => null),
+          getStudyPlans().catch(() => []),
+          getSubjectMetrics().catch(() => []),
+          getCategories().catch(() => [])
         ]);
 
         setUser(stats);

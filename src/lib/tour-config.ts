@@ -87,8 +87,8 @@ export const TOUR_CONFIGS: Record<string, PageTourConfig> = {
       {
         element: '#tour-study-program',
         popover: {
-          title: '📅 Review Center Sync',
-          description: 'Configure your enrolled review center schedule and customize your target exam deadlines.',
+          title: '📅 Faculty Clearance Cutoff',
+          description: 'The institutional cutoff date that serves as the final gateway where faculty determines if you have achieved the required Board Readiness and are fully cleared to take the actual licensure examination.',
           side: 'bottom',
           align: 'end',
         },
@@ -244,8 +244,17 @@ export const TOUR_CONFIGS: Record<string, PageTourConfig> = {
       {
         element: '#tour-profile-academic',
         popover: {
-          title: '🏛️ Academic & Exam Information',
-          description: 'Set your full name, university / review center, target MTLE season, and regional exam testing hub.',
+          title: '🏛️ Academic Institution & Hub',
+          description: 'Set your full name, registered email, university / review center, and regional exam testing hub.',
+          side: 'top',
+          align: 'start',
+        },
+      },
+      {
+        element: '#tour-profile-target-exam',
+        popover: {
+          title: '🎯 Target MTLE Board Schedule',
+          description: 'The official PRC Licensure Examination date you are targeting. This sets your countdown clock and guides your review pacing toward the actual examination day.',
           side: 'top',
           align: 'start',
         },

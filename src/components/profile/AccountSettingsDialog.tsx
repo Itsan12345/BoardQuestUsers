@@ -58,6 +58,9 @@ import {
 } from '@/app/actions/user';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
 import { startTourByKey, isTourCompleted } from '@/lib/tour-config';
+import { TargetExamCalendar } from '@/components/profile/TargetExamCalendar';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface AccountSettingsDialogProps {
@@ -90,7 +93,9 @@ export function AccountSettingsDialog({
   const [name, setName] = useState(userProfile.name || '');
   const [location, setLocation] = useState(userProfile.location || 'Cebu, Philippines');
   const [school, setSchool] = useState('Southwestern University PHINMA');
-  const [targetBatch, setTargetBatch] = useState('August 2025 MTLE');
+  const [targetBatch, setTargetBatch] = useState('October 2026 MTLE');
+  const [targetExamDate, setTargetExamDate] = useState<Date>(new Date(2026, 9, 30));
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Form states - Study Goals
@@ -144,6 +149,7 @@ export function AccountSettingsDialog({
           if (dbSettings.achievementAlerts !== undefined) setAchievementAlerts(dbSettings.achievementAlerts);
           if (dbSettings.school) setSchool(dbSettings.school);
           if (dbSettings.targetBatch) setTargetBatch(dbSettings.targetBatch);
+          if (dbSettings.targetExamDate) setTargetExamDate(new Date(dbSettings.targetExamDate));
         } else {
           // Fallback to client localStorage
           const savedQuota = localStorage.getItem('bq_pref_daily_quota');
@@ -184,6 +190,9 @@ export function AccountSettingsDialog({
 
           const savedBatch = localStorage.getItem('bq_pref_target_batch');
           if (savedBatch) setTargetBatch(savedBatch);
+
+          const savedDate = localStorage.getItem('bq_pref_target_exam_date');
+          if (savedDate) setTargetExamDate(new Date(savedDate));
         }
       } catch (e) {
         console.error('Error loading preferences:', e);
@@ -245,18 +254,26 @@ export function AccountSettingsDialog({
         throw new Error(res.error || 'Failed to update profile');
       }
 
+      const dateIso = targetExamDate ? targetExamDate.toISOString() : new Date(2026, 9, 30).toISOString();
+
       // Save academic fields to MongoDB & localStorage
       localStorage.setItem('bq_pref_school', school);
       localStorage.setItem('bq_pref_target_batch', targetBatch);
-      await saveUserSettingsAction({ school, targetBatch });
+      localStorage.setItem('bq_pref_target_exam_date', dateIso);
+
+      await saveUserSettingsAction({
+        school,
+        targetBatch,
+        targetExamDate: dateIso,
+      });
 
       window.dispatchEvent(new CustomEvent('bq_settings_updated', {
-        detail: { school, targetBatch }
+        detail: { school, targetBatch, targetExamDate: dateIso }
       }));
 
       toast({
         title: 'Profile Updated',
-        description: 'Your academic credentials have been saved.',
+        description: 'Your academic credentials and target exam schedule have been saved.',
       });
 
       if (res.user) {
@@ -491,18 +508,20 @@ export function AccountSettingsDialog({
   };
 
   const passwordStrength = getPasswordStrength(newPassword);
+  const today = startOfDay(new Date());
+  const daysRemaining = targetExamDate ? differenceInCalendarDays(startOfDay(targetExamDate), today) : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-7">
-        <DialogHeader className="pb-4 border-b border-border text-left">
+      <DialogContent className="w-[95vw] max-w-2xl bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 overflow-visible">
+        <DialogHeader className="pb-3 sm:pb-4 border-b border-border text-left">
           <div id="tour-settings-header" className="flex items-start sm:items-center justify-between pr-6 gap-3 text-left">
-            <div className="text-left">
-              <DialogTitle className="text-xl sm:text-2xl font-bold text-foreground text-left">
+            <div className="text-left min-w-0">
+              <DialogTitle className="text-lg sm:text-2xl font-bold text-foreground text-left truncate">
                 Account Settings
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5 text-left leading-relaxed">
-                Manage your academic credentials, review goals, and security preferences
+              <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 text-left leading-relaxed line-clamp-1 sm:line-clamp-none">
+                Manage academic credentials, review goals, and security
               </DialogDescription>
             </div>
 
@@ -511,172 +530,219 @@ export function AccountSettingsDialog({
               variant="outline"
               size="sm"
               onClick={() => handleStartTabTour(activeTab, true)}
-              className="h-8 px-2.5 sm:px-3 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-xs font-semibold flex items-center gap-1.5 transition-all text-foreground/80 hover:text-primary shrink-0"
+              className="h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-[10px] sm:text-xs font-semibold flex items-center gap-1 transition-all text-foreground/80 hover:text-primary shrink-0"
               title="Explain current tab settings"
             >
-              <Compass className="w-3.5 h-3.5 text-primary shrink-0 transition-transform group-hover:rotate-45" />
-              <span className="text-[11px] font-bold uppercase tracking-wider hidden sm:inline">Guide</span>
+              <Compass className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary shrink-0 transition-transform group-hover:rotate-45" />
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider hidden sm:inline">Guide</span>
             </Button>
           </div>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full pt-2">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full pt-1.5 min-w-0">
           {/* Tabs navigation bar */}
-          <TabsList className="w-full flex flex-wrap h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/50 gap-1">
+          <TabsList className="w-full grid grid-cols-4 md:grid-cols-7 h-auto p-1 bg-muted/60 rounded-xl sm:rounded-2xl border border-border/50 gap-1 min-w-0">
             <TabsTrigger
               id="tour-settings-tab-profile"
               value="profile"
-              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="min-w-0 text-[10px] sm:text-xs font-semibold py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1"
             >
-              <User className="w-3.5 h-3.5" /> Profile
+              <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="truncate">Profile</span>
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-goals"
               value="goals"
-              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="min-w-0 text-[10px] sm:text-xs font-semibold py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1"
             >
-              <Target className="w-3.5 h-3.5" /> Goals
+              <Target className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="truncate">Goals</span>
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-appearance"
               value="appearance"
-              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="min-w-0 text-[10px] sm:text-xs font-semibold py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1"
             >
-              <Palette className="w-3.5 h-3.5" /> Appearance
+              <Palette className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="truncate">Theme</span>
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-audio"
               value="audio"
-              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="min-w-0 text-[10px] sm:text-xs font-semibold py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1"
             >
-              <Volume2 className="w-3.5 h-3.5" /> Audio & FX
+              <Volume2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="truncate">Audio</span>
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-alerts"
               value="alerts"
-              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="min-w-0 text-[10px] sm:text-xs font-semibold py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1"
             >
-              <Bell className="w-3.5 h-3.5" /> Alerts
+              <Bell className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="truncate">Alerts</span>
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-security"
               value="security"
-              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="min-w-0 text-[10px] sm:text-xs font-semibold py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1"
             >
-              <Lock className="w-3.5 h-3.5" /> Security
+              <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="truncate">Security</span>
             </TabsTrigger>
             <TabsTrigger
               id="tour-settings-tab-records"
               value="records"
-              className="flex-1 min-w-[100px] text-xs font-semibold py-2 rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1.5"
+              className="col-span-2 md:col-span-1 min-w-0 text-[10px] sm:text-xs font-semibold py-1.5 sm:py-2 px-1 rounded-lg sm:rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm flex items-center justify-center gap-1"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" /> Records
+              <FileSpreadsheet className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="truncate">Records</span>
             </TabsTrigger>
           </TabsList>
 
           {/* TAB 1: Profile & Academic Identity */}
-          <TabsContent value="profile" className="pt-4 space-y-6">
-            <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div id="tour-profile-identity" className="p-4 bg-muted/30 border border-border rounded-2xl flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-[#8B0000] text-white flex items-center justify-center text-xl font-bold border-4 border-primary/20 shadow-md">
+          <TabsContent value="profile" className="pt-3 space-y-3.5 min-w-0 max-w-full">
+            <form onSubmit={handleSaveProfile} className="space-y-3.5 min-w-0 max-w-full">
+              <div id="tour-profile-identity" className="p-2.5 sm:p-3 bg-muted/30 border border-border rounded-xl sm:rounded-2xl flex items-center gap-2.5 sm:gap-3.5 w-full min-w-0 max-w-full overflow-hidden">
+                <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-[#8B0000] text-white flex items-center justify-center text-sm sm:text-lg font-bold border-2 border-primary/20 shadow-md shrink-0">
                   {name
                     ? name
-                        .split(' ')
-                        .map(n => n[0])
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 2)
+                      .split(' ')
+                      .map(n => n[0])
+                      .join('')
+                      .toUpperCase()
+                      .slice(0, 2)
                     : 'A'}
                 </div>
-                <div className="space-y-1 text-center sm:text-left">
-                  <div className="flex items-center justify-center sm:justify-start gap-2">
-                    <h3 className="font-bold text-base text-foreground">{name || 'Medical Technology Aspirant'}</h3>
-                    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[10px] flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Verified Candidate
+                <div className="space-y-0.5 min-w-0 flex-1 overflow-hidden">
+                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                    <h3 className="font-bold text-xs sm:text-base text-foreground truncate">{name || 'Medical Technology Aspirant'}</h3>
+                    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[9px] sm:text-[10px] px-1.5 py-0 flex items-center gap-0.5 shrink-0">
+                      <CheckCircle2 className="w-2.5 h-2.5" /> Verified
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                     Level {userProfile.level} • {userProfile.classString}
                   </p>
                 </div>
               </div>
 
-              <div id="tour-profile-academic" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-xs font-semibold">
-                    Full Name
-                  </Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="Reynaldo Adriano"
-                    className="rounded-xl h-10 text-sm"
-                  />
+              <div id="tour-profile-academic" className="space-y-3 w-full max-w-full min-w-0">
+                {/* Row 1: Full Name & Registered Email Address */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 w-full max-w-full min-w-0">
+                  <div className="space-y-1 w-full min-w-0">
+                    <Label htmlFor="name" className="text-[11px] sm:text-xs font-semibold">
+                      Full Name
+                    </Label>
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="Ethan Gabriel Rolloque"
+                      className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm w-full min-w-0"
+                    />
+                  </div>
+
+                  <div className="space-y-1 w-full min-w-0">
+                    <Label htmlFor="email" className="text-[11px] sm:text-xs font-semibold">
+                      Registered Email Address
+                    </Label>
+                    <Input
+                      id="email"
+                      value={userProfile.email}
+                      disabled
+                      className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted text-muted-foreground cursor-not-allowed w-full min-w-0 truncate"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs font-semibold">
-                    Registered Email Address
-                  </Label>
-                  <Input
-                    id="email"
-                    value={userProfile.email}
-                    disabled
-                    className="rounded-xl h-10 text-sm bg-muted text-muted-foreground cursor-not-allowed"
-                  />
+                {/* Row 2: University & Target MTLE Board Schedule */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
+                  <div className="space-y-1 w-full min-w-0">
+                    <Label htmlFor="school" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1 truncate">
+                      <School className="w-3.5 h-3.5 text-[#8B0000] shrink-0" /> University / Review Center
+                    </Label>
+                    <Input
+                      id="school"
+                      value={school}
+                      onChange={e => setSchool(e.target.value)}
+                      placeholder="Southwestern University PHINMA"
+                      className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm w-full min-w-0"
+                    />
+                  </div>
+                  <div id="tour-profile-target-exam" className="space-y-1.5 w-full min-w-0">
+                    <div className="flex items-center justify-between min-w-0 gap-1">
+                      <Label className="text-xs font-semibold flex items-center gap-1 truncate">
+                        <Calendar className="w-3.5 h-3.5 text-[#8B0000]" /> Target MTLE Board Schedule
+                      </Label>
+                      {daysRemaining > 0 && (
+                        <span className="text-xs font-bold text-[#8B0000] shrink-0">
+                          {daysRemaining} days left
+                        </span>
+                      )}
+                    </div>
+
+                    <Popover modal={true} open={calendarOpen} onOpenChange={setCalendarOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-full h-10 px-3 bg-background hover:bg-muted/50 border border-input hover:border-primary/50 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between transition-all group shadow-sm text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/30 min-w-0 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 truncate">
+                            <Calendar className="w-4 h-4 text-[#8B0000] shrink-0 group-hover:scale-110 transition-transform" />
+                            <span className="truncate text-xs sm:text-sm font-normal text-foreground">
+                              {targetExamDate ? format(targetExamDate, 'MMMM d, yyyy') : 'Pick examination date'}
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg shrink-0 transition-colors ml-1">
+                            Pick Date
+                          </span>
+                        </button>
+                      </PopoverTrigger>
+
+                      <PopoverContent
+                        className="w-[calc(100vw-28px)] max-w-[340px] p-2.5 sm:p-4 bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl z-[150]"
+                        align="end"
+                        side="top"
+                        sideOffset={8}
+                        collisionPadding={10}
+                      >
+                        <TargetExamCalendar
+                          selectedDate={targetExamDate}
+                          onSelectDate={(newDate, batchLabel) => {
+                            setTargetExamDate(newDate);
+                            if (batchLabel) {
+                              setTargetBatch(batchLabel);
+                            }
+                          }}
+                          showHeader={true}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="school" className="text-xs font-semibold flex items-center gap-1">
-                    <School className="w-3.5 h-3.5 text-[#8B0000]" /> University / Review Center
-                  </Label>
-                  <Input
-                    id="school"
-                    value={school}
-                    onChange={e => setSchool(e.target.value)}
-                    placeholder="Southwestern University PHINMA"
-                    className="rounded-xl h-10 text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="targetBatch" className="text-xs font-semibold flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-[#8B0000]" /> Target MTLE Season
-                  </Label>
-                  <Select value={targetBatch} onValueChange={setTargetBatch}>
-                    <SelectTrigger className="rounded-xl h-10 text-sm">
-                      <SelectValue placeholder="Select target examination batch" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="August 2025 MTLE">August 2025 MTLE</SelectItem>
-                      <SelectItem value="March 2026 MTLE">March 2026 MTLE</SelectItem>
-                      <SelectItem value="August 2026 MTLE">August 2026 MTLE</SelectItem>
-                      <SelectItem value="March 2027 MTLE">March 2027 MTLE</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="location" className="text-xs font-semibold flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#8B0000]" /> Regional Testing Hub / City
+                {/* Row 3: Regional Testing Hub / City */}
+                <div className="space-y-1 w-full min-w-0">
+                  <Label htmlFor="location" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-[#8B0000] shrink-0" /> Regional Testing Hub / City
                   </Label>
                   <Input
                     id="location"
                     value={location}
                     onChange={e => setLocation(e.target.value)}
-                    placeholder="Cebu City, Philippines"
-                    className="rounded-xl h-10 text-sm"
+                    placeholder="Philippines"
+                    className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm w-full min-w-0"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end pt-3">
+              <div className="flex justify-end pt-3 border-t border-border/50">
                 <Button
                   id="tour-profile-save"
                   type="submit"
                   disabled={isSavingProfile}
-                  className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
+                  className="w-full sm:w-auto bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-6 h-10 shadow-sm"
                 >
                   {isSavingProfile && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
                   Save Profile Details

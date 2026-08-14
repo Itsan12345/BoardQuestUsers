@@ -110,16 +110,26 @@ export function generateDynamicNotifications(user: any): AppNotification[] {
 
   // 3. 📅 Target MTLE Milestone Alert
   if (countdownAlertsEnabled) {
-    const targetBatch = localStorage.getItem('bq_pref_target_batch') || 'August 2025 MTLE';
+    const targetBatch = localStorage.getItem('bq_pref_target_batch') || 'October 2026 MTLE';
+    const savedDate = localStorage.getItem('bq_pref_target_exam_date');
+    const examDate = savedDate ? new Date(savedDate) : new Date(2026, 9, 30);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const examDay = new Date(examDate);
+    examDay.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((examDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
     const milestoneId = `milestone_${targetBatch.replace(/\s+/g, '_')}`;
+    const daysText = diffDays > 0 ? `${diffDays} days left` : diffDays === 0 ? 'Exam Today!' : `${Math.abs(diffDays)} days ago`;
+
     notifications.push({
       id: milestoneId,
       type: 'milestone',
       title: '📅 Board Exam Preparation',
-      message: `Target Season: ${targetBatch}. Maintain consistent daily quest practice for optimal recall.`,
-      timestamp: 'Active Milestone',
-      link: '/study',
-      actionLabel: 'View Curriculum',
+      message: `Target Exam: ${targetBatch} (${daysText}). Maintain consistent daily quest practice for optimal recall.`,
+      timestamp: daysText,
+      link: '/profile',
+      actionLabel: 'View Schedule',
       isUrgent: false,
       read: readIds.includes(milestoneId),
     });

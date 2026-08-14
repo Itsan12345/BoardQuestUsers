@@ -3,16 +3,16 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Zap, ChevronRight, Rocket, Loader2, Flame, Trophy, Target } from 'lucide-react';
+import { Zap, ChevronRight, Rocket, Loader2, Flame, Trophy, Target, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { getUserStats, getLeaderboard, generateDailyMissions } from '@/app/actions/user';
+import { getUserStats, getLeaderboard, generateDailyMissions, getUserSettingsAction } from '@/app/actions/user';
 import { getStudyPlans } from '@/app/actions/study-plan';
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 
 function DashboardContent() {
   const [mounted, setMounted] = useState(false);
@@ -21,6 +21,7 @@ function DashboardContent() {
   const [userRank, setUserRank] = useState<number | null>(null);
   const [dailyMissions, setDailyMissions] = useState<any[]>([]);
   const [nextMilestone, setNextMilestone] = useState<{ subject: string; date: Date } | null>(null);
+  const [targetExamDate, setTargetExamDate] = useState<Date>(new Date(2026, 9, 30));
   const [dailyQuota, setDailyQuota] = useState<number>(50);
   const [focusSubject, setFocusSubject] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,17 +30,27 @@ function DashboardContent() {
     setMounted(true);
     async function loadData() {
       try {
-        const [stats, leadersData, plans, missions] = await Promise.all([
+        const [stats, leadersData, plans, missions, settings] = await Promise.all([
           getUserStats(),
           getLeaderboard(),
           getStudyPlans(),
-          generateDailyMissions()
+          generateDailyMissions(),
+          getUserSettingsAction().catch(() => null)
         ]);
 
         setUser(stats);
         setLeaderboard(leadersData.topUsers);
         setUserRank(leadersData.currentUserRank);
         setDailyMissions(missions);
+
+        if (settings?.targetExamDate) {
+          setTargetExamDate(new Date(settings.targetExamDate));
+        } else {
+          try {
+            const savedDate = localStorage.getItem('bq_pref_target_exam_date');
+            if (savedDate) setTargetExamDate(new Date(savedDate));
+          } catch (e) {}
+        }
 
         if (plans && plans.length > 0) {
           const today = new Date();
@@ -64,7 +75,10 @@ function DashboardContent() {
     }
     loadData();
 
-    const handleSync = () => {
+    const handleSync = (e?: any) => {
+      if (e?.detail?.targetExamDate) {
+        setTargetExamDate(new Date(e.detail.targetExamDate));
+      }
       loadData();
     };
 
@@ -113,8 +127,45 @@ function DashboardContent() {
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
-        {/* Current Course - Full Width */}
+        {/* Left 2-Column: Target Exam & Current Course */}
         <div className="lg:col-span-2 space-y-5 sm:space-y-6">
+          {/* Target Board Exam (MTLE) Countdown Card */}
+          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
+            <CardContent className="p-4 sm:p-6 flex items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-50 dark:bg-red-950/40 border border-primary/20 flex items-center justify-center text-primary shrink-0 shadow-sm">
+                  <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <div className="space-y-0.5 min-w-0">
+                  <p className="text-[10px] sm:text-xs font-semibold text-primary uppercase tracking-widest truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    Target Board Exam (MTLE)
+                  </p>
+                  <h3 className="text-sm sm:text-base lg:text-lg font-medium text-foreground truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    {format(targetExamDate, 'MMMM d, yyyy')}
+                  </h3>
+                </div>
+              </div>
+
+              {(() => {
+                const today = startOfDay(new Date());
+                const daysLeft = differenceInCalendarDays(startOfDay(targetExamDate), today);
+
+                return (
+                  <div className="flex items-center justify-center shrink-0">
+                    <div className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-muted/40 border border-border/80 flex items-baseline gap-1.5 shadow-sm">
+                      <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary leading-none" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        {daysLeft > 0 ? daysLeft : daysLeft === 0 ? '0' : Math.abs(daysLeft)}
+                      </span>
+                      <span className="text-[9px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider leading-none" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        {daysLeft > 0 ? 'DAYS LEFT' : daysLeft === 0 ? 'EXAM TODAY' : 'DAYS AGO'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
           <Card id="tour-dashboard-studyplan" className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
             <CardContent className="p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
               <div className="space-y-1">
