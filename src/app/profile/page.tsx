@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, MapPin, Mail, Calendar as CalendarIcon, Zap, Trophy, Clock, Award, Shield, Swords, Heart, Crosshair, Sparkles, FlaskConical, Target, Lock, CheckCircle2 } from 'lucide-react';
+import { Settings, LogOut, MapPin, Mail, Calendar as CalendarIcon, Zap, Trophy, Clock, Award, Shield, Swords, Heart, Crosshair, Sparkles, FlaskConical, Target, Lock, CheckCircle2, GraduationCap, UserCheck, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { logout } from '@/app/actions/auth';
 import { getUserProfile } from '@/app/actions/user';
+import { getStudentGuidanceAssignmentsAction, type GuidanceAssignmentRecord } from '@/app/actions/guidance';
+import { GuidanceCounselingDialog } from '@/components/guidance/GuidanceCounselingDialog';
 import { useToast } from '@/hooks/use-toast';
 import { BADGES, BadgeId, getLevelProgress, getRankTitle } from '@/lib/badge-system';
 import { calculatePlayerStats } from '@/lib/game-logic';
@@ -210,11 +212,17 @@ function ProfileContent() {
   const [viewAllBadgesOpen, setViewAllBadgesOpen] = useState(false);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'earned' | 'locked'>('all');
+  const [guidanceList, setGuidanceList] = useState<GuidanceAssignmentRecord[]>([]);
+  const [selectedGuidance, setSelectedGuidance] = useState<GuidanceAssignmentRecord | null>(null);
+  const [guidanceDialogOpen, setGuidanceDialogOpen] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
       try {
-        const profile = await getUserProfile() as UserProfile | null;
+        const [profile, guidanceRes] = await Promise.all([
+          getUserProfile() as Promise<UserProfile | null>,
+          getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] }))
+        ]);
 
         if (!profile) {
           // User doesn't exist, redirect to login
@@ -223,6 +231,9 @@ function ProfileContent() {
         }
 
         setUserProfile(profile);
+        if (guidanceRes?.success && guidanceRes.data) {
+          setGuidanceList(guidanceRes.data);
+        }
       } catch (error) {
         console.error('Failed to load profile:', error);
         toast({
@@ -625,6 +636,79 @@ function ProfileContent() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Academic Counseling & Faculty Guidance History */}
+            {guidanceList.length > 0 && (
+              <Card className="border border-border shadow-lg rounded-2xl overflow-hidden">
+                <CardHeader className="pb-3 p-4 sm:p-6 sm:pb-3 bg-muted/20 border-b border-border/60">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      Academic Counseling & Faculty Guidance
+                    </CardTitle>
+                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                      {guidanceList.filter(g => g.status === 'IN_PROGRESS' || g.status === 'PENDING').length} Active
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6 space-y-3">
+                  {guidanceList.map((g) => {
+                    const isResolved = g.status === 'RESOLVED' || g.status === 'COMPLETED';
+                    return (
+                      <div
+                        key={g.id}
+                        onClick={() => {
+                          setSelectedGuidance(g);
+                          setGuidanceDialogOpen(true);
+                        }}
+                        className={cn(
+                          "p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:shadow-sm",
+                          isResolved
+                            ? "bg-muted/30 border-border/60 hover:bg-muted/50"
+                            : "bg-amber-500/5 border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/10"
+                        )}
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge
+                              className={cn(
+                                "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5",
+                                isResolved
+                                  ? "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30"
+                                  : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 animate-pulse"
+                              )}
+                            >
+                              {isResolved ? 'Resolved' : 'Active Counseling'}
+                            </Badge>
+                            <span className="font-bold text-xs sm:text-sm text-foreground">
+                              {g.subjectCategory}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground">
+                            Advisor: <span className="font-medium text-foreground">{g.advisor.name}</span> ({g.advisor.role}) • Assigned {format(new Date(g.createdAt), 'MMM dd, yyyy')}
+                          </p>
+
+                          {g.guidanceNotes && (
+                            <p className="text-xs text-foreground/80 italic line-clamp-1">
+                              "{g.guidanceNotes}"
+                            </p>
+                          )}
+                        </div>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-lg text-xs font-semibold shrink-0 flex items-center gap-1 border-border/80"
+                        >
+                          View Brief <ChevronRight className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
@@ -795,6 +879,20 @@ function ProfileContent() {
           }}
         />
       )}
+
+      {/* Academic Guidance & Counseling Dialog */}
+      <GuidanceCounselingDialog
+        guidance={selectedGuidance}
+        open={guidanceDialogOpen}
+        onOpenChange={setGuidanceDialogOpen}
+        onAcknowledged={() => {
+          getStudentGuidanceAssignmentsAction()
+            .then(res => {
+              if (res.success && res.data) setGuidanceList(res.data);
+            })
+            .catch(() => {});
+        }}
+      />
     </div>
   );
 }

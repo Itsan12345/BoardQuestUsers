@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Zap, ChevronRight, Rocket, Loader2, Flame, Trophy, Target, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { getUserStats, getLeaderboard, generateDailyMissions, getUserSettingsAction } from '@/app/actions/user';
 import { getStudyPlans } from '@/app/actions/study-plan';
+import { getStudentGuidanceAssignmentsAction, type GuidanceAssignmentRecord } from '@/app/actions/guidance';
+import { ActiveGuidanceBanner } from '@/components/guidance/ActiveGuidanceBanner';
 import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 
 function DashboardContent() {
@@ -20,59 +22,65 @@ function DashboardContent() {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [dailyMissions, setDailyMissions] = useState<any[]>([]);
+  const [guidanceList, setGuidanceList] = useState<GuidanceAssignmentRecord[]>([]);
   const [nextMilestone, setNextMilestone] = useState<{ subject: string; date: Date } | null>(null);
   const [targetExamDate, setTargetExamDate] = useState<Date>(new Date(2026, 9, 30));
   const [dailyQuota, setDailyQuota] = useState<number>(50);
   const [focusSubject, setFocusSubject] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadData = useCallback(async () => {
+    try {
+      const [stats, leadersData, plans, missions, settings, guidanceRes] = await Promise.all([
+        getUserStats(),
+        getLeaderboard(),
+        getStudyPlans(),
+        generateDailyMissions(),
+        getUserSettingsAction().catch(() => null),
+        getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] }))
+      ]);
+
+      setUser(stats);
+      setLeaderboard(leadersData.topUsers);
+      setUserRank(leadersData.currentUserRank);
+      setDailyMissions(missions);
+      if (guidanceRes?.success && guidanceRes.data) {
+        setGuidanceList(guidanceRes.data);
+      }
+
+      if (settings?.targetExamDate) {
+        setTargetExamDate(new Date(settings.targetExamDate));
+      } else {
+        try {
+          const savedDate = localStorage.getItem('bq_pref_target_exam_date');
+          if (savedDate) setTargetExamDate(new Date(savedDate));
+        } catch (e) {}
+      }
+
+      if (plans && plans.length > 0) {
+        const today = new Date();
+        const futurePlans = plans.filter(p => new Date(p.targetDate) >= today);
+        const activePlan = futurePlans.length > 0 ? futurePlans[0] : plans[plans.length - 1];
+        setNextMilestone({ subject: activePlan.subject, date: new Date(activePlan.targetDate) });
+      }
+
+      // Load preferences from localStorage
+      try {
+        const savedQuota = localStorage.getItem('bq_pref_daily_quota');
+        if (savedQuota) setDailyQuota(parseInt(savedQuota, 10));
+
+        const savedSubject = localStorage.getItem('bq_pref_focus_subject');
+        if (savedSubject) setFocusSubject(savedSubject);
+      } catch (e) { }
+    } catch (error) {
+      console.error('Failed to load dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     setMounted(true);
-    async function loadData() {
-      try {
-        const [stats, leadersData, plans, missions, settings] = await Promise.all([
-          getUserStats(),
-          getLeaderboard(),
-          getStudyPlans(),
-          generateDailyMissions(),
-          getUserSettingsAction().catch(() => null)
-        ]);
-
-        setUser(stats);
-        setLeaderboard(leadersData.topUsers);
-        setUserRank(leadersData.currentUserRank);
-        setDailyMissions(missions);
-
-        if (settings?.targetExamDate) {
-          setTargetExamDate(new Date(settings.targetExamDate));
-        } else {
-          try {
-            const savedDate = localStorage.getItem('bq_pref_target_exam_date');
-            if (savedDate) setTargetExamDate(new Date(savedDate));
-          } catch (e) {}
-        }
-
-        if (plans && plans.length > 0) {
-          const today = new Date();
-          const futurePlans = plans.filter(p => new Date(p.targetDate) >= today);
-          const activePlan = futurePlans.length > 0 ? futurePlans[0] : plans[plans.length - 1];
-          setNextMilestone({ subject: activePlan.subject, date: new Date(activePlan.targetDate) });
-        }
-
-        // Load preferences from localStorage
-        try {
-          const savedQuota = localStorage.getItem('bq_pref_daily_quota');
-          if (savedQuota) setDailyQuota(parseInt(savedQuota, 10));
-
-          const savedSubject = localStorage.getItem('bq_pref_focus_subject');
-          if (savedSubject) setFocusSubject(savedSubject);
-        } catch (e) { }
-      } catch (error) {
-        console.error('Failed to load dashboard:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
     loadData();
 
     const handleSync = (e?: any) => {
@@ -84,12 +92,14 @@ function DashboardContent() {
 
     window.addEventListener('bq_settings_updated', handleSync);
     window.addEventListener('bq_stats_updated', handleSync);
+    window.addEventListener('bq_guidance_updated', handleSync);
 
     return () => {
       window.removeEventListener('bq_settings_updated', handleSync);
       window.removeEventListener('bq_stats_updated', handleSync);
+      window.removeEventListener('bq_guidance_updated', handleSync);
     };
-  }, []);
+  }, [loadData]);
 
   const totalMastery = user?.mastery?.length > 0
     ? Math.round(user.mastery.reduce((acc: number, m: any) => acc + m.proficiency, 0) / user.mastery.length)
@@ -119,6 +129,13 @@ function DashboardContent() {
           </Button>
         </Link>
       </section>
+
+      {/* Active Faculty Guidance & Academic Counseling Referral Banner */}
+      {guidanceList.length > 0 && (
+        <section className="space-y-2">
+          <ActiveGuidanceBanner guidanceList={guidanceList} onRefresh={loadData} />
+        </section>
+      )}
 
       {/* Your Study Dashboard Section */}
       <section className="space-y-0.5">

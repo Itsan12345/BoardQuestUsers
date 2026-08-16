@@ -2275,7 +2275,7 @@ export default function LearningQuest() {
 
       {/* Mode Selection Dialog */}
       <Dialog open={modeSelectDialogOpen} onOpenChange={setModeSelectDialogOpen}>
-        <DialogContent container={fullscreenRef.current} className="sm:max-w-3xl bg-transparent border-none shadow-none p-0 flex justify-center items-center">
+        <DialogContent container={fullscreenRef.current} className="sm:max-w-3xl bg-transparent border-none shadow-none p-0 flex justify-center items-center [&>button]:hidden">
           <DialogTitle className="sr-only">Select a session mode</DialogTitle>
           <div className="relative w-[800px] max-w-full aspect-[4/3] flex items-center justify-center overflow-hidden">
             <Image
@@ -2596,7 +2596,7 @@ export default function LearningQuest() {
 
       {/* Chapter World Map Dialog */}
       <Dialog open={showChapterMap && !isStarted && !isFinished} onOpenChange={setShowChapterMap}>
-        <DialogContent container={fullscreenRef.current} className="w-screen h-screen max-w-none max-h-none border-none rounded-none p-0 bg-[#160d08] flex flex-col overflow-hidden z-[100]">
+        <DialogContent container={fullscreenRef.current} className="w-screen h-screen max-w-none max-h-none border-none rounded-none p-0 bg-[#160d08] flex flex-col overflow-hidden z-[100] [&>button]:hidden">
           <DialogTitle className="sr-only">Chapter Overworld Map</DialogTitle>
           <ChapterWorldMap
             selectedSubject={selectedSubject}

@@ -1,6 +1,13 @@
 "use client";
 
-export type NotificationType = 'streak_warning' | 'streak_lost' | 'daily_goal' | 'milestone' | 'achievement';
+export type NotificationType =
+  | 'guidance'
+  | 'guidance_resolved'
+  | 'streak_warning'
+  | 'streak_lost'
+  | 'daily_goal'
+  | 'milestone'
+  | 'achievement';
 
 export interface AppNotification {
   id: string;
@@ -12,6 +19,15 @@ export interface AppNotification {
   actionLabel?: string;
   isUrgent?: boolean;
   read?: boolean;
+  // Guidance counseling metadata
+  guidanceId?: string;
+  guidanceData?: any;
+  advisorName?: string;
+  advisorEmail?: string;
+  advisorRole?: string;
+  subjectCategory?: string;
+  guidanceNotes?: string;
+  guidanceStatus?: string;
 }
 
 export function getHoursUntilMidnight(): number {
@@ -22,7 +38,92 @@ export function getHoursUntilMidnight(): number {
   return Math.max(1, Math.round(diffMs / (1000 * 60 * 60)));
 }
 
-export function generateDynamicNotifications(user: any): AppNotification[] {
+export function buildGuidanceNotifications(guidanceList: any[] = []): AppNotification[] {
+  if (!Array.isArray(guidanceList)) return [];
+
+  const notifications: AppNotification[] = [];
+  const readIds: string[] = [];
+
+  if (typeof window !== 'undefined') {
+    try {
+      const savedRead = localStorage.getItem('bq_read_notifications');
+      if (savedRead) {
+        readIds.push(...JSON.parse(savedRead));
+      }
+    } catch (e) {}
+  }
+
+  guidanceList.forEach(item => {
+    const isResolved = item.status === 'RESOLVED' || item.status === 'COMPLETED';
+    const notifId = `guidance_${item.id}_${item.status}`;
+    const advisorName = item.advisor?.name || 'Faculty Advisor';
+    const advisorRole = item.advisor?.role || 'Advisor';
+    const subject = item.subjectCategory || 'Board Exam Domain';
+    const createdDate = item.createdAt ? new Date(item.createdAt) : new Date();
+
+    const formattedTime = (() => {
+      try {
+        const diffHours = Math.round((Date.now() - createdDate.getTime()) / (1000 * 60 * 60));
+        if (diffHours < 1) return 'Just now';
+        if (diffHours < 24) return `${diffHours}h ago`;
+        const diffDays = Math.round(diffHours / 24);
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      } catch (e) {
+        return 'Recent';
+      }
+    })();
+
+    if (isResolved) {
+      notifications.push({
+        id: notifId,
+        type: 'guidance_resolved',
+        title: `✅ Academic Guidance Completed: ${subject}`,
+        message: `Your counseling session with ${advisorName} for ${subject} has been marked as resolved. Keep up the high standard!`,
+        timestamp: formattedTime,
+        actionLabel: 'View Summary',
+        isUrgent: false,
+        read: readIds.includes(notifId),
+        guidanceId: item.id,
+        guidanceData: item,
+        advisorName,
+        advisorEmail: item.advisor?.email,
+        advisorRole,
+        subjectCategory: subject,
+        guidanceNotes: item.guidanceNotes,
+        guidanceStatus: item.status,
+      });
+    } else {
+      const notesSnippet = item.guidanceNotes
+        ? ` Action plan: "${item.guidanceNotes.length > 70 ? item.guidanceNotes.slice(0, 67) + '...' : item.guidanceNotes}"`
+        : '';
+
+      notifications.push({
+        id: notifId,
+        type: 'guidance',
+        title: `🎓 Faculty Guidance Assigned: ${subject}`,
+        message: `You have been assigned to ${advisorName} (${advisorRole}) for academic counseling in ${subject}.${notesSnippet}`,
+        timestamp: formattedTime,
+        actionLabel: 'View Guidance Plan',
+        isUrgent: true,
+        read: readIds.includes(notifId),
+        guidanceId: item.id,
+        guidanceData: item,
+        advisorName,
+        advisorEmail: item.advisor?.email,
+        advisorRole,
+        subjectCategory: subject,
+        guidanceNotes: item.guidanceNotes,
+        guidanceStatus: item.status,
+      });
+    }
+  });
+
+  return notifications;
+}
+
+export function generateDynamicNotifications(user: any, guidanceList: any[] = []): AppNotification[] {
   if (typeof window === 'undefined') return [];
 
   const notifications: AppNotification[] = [];
@@ -41,6 +142,10 @@ export function generateDynamicNotifications(user: any): AppNotification[] {
   const todayQuestions = user?.todayQuestions || 0;
   const userStreak = user?.streak || 0;
   const hoursLeft = getHoursUntilMidnight();
+
+  // 0. 🎓 Academic Guidance & Faculty Counseling Notifications (from MongoDB GuidanceAssignment)
+  const guidanceNotifs = buildGuidanceNotifications(guidanceList);
+  notifications.push(...guidanceNotifs);
 
   // 1. 🔥 Daily Streak Protection Alert (Only if streak exists AND user hasn't played today)
   if (streakAlertsEnabled && userStreak > 0 && todayQuestions === 0) {
