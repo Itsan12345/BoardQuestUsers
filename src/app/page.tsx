@@ -13,6 +13,10 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { getUserStats, getLeaderboard, generateDailyMissions, getUserSettingsAction } from '@/app/actions/user';
 import { getStudyPlans } from '@/app/actions/study-plan';
 import { getStudentGuidanceAssignmentsAction, type GuidanceAssignmentRecord } from '@/app/actions/guidance';
+import { recordDailyLoginAction, getDailyLoginStatusAction } from '@/app/actions/daily-login';
+import { type DailyLoginStatusData } from '@/lib/daily-login-config';
+import { DailyLoginWidget } from '@/components/dashboard/DailyLoginWidget';
+import { DailyLoginRewardModal } from '@/components/dashboard/DailyLoginRewardModal';
 import { ActiveGuidanceBanner } from '@/components/guidance/ActiveGuidanceBanner';
 import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 
@@ -23,6 +27,8 @@ function DashboardContent() {
   const [userRank, setUserRank] = useState<number | null>(null);
   const [dailyMissions, setDailyMissions] = useState<any[]>([]);
   const [guidanceList, setGuidanceList] = useState<GuidanceAssignmentRecord[]>([]);
+  const [dailyLoginStatus, setDailyLoginStatus] = useState<DailyLoginStatusData | null>(null);
+  const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [nextMilestone, setNextMilestone] = useState<{ subject: string; date: Date } | null>(null);
   const [targetExamDate, setTargetExamDate] = useState<Date>(new Date(2026, 9, 30));
   const [dailyQuota, setDailyQuota] = useState<number>(50);
@@ -31,13 +37,14 @@ function DashboardContent() {
 
   const loadData = useCallback(async () => {
     try {
-      const [stats, leadersData, plans, missions, settings, guidanceRes] = await Promise.all([
+      const [stats, leadersData, plans, missions, settings, guidanceRes, loginRecordRes] = await Promise.all([
         getUserStats(),
         getLeaderboard(),
         getStudyPlans(),
         generateDailyMissions(),
         getUserSettingsAction().catch(() => null),
-        getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] }))
+        getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] })),
+        recordDailyLoginAction().catch(() => ({ success: false, isLoggedIn: false, status: undefined }))
       ]);
 
       setUser(stats);
@@ -46,6 +53,29 @@ function DashboardContent() {
       setDailyMissions(missions);
       if (guidanceRes?.success && guidanceRes.data) {
         setGuidanceList(guidanceRes.data);
+      }
+
+      let currentStatus: DailyLoginStatusData | null = null;
+      if (loginRecordRes && 'status' in loginRecordRes && loginRecordRes.status) {
+        currentStatus = loginRecordRes.status;
+      } else {
+        const statusRes = await getDailyLoginStatusAction().catch(() => null);
+        if (statusRes) currentStatus = statusRes;
+      }
+
+      if (currentStatus) {
+        setDailyLoginStatus(currentStatus);
+
+        // Check if user just logged in or if today's reward is available
+        try {
+          const justLoggedIn = sessionStorage.getItem('bq_just_logged_in') === 'true';
+          const dismissedToday = sessionStorage.getItem('bq_daily_modal_dismissed') === currentStatus.todayDate;
+
+          if (justLoggedIn || (!currentStatus.hasClaimedToday && !dismissedToday)) {
+            setDailyModalOpen(true);
+            sessionStorage.removeItem('bq_just_logged_in');
+          }
+        } catch (e) {}
       }
 
       if (settings?.targetExamDate) {
@@ -93,11 +123,13 @@ function DashboardContent() {
     window.addEventListener('bq_settings_updated', handleSync);
     window.addEventListener('bq_stats_updated', handleSync);
     window.addEventListener('bq_guidance_updated', handleSync);
+    window.addEventListener('bq_daily_login_updated', handleSync);
 
     return () => {
       window.removeEventListener('bq_settings_updated', handleSync);
       window.removeEventListener('bq_stats_updated', handleSync);
       window.removeEventListener('bq_guidance_updated', handleSync);
+      window.removeEventListener('bq_daily_login_updated', handleSync);
     };
   }, [loadData]);
 
@@ -255,6 +287,7 @@ function DashboardContent() {
         {/* Right Sidebar - Daily Target & Missions */}
         <div id="tour-dashboard-dailygoal" className="space-y-5 sm:space-y-6">
           {/* Daily Question Target Meter */}
+          {/* Daily Target Card */}
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
             <CardHeader className="p-4 sm:p-6 pb-3 border-b border-border flex flex-row items-center justify-between">
               <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
@@ -289,6 +322,16 @@ function DashboardContent() {
             </CardContent>
           </Card>
 
+          {/* Student Daily Login Attendance & Streak Widget */}
+          {dailyLoginStatus && (
+            <DailyLoginWidget
+              statusData={dailyLoginStatus}
+              onRefresh={loadData}
+              onOpenModal={() => setDailyModalOpen(true)}
+            />
+          )}
+
+          {/* Daily Missions Card */}
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
             <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-border">
               <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Missions</p>
@@ -334,24 +377,23 @@ function DashboardContent() {
               )}
             </CardContent>
           </Card>
-
-          <Card className="border border-border shadow-sm rounded-2xl bg-primary text-white p-4 sm:p-6">
-            <div className="space-y-2 sm:space-y-4">
-              <h4 className="font-semibold text-base sm:text-lg" style={{ fontFamily: "'Poppins', sans-serif" }}>Quest Streak</h4>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="text-4xl sm:text-5xl font-bold" style={{ fontFamily: "'Poppins', sans-serif" }}>{user?.streak || 0}</div>
-                <div className="text-[10px] sm:text-xs font-normal uppercase leading-tight opacity-90" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  {user?.streak === 0 ? (
-                    <>Streak Reset<br/>Start Quest Today</>
-                  ) : (
-                    <>Days Active<br/>Consistent Review</>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
         </div>
       </div>
+
+      {/* Auto / Controlled Daily Login Attendance Modal */}
+      <DailyLoginRewardModal
+        open={dailyModalOpen}
+        onOpenChange={(open) => {
+          setDailyModalOpen(open);
+          if (!open && dailyLoginStatus?.todayDate) {
+            try {
+              sessionStorage.setItem('bq_daily_modal_dismissed', dailyLoginStatus.todayDate);
+            } catch (e) {}
+          }
+        }}
+        statusData={dailyLoginStatus}
+        onRewardClaimed={loadData}
+      />
     </div>
   );
 }

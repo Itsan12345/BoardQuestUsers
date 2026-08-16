@@ -26,6 +26,9 @@ export default function LoginPage() {
     const result = await login(formData);
 
     if (result.success) {
+      try {
+        sessionStorage.setItem('bq_just_logged_in', 'true');
+      } catch (e) {}
       toast({
         title: "Verification Successful",
         description: "Welcome back, Aspirant. Re-establishing mission parameters.",

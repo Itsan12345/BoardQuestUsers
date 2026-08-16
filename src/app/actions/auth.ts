@@ -157,6 +157,14 @@ export async function verifyEmailAndSignUp(formData: FormData) {
         secure: process.env.NODE_ENV === 'production',
         maxAge: 60 * 60 * 24 * 30,
       });
+
+      // Dynamically record daily login for student tracking and streak
+      try {
+        const { recordDailyLoginAction } = await import('@/app/actions/daily-login');
+        await recordDailyLoginAction();
+      } catch (loginTrackErr) {
+        console.warn('Daily login tracking notice on signup:', loginTrackErr);
+      }
     } catch {
       // Cookies context not available in non-HTTP environments (e.g. testing)
     }
@@ -212,6 +220,14 @@ export async function login(formData: FormData) {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 30,
     });
+
+    // Dynamically record daily login for student tracking and streak
+    try {
+      const { recordDailyLoginAction } = await import('@/app/actions/daily-login');
+      await recordDailyLoginAction();
+    } catch (loginTrackErr) {
+      console.warn('Daily login tracking notice on login:', loginTrackErr);
+    }
     
     return { success: true, userId: user.id };
   } catch (error) {
