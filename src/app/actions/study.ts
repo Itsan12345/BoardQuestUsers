@@ -295,3 +295,106 @@ export async function updateLessonStatus(
     return false;
   }
 }
+
+export interface SubjectAccuracyHistoryItem {
+  subject: string;
+  fullSubjectName: string;
+  avgAccuracy: number;
+  attemptCount: number;
+  totalScore: number;
+  totalQuestions: number;
+}
+
+export async function getSubjectPerformanceHistoryAction(): Promise<SubjectAccuracyHistoryItem[]> {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return [];
+
+    const [examResults, achievements] = await Promise.all([
+      prisma.examResult.findMany({
+        where: { userId },
+        select: {
+          subject: true,
+          accuracy: true,
+          score: true,
+          total: true,
+          timestamp: true,
+        },
+        orderBy: { timestamp: 'asc' },
+      }),
+      prisma.achievement.findMany({
+        where: { userId, type: 'quest' },
+        select: {
+          subject: true,
+          accuracy: true,
+          timestamp: true,
+        },
+      }),
+    ]);
+
+    const standardSubjects = [
+      'Clinical Chemistry',
+      'Microbiology',
+      'Hematology',
+      'Immunology & Serology and Immunohematology',
+      'Clinical Microscopy & Parasitology',
+      'Histopathology and Medtech Laws',
+    ];
+
+    const radarLabels: Record<string, string> = {
+      'Clinical Chemistry': 'Chemistry',
+      'Hematology': 'Hematology',
+      'Microbiology': 'Microbiology',
+      'Immunology & Serology and Immunohematology': 'Immunochem',
+      'Clinical Microscopy & Parasitology': 'Microscopy',
+      'Histopathology and Medtech Laws': 'Histopath',
+      'Histopathology & MT Laws': 'Histopath',
+    };
+
+    const normalize = (name: string) => {
+      const lower = (name || '').toLowerCase();
+      if (lower.includes('chem')) return 'Clinical Chemistry';
+      if (lower.includes('hemat')) return 'Hematology';
+      if (lower.includes('microb')) return 'Microbiology';
+      if (lower.includes('immuno') || lower.includes('serolog') || lower.includes('blood bank')) return 'Immunology & Serology and Immunohematology';
+      if (lower.includes('microscop') || lower.includes('parasit') || lower.includes('urinalysis')) return 'Clinical Microscopy & Parasitology';
+      if (lower.includes('histo') || lower.includes('law')) return 'Histopathology and Medtech Laws';
+      return name;
+    };
+
+    return standardSubjects.map((subName) => {
+      const canonical = normalize(subName);
+      
+      const relevantExams = examResults.filter(e => e.subject && normalize(e.subject) === canonical);
+      const relevantAchievements = achievements.filter(a => a.subject && normalize(a.subject) === canonical && a.accuracy !== null && a.accuracy !== undefined);
+
+      let avgAccuracy = 0;
+      let attemptCount = relevantExams.length;
+      let totalScore = relevantExams.reduce((sum, r) => sum + (r.score || 0), 0);
+      let totalQuestions = relevantExams.reduce((sum, r) => sum + (r.total || 0), 0);
+
+      if (relevantExams.length > 0) {
+        const sumAcc = relevantExams.reduce((sum, r) => sum + (r.accuracy || 0), 0);
+        avgAccuracy = Math.round(sumAcc / relevantExams.length);
+      } else if (relevantAchievements.length > 0) {
+        const sumAcc = relevantAchievements.reduce((sum, a) => sum + (a.accuracy || 0), 0);
+        avgAccuracy = Math.round(sumAcc / relevantAchievements.length);
+        attemptCount = relevantAchievements.length;
+      }
+
+      return {
+        subject: radarLabels[canonical] || canonical.split(' ')[0],
+        fullSubjectName: canonical,
+        avgAccuracy,
+        attemptCount,
+        totalScore,
+        totalQuestions,
+      };
+    });
+  } catch (error) {
+    console.error('Failed to get subject performance history:', error);
+    return [];
+  }
+}
+
