@@ -62,7 +62,7 @@ export const DAILY_LOGIN_REWARDS: DailyRewardTier[] = [
     xp: 500,
     title: "Day 7",
     subtitle: "Dean's Distinction Chest",
-    badge: "Dean's Scholar Flame",
+    badge: "7-Day Champion",
     isMilestone: true,
     highlightColor: "text-primary",
   },

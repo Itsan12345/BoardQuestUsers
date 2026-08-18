@@ -32,7 +32,7 @@ import { CustomCalendar } from '@/components/ui/custom-calendar';
 import { cn } from '@/lib/utils';
 import { getStudyPlans, saveStudyPlan, getReviewCenterProgram, type ReviewCenterProgramData } from '@/app/actions/study-plan';
 import { getSubjectMetrics, getCategories, updateLessonStatus, getUserLessonCompletions, type SubjectMetrics } from '@/app/actions/study';
-import { getUserProfile } from '@/app/actions/user';
+import { getUserProfile, getUserSettingsAction } from '@/app/actions/user';
 import { format, startOfDay, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -123,13 +123,14 @@ export default function StudyPage() {
     setMounted(true);
     async function loadData() {
       try {
-        const [dbCategories, plans, metrics, programData, userProfile, lessonCompletionsMap] = await Promise.all([
+        const [dbCategories, plans, metrics, programData, userProfile, lessonCompletionsMap, userSettings] = await Promise.all([
           getCategories().catch(() => []),
           getStudyPlans().catch(() => []),
           getSubjectMetrics().catch(() => []),
           getReviewCenterProgram().catch(() => null),
           getUserProfile().catch(() => null),
-          getUserLessonCompletions().catch(() => ({} as Record<string, string>))
+          getUserLessonCompletions().catch(() => ({} as Record<string, string>)),
+          getUserSettingsAction().catch(() => null),
         ]);
 
         const compMap: Record<string, string> = lessonCompletionsMap || {};
@@ -178,11 +179,15 @@ export default function StudyPage() {
         // Check URL param ?subject= or Focus Subject from settings
         const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
         const urlSubject = searchParams?.get('subject');
-        const savedFocus = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null;
-        const prioritySubject = urlSubject || savedFocus;
+        const settingsFocus = userSettings?.focusSubject;
+        const savedFocus = settingsFocus !== undefined ? settingsFocus : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null);
+        const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
+        const prioritySubject = urlSubject || validFocus;
 
-        if (savedFocus) {
-          setFocusSubject(savedFocus);
+        if (validFocus) {
+          setFocusSubject(validFocus);
+        } else {
+          setFocusSubject(null);
         }
 
         if (prioritySubject) {
@@ -251,7 +256,7 @@ export default function StudyPage() {
     const handleSettingsUpdate = () => {
       try {
         const updatedFocus = localStorage.getItem('bq_pref_focus_subject');
-        setFocusSubject(updatedFocus);
+        setFocusSubject(updatedFocus && updatedFocus !== 'none' ? updatedFocus : null);
       } catch {}
     };
 

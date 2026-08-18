@@ -144,10 +144,37 @@ export async function verifyEmailAndSignUp(formData: FormData) {
       })),
     });
 
-    // 5. Clean up the used verification code
+    // 5. Initialize clean UserSettings in MongoDB (no focus subject, no target exam date)
+    await db.collection('UserSettings').updateOne(
+      { userId: user.id },
+      {
+        $set: {
+          userId: user.id,
+          focusSubject: 'none',
+          targetExamDate: null,
+          targetBatch: '',
+          school: '',
+          dailyQuota: 50,
+          defaultDifficulty: 'MEDIUM',
+          confidencePrompts: true,
+          sfxVolume: 80,
+          ambientMusic: true,
+          floatingDamageText: true,
+          hitScreenFlash: true,
+          streakAlerts: true,
+          countdownAlerts: true,
+          achievementAlerts: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+
+    // 6. Clean up the used verification code
     await db.collection('EmailVerification').deleteOne({ email });
 
-    // 6. Set session cookie
+    // 7. Set session cookie
     try {
       const cookieStore = await cookies();
       cookieStore.set('user_id', user.id, {

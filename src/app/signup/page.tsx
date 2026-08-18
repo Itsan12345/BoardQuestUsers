@@ -231,6 +231,15 @@ export default function SignupPage() {
       const result = await verifyEmailAndSignUp(formData);
 
       if (result.success) {
+        try {
+          sessionStorage.setItem('bq_just_logged_in', 'true');
+          sessionStorage.removeItem('bq_daily_modal_dismissed');
+          localStorage.removeItem('bq_pref_target_exam_date');
+          localStorage.removeItem('bq_pref_target_batch');
+          localStorage.removeItem('bq_pref_school');
+          localStorage.setItem('bq_pref_focus_subject', 'none');
+          localStorage.removeItem('bq_read_notifications');
+        } catch (e) {}
         toast({
           title: "Account Verified & Created",
           description: "Welcome to BoardQuest! Expedition initialized.",

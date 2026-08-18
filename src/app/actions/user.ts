@@ -46,7 +46,6 @@ export async function syncAndValidateUserStreak(userId: string, currentStreak: n
           where: { id: userId },
           data: { streak: 0 }
         });
-        return { streak: 0, streakBroken: true, previousStreak: currentStreak };
       }
       return { streak: 0, streakBroken: false };
     }
@@ -601,7 +600,27 @@ export async function getUserSettingsAction() {
     const client = await clientPromise;
     const db = client.db();
     const settings = await db.collection('UserSettings').findOne({ userId });
-    return settings ? JSON.parse(JSON.stringify(settings)) : null;
+    if (settings) {
+      return JSON.parse(JSON.stringify(settings));
+    }
+
+    return {
+      userId,
+      focusSubject: 'none',
+      targetExamDate: null,
+      targetBatch: '',
+      school: '',
+      dailyQuota: 50,
+      defaultDifficulty: 'MEDIUM',
+      confidencePrompts: true,
+      sfxVolume: 80,
+      ambientMusic: true,
+      floatingDamageText: true,
+      hitScreenFlash: true,
+      streakAlerts: true,
+      countdownAlerts: true,
+      achievementAlerts: true,
+    };
   } catch (error) {
     console.error('Failed to get user settings from MongoDB:', error);
     return null;

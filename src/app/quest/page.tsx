@@ -47,7 +47,7 @@ import { provideExamFeedback } from '@/ai/flows/provide-exam-feedback';
 import { getQuestQuestions } from '@/app/actions/arena';
 import { completeQuest, getNodeStarsAction, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
 import { getCategories } from '@/app/actions/study';
-import { getUserProfile, saveUserInventory, purchaseReagentAction } from '@/app/actions/user';
+import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction } from '@/app/actions/user';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
 import { playSfx } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
@@ -235,7 +235,10 @@ export default function LearningQuest() {
   useEffect(() => {
     async function loadCategories() {
       try {
-        const cats = await getCategories();
+        const [cats, userSettings] = await Promise.all([
+          getCategories().catch(() => []),
+          getUserSettingsAction().catch(() => null),
+        ]);
         if (cats && cats.length > 0) {
           const names = cats.map(c => c.name);
           setDynamicCategories(names);
@@ -245,12 +248,14 @@ export default function LearningQuest() {
           const urlSubject = searchParams?.get('subject');
 
           // Priority 2: Priority Focus Subject from Account Settings
-          const savedFocus = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null;
+          const settingsFocus = userSettings?.focusSubject;
+          const savedFocus = settingsFocus !== undefined ? settingsFocus : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null);
+          const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
 
           if (urlSubject && names.includes(urlSubject)) {
             setSelectedSubject(urlSubject);
-          } else if (savedFocus && names.includes(savedFocus)) {
-            setSelectedSubject(savedFocus);
+          } else if (validFocus && names.includes(validFocus)) {
+            setSelectedSubject(validFocus);
           } else {
             setSelectedSubject(names[0]);
           }

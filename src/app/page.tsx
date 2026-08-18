@@ -22,6 +22,7 @@ import { DailyLoginRewardModal } from '@/components/dashboard/DailyLoginRewardMo
 import { BoardReadinessWidget } from '@/components/dashboard/BoardReadinessWidget';
 import { ActiveGuidanceBanner } from '@/components/guidance/ActiveGuidanceBanner';
 import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 function DashboardContent() {
   const [mounted, setMounted] = useState(false);
@@ -34,7 +35,7 @@ function DashboardContent() {
   const [mtleData, setMtleData] = useState<MtleReadinessResult | null>(null);
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [nextMilestone, setNextMilestone] = useState<{ subject: string; date: Date } | null>(null);
-  const [targetExamDate, setTargetExamDate] = useState<Date>(new Date(2026, 9, 30));
+  const [targetExamDate, setTargetExamDate] = useState<Date | null>(null);
   const [dailyQuota, setDailyQuota] = useState<number>(50);
   const [focusSubject, setFocusSubject] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,13 +85,12 @@ function DashboardContent() {
         } catch (e) {}
       }
 
-      if (settings?.targetExamDate) {
-        setTargetExamDate(new Date(settings.targetExamDate));
+      if (settings) {
+        setTargetExamDate(settings.targetExamDate ? new Date(settings.targetExamDate) : null);
+        setFocusSubject(settings.focusSubject && settings.focusSubject !== 'none' ? settings.focusSubject : null);
       } else {
-        try {
-          const savedDate = localStorage.getItem('bq_pref_target_exam_date');
-          if (savedDate) setTargetExamDate(new Date(savedDate));
-        } catch (e) {}
+        setTargetExamDate(null);
+        setFocusSubject(null);
       }
 
       if (plans && plans.length > 0) {
@@ -104,9 +104,6 @@ function DashboardContent() {
       try {
         const savedQuota = localStorage.getItem('bq_pref_daily_quota');
         if (savedQuota) setDailyQuota(parseInt(savedQuota, 10));
-
-        const savedSubject = localStorage.getItem('bq_pref_focus_subject');
-        if (savedSubject) setFocusSubject(savedSubject);
       } catch (e) { }
     } catch (error) {
       console.error('Failed to load dashboard:', error);
@@ -120,8 +117,11 @@ function DashboardContent() {
     loadData();
 
     const handleSync = (e?: any) => {
-      if (e?.detail?.targetExamDate) {
-        setTargetExamDate(new Date(e.detail.targetExamDate));
+      if (e?.detail?.targetExamDate !== undefined) {
+        setTargetExamDate(e.detail.targetExamDate ? new Date(e.detail.targetExamDate) : null);
+      }
+      if (e?.detail?.focusSubject !== undefined) {
+        setFocusSubject(e.detail.focusSubject && e.detail.focusSubject !== 'none' ? e.detail.focusSubject : null);
       }
       loadData();
     };
@@ -188,7 +188,12 @@ function DashboardContent() {
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
             <CardContent className="p-4 sm:p-6 flex items-center justify-between gap-3 sm:gap-4">
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-50 dark:bg-red-950/40 border border-primary/20 flex items-center justify-center text-primary shrink-0 shadow-sm">
+                <div className={cn(
+                  "w-10 h-10 sm:w-12 sm:h-12 rounded-xl border flex items-center justify-center shrink-0 shadow-sm",
+                  targetExamDate 
+                    ? "bg-red-50 dark:bg-red-950/40 border-primary/20 text-primary" 
+                    : "bg-muted/50 border-border text-muted-foreground"
+                )}>
                   <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="space-y-0.5 min-w-0">
@@ -196,28 +201,42 @@ function DashboardContent() {
                     Target Board Exam (MTLE)
                   </p>
                   <h3 className="text-sm sm:text-base lg:text-lg font-medium text-foreground truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                    {format(targetExamDate, 'MMMM d, yyyy')}
+                    {targetExamDate ? format(targetExamDate, 'MMMM d, yyyy') : 'No Target Date Set'}
                   </h3>
                 </div>
               </div>
 
-              {(() => {
-                const today = startOfDay(new Date());
-                const daysLeft = differenceInCalendarDays(startOfDay(targetExamDate), today);
+              {targetExamDate ? (
+                (() => {
+                  const today = startOfDay(new Date());
+                  const daysLeft = differenceInCalendarDays(startOfDay(targetExamDate), today);
 
-                return (
-                  <div className="flex items-center justify-center shrink-0">
-                    <div className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-muted/40 border border-border/80 flex items-baseline gap-1.5 shadow-sm">
-                      <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary leading-none" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                        {daysLeft > 0 ? daysLeft : daysLeft === 0 ? '0' : Math.abs(daysLeft)}
-                      </span>
-                      <span className="text-[9px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider leading-none" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                        {daysLeft > 0 ? 'DAYS LEFT' : daysLeft === 0 ? 'EXAM TODAY' : 'DAYS AGO'}
-                      </span>
+                  return (
+                    <div className="flex items-center justify-center shrink-0">
+                      <div className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-muted/40 border border-border/80 flex items-baseline gap-1.5 shadow-sm">
+                        <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary leading-none" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                          {daysLeft > 0 ? daysLeft : daysLeft === 0 ? '0' : Math.abs(daysLeft)}
+                        </span>
+                        <span className="text-[9px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider leading-none" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                          {daysLeft > 0 ? 'DAYS LEFT' : daysLeft === 0 ? 'EXAM TODAY' : 'DAYS AGO'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()
+              ) : (
+                <div className="flex items-center justify-center shrink-0">
+                  <Link href="/profile">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl border-dashed border-primary/40 text-primary hover:bg-primary/10 text-xs font-semibold h-9 px-3"
+                    >
+                      Set Target Date
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
 

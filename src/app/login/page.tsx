@@ -28,6 +28,7 @@ export default function LoginPage() {
     if (result.success) {
       try {
         sessionStorage.setItem('bq_just_logged_in', 'true');
+        sessionStorage.removeItem('bq_daily_modal_dismissed');
       } catch (e) {}
       toast({
         title: "Verification Successful",

@@ -135,7 +135,6 @@ export async function recordDailyLoginAction(deviceInfo?: string): Promise<{
         userQuery,
         {
           $set: {
-            streak: currentStreak,
             loginStreak: currentStreak,
             lastLoginDate: todayDate,
             lastLoginAt: new Date(),
@@ -197,7 +196,7 @@ export async function recordDailyLoginAction(deviceInfo?: string): Promise<{
 }
 
 /**
- * Claims today's daily streak reward (XP & badges)
+ * Claims today's daily streak reward (XP & consistency badges for 7/14/30 days)
  * Updates claimedReward: true and cleans up redundant legacy fields.
  */
 export async function claimDailyLoginRewardAction(): Promise<{
@@ -206,6 +205,7 @@ export async function claimDailyLoginRewardAction(): Promise<{
   currentStreak?: number;
   newXp?: number;
   newLevel?: number;
+  earnedBadge?: string;
   error?: string;
 }> {
   try {
@@ -253,7 +253,7 @@ export async function claimDailyLoginRewardAction(): Promise<{
       return { success: false, error: 'Daily reward already claimed today! Check back tomorrow.' };
     }
 
-    const currentStreak = todayLogin.consecutiveStreak || todayLogin.loginStreak || user.loginStreak || user.streak || 1;
+    const currentStreak = todayLogin.consecutiveStreak || todayLogin.loginStreak || user.loginStreak || 1;
     const cycleDay = calculateCycleDay(currentStreak);
     const rewardTier = DAILY_LOGIN_REWARDS[cycleDay - 1] || DAILY_LOGIN_REWARDS[0];
 
@@ -261,16 +261,34 @@ export async function claimDailyLoginRewardAction(): Promise<{
     const updatedXp = currentXp + rewardTier.xp;
     const updatedLevel = Math.max(1, Math.floor(updatedXp / 1000) + 1);
 
+    // Check if user has already earned consistency badges (7-Day, 14-Day, 30-Day)
+    const existingStreakBadges = await prisma.achievement.findMany({
+      where: {
+        userId: userId,
+        badge: { in: ['streak-7', 'streak-14', 'streak-30'] },
+      },
+      select: { badge: true },
+    });
+    const ownedBadges = new Set(existingStreakBadges.map((b) => b.badge));
+
+    let awardedBadgeId: string | undefined = undefined;
+    if (currentStreak >= 30 && !ownedBadges.has('streak-30')) {
+      awardedBadgeId = 'streak-30';
+    } else if (currentStreak >= 14 && !ownedBadges.has('streak-14')) {
+      awardedBadgeId = 'streak-14';
+    } else if (currentStreak >= 7 && !ownedBadges.has('streak-7')) {
+      awardedBadgeId = 'streak-7';
+    }
+
     // 2. Parallelized write operations to MongoDB and Prisma
     await Promise.all([
-      // Update User collection
+      // Update User collection (XP, level, loginStreak)
       db.collection('User').updateOne(
         userQuery,
         {
           $set: {
             xp: updatedXp,
             level: updatedLevel,
-            streak: currentStreak,
             loginStreak: currentStreak,
           },
         }
@@ -308,13 +326,15 @@ export async function claimDailyLoginRewardAction(): Promise<{
           },
         }
       ),
-      // Log Achievement
+      // Log Achievement for Daily Attendance (only attach consistency badge if milestone reached)
       prisma.achievement.create({
         data: {
           userId: userId,
-          task: `Daily Check-In Reward: Day ${cycleDay} Streak`,
+          task: awardedBadgeId 
+            ? `Daily Streak Milestone Reward: Day ${currentStreak} Streak` 
+            : `Daily Check-In Reward: Day ${cycleDay} Streak`,
           type: 'quest',
-          badge: rewardTier.isMilestone ? 'gold' : 'bronze',
+          ...(awardedBadgeId ? { badge: awardedBadgeId } : {}),
           xp: rewardTier.xp,
           confidenceLevel: 'Unyielding',
           questMode: 'learning',
@@ -331,6 +351,7 @@ export async function claimDailyLoginRewardAction(): Promise<{
       currentStreak: currentStreak,
       newXp: updatedXp,
       newLevel: updatedLevel,
+      earnedBadge: awardedBadgeId,
     };
   } catch (error) {
     console.error('Error claiming daily login reward:', error);

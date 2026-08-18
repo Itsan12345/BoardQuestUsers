@@ -92,15 +92,15 @@ export function AccountSettingsDialog({
   // Form states - Profile
   const [name, setName] = useState(userProfile.name || '');
   const [location, setLocation] = useState(userProfile.location || 'Cebu, Philippines');
-  const [school, setSchool] = useState('Southwestern University PHINMA');
-  const [targetBatch, setTargetBatch] = useState('October 2026 MTLE');
-  const [targetExamDate, setTargetExamDate] = useState<Date>(new Date(2026, 9, 30));
+  const [school, setSchool] = useState('');
+  const [targetBatch, setTargetBatch] = useState('');
+  const [targetExamDate, setTargetExamDate] = useState<Date | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Form states - Study Goals
   const [dailyQuota, setDailyQuota] = useState('50');
-  const [focusSubject, setFocusSubject] = useState(SUBJECT_AREAS[0]);
+  const [focusSubject, setFocusSubject] = useState<string>('none');
   const [defaultDifficulty, setDefaultDifficulty] = useState('MEDIUM');
   const [confidencePrompts, setConfidencePrompts] = useState(true);
 
@@ -138,6 +138,7 @@ export function AccountSettingsDialog({
         if (dbSettings) {
           if (dbSettings.dailyQuota) setDailyQuota(String(dbSettings.dailyQuota));
           if (dbSettings.focusSubject) setFocusSubject(dbSettings.focusSubject);
+          else setFocusSubject('none');
           if (dbSettings.defaultDifficulty) setDefaultDifficulty(dbSettings.defaultDifficulty);
           if (dbSettings.confidencePrompts !== undefined) setConfidencePrompts(dbSettings.confidencePrompts);
           if (dbSettings.sfxVolume !== undefined) setSfxVolume([dbSettings.sfxVolume]);
@@ -148,8 +149,11 @@ export function AccountSettingsDialog({
           if (dbSettings.countdownAlerts !== undefined) setCountdownAlerts(dbSettings.countdownAlerts);
           if (dbSettings.achievementAlerts !== undefined) setAchievementAlerts(dbSettings.achievementAlerts);
           if (dbSettings.school) setSchool(dbSettings.school);
+          else setSchool('');
           if (dbSettings.targetBatch) setTargetBatch(dbSettings.targetBatch);
+          else setTargetBatch('');
           if (dbSettings.targetExamDate) setTargetExamDate(new Date(dbSettings.targetExamDate));
+          else setTargetExamDate(null);
         } else {
           // Fallback to client localStorage
           const savedQuota = localStorage.getItem('bq_pref_daily_quota');
@@ -254,12 +258,16 @@ export function AccountSettingsDialog({
         throw new Error(res.error || 'Failed to update profile');
       }
 
-      const dateIso = targetExamDate ? targetExamDate.toISOString() : new Date(2026, 9, 30).toISOString();
+      const dateIso = targetExamDate ? targetExamDate.toISOString() : null;
 
       // Save academic fields to MongoDB & localStorage
       localStorage.setItem('bq_pref_school', school);
       localStorage.setItem('bq_pref_target_batch', targetBatch);
-      localStorage.setItem('bq_pref_target_exam_date', dateIso);
+      if (dateIso) {
+        localStorage.setItem('bq_pref_target_exam_date', dateIso);
+      } else {
+        localStorage.removeItem('bq_pref_target_exam_date');
+      }
 
       await saveUserSettingsAction({
         school,
@@ -296,13 +304,13 @@ export function AccountSettingsDialog({
   const handleSaveGoals = async () => {
     try {
       localStorage.setItem('bq_pref_daily_quota', dailyQuota);
-      localStorage.setItem('bq_pref_focus_subject', focusSubject);
+      localStorage.setItem('bq_pref_focus_subject', focusSubject || 'none');
       localStorage.setItem('bq_pref_default_diff', defaultDifficulty);
       localStorage.setItem('bq_pref_confidence_prompts', String(confidencePrompts));
 
       await saveUserSettingsAction({
         dailyQuota: parseInt(dailyQuota, 10),
-        focusSubject,
+        focusSubject: focusSubject || 'none',
         defaultDifficulty,
         confidencePrompts,
       });
@@ -310,7 +318,7 @@ export function AccountSettingsDialog({
       window.dispatchEvent(new CustomEvent('bq_settings_updated', {
         detail: {
           dailyQuota: parseInt(dailyQuota, 10),
-          focusSubject,
+          focusSubject: focusSubject || 'none',
           defaultDifficulty,
           confidencePrompts,
         }
@@ -791,11 +799,14 @@ export function AccountSettingsDialog({
                     <Label className="text-sm font-semibold text-foreground">Priority Focus Subject</Label>
                     <p className="text-xs text-muted-foreground truncate">Subject highlighted first in Study Arena</p>
                   </div>
-                  <Select value={focusSubject} onValueChange={setFocusSubject}>
+                  <Select value={focusSubject || 'none'} onValueChange={setFocusSubject}>
                     <SelectTrigger className="rounded-xl h-9 text-xs w-full min-w-0 max-w-full overflow-hidden">
                       <SelectValue placeholder="Select focus subject" className="truncate" />
                     </SelectTrigger>
                     <SelectContent className="max-w-[90vw] sm:max-w-sm">
+                      <SelectItem value="none" className="text-xs font-medium">
+                        None (No Priority Subject)
+                      </SelectItem>
                       {SUBJECT_AREAS.map(sub => (
                         <SelectItem key={sub} value={sub} className="text-xs">
                           {sub}

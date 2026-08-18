@@ -29,7 +29,7 @@ export const MTLE_PRESETS: MTLEPreset[] = [
 ];
 
 interface TargetExamCalendarProps {
-  selectedDate: Date;
+  selectedDate?: Date | null;
   onSelectDate: (date: Date, batchLabel?: string) => void;
   showHeader?: boolean;
   className?: string;
@@ -43,7 +43,7 @@ export function TargetExamCalendar({
 }: TargetExamCalendarProps) {
   const initialDate = selectedDate instanceof Date && !isNaN(selectedDate.getTime())
     ? selectedDate
-    : (selectedDate ? new Date(selectedDate) : new Date(2026, 9, 30));
+    : (selectedDate ? new Date(selectedDate) : new Date());
 
   const [currentMonth, setCurrentMonth] = useState<Date>(() => startOfMonth(initialDate));
 

@@ -147,8 +147,14 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
   const guidanceNotifs = buildGuidanceNotifications(guidanceList);
   notifications.push(...guidanceNotifs);
 
-  // 1. 🔥 Daily Streak Protection Alert (Only if streak exists AND user hasn't played today)
-  if (streakAlertsEnabled && userStreak > 0 && todayQuestions === 0) {
+  // Check if user has real quest/exam history
+  const questAchievements = (user?.achievements || []).filter(
+    (a: any) => a.type === 'quest' && a.subject !== 'Daily Attendance'
+  );
+  const hasStudyHistory = questAchievements.length > 0 || (user?.todayQuestions || 0) > 0 || (user?.totalQuestions || 0) > 0;
+
+  // 1. 🔥 Daily Streak Protection Alert (Only if study history exists, streak > 0, and user hasn't played today)
+  if (streakAlertsEnabled && hasStudyHistory && userStreak > 0 && todayQuestions === 0) {
     const streakId = `streak_warning_${new Date().toISOString().slice(0, 10)}`;
     notifications.push({
       id: streakId,
@@ -163,12 +169,10 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
     });
   }
 
-  // 1b. 💔 Daily Streak Lost / Broken Alert (When streak is broken and user hasn't played today)
-  if (streakAlertsEnabled && userStreak === 0 && todayQuestions === 0 && user?.streakBroken) {
+  // 1b. 💔 Daily Streak Lost / Broken Alert (When streak is broken, previous study history exists, and user hasn't played today)
+  if (streakAlertsEnabled && hasStudyHistory && userStreak === 0 && todayQuestions === 0 && user?.streakBroken && (user?.previousStreak || 0) > 0) {
     const streakLostId = `streak_lost_${new Date().toISOString().slice(0, 10)}`;
-    const prevMsg = user?.previousStreak && user.previousStreak > 1
-      ? `Your ${user.previousStreak}-day study streak was lost because no review quest was completed yesterday.`
-      : `Your study streak was reset to 0 because no review quest was completed yesterday.`;
+    const prevMsg = `Your ${user.previousStreak}-day study streak was lost because no review quest was completed yesterday.`;
 
     notifications.push({
       id: streakLostId,
@@ -213,11 +217,11 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
     });
   }
 
-  // 3. 📅 Target MTLE Milestone Alert
-  if (countdownAlertsEnabled) {
-    const targetBatch = localStorage.getItem('bq_pref_target_batch') || 'October 2026 MTLE';
-    const savedDate = localStorage.getItem('bq_pref_target_exam_date');
-    const examDate = savedDate ? new Date(savedDate) : new Date(2026, 9, 30);
+  // 3. 📅 Target MTLE Milestone Alert (Only if target exam date has been explicitly set)
+  const savedExamDate = localStorage.getItem('bq_pref_target_exam_date');
+  if (countdownAlertsEnabled && savedExamDate) {
+    const targetBatch = localStorage.getItem('bq_pref_target_batch') || 'Target MTLE Board Exam';
+    const examDate = new Date(savedExamDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const examDay = new Date(examDate);
