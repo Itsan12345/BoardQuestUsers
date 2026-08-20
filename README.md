@@ -39,7 +39,7 @@ Follow the steps below to configure and run the BoardQuest platform locally.
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/your-org/boardquest.git
+   git clone https://github.com/Itsan12345/BoardQuesters.git
    cd studio
    ```
 
@@ -87,8 +87,8 @@ The codebase follows a modular Next.js App Router architecture. Below is an over
 For inquiries, technical support, or administrative questions regarding this Capstone system:
 
 - **Project Team:** BoardQuest Engineering & Capstone Team
-- **Primary Email:** `team@boardquest.edu`
-- **GitHub Repository:** [BoardQuest Capstone Repository](https://github.com/your-org/boardquest)
+- **Primary Email:** `ethangabrielrolloque@gmail.com`
+- **GitHub Repository:** [BoardQuest Capstone Repository](https://github.com/Itsan12345/BoardQuesters)
 
 ---
 
