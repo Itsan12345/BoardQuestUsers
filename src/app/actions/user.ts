@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { startOfWeek, differenceInCalendarDays } from 'date-fns';
 import bcrypt from 'bcryptjs';
+import { ObjectId } from 'mongodb';
 import clientPromise from '@/lib/mongodb-client';
 
 export interface StreakValidationResult {
@@ -653,6 +654,86 @@ export async function saveUserSettingsAction(settingsData: any) {
   } catch (error) {
     console.error('Failed to save user settings to MongoDB:', error);
     return { success: false, error: 'Failed to save settings' };
+  }
+}
+
+export async function deleteUserAccountAction(data: {
+  password?: string;
+  confirmationText?: string;
+}) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return { success: false, error: 'Not authenticated' };
+
+    if ((data.confirmationText || '').trim() !== 'DELETE') {
+      return { success: false, error: 'Please type DELETE in all uppercase to confirm account deletion.' };
+    }
+
+    if (!data.password) {
+      return { success: false, error: 'Current password is required to delete your account.' };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) return { success: false, error: 'User account not found.' };
+
+    const isMatch = await bcrypt.compare(data.password, user.password);
+    if (!isMatch) {
+      return { success: false, error: 'Incorrect password. Verification failed.' };
+    }
+
+    const client = await clientPromise;
+    const db = client.db();
+
+    // 1. Cascading wipe across all collections
+    let userObjectId: ObjectId | null = null;
+    try {
+      userObjectId = new ObjectId(userId);
+    } catch (e) {}
+
+    const idQueries = userObjectId ? [{ userId }, { userId: userObjectId }] : [{ userId }];
+    const userDocQueries = userObjectId ? [{ _id: userObjectId }, { _id: userId as any }] : [{ _id: userId as any }];
+
+    await Promise.all([
+      db.collection('UserSettings').deleteMany({ $or: idQueries }),
+      db.collection('UserQuestionAttempt').deleteMany({ $or: idQueries }),
+      db.collection('ExamResult').deleteMany({ $or: idQueries }),
+      db.collection('QuestNodeCompletion').deleteMany({ $or: idQueries }),
+      db.collection('LessonCompletion').deleteMany({ $or: idQueries }),
+      db.collection('SubjectMastery').deleteMany({ $or: idQueries }),
+      db.collection('Achievement').deleteMany({ $or: idQueries }),
+      db.collection('StudyPlan').deleteMany({ $or: idQueries }),
+      db.collection('AiAnalysis').deleteMany({ $or: idQueries }),
+      db.collection('EmailVerification').deleteMany({ email: user.email }),
+    ]);
+
+    // 2. Delete primary user record
+    await db.collection('User').deleteOne({ $or: userDocQueries });
+
+    // 3. Clear session cookie
+    cookieStore.set('user_id', '', {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 0,
+      expires: new Date(0),
+    });
+
+    revalidatePath('/');
+    revalidatePath('/profile');
+    revalidatePath('/login');
+
+    return {
+      success: true,
+      message: 'Your account and all associated study data have been permanently deleted.'
+    };
+  } catch (error) {
+    console.error('Failed to permanently delete user account:', error);
+    return { success: false, error: 'Failed to delete account. Please try again later.' };
   }
 }
 

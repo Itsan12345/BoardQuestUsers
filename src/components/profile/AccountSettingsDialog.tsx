@@ -46,6 +46,8 @@ import {
   Sun,
   Moon,
   Palette,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +57,7 @@ import {
   exportUserStudyData,
   getUserSettingsAction,
   saveUserSettingsAction,
+  deleteUserAccountAction,
 } from '@/app/actions/user';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
 import { startTourByKey, isTourCompleted } from '@/lib/tour-config';
@@ -121,6 +124,13 @@ export function AccountSettingsDialog({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // Form states - Delete Account
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // Form states - Data Export
   const [isExporting, setIsExporting] = useState(false);
@@ -508,6 +518,67 @@ export function AccountSettingsDialog({
     }
   };
 
+  // Handle Permanent Delete Account
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (deleteConfirmationText.trim() !== 'DELETE') {
+      toast({
+        variant: 'destructive',
+        title: 'Confirmation Mismatch',
+        description: 'Please type DELETE in all uppercase to confirm.',
+      });
+      return;
+    }
+
+    if (!deletePassword) {
+      toast({
+        variant: 'destructive',
+        title: 'Password Required',
+        description: 'Please enter your current password to authorize account deletion.',
+      });
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      const res = await deleteUserAccountAction({
+        password: deletePassword,
+        confirmationText: deleteConfirmationText.trim(),
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to delete account');
+      }
+
+      // Clear all client-side cached storage
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {}
+
+      toast({
+        title: 'Account Permanently Deleted',
+        description: 'Your account and all associated study data have been completely wiped.',
+      });
+
+      setDeleteDialogOpen(false);
+      onOpenChange(false);
+
+      // Force clean redirect to login page
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 500);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Deletion Failed',
+        description: error.message || 'An error occurred while deleting your account.',
+      });
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
   const getPasswordStrength = (pass: string) => {
     if (!pass) return { label: 'None', color: 'bg-slate-200', width: '0%' };
     if (pass.length < 6) return { label: 'Weak', color: 'bg-red-500', width: '30%' };
@@ -520,36 +591,37 @@ export function AccountSettingsDialog({
   const daysRemaining = targetExamDate ? differenceInCalendarDays(startOfDay(targetExamDate), today) : 0;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 overflow-visible">
-        <DialogHeader className="pb-3 sm:pb-4 border-b border-border text-left">
-          <div id="tour-settings-header" className="flex items-start sm:items-center justify-between pr-6 gap-3 text-left">
-            <div className="text-left min-w-0">
-              <DialogTitle className="text-lg sm:text-2xl font-bold text-foreground text-left truncate">
-                Account Settings
-              </DialogTitle>
-              <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 text-left leading-relaxed line-clamp-1 sm:line-clamp-none">
-                Manage academic credentials, review goals, and security
-              </DialogDescription>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[88vh] flex flex-col bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 overflow-hidden">
+          <DialogHeader className="pb-2.5 sm:pb-3 border-b border-border text-left shrink-0">
+            <div id="tour-settings-header" className="flex items-start sm:items-center justify-between pr-6 gap-3 text-left">
+              <div className="text-left min-w-0">
+                <DialogTitle className="text-lg sm:text-xl font-bold text-foreground text-left truncate">
+                  Account Settings
+                </DialogTitle>
+                <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 text-left leading-relaxed line-clamp-1">
+                  Manage academic credentials, review goals, and security
+                </DialogDescription>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleStartTabTour(activeTab, true)}
+                className="h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-[10px] sm:text-xs font-semibold flex items-center gap-1 transition-all text-foreground/80 hover:text-primary shrink-0"
+                title="Explain current tab settings"
+              >
+                <Compass className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary shrink-0 transition-transform group-hover:rotate-45" />
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider hidden sm:inline">Guide</span>
+              </Button>
             </div>
+          </DialogHeader>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleStartTabTour(activeTab, true)}
-              className="h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl border border-border hover:border-primary/40 hover:bg-primary/5 text-[10px] sm:text-xs font-semibold flex items-center gap-1 transition-all text-foreground/80 hover:text-primary shrink-0"
-              title="Explain current tab settings"
-            >
-              <Compass className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary shrink-0 transition-transform group-hover:rotate-45" />
-              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider hidden sm:inline">Guide</span>
-            </Button>
-          </div>
-        </DialogHeader>
-
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full pt-1.5 min-w-0">
-          {/* Tabs navigation bar */}
-          <TabsList className="w-full grid grid-cols-4 md:grid-cols-7 h-auto p-1 bg-muted/60 rounded-xl sm:rounded-2xl border border-border/50 gap-1 min-w-0">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex-1 flex flex-col min-h-0 pt-1.5 min-w-0 overflow-hidden">
+            {/* Tabs navigation bar */}
+            <TabsList className="w-full grid grid-cols-4 md:grid-cols-7 h-auto p-1 bg-muted/60 rounded-xl sm:rounded-2xl border border-border/50 gap-1 min-w-0 shrink-0">
             <TabsTrigger
               id="tour-settings-tab-profile"
               value="profile"
@@ -609,7 +681,7 @@ export function AccountSettingsDialog({
           </TabsList>
 
           {/* TAB 1: Profile & Academic Identity */}
-          <TabsContent value="profile" className="pt-3 space-y-3.5 min-w-0 max-w-full">
+          <TabsContent value="profile" className="flex-1 overflow-y-auto min-h-0 pr-1 sm:pr-2 pt-3 space-y-3 sm:space-y-3.5 min-w-0 max-w-full focus-visible:outline-none">
             <form onSubmit={handleSaveProfile} className="space-y-3.5 min-w-0 max-w-full">
               <div id="tour-profile-identity" className="p-2.5 sm:p-3 bg-muted/30 border border-border rounded-xl sm:rounded-2xl flex items-center gap-2.5 sm:gap-3.5 w-full min-w-0 max-w-full overflow-hidden">
                 <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-[#8B0000] text-white flex items-center justify-center text-sm sm:text-lg font-bold border-2 border-primary/20 shadow-md shrink-0">
@@ -760,7 +832,7 @@ export function AccountSettingsDialog({
           </TabsContent>
 
           {/* TAB 2: Study Goals & Targets */}
-          <TabsContent value="goals" className="pt-4 space-y-4 sm:space-y-5 w-full max-w-full overflow-hidden">
+          <TabsContent value="goals" className="flex-1 overflow-y-auto min-h-0 pr-1 sm:pr-2 pt-3 space-y-3 sm:space-y-3.5 min-w-0 max-w-full focus-visible:outline-none">
             <div className="space-y-3 sm:space-y-4 w-full max-w-full">
               {/* Daily Question Target */}
               <div id="tour-goals-quota" className="p-3.5 sm:p-4 bg-muted/20 border border-border rounded-2xl space-y-3 w-full max-w-full overflow-hidden">
@@ -860,7 +932,7 @@ export function AccountSettingsDialog({
           </TabsContent>
 
           {/* TAB 3: Audio & RPG FX */}
-          <TabsContent value="audio" className="pt-4 space-y-5">
+          <TabsContent value="audio" className="flex-1 overflow-y-auto min-h-0 pr-1 sm:pr-2 pt-3 space-y-3 sm:space-y-3.5 min-w-0 max-w-full focus-visible:outline-none">
             <div className="space-y-4">
               <div id="tour-audio-sfx" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
@@ -919,7 +991,7 @@ export function AccountSettingsDialog({
           </TabsContent>
 
           {/* TAB 4: Notifications & Alerts */}
-          <TabsContent value="alerts" className="pt-4 space-y-5">
+          <TabsContent value="alerts" className="flex-1 overflow-y-auto min-h-0 pr-1 sm:pr-2 pt-3 space-y-3 sm:space-y-3.5 min-w-0 max-w-full focus-visible:outline-none">
             <div className="space-y-4">
               <div id="tour-alerts-streak" className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
                 <div className="space-y-0.5 pr-4">
@@ -962,46 +1034,46 @@ export function AccountSettingsDialog({
           </TabsContent>
 
           {/* TAB 5: Security & Password */}
-          <TabsContent value="security" className="pt-4 space-y-5">
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div id="tour-security-password" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
+          <TabsContent value="security" className="flex-1 overflow-y-auto min-h-0 pr-1 sm:pr-2 pt-3 space-y-3 sm:space-y-3.5 min-w-0 max-w-full focus-visible:outline-none">
+            <form onSubmit={handleChangePassword} className="space-y-3 sm:space-y-3.5">
+              <div id="tour-security-password" className="p-3.5 sm:p-4 bg-muted/20 border border-border rounded-xl sm:rounded-2xl space-y-2.5 sm:space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold text-foreground">Update Password</Label>
+                  <Label className="text-xs sm:text-sm font-semibold text-foreground">Update Password</Label>
                   <button
                     type="button"
                     onClick={() => setShowPasswords(!showPasswords)}
-                    className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground transition"
+                    className="text-[11px] text-muted-foreground flex items-center gap-1 hover:text-foreground transition"
                   >
                     {showPasswords ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     {showPasswords ? 'Hide' : 'Show'} Passwords
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <div className="space-y-1">
-                    <Label htmlFor="currentPass" className="text-xs font-semibold">Current Password</Label>
+                    <Label htmlFor="currentPass" className="text-[11px] sm:text-xs font-semibold">Current Password</Label>
                     <Input
                       id="currentPass"
                       type={showPasswords ? 'text' : 'password'}
                       value={currentPassword}
                       onChange={e => setCurrentPassword(e.target.value)}
                       placeholder="Enter current password"
-                      className="rounded-xl h-9 text-xs"
+                      className="rounded-xl h-8.5 sm:h-9 text-xs"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="newPass" className="text-xs font-semibold">New Password</Label>
+                    <Label htmlFor="newPass" className="text-[11px] sm:text-xs font-semibold">New Password</Label>
                     <Input
                       id="newPass"
                       type={showPasswords ? 'text' : 'password'}
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
                       placeholder="Minimum 6 characters"
-                      className="rounded-xl h-9 text-xs"
+                      className="rounded-xl h-8.5 sm:h-9 text-xs"
                     />
                     {newPassword && (
-                      <div className="space-y-1 pt-1">
+                      <div className="space-y-1 pt-0.5">
                         <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                           <div className={cn("h-full transition-all duration-300", passwordStrength.color)} style={{ width: passwordStrength.width }} />
                         </div>
@@ -1011,24 +1083,24 @@ export function AccountSettingsDialog({
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="confirmPass" className="text-xs font-semibold">Confirm New Password</Label>
+                    <Label htmlFor="confirmPass" className="text-[11px] sm:text-xs font-semibold">Confirm New Password</Label>
                     <Input
                       id="confirmPass"
                       type={showPasswords ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
                       placeholder="Re-enter new password"
-                      className="rounded-xl h-9 text-xs"
+                      className="rounded-xl h-8.5 sm:h-9 text-xs"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-2">
+                <div className="flex justify-end pt-1">
                   <Button
                     id="tour-security-save"
                     type="submit"
                     disabled={isChangingPassword}
-                    className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
+                    className="w-full sm:w-auto bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-bold text-xs px-5 h-9"
                   >
                     {isChangingPassword && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
                     Update Password
@@ -1037,7 +1109,7 @@ export function AccountSettingsDialog({
               </div>
 
               {/* Active Session Info */}
-              <div id="tour-security-session" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
+              <div id="tour-security-session" className="p-3 sm:p-3.5 bg-muted/20 border border-border rounded-xl sm:rounded-2xl space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Laptop className="w-4 h-4 text-[#8B0000]" />
@@ -1047,15 +1119,45 @@ export function AccountSettingsDialog({
                     Active Now
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] sm:text-xs text-muted-foreground">
                   Signed in via Web Client • TLS 1.3 End-to-End Encryption
                 </p>
+              </div>
+
+              {/* Danger Zone: Permanent Account Deletion */}
+              <div id="tour-security-danger-zone" className="p-3.5 sm:p-4 bg-red-500/5 border border-red-500/25 rounded-xl sm:rounded-2xl space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+                      <Trash2 className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-0.5 min-w-0">
+                      <h4 className="font-bold text-xs sm:text-sm text-red-600 dark:text-red-400">Danger Zone: Delete Account</h4>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+                        Permanently wipe your aspirant account, diagnostic records, quest progression, and credentials.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setDeletePassword('');
+                      setDeleteConfirmationText('');
+                      setDeleteDialogOpen(true);
+                    }}
+                    className="w-full sm:w-auto shrink-0 border-red-500/40 text-red-600 hover:bg-red-600 hover:text-white rounded-xl font-bold text-xs px-3.5 h-8.5 sm:h-9 flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete Account
+                  </Button>
+                </div>
               </div>
             </form>
           </TabsContent>
 
           {/* TAB 6: Records & Data Export */}
-          <TabsContent value="records" className="pt-4 space-y-4">
+          <TabsContent value="records" className="flex-1 overflow-y-auto min-h-0 pr-1 sm:pr-2 pt-3 space-y-3 sm:space-y-3.5 min-w-0 max-w-full focus-visible:outline-none">
             <div className="space-y-3 sm:space-y-4">
               {/* Main Transcript Card */}
               <div id="tour-records-export" className="p-4 sm:p-5 bg-muted/20 border border-border rounded-2xl space-y-4">
@@ -1115,7 +1217,7 @@ export function AccountSettingsDialog({
             </div>
           </TabsContent>
           {/* TAB 7: Appearance & Theme Mode */}
-          <TabsContent value="appearance" className="pt-4 space-y-5">
+          <TabsContent value="appearance" className="flex-1 overflow-y-auto min-h-0 pr-1 sm:pr-2 pt-3 space-y-3 sm:space-y-3.5 min-w-0 max-w-full focus-visible:outline-none">
             <div className="space-y-4">
               <div className="p-4 bg-muted/20 border border-border rounded-2xl space-y-2">
                 <div className="flex items-center justify-between">
@@ -1231,5 +1333,124 @@ export function AccountSettingsDialog({
         </Tabs>
       </DialogContent>
     </Dialog>
+
+    {/* Permanent Delete Account Confirmation Modal */}
+    <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[92vh] overflow-y-auto bg-background border border-red-500/30 shadow-2xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4">
+        <DialogHeader className="text-left space-y-2 pb-3 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-600 shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-lg font-bold text-red-600 dark:text-red-400">
+                Delete Aspirant Account
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                This action is permanent and cannot be undone.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        {/* Purge Warning List */}
+        <div className="p-3.5 bg-red-500/5 border border-red-500/20 rounded-2xl space-y-2 text-xs text-muted-foreground">
+          <span className="font-bold text-foreground block">The following data will be permanently wiped:</span>
+          <ul className="space-y-1.5 list-none pl-0 text-[11px] sm:text-xs">
+            <li className="flex items-start gap-1.5 text-red-700 dark:text-red-400">
+              <span className="shrink-0">✕</span>
+              <span>All MTLE diagnostic records, quiz logs, and mock exam scores</span>
+            </li>
+            <li className="flex items-start gap-1.5 text-red-700 dark:text-red-400">
+              <span className="shrink-0">✕</span>
+              <span>Quest Arena chapter progression, combat stars, and boss medals</span>
+            </li>
+            <li className="flex items-start gap-1.5 text-red-700 dark:text-red-400">
+              <span className="shrink-0">✕</span>
+              <span>Aspirant XP, level status, streak counter, and reagent inventory</span>
+            </li>
+            <li className="flex items-start gap-1.5 text-red-700 dark:text-red-400">
+              <span className="shrink-0">✕</span>
+              <span>Personalized study targets, audio settings, and login credentials</span>
+            </li>
+          </ul>
+        </div>
+
+        <form onSubmit={handleDeleteAccount} className="space-y-4 pt-1">
+          {/* Password Verification */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="deletePass" className="text-xs font-semibold text-foreground">
+                Confirm Current Password
+              </Label>
+              <button
+                type="button"
+                onClick={() => setShowDeletePassword(!showDeletePassword)}
+                className="text-[11px] text-muted-foreground flex items-center gap-1 hover:text-foreground transition"
+              >
+                {showDeletePassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                {showDeletePassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            <Input
+              id="deletePass"
+              type={showDeletePassword ? 'text' : 'password'}
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value)}
+              placeholder="Enter your current password"
+              required
+              className="rounded-xl h-10 text-xs"
+            />
+          </div>
+
+          {/* Verification Phrase Input */}
+          <div className="space-y-1.5">
+            <Label htmlFor="deleteConfirmText" className="text-xs font-semibold text-foreground">
+              Type <span className="font-black text-red-600 dark:text-red-400">DELETE</span> in uppercase to confirm
+            </Label>
+            <Input
+              id="deleteConfirmText"
+              type="text"
+              value={deleteConfirmationText}
+              onChange={e => setDeleteConfirmationText(e.target.value)}
+              placeholder="Type DELETE"
+              required
+              className="rounded-xl h-10 text-xs font-mono font-bold tracking-wider"
+            />
+          </div>
+
+          {/* Modal Actions */}
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeletingAccount}
+              className="w-full sm:w-auto rounded-xl text-xs h-10 sm:h-9 font-semibold"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isDeletingAccount || deleteConfirmationText.trim() !== 'DELETE' || !deletePassword}
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs h-10 sm:h-9 font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+            >
+              {isDeletingAccount ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                  Wiping Data...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Permanently Delete
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }
