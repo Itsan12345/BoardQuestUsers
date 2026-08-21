@@ -284,11 +284,15 @@ export async function getAdminCohortMtleSummaryAction(limit = 100): Promise<Admi
       orderBy: { createdAt: 'desc' },
     });
 
+    const readinessList = await Promise.all(
+      users.map(student => getMtleReadinessData(student.id))
+    );
+
     const summaries: AdminStudentMtleSummary[] = [];
 
-    // Evaluate each student's statutory MTLE readiness
-    for (const student of users) {
-      const readiness = await getMtleReadinessData(student.id);
+    for (let i = 0; i < users.length; i++) {
+      const student = users[i];
+      const readiness = readinessList[i];
       if (!readiness) continue;
 
       summaries.push({

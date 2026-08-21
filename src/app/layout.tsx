@@ -1,5 +1,6 @@
 
 import type {Metadata} from 'next';
+import { Inter, Poppins, Space_Grotesk } from 'next/font/google';
 import 'driver.js/dist/driver.css';
 import '@/styles/tour-theme.css';
 import './globals.css';
@@ -8,6 +9,25 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { cookies } from 'next/headers';
 import { LayoutContent } from '@/components/navigation/LayoutContent';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const poppins = Poppins({
+  weight: ['400', '500', '600', '700', '800', '900'],
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  display: 'swap',
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-space-grotesk',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'BoardQuest | MedTech Gamified Review',
@@ -23,12 +43,7 @@ export default async function RootLayer({
   const userId = cookieStore.get('user_id')?.value;
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${poppins.variable} ${spaceGrotesk.variable}`}>
       <body className="font-body antialiased min-h-screen bg-background text-foreground transition-colors duration-200">
         <ThemeProvider
           attribute="class"

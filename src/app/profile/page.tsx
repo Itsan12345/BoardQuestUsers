@@ -17,6 +17,7 @@ import { BADGES, BadgeId, getLevelProgress, getRankTitle } from '@/lib/badge-sys
 import { calculatePlayerStats } from '@/lib/game-logic';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AccountSettingsDialog } from '@/components/profile/AccountSettingsDialog';
+import { getUserBadgesAction, getAllMasterBadgesAction, type UserBadgeDetails } from '@/app/actions/badge';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -208,6 +209,8 @@ function ProfileContent() {
   const router = useRouter();
   const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [dbUserBadges, setDbUserBadges] = useState<UserBadgeDetails[]>([]);
+  const [masterBadges, setMasterBadges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewAllBadgesOpen, setViewAllBadgesOpen] = useState(false);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
@@ -219,18 +222,28 @@ function ProfileContent() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const [profile, guidanceRes] = await Promise.all([
+        const [profile, guidanceRes, userBadgesRes, masterBadgesRes] = await Promise.all([
           getUserProfile() as Promise<UserProfile | null>,
-          getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] }))
+          getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] })),
+          getUserBadgesAction().catch(() => ({ success: false, data: [] })),
+          getAllMasterBadgesAction().catch(() => ({ success: false, data: [] }))
         ]);
 
         if (!profile) {
-          // User doesn't exist, redirect to login
           router.replace('/login');
           return;
         }
 
         setUserProfile(profile);
+
+        if (userBadgesRes?.success && userBadgesRes.data) {
+          setDbUserBadges(userBadgesRes.data);
+        }
+
+        if (masterBadgesRes?.success && masterBadgesRes.data) {
+          setMasterBadges(masterBadgesRes.data);
+        }
+
         if (guidanceRes?.success && guidanceRes.data) {
           setGuidanceList(guidanceRes.data);
         }
@@ -539,13 +552,40 @@ function ProfileContent() {
               <CardContent className="p-3 sm:p-6 pt-2 sm:pt-2 pb-4 sm:pb-6">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
                   {(() => {
-                    const earnedBadgeMap = new Map<string, typeof BADGE_SPRITE_DEFINITIONS[string]>();
+                    const earnedBadgeMap = new Map<string, any>();
+
+                    // 1. From UserBadge collection (Admin dynamic MongoDB schema)
+                    dbUserBadges.forEach(ub => {
+                      const def = BADGE_SPRITE_DEFINITIONS[ub.badgeSlug] || {};
+                      earnedBadgeMap.set(ub.badgeSlug, {
+                        id: ub.badgeSlug,
+                        title: ub.title || def.title || ub.badgeSlug,
+                        name: ub.name || 'Quest Badge',
+                        sprite: ub.spriteUrl || def.sprite || '/ui/gold-badge.png',
+                        bgGradient: def.bgGradient || 'from-[#FFB732] via-[#FFA000] to-[#F57C00]',
+                        borderColor: def.borderColor || 'border-[#E67E22]',
+                        xpReward: ub.xpEarned || ub.xpReward || 50,
+                      });
+                    });
+
+                    // 2. From achievements fallback if any badge is logged
                     userProfile.achievements?.forEach(a => {
-                      if (a.badge && BADGE_SPRITE_DEFINITIONS[a.badge]) {
-                        const def = BADGE_SPRITE_DEFINITIONS[a.badge];
-                        if (!earnedBadgeMap.has(def.title)) {
-                          earnedBadgeMap.set(def.title, def);
-                        }
+                      if (a.badge && !earnedBadgeMap.has(a.badge)) {
+                        const def = BADGE_SPRITE_DEFINITIONS[a.badge] || {
+                          title: a.badge,
+                          sprite: '/ui/gold-badge.png',
+                          bgGradient: 'from-[#FFB732] via-[#FFA000] to-[#F57C00]',
+                          borderColor: 'border-[#E67E22]',
+                        };
+                        earnedBadgeMap.set(a.badge, {
+                          id: a.badge,
+                          title: def.title,
+                          name: a.task || def.title,
+                          sprite: def.sprite,
+                          bgGradient: def.bgGradient,
+                          borderColor: def.borderColor,
+                          xpReward: a.xp || 50,
+                        });
                       }
                     });
 
@@ -719,17 +759,37 @@ function ProfileContent() {
           {(() => {
             if (!userProfile) return null;
 
-            const earnedBadgeIds = new Set(
-              userProfile.achievements
-                ?.map(a => a.badge)
-                .filter((b): b is string => Boolean(b)) || []
-            );
+            // Combine master badges from MongoDB + default badges
+            const masterBadgeMap = new Map<string, any>();
+            ALL_BADGE_TYPES.forEach(b => masterBadgeMap.set(b.id, b));
+            masterBadges.forEach(mb => {
+              const def = BADGE_SPRITE_DEFINITIONS[mb.badgeId] || {};
+              masterBadgeMap.set(mb.badgeId || mb.id, {
+                id: mb.badgeId || mb.id,
+                title: mb.title || mb.name,
+                name: mb.name,
+                sprite: mb.spriteUrl || def.sprite || '/ui/gold-badge.png',
+                bgGradient: def.bgGradient || 'from-[#FFB732] via-[#FFA000] to-[#F57C00]',
+                borderColor: def.borderColor || 'border-[#E67E22]',
+                unlockCondition: mb.unlockCondition || 'Earned through evaluations',
+                description: mb.description || mb.unlockCondition || 'Awarded for diagnostic mastery.',
+                xpReward: mb.xpReward || 50,
+              });
+            });
 
-            const earnedCount = ALL_BADGE_TYPES.filter(b => 
+            const combinedBadgeTypes = Array.from(masterBadgeMap.values());
+
+            const earnedBadgeIds = new Set<string>();
+            dbUserBadges.forEach(ub => earnedBadgeIds.add(ub.badgeSlug));
+            userProfile.achievements?.forEach(a => {
+              if (a.badge) earnedBadgeIds.add(a.badge);
+            });
+
+            const earnedCount = combinedBadgeTypes.filter(b =>
               earnedBadgeIds.has(b.id) || (b.id === 'speed' && earnedBadgeIds.has('swift-solver'))
             ).length;
 
-            const filteredBadges = ALL_BADGE_TYPES.filter(badge => {
+            const filteredBadges = combinedBadgeTypes.filter(badge => {
               const isEarned = earnedBadgeIds.has(badge.id) || (badge.id === 'speed' && earnedBadgeIds.has('swift-solver'));
               if (badgeFilter === 'earned') return isEarned;
               if (badgeFilter === 'locked') return !isEarned;
@@ -755,7 +815,7 @@ function ProfileContent() {
                     </div>
 
                     <Badge className="bg-[#8B0000] text-white font-bold text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 self-start sm:self-auto">
-                      {earnedCount} / {ALL_BADGE_TYPES.length} UNLOCKED
+                      {earnedCount} / {combinedBadgeTypes.length} UNLOCKED
                     </Badge>
                   </div>
 
@@ -767,7 +827,7 @@ function ProfileContent() {
                       onClick={() => setBadgeFilter('all')}
                       className={cn("rounded-xl text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3.5 h-7 sm:h-8 flex-1 sm:flex-none justify-center", badgeFilter === 'all' && "bg-[#8B0000] hover:bg-[#660000] text-white")}
                     >
-                      All Badges ({ALL_BADGE_TYPES.length})
+                      All Badges ({combinedBadgeTypes.length})
                     </Button>
                     <Button
                       size="sm"
@@ -783,7 +843,7 @@ function ProfileContent() {
                       onClick={() => setBadgeFilter('locked')}
                       className={cn("rounded-xl text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3.5 h-7 sm:h-8 flex-1 sm:flex-none justify-center", badgeFilter === 'locked' && "bg-[#8B0000] hover:bg-[#660000] text-white")}
                     >
-                      Locked ({ALL_BADGE_TYPES.length - earnedCount})
+                      Locked ({combinedBadgeTypes.length - earnedCount})
                     </Button>
                   </div>
                 </DialogHeader>
@@ -791,10 +851,12 @@ function ProfileContent() {
                 {/* Badges Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 pt-3">
                   {filteredBadges.map((badge) => {
+                    const dbBadge = dbUserBadges.find(ub => ub.badgeSlug === badge.id);
                     const earnedAchievement = userProfile.achievements?.find(
                       a => a.badge === badge.id || (badge.id === 'speed' && a.badge === 'swift-solver')
                     );
-                    const isEarned = !!earnedAchievement;
+                    const isEarned = !!dbBadge || !!earnedAchievement;
+                    const unlockedDate = dbBadge?.unlockedAt || earnedAchievement?.timestamp;
 
                     return (
                       <div
@@ -847,9 +909,9 @@ function ProfileContent() {
                           </p>
 
                           <div className="pt-0.5 text-[10px] text-muted-foreground font-medium">
-                            {isEarned && earnedAchievement?.timestamp ? (
+                            {isEarned && unlockedDate ? (
                               <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                                Unlocked {format(new Date(earnedAchievement.timestamp), 'MMM dd, yyyy')}
+                                Unlocked {format(new Date(unlockedDate), 'MMM dd, yyyy')}
                               </span>
                             ) : (
                               <span className="text-slate-500">

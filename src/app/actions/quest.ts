@@ -12,8 +12,9 @@ import {
   type BadgeId,
 } from '@/lib/badge-system';
 import { syncSubjectMastery } from '@/app/actions/study';
-
 import { differenceInCalendarDays } from 'date-fns';
+import clientPromise from '@/lib/mongodb-client';
+import { ObjectId } from 'mongodb';
 
 export interface CompleteQuestParams {
   score: number;
@@ -178,25 +179,65 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
       } as any,
     });
 
-    // Create Achievement records for each earned badge, but with 0 XP to prevent duplicating the total XP
+    // Create Achievement records & upsert UserBadge documents for each earned badge
     if (earnedBadges.length > 0) {
-      await Promise.all(
-        earnedBadges.map((badge) =>
-          prisma.achievement.create({
-            data: {
-              userId,
-              task: `Earned ${badge.name}: ${badge.description}`,
-              type: 'quest',
-              xp: 0, // Set to 0 because the totalXpEarned is already logged in the main achievement above
-              badge: badge.id as string,
-              confidenceLevel: params.confidenceLevel,
-              accuracy,
-              questMode: params.questMode,
-              subject: params.subject,
-            } as any,
+      try {
+        const client = await clientPromise;
+        const db = client.db();
+
+        let userObjId: ObjectId | null = null;
+        try {
+          userObjId = new ObjectId(userId);
+        } catch (e) {}
+
+        await Promise.all(
+          earnedBadges.map(async (badge) => {
+            // 1. Save Achievement log
+            await prisma.achievement.create({
+              data: {
+                userId,
+                task: `Earned ${badge.name}: ${badge.description}`,
+                type: 'quest',
+                xp: 0,
+                badge: badge.id as string,
+                confidenceLevel: params.confidenceLevel,
+                accuracy,
+                questMode: params.questMode,
+                subject: params.subject,
+              } as any,
+            });
+
+            // 2. Find master Badge document created by Admin
+            const badgeDoc = await db.collection('Badge').findOne({ badgeId: badge.id });
+            const badgeObjId = badgeDoc?._id || null;
+
+            // 3. Upsert into UserBadge collection
+            const filterQuery = userObjId
+              ? { userId: userObjId, badgeSlug: badge.id }
+              : { userId, badgeSlug: badge.id };
+
+            await db.collection('UserBadge').updateOne(
+              filterQuery,
+              {
+                $set: {
+                  userId: userObjId || userId,
+                  badgeId: badgeObjId,
+                  badgeSlug: badge.id,
+                  subject: params.subject || null,
+                  questMode: params.questMode,
+                  accuracy,
+                  confidenceLevel: params.confidenceLevel,
+                  xpEarned: badge.xpReward || 50,
+                  unlockedAt: new Date(),
+                }
+              },
+              { upsert: true }
+            );
           })
-        )
-      );
+        );
+      } catch (badgeErr) {
+        console.error('Failed to sync UserBadge collection:', badgeErr);
+      }
     }
 
     // Sync Subject Mastery

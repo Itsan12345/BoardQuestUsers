@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { getUserProfile } from '@/app/actions/user';
@@ -61,7 +62,7 @@ export function LayoutContent({
       window.removeEventListener('bq_settings_updated', handleUpdate);
       window.removeEventListener('bq_stats_updated', handleUpdate);
     };
-  }, [isLoggedIn, pathname]); // Re-fetch on navigation and events
+  }, [isLoggedIn]); // Re-fetch on auth and event triggers, avoiding redundant calls on route navigation
 
   // Hide navigation on auth pages
   const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password';
@@ -92,10 +93,13 @@ export function LayoutContent({
             </Button>
 
             <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <img
+              <Image
                 src="/images/boardquestlogo2.png"
                 alt="BoardQuest Logo"
-                className=" h-7 w-7 sm:h-7 sm:w-7 mt-2"
+                width={28}
+                height={28}
+                priority
+                className="h-7 w-7 mt-2 object-contain"
               />
               <span className="font-black text-foreground leading-none text-base lg:text-lg hidden sm:inline-block" style={{ fontFamily: "'Akira Expanded', sans-serif" }}>BoardQuest</span>
             </Link>

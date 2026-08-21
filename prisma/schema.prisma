@@ -171,6 +171,7 @@ model User {
   location  String?  @default("Philippines")
   createdAt DateTime @default(now())
 
+  userBadges         UserBadge[]
   studyPlans         StudyPlan[]
   mastery            SubjectMastery[]
   achievements       Achievement[]
@@ -178,6 +179,8 @@ model User {
   lessonCompletions  LessonCompletion[]
   questNodeCompletions QuestNodeCompletion[]
   questionAttempts   UserQuestionAttempt[]
+
+  @@index([xp])
 }
 
 model QuestNodeCompletion {
@@ -193,6 +196,7 @@ model QuestNodeCompletion {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, nodeId, difficulty])
+  @@index([userId, status])
 }
 
 model SubjectMastery {
@@ -221,6 +225,7 @@ model LessonCompletion {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId])
+  @@index([userId, status])
 }
 
 model StudyPlan {
@@ -249,6 +254,9 @@ model Achievement {
   timestamp        DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+  @@index([userId, type, timestamp])
 }
 
 model ExamResult {
@@ -261,6 +269,9 @@ model ExamResult {
   timestamp DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+  @@index([userId, subject])
 }
 
 model AiAnalysis {
@@ -291,3 +302,40 @@ model EmailVerification {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+model Badge {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  badgeId          String      @unique
+  title            String
+  name             String
+  description      String?
+  category         String?     @default("QUEST")
+  icon             String?     @default("trophy")
+  spriteUrl        String?
+  color            String?     @default("#FFD700")
+  unlockCondition String?
+  xpReward         Int?        @default(50)
+  confidenceFactor Float?      @default(1.0)
+  isActive         Boolean?    @default(true)
+  createdAt        DateTime?   @default(now())
+  updatedAt        DateTime?   @updatedAt
+
+  userBadges       UserBadge[]
+}
+
+model UserBadge {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String    @db.ObjectId
+  badgeId         String?   @db.ObjectId
+  badgeSlug       String
+  subject         String?
+  questMode       String?
+  accuracy        Float?
+  confidenceLevel String?
+  xpEarned        Int?      @default(0)
+  unlockedAt      DateTime? @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge? @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+}
+

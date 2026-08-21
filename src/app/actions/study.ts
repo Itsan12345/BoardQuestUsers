@@ -188,38 +188,32 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       console.warn('Database timeout on category fetch, using fallback subjects list:', dbErr);
     }
 
+    const [allCompletions, allExamResults] = await Promise.all([
+      prisma.lessonCompletion.findMany({
+        where: { userId, status: 'completed' },
+        select: { subject: true, lessonId: true }
+      }),
+      prisma.examResult.findMany({
+        where: { userId },
+        select: { subject: true, accuracy: true }
+      })
+    ]);
+
     const metrics: SubjectMetrics[] = [];
 
     for (const subject of subjects) {
       const lessons = await getCurriculumLessonsForSubject(subject);
-      const validLessonIds = lessons.map(l => l.id);
+      const validLessonIds = new Set(lessons.map(l => l.id));
       const totalLessons = lessons.length;
 
-      let completedLessons = 0;
-      let examResults: { accuracy: number }[] = [];
+      const normSubject = subject.trim().toLowerCase();
+      const completedLessons = allCompletions.filter(
+        c => (c.subject === subject || (c.subject && c.subject.trim().toLowerCase() === normSubject)) && validLessonIds.has(c.lessonId)
+      ).length;
 
-      try {
-        completedLessons = await prisma.lessonCompletion.count({
-          where: {
-            userId,
-            subject,
-            status: 'completed',
-            lessonId: { in: validLessonIds },
-          },
-        });
-
-        examResults = await prisma.examResult.findMany({
-          where: {
-            userId,
-            subject,
-          },
-          select: {
-            accuracy: true,
-          },
-        });
-      } catch (innerErr) {
-        console.warn(`Database timeout fetching progress for ${subject}:`, innerErr);
-      }
+      const examResults = allExamResults.filter(
+        e => e.subject === subject || (e.subject && e.subject.trim().toLowerCase() === normSubject)
+      );
 
       const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
 
