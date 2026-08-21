@@ -44,7 +44,7 @@ export const TOUR_CONFIGS: Record<string, PageTourConfig> = {
         element: '#tour-sidebar-nav',
         popover: {
           title: '🧭 Seamless Navigation',
-          description: 'Jump between your Study Curriculum, Quest Arena, Global Leaderboard, and Performance Analytics anytime.',
+          description: 'Jump between your Study Subjects, Quest Arena, Global Leaderboard, and Performance Analytics anytime.',
           side: 'right',
           align: 'start',
         },
@@ -54,13 +54,13 @@ export const TOUR_CONFIGS: Record<string, PageTourConfig> = {
 
   study: {
     key: 'study',
-    name: 'Study Curriculum Guide',
+    name: 'Study Subjects Guide',
     path: '/study',
     steps: [
       {
         element: '#tour-study-header',
         popover: {
-          title: '📚 Board Curriculum',
+          title: '📚 Board Subjects',
           description: 'Browse comprehensive review decks structured according to the official MedTech Licensure Examination syllabus.',
           side: 'bottom',
           align: 'start',
@@ -536,7 +536,7 @@ export function startTourByKey(tourKey: string, force: boolean = false): boolean
           targetSelector = '#tour-mobile-nav-trigger';
           targetPopover = {
             title: '🧭 Mobile Navigation',
-            description: 'Tap the menu to jump between your Study Curriculum, Quest Arena, Leaderboard, and Profile anytime.',
+            description: 'Tap the menu to jump between your Study Subjects, Quest Arena, Leaderboard, and Profile anytime.',
             side: 'bottom',
             align: 'start',
           };

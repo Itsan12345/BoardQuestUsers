@@ -34,7 +34,7 @@ const navGroups = [
   {
     label: "LEARNING MANAGEMENT",
     items: [
-      { name: 'Study Curriculum', icon: GraduationCap, href: '/study' },
+      { name: 'Study Subjects', icon: GraduationCap, href: '/study' },
       { name: 'Quest Arena', icon: Sword, href: '/quest' },
     ]
   },

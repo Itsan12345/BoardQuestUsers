@@ -473,7 +473,7 @@ function PerformanceContent() {
               <div className="py-6 text-center space-y-2">
                 <Target className="w-8 h-8 text-muted-foreground/30 mx-auto" />
                 <p className="text-xs font-medium text-muted-foreground">
-                  No active objective scheduled. Visit Study Curriculum to deploy target milestones.
+                  No active objective scheduled. Visit Study Subjects to deploy target milestones.
                 </p>
               </div>
             )}

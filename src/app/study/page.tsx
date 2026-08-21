@@ -338,7 +338,7 @@ export default function StudyPage() {
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6">
             <div className="space-y-1 sm:space-y-1.5">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground tracking-tight leading-none uppercase" style={{ fontFamily: "'Inter-bold', sans-serif" }}>
-                Study <span className="text-primary">Curriculum</span>
+                Study <span className="text-primary">Subjects</span>
               </h1>
               <p className="text-[10px] lg:text-xs font-semibold text-muted-foreground uppercase tracking-[0.2em]">
                 Intel Gathering & Concept Mastery {userLastName && `• Aspirant ${userLastName}`}
