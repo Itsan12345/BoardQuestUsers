@@ -52,6 +52,7 @@ import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-syst
 import { playSfx } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
 
 const SUBJECT_METADATA: Record<string, {
   name: string;
@@ -64,6 +65,10 @@ const SUBJECT_METADATA: Record<string, {
   difficulty: number;
   biome: string;
   description: string;
+  idleSpriteUrl?: string;
+  attackSpriteUrl?: string;
+  idleFrames?: number;
+  attackFrames?: number;
 }> = {
   "Clinical Chemistry": {
     name: "Clinical Chemistry",
@@ -75,7 +80,7 @@ const SUBJECT_METADATA: Record<string, {
     arenaBackgroundUrl: "/ui/background_clinicalchem.png",
     difficulty: 4,
     biome: "Crystal Peak Archipelago",
-    description: "The air is thick with the scent of ozone and reagents. Master the metabolic currents."
+    description: "The air is thick with the scent of ozone and reagents. Master the metabolic currents.",
   },
   "Hematology": {
     name: "Hematology",
@@ -119,7 +124,11 @@ const SUBJECT_METADATA: Record<string, {
     backgroundUrl: "/images/ClinMicro256_bg.png",
     difficulty: 2,
     biome: "Amber Sediment Cliffs",
-    description: "Examine the smallest details that reveal the greatest truths."
+    description: "Examine the smallest details that reveal the greatest truths.",
+    idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png",
+    attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png",
+    idleFrames: 7,
+    attackFrames: 17,
   },
   "Histopathology & MT Laws": {
     name: "Histopathology & MT Laws",
@@ -323,6 +332,8 @@ export default function LearningQuest() {
   const [userLevel, setUserLevel] = useState<number>(1);
   const [userLastName, setUserLastName] = useState<string>('Aspirant');
   const [streak, setStreak] = useState(0);
+  const [bossAnimState, setBossAnimState] = useState<BossAnimState>('idle');
+  const [playerAnimState, setPlayerAnimState] = useState<'idle' | 'attack'>('idle');
 
   // Bookworm Adventures 3-Stage Progression & Chapter Map State
   interface SubjectNodeConfig {
@@ -336,6 +347,10 @@ export default function LearningQuest() {
     miniBossIcon: string;
     bossName: string;
     bossIcon: string;
+    idleSpriteUrl?: string;
+    attackSpriteUrl?: string;
+    idleFrames?: number;
+    attackFrames?: number;
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
@@ -348,32 +363,32 @@ export default function LearningQuest() {
     "Clinical Chemistry": [
       { id: 'cc-1', nodeNumber: 1, title: 'Carbohydrates & Lipids', subtopic: 'Glucose Metabolism, HbA1c & Lipoproteins', minionName: 'Acid Slime', minionIcon: '🧪', miniBossName: 'Hyperglycemic Mutant', miniBossIcon: '🧬', bossName: 'Hyperglycemic Specter', bossIcon: '⚗️' },
       { id: 'cc-2', nodeNumber: 2, title: 'Enzymology & Electrolytes', subtopic: 'Troponin, CK-MB, AST, Potassium & Blood pH', minionName: 'Kinase Swarm', minionIcon: '⚡', miniBossName: 'Ischemia Fiend', miniBossIcon: '🔥', bossName: 'Renal Behemoth', bossIcon: '💔' },
-      { id: 'cc-3', nodeNumber: 3, title: '👑 The Licensure Colossus (FINAL BOSS)', subtopic: 'Comprehensive Clinical Chemistry Licensure Challenge', minionName: 'Lab Sentinel', minionIcon: '🛡️', miniBossName: 'Board Examiner Specter', miniBossIcon: '📜', bossName: 'The Licensure Colossus', bossIcon: '👑' },
+      { id: 'cc-3', nodeNumber: 3, title: '👑 Hyperglycemic Specter (FINAL BOSS)', subtopic: 'Comprehensive Clinical Chemistry Licensure Challenge', minionName: 'Lab Sentinel', minionIcon: '🛡️', miniBossName: 'Board Examiner Specter', miniBossIcon: '📜', bossName: 'Hyperglycemic Specter', bossIcon: '👑' },
     ],
     "Microbiology": [
       { id: 'mb-1', nodeNumber: 1, title: 'Bacteriology & Gram Staining', subtopic: 'Gram Positive & Negative Cocci & Bacilli', minionName: 'Microbe Swarm', minionIcon: '🦠', miniBossName: 'Staph Sentinel', miniBossIcon: '🧬', bossName: 'Gram Positive Overlord', bossIcon: '👾' },
       { id: 'mb-2', nodeNumber: 2, title: 'Mycology, Virology & Parasitology', subtopic: 'Fungi, Viral Replication, Antigens & Protozoa', minionName: 'Spore Cloud', minionIcon: '🍄', miniBossName: 'Retrovirus Fiend', miniBossIcon: '💥', bossName: 'Viral Apex Lord', bossIcon: '🐉' },
-      { id: 'mb-3', nodeNumber: 3, title: '👑 Pathogen Sovereign (FINAL BOSS)', subtopic: 'Antimicrobial Resistance & Comprehensive Microbiology', minionName: 'Resistant Strain', minionIcon: '💊', miniBossName: 'Lab Director Phantom', miniBossIcon: '📜', bossName: 'Pathogen Sovereign', bossIcon: '👑' },
+      { id: 'mb-3', nodeNumber: 3, title: '👑 Biohazard Overlord (FINAL BOSS)', subtopic: 'Antimicrobial Resistance & Comprehensive Microbiology', minionName: 'Resistant Strain', minionIcon: '💊', miniBossName: 'Lab Director Phantom', miniBossIcon: '📜', bossName: 'Biohazard Overlord', bossIcon: '👑' },
     ],
     "Hematology": [
       { id: 'hem-1', nodeNumber: 1, title: 'RBC Anomalies & Anemias', subtopic: 'Hemoglobin Synthesis & Microcytic Anemias', minionName: 'Sickle Cell', minionIcon: '🩸', miniBossName: 'Anemia Shade', miniBossIcon: '👻', bossName: 'Erythrocyte Colossus', bossIcon: '👑' },
       { id: 'hem-2', nodeNumber: 2, title: 'WBC Disorders & Leukemias', subtopic: 'Neutrophils, Acute/Chronic Leukemias & Bone Marrow', minionName: 'Blast Cell', minionIcon: '💥', miniBossName: 'Leukemic Fiend', miniBossIcon: '⚡', bossName: 'White Cell Warlord', bossIcon: '🗡️' },
-      { id: 'hem-3', nodeNumber: 3, title: '👑 Heme Sovereign (FINAL BOSS)', subtopic: 'Hemostasis, Coagulation Cascades & Comprehensive Exam', minionName: 'Clot Particle', minionIcon: '🧱', miniBossName: 'Hematopathologist Ghost', miniBossIcon: '📜', bossName: 'Heme Sovereign', bossIcon: '👑' },
+      { id: 'hem-3', nodeNumber: 3, title: '👑 Sickle-Cell Reaper (FINAL BOSS)', subtopic: 'Hemostasis, Coagulation Cascades & Comprehensive Exam', minionName: 'Clot Particle', minionIcon: '🧱', miniBossName: 'Hematopathologist Ghost', miniBossIcon: '📜', bossName: 'Sickle-Cell Reaper', bossIcon: '👑' },
     ],
     "Immunology & Serology and Immunohematology": [
       { id: 'is-1', nodeNumber: 1, title: 'Immunity & Serological Testing', subtopic: 'Innate/Adaptive Immunity, ELISA & Agglutination', minionName: 'Lymphocyte Swarm', minionIcon: '🛡️', miniBossName: 'Antigen Titan', miniBossIcon: '🧬', bossName: 'Immune Archon', bossIcon: '👑' },
       { id: 'is-2', nodeNumber: 2, title: 'ABO & Rh Blood Group System', subtopic: 'Blood Group Antigens, Antibodies & Rh Discrepancies', minionName: 'ABO Antigen', minionIcon: '🩸', miniBossName: 'Rh Aggressive Golem', miniBossIcon: '🪨', bossName: 'Immunohematology Colossus', bossIcon: '👑' },
-      { id: 'is-3', nodeNumber: 3, title: '👑 Licensure Immuno Sovereign (FINAL BOSS)', subtopic: 'Transfusion Reactions, Crossmatching & Blood Bank', minionName: 'Hemolytic Cell', minionIcon: '💥', miniBossName: 'Serology Examiner Phantom', miniBossIcon: '📜', bossName: 'Licensure Immuno Sovereign', bossIcon: '👑' },
+      { id: 'is-3', nodeNumber: 3, title: '👑 Anti-Serum Hydra (FINAL BOSS)', subtopic: 'Transfusion Reactions, Crossmatching & Blood Bank', minionName: 'Hemolytic Cell', minionIcon: '💥', miniBossName: 'Serology Examiner Phantom', miniBossIcon: '📜', bossName: 'Anti-Serum Hydra', bossIcon: '👑' },
     ],
     "Clinical Microscopy & Parasitology": [
       { id: 'cm-1', nodeNumber: 1, title: 'Urinalysis Physical & Chemical Exam', subtopic: 'Color, Clarity, Specific Gravity & Reagents', minionName: 'Reagent Strip Slime', minionIcon: '🧪', miniBossName: 'Nitrite Spectre', miniBossIcon: '👻', bossName: 'Clinical Microscopy Overlord', bossIcon: '👑' },
       { id: 'cm-2', nodeNumber: 2, title: 'Microscopic Sediments & Body Fluids', subtopic: 'Casts, Crystals, Synovial, Serous & CSF Analysis', minionName: 'Hyaline Cast', minionIcon: '💧', miniBossName: 'Oxalate Golem', miniBossIcon: '🪨', bossName: 'Sediment Colossus', bossIcon: '🩸' },
-      { id: 'cm-3', nodeNumber: 3, title: '👑 Microscopy Sovereign (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', minionName: 'Protozoan Cyst', minionIcon: '🦠', miniBossName: 'Pathology Director Phantom', miniBossIcon: '📜', bossName: 'Microscopy Sovereign', bossIcon: '👑' },
+      { id: 'cm-3', nodeNumber: 3, title: '👑 Crystal Golem (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', minionName: 'Protozoan Cyst', minionIcon: '🦠', miniBossName: 'Pathology Director Phantom', miniBossIcon: '📜', bossName: 'Crystal Golem', bossIcon: '👑', idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png", attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png", idleFrames: 7, attackFrames: 17 },
     ],
     "Histopathology and Medtech Laws": [
       { id: 'hp-1', nodeNumber: 1, title: 'Tissue Processing, Microtomy & Staining', subtopic: 'Formalin Fixation, Sectioning & H&E Staining', minionName: 'Formalin Slime', minionIcon: '🧪', miniBossName: 'Paraffin Golem', miniBossIcon: '🪨', bossName: 'Fixation Overlord', bossIcon: '👑' },
       { id: 'hp-2', nodeNumber: 2, title: 'RA 5527 & MedTech Ethics', subtopic: 'Philippine Medical Technology Act of 1969', minionName: 'Statute Page', minionIcon: '📜', miniBossName: 'Legal Guardian', miniBossIcon: '🛡️', bossName: 'Jurisprudence Archon', bossIcon: '⚖️' },
-      { id: 'hp-3', nodeNumber: 3, title: '👑 Licensure Juris Archon (FINAL BOSS)', subtopic: 'Biosafety, Lab Quality Assurance & Comprehensive Challenge', minionName: 'Biohazard Swarm', minionIcon: '☣️', miniBossName: 'Board Examiner Phantom', miniBossIcon: '📜', bossName: 'Licensure Juris Archon', bossIcon: '👑' },
+      { id: 'hp-3', nodeNumber: 3, title: '👑 Legal Beholder (FINAL BOSS)', subtopic: 'Biosafety, Lab Quality Assurance & Comprehensive Challenge', minionName: 'Biohazard Swarm', minionIcon: '☣️', miniBossName: 'Board Examiner Phantom', miniBossIcon: '📜', bossName: 'Legal Beholder', bossIcon: '👑' },
     ],
   };
 
@@ -1025,8 +1040,13 @@ export default function LearningQuest() {
 
       let bossStartingHp = 100;
       if (quizMode === 'boss-battle') {
-        setBattleStage(1);
-        bossStartingHp = calculateEnemyStageHp(1, userLevel, specificDifficulty || 'MEDIUM');
+        const activeNodes = getSubjectNodes(selectedSubject);
+        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+        const isChapter3FinalBoss = currentActiveNode.nodeNumber === 3;
+
+        const initialStage = isChapter3FinalBoss ? 3 : 1;
+        setBattleStage(initialStage);
+        bossStartingHp = calculateEnemyStageHp(initialStage, userLevel, specificDifficulty || 'MEDIUM');
       }
       setEnemyHealth(bossStartingHp);
       setTurnCount(0);
@@ -1201,48 +1221,73 @@ export default function LearningQuest() {
     }
 
     if (enemyDmg > 0) {
-      setIsAnimating("enemy");
-      const nextHp = Math.max(0, enemyHealth - enemyDmg);
-      if (quizMode === 'boss-battle' && nextHp <= 0) {
-        if (battleStage === 1) {
-          setBattleStage(2);
-          setBossShieldActive(false);
-          const stage2Hp = calculateEnemyStageHp(2, userLevel, bossDifficulty || 'MEDIUM');
-          setEnemyHealth(stage2Hp);
-          addFloatingText('enemy', '👾 MINION DEFEATED! 👹 MINI-BOSS ENTERS!', 'text-amber-300');
-          toast({
-            title: "👾 Stage 1 Clear!",
-            description: "You defeated the Minion! Prepare to face the Mini-Boss!",
-          });
-        } else if (battleStage === 2) {
-          setBattleStage(3);
-          setBossShieldActive(false);
-          const stage3Hp = calculateEnemyStageHp(3, userLevel, bossDifficulty || 'MEDIUM');
-          setEnemyHealth(stage3Hp);
-          addFloatingText('enemy', '👹 MINI-BOSS DEFEATED! 👑 CHAPTER BOSS APPEARS!', 'text-red-400');
-          toast({
-            title: "👹 Stage 2 Clear!",
-            description: "The Mini-Boss has fallen! The Chapter Boss enters the arena!",
-          });
+      const applyEnemyDamage = () => {
+        setIsAnimating("enemy");
+        const nextHp = Math.max(0, enemyHealth - enemyDmg);
+        if (quizMode === 'boss-battle' && nextHp <= 0) {
+          const activeNodes = getSubjectNodes(selectedSubject);
+          const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+          const isChapter3FinalBoss = currentActiveNode.nodeNumber === 3;
+
+          if (isChapter3FinalBoss || battleStage === 3) {
+            setEnemyHealth(0);
+          } else if (battleStage === 1) {
+            setBattleStage(2);
+            setBossShieldActive(false);
+            const stage2Hp = calculateEnemyStageHp(2, userLevel, bossDifficulty || 'MEDIUM');
+            setEnemyHealth(stage2Hp);
+            addFloatingText('enemy', '👾 MINION DEFEATED! 👹 MINI-BOSS ENTERS!', 'text-amber-300');
+            toast({
+              title: "👾 Stage 1 Clear!",
+              description: "You defeated the Minion! Prepare to face the Mini-Boss!",
+            });
+          } else if (battleStage === 2) {
+            setBattleStage(3);
+            setBossShieldActive(false);
+            const stage3Hp = calculateEnemyStageHp(3, userLevel, bossDifficulty || 'MEDIUM');
+            setEnemyHealth(stage3Hp);
+            addFloatingText('enemy', '👹 MINI-BOSS DEFEATED! 👑 CHAPTER BOSS APPEARS!', 'text-red-400');
+            toast({
+              title: "👹 Stage 2 Clear!",
+              description: "The Mini-Boss has fallen! The Chapter Boss enters the arena!",
+            });
+          }
         } else {
-          setEnemyHealth(0);
+          setEnemyHealth(nextHp);
         }
+        addFloatingText('enemy', `-${Math.ceil(enemyDmg)} ${action === 'heavy' ? 'CRITICAL HIT!' : 'DMG!'}`, 'text-yellow-400');
+      };
+
+      if (isCorrect) {
+        setPlayerAnimState('attack');
+        setTimeout(() => setPlayerAnimState('idle'), 1200);
+        setTimeout(applyEnemyDamage, 450);
       } else {
-        setEnemyHealth(nextHp);
+        applyEnemyDamage();
       }
-      addFloatingText('enemy', `-${Math.ceil(enemyDmg)} ${action === 'heavy' ? 'CRITICAL HIT!' : 'DMG!'}`, 'text-yellow-400');
     }
 
     if (playerDmg > 0) {
-      setIsAnimating("player");
-      setPlayerHealth(prev => Math.max(0, prev - playerDmg));
-      addFloatingText('player', `-${Math.ceil(playerDmg)} DMG!`, 'text-red-500');
-      if (playerDmg >= baseDamage || quizMode === 'boss-battle') {
-        const flashEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_hit_flash') !== 'false' : true;
-        if (flashEnabled) {
-          setHitFlash(true);
-          setTimeout(() => setHitFlash(false), 300);
+      const applyPlayerDamage = () => {
+        setIsAnimating("player");
+        setPlayerHealth(prev => Math.max(0, prev - playerDmg));
+        addFloatingText('player', `-${Math.ceil(playerDmg)} DMG!`, 'text-red-500');
+        if (playerDmg >= baseDamage || quizMode === 'boss-battle') {
+          const flashEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_hit_flash') !== 'false' : true;
+          if (flashEnabled) {
+            setHitFlash(true);
+            setTimeout(() => setHitFlash(false), 300);
+          }
         }
+      };
+
+      // Trigger Boss Attack animation & physical lunge ONLY on player mistake (!isCorrect)
+      if (!isCorrect) {
+        setBossAnimState(action === 'heavy' ? 'heavy_attack' : 'normal_attack');
+        // Only deduct HP & show damage text when boss arrives in front of player (~450ms impact delay)
+        setTimeout(applyPlayerDamage, 450);
+      } else {
+        applyPlayerDamage();
       }
     }
 
@@ -1636,7 +1681,10 @@ export default function LearningQuest() {
 
           {/* Confidence Dialog */}
           <Dialog open={confidenceDialogOpen} onOpenChange={setConfidenceDialogOpen}>
-            <DialogContent className="sm:max-w-md border border-border bg-card text-card-foreground shadow-2xl p-4 sm:p-6 rounded-2xl">
+            <DialogContent
+              container={isFullscreen ? (fullscreenRef.current || undefined) : undefined}
+              className="sm:max-w-md border border-border bg-card text-card-foreground shadow-2xl p-4 sm:p-6 rounded-2xl z-[110]"
+            >
               <DialogHeader className="text-center space-y-2 sm:space-y-3">
                 <DialogTitle className="font-headline text-xl sm:text-2xl text-foreground">⚡ Aspirant's Conviction</DialogTitle>
                 <DialogDescription className="text-xs sm:text-sm text-muted-foreground">How confident are you in your answers?</DialogDescription>
@@ -1692,7 +1740,10 @@ export default function LearningQuest() {
 
           {/* Thank You Dialog */}
           <Dialog open={thankYouDialogOpen} onOpenChange={setThankYouDialogOpen}>
-            <DialogContent className="sm:max-w-md border border-primary/30 bg-card text-card-foreground shadow-2xl p-6 rounded-2xl animate-in fade-in zoom-in duration-500">
+            <DialogContent
+              container={isFullscreen ? (fullscreenRef.current || undefined) : undefined}
+              className="sm:max-w-md border border-primary/30 bg-card text-card-foreground shadow-2xl p-6 rounded-2xl animate-in fade-in zoom-in duration-500 z-[110]"
+            >
               <DialogTitle className="sr-only">Quest Completion</DialogTitle>
               <div className="space-y-4 sm:space-y-6 text-center py-4 sm:py-8 px-2">
                 {/* Trophy Animation */}
@@ -1939,6 +1990,7 @@ export default function LearningQuest() {
               !(SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl) && "bg-gradient-to-b from-primary to-black"
             )}
             style={{
+              containerType: 'inline-size',
               ...((SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl) ? {
                 backgroundImage: `url('${SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl}')`,
                 backgroundSize: 'cover',
@@ -2022,9 +2074,14 @@ export default function LearningQuest() {
                 ? calculateEnemyStageHp(battleStage, userLevel, bossDifficulty || 'MEDIUM')
                 : 100;
 
+              const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
+              const isBossStageOrCh3 = (quizMode === 'boss-battle' && battleStage === 3) || isChapter3FinalBoss;
+              const idleSprite = isBossStageOrCh3 ? (currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl) : null;
+              const attackSprite = isBossStageOrCh3 ? (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl) : null;
+
               return (
                 <div className={cn(
-                  "absolute top-14 right-4 md:top-16 md:right-8 transition-all duration-1000 ease-out z-10",
+                  "absolute top-14 right-4 md:top-16 md:right-8 transition-all duration-1000 ease-out z-10 flex flex-col items-end",
                   (introPhase === 'cutscene' || introPhase === 'hidden') ? 'translate-x-[150%]' : 'translate-x-0',
                   isAnimating === "enemy" && "animate-shake scale-110"
                 )}>
@@ -2049,8 +2106,23 @@ export default function LearningQuest() {
                       <div className="h-full bg-primary transition-all duration-500" style={{ width: `${Math.min(100, (enemyHealth / stageMaxHp) * 100)}%` }} />
                     </div>
                   </div>
-                  <div className="flex justify-end pr-2 md:pr-4 mt-2 relative">
-                    <EnemyIcon className="w-12 h-12 md:w-20 md:h-20 text-white drop-shadow-glow" />
+                  <div className="flex justify-end pr-2 md:pr-4 mt-2 relative items-center min-h-[96px]">
+                    {idleSprite && attackSprite ? (
+                      <BossSpriteAnimator
+                        idleSpriteUrl={idleSprite}
+                        attackSpriteUrl={attackSprite}
+                        idleFrames={currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7}
+                        attackFrames={currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17}
+                        animState={bossAnimState}
+                        onAttackComplete={() => setBossAnimState('idle')}
+                        scale={1.35}
+                        isHit={isAnimating === "enemy"}
+                        isEnraged={quizMode === 'boss-battle' && enemyHealth <= 20 && enemyHealth > 0}
+                        isShielded={bossShieldActive}
+                      />
+                    ) : (
+                      <EnemyIcon className="w-12 h-12 md:w-20 md:h-20 text-white drop-shadow-glow" />
+                    )}
                     {/* Enemy Floating Text */}
                     {floatingTexts.filter(ft => ft.target === 'enemy').map(ft => (
                       <div key={ft.id} className={cn("absolute -top-4 right-10 font-bytebounce text-2xl md:text-3xl animate-float-up pointer-events-none z-50 whitespace-nowrap", ft.color)} style={{ textShadow: '2px 2px 0 #000' }}>
@@ -2062,47 +2134,63 @@ export default function LearningQuest() {
               );
             })()}
 
-            {/* Player */}
+            {/* Player Character Sprite & Info Card */}
             <div className={cn(
-              "absolute bottom-4 left-4 md:bottom-6 md:left-8 transition-all duration-1000 ease-out z-10",
+              "absolute bottom-0 left-0 transition-all duration-1000 ease-out z-10 flex items-end gap-2 md:gap-3",
               (introPhase === 'cutscene' || introPhase === 'hidden') ? '-translate-x-[150%]' : 'translate-x-0',
-              isAnimating === "player" && "animate-shake scale-110"
+              isAnimating === "player" && "animate-shake scale-105"
             )}>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-12 h-12 md:w-20 md:h-20 bg-background rounded-xl md:rounded-2xl rotate-3 flex items-center justify-center border-2 md:border-4 border-primary shadow-2xl">
-                    <Shield className="w-6 h-6 md:w-10 md:h-10 text-primary" />
-                  </div>
-                  {/* Player Floating Text */}
-                  {floatingTexts.filter(ft => ft.target === 'player').map(ft => (
-                    <div key={ft.id} className={cn("absolute -top-6 left-2 font-bytebounce text-2xl md:text-3xl animate-float-up pointer-events-none z-50 whitespace-nowrap", ft.color)} style={{ textShadow: '2px 2px 0 #000' }}>
-                      {ft.text}
-                    </div>
-                  ))}
+              {/* Standalone Foreground Player Character Sprite - Completely flush to bottom-left */}
+              <div className={cn(
+                "relative flex flex-col items-center justify-end shrink-0 -mb-4 md:-mb-6 -ml-2 md:-ml-4 transition-all transform-gpu z-20",
+                playerAnimState === 'attack' && "animate-player-lunge"
+              )}>
+                {/* Ground Shadow for Player Character */}
+                <div className="absolute bottom-4 w-36 md:w-52 h-5 bg-black/70 rounded-[100%] blur-md scale-y-50 pointer-events-none" />
+                
+                <div className="relative w-44 h-44 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-84 lg:h-84 shrink-0 transition-transform">
+                  <Image
+                    src="/images/player/userPlayer_placeholder.png"
+                    alt="Aspirant Character Sprite"
+                    width={300}
+                    height={300}
+                    className="w-full h-full object-contain object-bottom filter drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]"
+                    style={{ imageRendering: 'pixelated' }}
+                    unoptimized
+                  />
                 </div>
-                <div className="bg-black/40 backdrop-blur-md border border-white/10 p-2 md:p-3 rounded-lg shadow-2xl min-w-[120px] md:min-w-[160px] relative">
-                  {streak >= 2 && (
-                    <div className="absolute -top-3.5 -right-2 z-30 animate-bounce">
-                      <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 border border-yellow-300 text-white font-bytebounce text-xs md:text-sm px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.8)] flex items-center gap-1 whitespace-nowrap">
-                        <Flame className="w-3 h-3 text-yellow-200 fill-yellow-200 animate-pulse" />
-                        {streak}x COMBO
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center mb-1 gap-2">
-                    <span className="text-[7px] md:text-[8px] font-black text-white uppercase">Aspirant {userLastName}</span>
-                    <div className="flex items-center gap-1">
-                      {playerPoisoned && <span className="text-[7px] md:text-[8px] bg-green-500 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="Taking damage every turn! Defend to cure.">POISONED</span>}
-                      <span className="text-[7px] md:text-[8px] bg-background text-primary px-1.5 py-0.5 rounded font-black shrink-0">LVL {userLevel}</span>
-                    </div>
+
+                {/* Player Floating Text - Directly on top of player sprite head */}
+                {floatingTexts.filter(ft => ft.target === 'player').map(ft => (
+                  <div key={ft.id} className={cn("absolute top-6 sm:top-10 md:top-14 left-1/2 -translate-x-1/2 font-bytebounce text-3xl md:text-5xl animate-float-up pointer-events-none z-50 whitespace-nowrap", ft.color)} style={{ textShadow: '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000' }}>
+                    {ft.text}
                   </div>
-                  <div className="flex justify-between items-center mb-0.5 px-0.5 mt-0.5">
-                    <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase">HP</span>
-                    <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(playerHealth)} / {maxPlayerHp}</span>
+                ))}
+              </div>
+
+              {/* Player Health & Stats Card */}
+              <div className="bg-black/50 backdrop-blur-md border border-white/15 p-2 md:p-3 rounded-lg shadow-2xl min-w-[120px] md:min-w-[170px] relative mb-3 ml-1">
+                {streak >= 2 && (
+                  <div className="absolute -top-3.5 -right-2 z-30 animate-bounce">
+                    <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 border border-yellow-300 text-white font-bytebounce text-xs md:text-sm px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.8)] flex items-center gap-1 whitespace-nowrap">
+                      <Flame className="w-3 h-3 text-yellow-200 fill-yellow-200 animate-pulse" />
+                      {streak}x COMBO
+                    </span>
                   </div>
-                  <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-full overflow-hidden border border-white/10">
-                    <div className="h-full bg-background transition-all duration-500" style={{ width: `${Math.min(100, (playerHealth / maxPlayerHp) * 100)}%` }} />
+                )}
+                <div className="flex justify-between items-center mb-1 gap-2">
+                  <span className="text-[7px] md:text-[8px] font-black text-white uppercase">Aspirant {userLastName}</span>
+                  <div className="flex items-center gap-1">
+                    {playerPoisoned && <span className="text-[7px] md:text-[8px] bg-green-500 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="Taking damage every turn! Defend to cure.">POISONED</span>}
+                    <span className="text-[7px] md:text-[8px] bg-background text-primary px-1.5 py-0.5 rounded font-black shrink-0">LVL {userLevel}</span>
                   </div>
+                </div>
+                <div className="flex justify-between items-center mb-0.5 px-0.5 mt-0.5">
+                  <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase">HP</span>
+                  <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(playerHealth)} / {maxPlayerHp}</span>
+                </div>
+                <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-full overflow-hidden border border-white/10">
+                  <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min(100, (playerHealth / maxPlayerHp) * 100)}%` }} />
                 </div>
               </div>
             </div>

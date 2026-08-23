@@ -395,13 +395,21 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
 
             <p className="text-[8.5px] min-[360px]:text-[9.5px] sm:text-xs text-amber-100/90 font-sans leading-snug line-clamp-1 sm:line-clamp-none">{selectedNode.subtopic}</p>
 
-            <div className="flex items-center gap-1 sm:gap-2 text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs text-amber-300/80 font-mono pt-0.5 overflow-x-auto no-scrollbar whitespace-nowrap">
-              <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10 shrink-0">👾 {selectedNode.minionName}</span>
-              <span className="shrink-0">➔</span>
-              <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10 shrink-0">👹 {selectedNode.miniBossName}</span>
-              <span className="shrink-0">➔</span>
-              <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-amber-500/40 text-amber-300 font-bold shrink-0">👑 {selectedNode.bossName}</span>
-            </div>
+            {selectedNode.nodeNumber === 3 ? (
+              <div className="flex items-center gap-1 sm:gap-2 text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs text-amber-300 font-mono pt-0.5 overflow-x-auto no-scrollbar whitespace-nowrap">
+                <span className="bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-red-500/25 px-2 sm:px-2.5 py-0.5 rounded-md border border-amber-400/50 text-amber-300 font-bold shrink-0 flex items-center gap-1.5 shadow-sm animate-pulse">
+                  👑 {selectedNode.bossName} <span className="text-[7.5px] sm:text-[9px] uppercase tracking-wider bg-amber-400 text-black px-1.5 py-0.2 rounded font-black">SOLO FINAL BOSS</span>
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 sm:gap-2 text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs text-amber-300/80 font-mono pt-0.5 overflow-x-auto no-scrollbar whitespace-nowrap">
+                <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10 shrink-0">👾 {selectedNode.minionName}</span>
+                <span className="shrink-0">➔</span>
+                <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10 shrink-0">👹 {selectedNode.miniBossName}</span>
+                <span className="shrink-0">➔</span>
+                <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-amber-500/40 text-amber-300 font-bold shrink-0">👑 {selectedNode.bossName}</span>
+              </div>
+            )}
           </div>
 
           {/* Difficulty Selector & Launch Action */}
