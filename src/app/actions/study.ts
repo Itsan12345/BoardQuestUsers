@@ -188,7 +188,7 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       console.warn('Database timeout on category fetch, using fallback subjects list:', dbErr);
     }
 
-    const [allCompletions, allExamResults] = await Promise.all([
+    const [allCompletions, allExamResults, allMasteryRecords] = await Promise.all([
       prisma.lessonCompletion.findMany({
         where: { userId, status: 'completed' },
         select: { subject: true, lessonId: true }
@@ -196,6 +196,10 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       prisma.examResult.findMany({
         where: { userId },
         select: { subject: true, accuracy: true }
+      }),
+      prisma.subjectMastery.findMany({
+        where: { userId },
+        select: { subject: true, proficiency: true, status: true }
       })
     ]);
 
@@ -215,12 +219,18 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
         e => e.subject === subject || (e.subject && e.subject.trim().toLowerCase() === normSubject)
       );
 
+      const dbMastery = allMasteryRecords.find(
+        m => m.subject === subject || (m.subject && m.subject.trim().toLowerCase() === normSubject)
+      );
+
       const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
 
       let mastery = 0;
       if (examResults.length > 0) {
         const totalAccuracy = examResults.reduce((sum, result) => sum + result.accuracy, 0);
         mastery = totalAccuracy / examResults.length;
+      } else if (dbMastery && typeof dbMastery.proficiency === 'number') {
+        mastery = dbMastery.proficiency;
       }
 
       let masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' = 'Not Started';
@@ -228,7 +238,7 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
         masteryStatus = 'Mastered';
       } else if (mastery >= 75) {
         masteryStatus = 'Proficient';
-      } else if (mastery >= 60) {
+      } else if (mastery >= 50) {
         masteryStatus = 'In Training';
       } else {
         masteryStatus = 'Not Started';

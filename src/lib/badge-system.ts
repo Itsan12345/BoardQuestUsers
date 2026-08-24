@@ -9,6 +9,7 @@ export interface Badge {
   title: string;
   description: string;
   icon: string;
+  spriteUrl: string;
   color: string;
   unlockCondition: string;
   xpReward: number;
@@ -22,6 +23,7 @@ export const BADGES: Record<BadgeId, Badge> = {
     title: 'Aspirant',
     description: 'Earned by completing a quest with 40-59% accuracy. You tried hard and learned along the way!',
     icon: 'trophy',
+    spriteUrl: '/ui/bronze-badge.png',
     color: '#CD7F32',
     unlockCondition: '40-59% accuracy',
     xpReward: 50,
@@ -33,6 +35,7 @@ export const BADGES: Record<BadgeId, Badge> = {
     title: 'Adept',
     description: 'Earned by completing a quest with 60-79% accuracy. You demonstrated solid competence!',
     icon: 'trophy',
+    spriteUrl: '/ui/silver-badge.png',
     color: '#C0C0C0',
     unlockCondition: '60-79% accuracy',
     xpReward: 100,
@@ -44,6 +47,7 @@ export const BADGES: Record<BadgeId, Badge> = {
     title: 'Master',
     description: 'Earned by completing a quest with 100% accuracy. Perfect execution!',
     icon: 'trophy',
+    spriteUrl: '/ui/gold-badge.png',
     color: '#FFD700',
     unlockCondition: '100% accuracy',
     xpReward: 200,
@@ -55,6 +59,7 @@ export const BADGES: Record<BadgeId, Badge> = {
     title: 'Consistent',
     description: 'Maintained a 7-day streak of consistent daily learning.',
     icon: 'flame',
+    spriteUrl: '/ui/adept-badge.png',
     color: '#FF6B6B',
     unlockCondition: '7-day streak',
     xpReward: 150,
@@ -66,6 +71,7 @@ export const BADGES: Record<BadgeId, Badge> = {
     title: 'Unstoppable',
     description: 'Maintained a 14-day streak. Your dedication is inspiring!',
     icon: 'flame',
+    spriteUrl: '/ui/silver-badge.png',
     color: '#FF8C42',
     unlockCondition: '14-day streak',
     xpReward: 200,
@@ -77,6 +83,7 @@ export const BADGES: Record<BadgeId, Badge> = {
     title: 'Legendary',
     description: 'Maintained a 30-day streak. You are a true champion!',
     icon: 'flame',
+    spriteUrl: '/ui/master-badge.png',
     color: '#FFB84D',
     unlockCondition: '30-day streak',
     xpReward: 300,
@@ -88,6 +95,7 @@ export const BADGES: Record<BadgeId, Badge> = {
     title: 'Speed Master',
     description: 'Completed a quest in under 2 minutes. Lightning fast!',
     icon: 'zap',
+    spriteUrl: '/ui/speedmaster-badge.png',
     color: '#FFD700',
     unlockCondition: 'Complete under 2 min',
     xpReward: 75,

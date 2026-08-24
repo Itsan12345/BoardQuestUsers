@@ -19,7 +19,6 @@ import { type DailyLoginStatusData } from '@/lib/daily-login-config';
 import { type MtleReadinessResult } from '@/lib/mtle-predictor-engine';
 import { DailyLoginWidget } from '@/components/dashboard/DailyLoginWidget';
 import { DailyLoginRewardModal } from '@/components/dashboard/DailyLoginRewardModal';
-import { BoardReadinessWidget } from '@/components/dashboard/BoardReadinessWidget';
 import { ActiveGuidanceBanner } from '@/components/guidance/ActiveGuidanceBanner';
 import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -311,10 +310,6 @@ function DashboardContent() {
 
         {/* Right Sidebar - Daily Target & Missions */}
         <div id="tour-dashboard-dailygoal" className="space-y-5 sm:space-y-6">
-          {/* MTLE Board Readiness & Rating Predictor Widget */}
-          {mtleData && (
-            <BoardReadinessWidget data={mtleData} />
-          )}
 
           {/* Daily Question Target Meter */}
           {/* Daily Target Card */}

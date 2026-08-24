@@ -67,8 +67,10 @@ const SUBJECT_METADATA: Record<string, {
   description: string;
   idleSpriteUrl?: string;
   attackSpriteUrl?: string;
+  heavyAttackSpriteUrl?: string;
   idleFrames?: number;
   attackFrames?: number;
+  heavyAttackFrames?: number;
 }> = {
   "Clinical Chemistry": {
     name: "Clinical Chemistry",
@@ -127,8 +129,10 @@ const SUBJECT_METADATA: Record<string, {
     description: "Examine the smallest details that reveal the greatest truths.",
     idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png",
     attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png",
+    heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png",
     idleFrames: 7,
     attackFrames: 17,
+    heavyAttackFrames: 11,
   },
   "Histopathology & MT Laws": {
     name: "Histopathology & MT Laws",
@@ -349,8 +353,10 @@ export default function LearningQuest() {
     bossIcon: string;
     idleSpriteUrl?: string;
     attackSpriteUrl?: string;
+    heavyAttackSpriteUrl?: string;
     idleFrames?: number;
     attackFrames?: number;
+    heavyAttackFrames?: number;
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
@@ -383,7 +389,7 @@ export default function LearningQuest() {
     "Clinical Microscopy & Parasitology": [
       { id: 'cm-1', nodeNumber: 1, title: 'Urinalysis Physical & Chemical Exam', subtopic: 'Color, Clarity, Specific Gravity & Reagents', minionName: 'Reagent Strip Slime', minionIcon: '🧪', miniBossName: 'Nitrite Spectre', miniBossIcon: '👻', bossName: 'Clinical Microscopy Overlord', bossIcon: '👑' },
       { id: 'cm-2', nodeNumber: 2, title: 'Microscopic Sediments & Body Fluids', subtopic: 'Casts, Crystals, Synovial, Serous & CSF Analysis', minionName: 'Hyaline Cast', minionIcon: '💧', miniBossName: 'Oxalate Golem', miniBossIcon: '🪨', bossName: 'Sediment Colossus', bossIcon: '🩸' },
-      { id: 'cm-3', nodeNumber: 3, title: '👑 Crystal Golem (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', minionName: 'Protozoan Cyst', minionIcon: '🦠', miniBossName: 'Pathology Director Phantom', miniBossIcon: '📜', bossName: 'Crystal Golem', bossIcon: '👑', idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png", attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png", idleFrames: 7, attackFrames: 17 },
+      { id: 'cm-3', nodeNumber: 3, title: '👑 Crystal Golem (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', minionName: 'Protozoan Cyst', minionIcon: '🦠', miniBossName: 'Pathology Director Phantom', miniBossIcon: '📜', bossName: 'Crystal Golem', bossIcon: '👑', idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png", attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png", heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png", idleFrames: 7, attackFrames: 17, heavyAttackFrames: 11 },
     ],
     "Histopathology and Medtech Laws": [
       { id: 'hp-1', nodeNumber: 1, title: 'Tissue Processing, Microtomy & Staining', subtopic: 'Formalin Fixation, Sectioning & H&E Staining', minionName: 'Formalin Slime', minionIcon: '🧪', miniBossName: 'Paraffin Golem', miniBossIcon: '🪨', bossName: 'Fixation Overlord', bossIcon: '👑' },
@@ -1284,8 +1290,8 @@ export default function LearningQuest() {
       // Trigger Boss Attack animation & physical lunge ONLY on player mistake (!isCorrect)
       if (!isCorrect) {
         setBossAnimState(action === 'heavy' ? 'heavy_attack' : 'normal_attack');
-        // Only deduct HP & show damage text when boss arrives in front of player (~450ms impact delay)
-        setTimeout(applyPlayerDamage, 450);
+        const impactDelay = action === 'heavy' ? 580 : 450;
+        setTimeout(applyPlayerDamage, impactDelay);
       } else {
         applyPlayerDamage();
       }
@@ -2078,6 +2084,7 @@ export default function LearningQuest() {
               const isBossStageOrCh3 = (quizMode === 'boss-battle' && battleStage === 3) || isChapter3FinalBoss;
               const idleSprite = isBossStageOrCh3 ? (currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl) : null;
               const attackSprite = isBossStageOrCh3 ? (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl) : null;
+              const heavyAttackSprite = isBossStageOrCh3 ? (currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl) : null;
 
               return (
                 <div className={cn(
@@ -2111,8 +2118,10 @@ export default function LearningQuest() {
                       <BossSpriteAnimator
                         idleSpriteUrl={idleSprite}
                         attackSpriteUrl={attackSprite}
+                        heavyAttackSpriteUrl={heavyAttackSprite || undefined}
                         idleFrames={currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7}
                         attackFrames={currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17}
+                        heavyAttackFrames={currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11}
                         animState={bossAnimState}
                         onAttackComplete={() => setBossAnimState('idle')}
                         scale={1.35}
@@ -2147,7 +2156,7 @@ export default function LearningQuest() {
               )}>
                 {/* Ground Shadow for Player Character */}
                 <div className="absolute bottom-4 w-36 md:w-52 h-5 bg-black/70 rounded-[100%] blur-md scale-y-50 pointer-events-none" />
-                
+
                 <div className="relative w-44 h-44 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-84 lg:h-84 shrink-0 transition-transform">
                   <Image
                     src="/images/player/userPlayer_placeholder.png"

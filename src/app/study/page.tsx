@@ -569,7 +569,7 @@ export default function StudyPage() {
                   <div className="flex justify-between items-end">
                     <span className="text-[11px] sm:text-xs font-semibold uppercase text-primary flex items-center gap-1.5 sm:gap-2">
                       <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-                      Mastery (Quest Avg)
+                      Subject Proficiency (Quest Avg)
                     </span>
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <span className="text-[11px] sm:text-xs font-semibold text-foreground">

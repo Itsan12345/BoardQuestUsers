@@ -8,8 +8,13 @@ export type BossAnimState = "idle" | "normal_attack" | "heavy_attack";
 interface BossSpriteAnimatorProps {
   idleSpriteUrl: string;
   attackSpriteUrl: string;
+  heavyAttackSpriteUrl?: string;
   idleFrames?: number;
   attackFrames?: number;
+  heavyAttackFrames?: number;
+  idleFrameWidth?: number;
+  attackFrameWidth?: number;
+  heavyFrameWidth?: number;
   animState: BossAnimState;
   onAttackComplete?: () => void;
   className?: string;
@@ -22,8 +27,13 @@ interface BossSpriteAnimatorProps {
 export function BossSpriteAnimator({
   idleSpriteUrl,
   attackSpriteUrl,
+  heavyAttackSpriteUrl,
   idleFrames = 7,
   attackFrames = 17,
+  heavyAttackFrames = 11,
+  idleFrameWidth = 128,
+  attackFrameWidth = 128,
+  heavyFrameWidth = 176,
   animState,
   onAttackComplete,
   className,
@@ -35,11 +45,28 @@ export function BossSpriteAnimator({
   const isAttacking = animState === "normal_attack" || animState === "heavy_attack";
   const isHeavy = animState === "heavy_attack";
 
-  const currentSpriteUrl = isAttacking ? attackSpriteUrl : idleSpriteUrl;
-  const currentTotalFrames = isAttacking ? attackFrames : idleFrames;
+  const currentSpriteUrl = isHeavy
+    ? (heavyAttackSpriteUrl || attackSpriteUrl)
+    : isAttacking
+    ? attackSpriteUrl
+    : idleSpriteUrl;
+
+  const currentTotalFrames = isHeavy
+    ? (heavyAttackFrames || 11)
+    : isAttacking
+    ? attackFrames
+    : idleFrames;
+
+  const currentFrameWidth = isHeavy
+    ? (heavyFrameWidth || 176)
+    : isAttacking
+    ? (attackFrameWidth || 128)
+    : (idleFrameWidth || 128);
+
+  const currentFrameHeight = 128;
 
   // Frame rates (fps)
-  const fps = isHeavy ? 16 : isAttacking ? 14 : 8;
+  const fps = isHeavy ? 11 : isAttacking ? 14 : 8;
   const animDuration = currentTotalFrames / fps;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
@@ -63,8 +90,7 @@ export function BossSpriteAnimator({
     }
   }, [animState, isAttacking, animDuration]);
 
-  const frameSize = 128; // Each frame in spritesheet is 128x128px
-  const sheetWidth = frameSize * currentTotalFrames;
+  const sheetWidth = currentFrameWidth * currentTotalFrames;
 
   return (
     <div className={cn("relative inline-flex flex-col items-center justify-center select-none", className)}>
@@ -87,8 +113,8 @@ export function BossSpriteAnimator({
           isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
         )}
         style={{
-          width: `${frameSize * scale}px`,
-          height: `${frameSize * scale}px`,
+          width: `${currentFrameWidth * scale}px`,
+          height: `${currentFrameHeight * scale}px`,
           ...(isAttacking
             ? {
                 animationDuration: `${animDuration}s`,
@@ -105,10 +131,10 @@ export function BossSpriteAnimator({
           className="absolute top-0 left-0"
           style={{
             width: `${sheetWidth * scale}px`,
-            height: `${frameSize * scale}px`,
+            height: `${currentFrameHeight * scale}px`,
             backgroundImage: `url('${currentSpriteUrl}')`,
             backgroundRepeat: "no-repeat",
-            backgroundSize: `${sheetWidth * scale}px ${frameSize * scale}px`,
+            backgroundSize: `${sheetWidth * scale}px ${currentFrameHeight * scale}px`,
             imageRendering: "pixelated",
             animation: `bossSpriteAnim ${animDuration}s steps(${currentTotalFrames}) ${isAttacking ? "1" : "infinite"}`,
             animationFillMode: isAttacking ? "forwards" : "none",
@@ -154,16 +180,20 @@ export function BossSpriteAnimator({
           0% {
             transform: translate(0px, 0px) scale(1);
           }
-          15% {
-            transform: translate(40px, -20px) scale(0.85);
+          35% {
+            /* Wind up & gather power at home position during Frames 1-5 */
+            transform: translate(40px, -15px) scale(0.9);
           }
-          38% {
-            transform: translate(min(-150px, calc(-100cqw + 300px)), 25px) scale(1.7);
+          58% {
+            /* Charge forward to land right in front of player on Frame 7 (Strike Impact!) */
+            transform: translate(min(-120px, calc(-100cqw + 320px)), 20px) scale(1.6);
           }
-          72% {
-            transform: translate(min(-150px, calc(-100cqw + 300px)), 25px) scale(1.7);
+          75% {
+            /* Hold strike impact position through Frame 8 */
+            transform: translate(min(-120px, calc(-100cqw + 320px)), 20px) scale(1.6);
           }
           100% {
+            /* Slide smoothly back to home position (Frames 9-11) */
             transform: translate(0px, 0px) scale(1);
           }
         }
@@ -192,16 +222,20 @@ export function BossSpriteAnimator({
             0% {
               transform: translate(0px, 0px) scale(1);
             }
-            15% {
-              transform: translate(55px, -25px) scale(0.85);
+            35% {
+              /* Wind up & gather power at home position during Frames 1-5 */
+              transform: translate(55px, -20px) scale(0.85);
             }
-            38% {
-              transform: translate(calc(-100cqw + 390px), 30px) scale(1.85);
+            58% {
+              /* Lands right in front of player on Frame 7 (Strike Impact!) */
+              transform: translate(calc(-100cqw + 420px), 25px) scale(1.75);
             }
-            72% {
-              transform: translate(calc(-100cqw + 390px), 30px) scale(1.85);
+            75% {
+              /* Hold strike impact position through Frame 8 */
+              transform: translate(calc(-100cqw + 420px), 25px) scale(1.75);
             }
             100% {
+              /* Slide smoothly back to home position */
               transform: translate(0px, 0px) scale(1);
             }
           }

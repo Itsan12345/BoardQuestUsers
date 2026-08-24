@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
   TrendingUp, Target, Award, Sparkles, Loader2, Clock, Calendar as CalendarIcon,
-  Zap, BookOpen, GraduationCap, ShieldCheck, BarChart3, Activity
+  Zap, BookOpen, GraduationCap, ShieldCheck, BarChart3, Activity, Trophy
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +20,9 @@ import { getStudyPlans } from '@/app/actions/study-plan';
 import { getSubjectMetrics, getCategories, getSubjectPerformanceHistoryAction, type SubjectAccuracyHistoryItem } from '@/app/actions/study';
 import { getMtleReadinessData } from '@/app/actions/mtle-predictor';
 import { MtleReadinessResult } from '@/lib/mtle-predictor-engine';
-import { MtlePredictorCard } from '@/components/performance/MtlePredictorCard';
-import { MtleWhatIfSimulator } from '@/components/performance/MtleWhatIfSimulator';
+import { StudentPointingCard } from '@/components/performance/StudentPointingCard';
+import { SubjectTechnicalBreakdown, SubjectMasteryItem } from '@/components/performance/SubjectTechnicalBreakdown';
+import { PointScorecardModal } from '@/components/performance/PointScorecardModal';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
@@ -45,10 +46,7 @@ function PerformanceContent() {
   const [mtleData, setMtleData] = useState<MtleReadinessResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [performanceHistory, setPerformanceHistory] = useState<SubjectAccuracyHistoryItem[]>([]);
-
-  const scrollToSimulator = () => {
-    document.getElementById('what-if-simulator')?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const [scorecardOpen, setScorecardOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -91,7 +89,7 @@ function PerformanceContent() {
     }
     loadData();
 
-    // Refresh metrics every 30 seconds to keep them in sync across pages
+    // Refresh metrics every 30 seconds
     const metricsRefreshInterval = setInterval(async () => {
       const [metrics, mtleRes, historyData] = await Promise.all([
         getSubjectMetrics().catch(() => []),
@@ -114,21 +112,35 @@ function PerformanceContent() {
     );
   }
 
-  // Build mastery data dynamically with real metrics fetched from MongoDB Category collection
+  // Build mastery data dynamically
   const activeCategories = categories.length > 0
     ? categories
     : (subjectMetrics.length > 0 ? subjectMetrics.map((m: any) => m.subject) : SUBJECT_AREAS);
 
-  const fullMastery = activeCategories.map(subjectName => {
-    const metrics = subjectMetrics.find((m: any) => m.subject === subjectName);
+  const fullMastery: SubjectMasteryItem[] = activeCategories.map(subjectName => {
+    const normTarget = subjectName.trim().toLowerCase();
+    const metrics = subjectMetrics.find((m: any) => 
+      m.subject === subjectName || (m.subject && m.subject.trim().toLowerCase() === normTarget)
+    );
+    const completionVal = metrics?.completion ?? 0;
+    const masteryVal = metrics?.mastery ?? 0;
+
+    let status = metrics?.masteryStatus;
+    if (!status || status === "Not Started") {
+      if (masteryVal >= 90) status = "Mastered";
+      else if (masteryVal >= 75) status = "Proficient";
+      else if (masteryVal >= 50) status = "In Training";
+      else status = "Needs Focus";
+    }
+
     return {
       subject: subjectName,
       shortName: subjectName.split(' ')[0],
       radarLabel: RADAR_LABELS[subjectName] || (subjectName.length > 12 ? subjectName.split(' ')[0] : subjectName),
-      completion: metrics?.completion || 0,
-      mastery: metrics?.mastery || 0,
-      status: metrics?.masteryStatus || "Not Started",
-      fullMark: 100
+      completion: completionVal,
+      mastery: masteryVal,
+      status: status,
+      points: Math.round(masteryVal * 12 + completionVal * 6)
     };
   });
 
@@ -138,9 +150,11 @@ function PerformanceContent() {
     fullMark: 100
   }));
 
-  const avgMastery = fullMastery.length > 0
-    ? (fullMastery.reduce((acc: number, m: any) => acc + m.mastery, 0) / fullMastery.length).toFixed(1)
-    : "0.0";
+  const avgMasteryNum = fullMastery.length > 0
+    ? (fullMastery.reduce((acc: number, m: any) => acc + m.mastery, 0) / fullMastery.length)
+    : 0;
+
+  const avgMastery = avgMasteryNum.toFixed(1);
 
   const avgCompletion = fullMastery.length > 0
     ? (fullMastery.reduce((acc: number, m: any) => acc + m.completion, 0) / fullMastery.length).toFixed(0)
@@ -151,6 +165,10 @@ function PerformanceContent() {
     ? differenceInDays(new Date(nextObjective.targetDate), new Date())
     : 0;
 
+  // Total Points Calculation
+  const totalEarnedPoints = fullMastery.reduce((acc, m) => acc + (m.points || 0), 0) + (user?.xp || 0);
+  const totalQuestionsAttempted = mtleData?.totalQuestionsAttempted || performanceHistory.reduce((acc, p) => acc + p.totalQuestions, 0) || 0;
+
   return (
     <div className="max-w-6xl mx-auto py-5 sm:py-8 lg:py-10 px-3 sm:px-4 lg:px-6 space-y-6 sm:space-y-8 pb-24 lg:pb-12">
       
@@ -158,106 +176,40 @@ function PerformanceContent() {
       <header className="space-y-1">
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-[10px] font-extrabold uppercase tracking-widest text-primary border-primary/30">
-            PRC Licensure Expedition
+            Student Score Analytics
           </Badge>
         </div>
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black font-headline tracking-tight leading-tight uppercase">
           Performance <span className="text-primary">Mastery</span>
         </h1>
         <p className="text-muted-foreground text-xs sm:text-sm lg:text-base font-medium">
-          Real-time MTLE licensure forecasting, statutory subject analytics, and mission objectives.
+          Real-time academic score analytics, technical subject metrics, and mission objectives.
         </p>
       </header>
 
-      {/* 2. Executive KPI Overview Strip */}
-      <div id="tour-perf-overview" className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
-        
-        {/* Metric 1: Predicted GWA */}
-        <Card className="border border-border shadow-sm rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-3.5 sm:p-4">
-          <div className="space-y-1">
-            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-primary/70 flex items-center gap-1">
-              <GraduationCap className="w-3.5 h-3.5" />
-              Predicted GWA
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl sm:text-3xl font-black text-primary font-headline">
-                {mtleData ? mtleData.predictedGwa.toFixed(1) : avgMastery}%
-              </span>
-            </div>
-            <span className="text-[10px] text-muted-foreground font-medium block truncate">
-              {mtleData ? mtleData.statusTitle : "Pass Target: 75%"}
-            </span>
-          </div>
-        </Card>
+      {/* 2. Hero Pointing System Strip */}
+      <StudentPointingCard
+        totalPoints={totalEarnedPoints}
+        avgProficiency={avgMasteryNum}
+        avgCompletion={parseFloat(avgCompletion)}
+        masteredCount={masteredCount}
+        totalSubjects={fullMastery.length}
+        subjects={fullMastery}
+        userName={user?.name}
+        onOpenScorecard={() => setScorecardOpen(true)}
+      />
 
-        {/* Metric 2: Syllabus Completion */}
-        <Card className="border border-border shadow-sm rounded-2xl bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent p-3.5 sm:p-4">
-          <div className="space-y-1">
-            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
-              <BookOpen className="w-3.5 h-3.5" />
-              Syllabus Coverage
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 font-headline">
-                {avgCompletion}%
-              </span>
-            </div>
-            <span className="text-[10px] text-muted-foreground font-medium block truncate">
-              Core Modules Done
-            </span>
-          </div>
-        </Card>
+      {/* 3. Section I: Subject Technical Breakdown Grid (Dual Progress Bars: Completion & Mastery) */}
+      <section id="subject-technical-breakdown">
+        <SubjectTechnicalBreakdown
+          items={fullMastery}
+          onSelectSubject={(subjectName) => {
+            router.push(`/study?subject=${encodeURIComponent(subjectName)}`);
+          }}
+        />
+      </section>
 
-        {/* Metric 3: Average Mastery */}
-        <Card className="border border-border shadow-sm rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent p-3.5 sm:p-4">
-          <div className="space-y-1">
-            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5" />
-              Quest Mastery
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-headline">
-                {avgMastery}%
-              </span>
-            </div>
-            <span className="text-[10px] text-muted-foreground font-medium block truncate">
-              Attempt Accuracy
-            </span>
-          </div>
-        </Card>
-
-        {/* Metric 4: Mastered Subjects */}
-        <Card className="border border-border shadow-sm rounded-2xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-3.5 sm:p-4">
-          <div className="space-y-1">
-            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <Award className="w-3.5 h-3.5" />
-              Disciplines Mastered
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-headline">
-                {masteredCount}
-              </span>
-              <span className="text-xs text-muted-foreground font-bold">/ {fullMastery.length} Subjects</span>
-            </div>
-            <span className="text-[10px] text-muted-foreground font-medium block truncate">
-              {masteredCount >= 6 ? "All Disciplines Ready" : `${6 - masteredCount} In Training`}
-            </span>
-          </div>
-        </Card>
-      </div>
-
-      {/* 3. Section I: MTLE Board Rating & Statutory Readiness (Hero Module) */}
-      {mtleData && (
-        <section id="mtle-readiness-predictor" className="space-y-2">
-          <MtlePredictorCard
-            data={mtleData}
-            userName={user?.name}
-            onScrollToSimulator={scrollToSimulator}
-          />
-        </section>
-      )}
-
-      {/* 4. Section II: Competency Diagnostics & Examination Objectives (2-Column Grid) */}
+      {/* 4. Section II: Competency Diagnostics & Active Objectives */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
         
         {/* Left 2-Column: Visual Analytics Tabbed Hub (Radar + Quest History) */}
@@ -488,25 +440,26 @@ function PerformanceContent() {
               </h3>
             </div>
             <p className="text-xs text-muted-foreground italic leading-relaxed">
-              {parseFloat(avgMastery) >= 85
-                ? "🎯 Exceptional mastery! You are performing in the top percentile. Reinforce retention with daily rapid-fire quizzes."
-                : parseFloat(avgMastery) >= 60
-                ? "📈 Strong foundation! Direct your study quota toward your lowest-weighted subject to push your overall GWA beyond 75%."
-                : "⚠️ Critical intervention: Focus intensely on high-yield 20% weight subjects (Clinical Chemistry & Microbiology) to quickly bridge your score deficit."}
+              {avgMasteryNum >= 85
+                ? "🎯 Exceptional performance! You are performing in the top score tier. Reinforce retention with daily rapid-fire quizzes."
+                : avgMasteryNum >= 60
+                ? "📈 Strong foundation! Direct your study quota toward your lowest-scoring subject to push your total point standing higher."
+                : "⚠️ Critical intervention: Focus intensely on core subjects (Clinical Chemistry & Microbiology) to quickly build your point score."}
             </p>
           </Card>
         </div>
       </section>
 
-      {/* 5. Section III: Interactive "What-If" Scenario Simulator */}
-      {mtleData && (
-        <section id="what-if-simulator" className="scroll-mt-6">
-          <MtleWhatIfSimulator
-            subjects={mtleData.subjects}
-            currentGwa={mtleData.predictedGwa}
-          />
-        </section>
-      )}
+      {/* Printable Scorecard Modal */}
+      <PointScorecardModal
+        open={scorecardOpen}
+        onOpenChange={setScorecardOpen}
+        totalPoints={totalEarnedPoints}
+        avgAccuracy={avgMasteryNum}
+        totalQuestions={totalQuestionsAttempted}
+        subjects={fullMastery}
+        userName={user?.name}
+      />
     </div>
   );
 }
