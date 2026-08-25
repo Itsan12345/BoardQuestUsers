@@ -1,7 +1,56 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import clientPromise from '@/lib/mongodb-client';
 import { cookies } from 'next/headers';
+
+export interface LearningModuleData {
+  id: string;
+  title: string;
+  description?: string | null;
+  fileUrls: string[];
+  order: number;
+  isPublished: boolean;
+  categoryId: string;
+  authorId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getLearningModules(): Promise<LearningModuleData[]> {
+  if (typeof (prisma as any).learningModule?.findMany === 'function') {
+    try {
+      const modules = await (prisma as any).learningModule.findMany({
+        where: { isPublished: true },
+        orderBy: { order: 'asc' },
+      });
+      return JSON.parse(JSON.stringify(modules));
+    } catch (err) {
+      // Fallback silently to raw MongoDB client
+    }
+  }
+
+  try {
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+    const docs = await db.collection('LearningModule').find({ isPublished: true }).sort({ order: 1 }).toArray();
+    return docs.map(doc => ({
+      id: doc._id.toString(),
+      title: doc.title || 'Untitled Module',
+      description: doc.description || null,
+      fileUrls: Array.isArray(doc.fileUrls) ? doc.fileUrls : [],
+      order: typeof doc.order === 'number' ? doc.order : 0,
+      isPublished: doc.isPublished !== false,
+      categoryId: doc.categoryId ? doc.categoryId.toString() : '',
+      authorId: doc.authorId ? doc.authorId.toString() : null,
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : new Date().toISOString(),
+      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : new Date().toISOString(),
+    }));
+  } catch (rawErr) {
+    console.error('Failed to fetch learning modules via MongoDB client:', rawErr);
+    return [];
+  }
+}
 
 const CURRICULUM_LESSONS_MAP: Record<string, { id: string; title: string; duration: string }[]> = {
   'Clinical Chemistry': [
@@ -188,7 +237,7 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       console.warn('Database timeout on category fetch, using fallback subjects list:', dbErr);
     }
 
-    const [allCompletions, allExamResults, allMasteryRecords] = await Promise.all([
+    const [allCompletions, allExamResults, allMasteryRecords, categoriesList, allModulesList] = await Promise.all([
       prisma.lessonCompletion.findMany({
         where: { userId, status: 'completed' },
         select: { subject: true, lessonId: true }
@@ -200,17 +249,36 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       prisma.subjectMastery.findMany({
         where: { userId },
         select: { subject: true, proficiency: true, status: true }
-      })
+      }),
+      getCategories().catch(() => []),
+      getLearningModules().catch(() => [])
     ]);
+
+    if (categoriesList && categoriesList.length > 0) {
+      subjects = categoriesList.map(c => c.name);
+    }
 
     const metrics: SubjectMetrics[] = [];
 
     for (const subject of subjects) {
-      const lessons = await getCurriculumLessonsForSubject(subject);
-      const validLessonIds = new Set(lessons.map(l => l.id));
-      const totalLessons = lessons.length;
-
       const normSubject = subject.trim().toLowerCase();
+      const catMatch = categoriesList.find(c => c.name.trim().toLowerCase() === normSubject);
+      const catId = catMatch?.id;
+
+      let validLessonIds: Set<string>;
+      let totalLessons = 0;
+
+      const dynamicModulesForCat = catId ? allModulesList.filter(m => m.categoryId === catId) : [];
+
+      if (dynamicModulesForCat.length > 0) {
+        validLessonIds = new Set(dynamicModulesForCat.map(m => m.id));
+        totalLessons = dynamicModulesForCat.length;
+      } else {
+        const fallbackLessons = await getCurriculumLessonsForSubject(subject);
+        validLessonIds = new Set(fallbackLessons.map(l => l.id));
+        totalLessons = fallbackLessons.length;
+      }
+
       const completedLessons = allCompletions.filter(
         c => (c.subject === subject || (c.subject && c.subject.trim().toLowerCase() === normSubject)) && validLessonIds.has(c.lessonId)
       ).length;
@@ -399,6 +467,42 @@ export async function getSubjectPerformanceHistoryAction(): Promise<SubjectAccur
   } catch (error) {
     console.error('Failed to get subject performance history:', error);
     return [];
+  }
+}
+
+export async function saveStudyNote(moduleId: string, notes: string): Promise<boolean> {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return false;
+
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+    await db.collection('StudyNote').updateOne(
+      { userId, moduleId },
+      { $set: { userId, moduleId, notes, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    return true;
+  } catch (error) {
+    console.error('Failed to save study note to DB:', error);
+    return false;
+  }
+}
+
+export async function getUserStudyNote(moduleId: string): Promise<string> {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return '';
+
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+    const noteDoc = await db.collection('StudyNote').findOne({ userId, moduleId });
+    return noteDoc ? noteDoc.notes || '' : '';
+  } catch (error) {
+    console.warn('Failed to get study note from DB:', error);
+    return '';
   }
 }
 

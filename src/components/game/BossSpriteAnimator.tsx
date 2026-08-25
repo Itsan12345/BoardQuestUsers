@@ -15,6 +15,9 @@ interface BossSpriteAnimatorProps {
   idleFrameWidth?: number;
   attackFrameWidth?: number;
   heavyFrameWidth?: number;
+  idleFrameHeight?: number;
+  attackFrameHeight?: number;
+  heavyFrameHeight?: number;
   animState: BossAnimState;
   onAttackComplete?: () => void;
   className?: string;
@@ -34,6 +37,9 @@ export function BossSpriteAnimator({
   idleFrameWidth = 128,
   attackFrameWidth = 128,
   heavyFrameWidth = 176,
+  idleFrameHeight = 128,
+  attackFrameHeight = 128,
+  heavyFrameHeight = 128,
   animState,
   onAttackComplete,
   className,
@@ -63,10 +69,16 @@ export function BossSpriteAnimator({
     ? (attackFrameWidth || 128)
     : (idleFrameWidth || 128);
 
-  const currentFrameHeight = 128;
+  const currentFrameHeight = isHeavy
+    ? (heavyFrameHeight || (heavyFrameWidth && heavyFrameWidth >= 300 ? 256 : 128))
+    : isAttacking
+    ? (attackFrameHeight || (attackFrameWidth && attackFrameWidth >= 300 ? 256 : 128))
+    : (idleFrameHeight || 128);
+
+  const isWideBeam = isAttacking && currentFrameWidth >= 300;
 
   // Frame rates (fps)
-  const fps = isHeavy ? 11 : isAttacking ? 14 : 8;
+  const fps = isHeavy ? (currentTotalFrames >= 12 ? 12 : 11) : isAttacking ? 14 : 8;
   const animDuration = currentTotalFrames / fps;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
@@ -115,8 +127,9 @@ export function BossSpriteAnimator({
         key={`container-${animState}-${animKey}`}
         className={cn(
           "relative overflow-hidden transition-all transform-gpu z-20",
-          isHeavy && "animate-boss-heavy-lunge",
-          isAttacking && !isHeavy && "animate-boss-lunge",
+          isWideBeam && "animate-boss-beam-recoil",
+          isHeavy && !isWideBeam && "animate-boss-heavy-lunge",
+          isAttacking && !isHeavy && !isWideBeam && "animate-boss-lunge",
           isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
         )}
         style={{
@@ -245,6 +258,51 @@ export function BossSpriteAnimator({
               /* Slide smoothly back to home position */
               transform: translate(0px, 0px) scale(1);
             }
+          @keyframes bossBeamRecoil {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            42% {
+              /* Frames 0-5: Wind up & gather power at home position */
+              transform: translate(45px, -15px) scale(0.95);
+            }
+            46% {
+              /* Frames 6-11: Beam launches and reaches ALL THE WAY across to engulf the player on the left! */
+              transform: translate(calc(-100cqw + 560px), 20px) scale(1.2);
+            }
+            90% {
+              /* Hold beam blast on player through Frame 11 */
+              transform: translate(calc(-100cqw + 560px), 20px) scale(1.2);
+            }
+            95% {
+              /* Frame 12: Final boss stops/snuffs out the blast in its mouth */
+              transform: translate(15px, 0px) scale(1.02);
+            }
+            100% {
+              /* Slide smoothly back to home position */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+        }
+
+        @keyframes bossBeamRecoil {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          42% {
+            transform: translate(25px, -10px) scale(0.95);
+          }
+          46% {
+            transform: translate(min(-120px, calc(-100cqw + 480px)), 15px) scale(1.1);
+          }
+          90% {
+            transform: translate(min(-120px, calc(-100cqw + 480px)), 15px) scale(1.1);
+          }
+          95% {
+            transform: translate(10px, 0px) scale(1.02);
+          }
+          100% {
+            transform: translate(0px, 0px) scale(1);
           }
         }
 
@@ -254,6 +312,10 @@ export function BossSpriteAnimator({
 
         .animate-boss-heavy-lunge {
           animation-name: bossHeavyLunge;
+        }
+
+        .animate-boss-beam-recoil {
+          animation-name: bossBeamRecoil;
         }
 
         /* Player Attack Lunge (Lunge right in front of the boss on its left side) */

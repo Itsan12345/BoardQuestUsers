@@ -71,6 +71,12 @@ const SUBJECT_METADATA: Record<string, {
   idleFrames?: number;
   attackFrames?: number;
   heavyAttackFrames?: number;
+  idleFrameWidth?: number;
+  attackFrameWidth?: number;
+  heavyFrameWidth?: number;
+  idleFrameHeight?: number;
+  attackFrameHeight?: number;
+  heavyFrameHeight?: number;
 }> = {
   "Clinical Chemistry": {
     name: "Clinical Chemistry",
@@ -357,6 +363,12 @@ export default function LearningQuest() {
     idleFrames?: number;
     attackFrames?: number;
     heavyAttackFrames?: number;
+    idleFrameWidth?: number;
+    attackFrameWidth?: number;
+    heavyFrameWidth?: number;
+    idleFrameHeight?: number;
+    attackFrameHeight?: number;
+    heavyFrameHeight?: number;
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
@@ -375,7 +387,28 @@ export default function LearningQuest() {
     "Clinical Chemistry": [
       { id: 'cc-1', nodeNumber: 1, title: 'Carbohydrates & Lipids', subtopic: 'Glucose Metabolism, HbA1c & Lipoproteins', minionName: 'Acid Slime', minionIcon: '🧪', miniBossName: 'Hyperglycemic Mutant', miniBossIcon: '🧬', bossName: 'Hyperglycemic Specter', bossIcon: '⚗️' },
       { id: 'cc-2', nodeNumber: 2, title: 'Enzymology & Electrolytes', subtopic: 'Troponin, CK-MB, AST, Potassium & Blood pH', minionName: 'Kinase Swarm', minionIcon: '⚡', miniBossName: 'Ischemia Fiend', miniBossIcon: '🔥', bossName: 'Renal Behemoth', bossIcon: '💔' },
-      { id: 'cc-3', nodeNumber: 3, title: '👑 Hyperglycemic Specter (FINAL BOSS)', subtopic: 'Comprehensive Clinical Chemistry Licensure Challenge', minionName: 'Lab Sentinel', minionIcon: '🛡️', miniBossName: 'Board Examiner Specter', miniBossIcon: '📜', bossName: 'Hyperglycemic Specter', bossIcon: '👑' },
+      {
+        id: 'cc-3',
+        nodeNumber: 3,
+        title: '👑 Hyperglycemic Specter (FINAL BOSS)',
+        subtopic: 'Comprehensive Clinical Chemistry Licensure Challenge',
+        minionName: 'Lab Sentinel',
+        minionIcon: '🛡️',
+        miniBossName: 'Board Examiner Specter',
+        miniBossIcon: '📜',
+        bossName: 'Hyperglycemic Specter',
+        bossIcon: '👑',
+        idleSpriteUrl: '/images/bosses/clinchem_finalboss_IdleAnimation.png',
+        attackSpriteUrl: '/images/bosses/clinchem_finalboss_heavyAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/clinchem_finalboss_heavyAttackAnimation.png',
+        idleFrames: 6,
+        attackFrames: 13,
+        heavyAttackFrames: 13,
+        idleFrameWidth: 128,
+        attackFrameWidth: 480,
+        heavyFrameWidth: 480,
+        heavyFrameHeight: 256,
+      },
     ],
     "Microbiology": [
       { id: 'mb-1', nodeNumber: 1, title: 'Bacteriology & Gram Staining', subtopic: 'Gram Positive & Negative Cocci & Bacilli', minionName: 'Microbe Swarm', minionIcon: '🦠', miniBossName: 'Staph Sentinel', miniBossIcon: '🧬', bossName: 'Gram Positive Overlord', bossIcon: '👾' },
@@ -506,6 +539,12 @@ export default function LearningQuest() {
   const calculatePlayerMaxHp = (level: number, hasShield: boolean) => {
     const base = 100 + (Math.max(1, level) - 1) * 15;
     return hasShield ? base + 20 : base;
+  };
+
+  const getPlayerMaxHp = () => {
+    if (quizMode !== 'boss-battle') return 100;
+    const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (inventory.erlenmeyer_shield || 0) > 0;
+    return calculatePlayerMaxHp(userLevel, hasShieldEffect);
   };
 
   const calculateEnemyStageHp = (stage: 1 | 2 | 3, level: number, difficulty: string) => {
@@ -1136,7 +1175,7 @@ export default function LearningQuest() {
       }
       setQuestions(selected);
       const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (inventory.erlenmeyer_shield || 0) > 0;
-      const startingHp = quizMode === 'boss-battle' ? calculatePlayerMaxHp(userLevel, hasShieldEffect) : 100;
+      const startingHp = getPlayerMaxHp();
 
       // Erlenmeyer Shield Consumable Effect
       if (quizMode === 'boss-battle' && hasShieldEffect) {
@@ -1528,8 +1567,8 @@ export default function LearningQuest() {
     if (playerHeal > 0) {
       setIsAnimating("player");
       playSfx('heal');
-      const maxHp = quizMode === 'boss-battle' ? 200 + (userLevel * 5) : 100;
-      setPlayerHealth(prev => Math.min(maxHp, prev + playerHeal));
+      const currentMaxHp = getPlayerMaxHp();
+      setPlayerHealth(prev => Math.min(currentMaxHp, prev + playerHeal));
       addFloatingText('player', `+${Math.ceil(playerHeal)} HEALED!`, 'text-green-400');
     }
 
@@ -2154,7 +2193,7 @@ export default function LearningQuest() {
   }
 
   if (isStarted) {
-    const maxPlayerHp = quizMode === 'boss-battle' ? 200 + (userLevel * 5) : 100;
+    const maxPlayerHp = getPlayerMaxHp();
     const diffBase = bossDifficulty === 'EASY' ? 400 : bossDifficulty === 'HARD' ? 800 : 600;
     const levelScaling = bossDifficulty === 'EASY' ? 5 : bossDifficulty === 'HARD' ? 12 : 8;
 
@@ -2384,6 +2423,10 @@ export default function LearningQuest() {
                         idleFrames={currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7}
                         attackFrames={currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17}
                         heavyAttackFrames={currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11}
+                        idleFrameWidth={currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128}
+                        attackFrameWidth={currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128}
+                        heavyFrameWidth={currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176}
+                        heavyFrameHeight={currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128}
                         animState={introPhase === 'active' ? bossAnimState : 'idle'}
                         onAttackComplete={() => setBossAnimState('idle')}
                         scale={1.35}
@@ -2441,9 +2484,7 @@ export default function LearningQuest() {
 
               {/* Player Health & Stats Card */}
               {(() => {
-                const maxPlayerHp = quizMode === 'boss-battle'
-                  ? calculatePlayerMaxHp(userLevel, equippedItem === 'erlenmeyer_shield')
-                  : 100;
+                const maxPlayerHp = getPlayerMaxHp();
 
                 return (
                   <div className="bg-black/50 backdrop-blur-md border border-white/15 p-2 md:p-3 rounded-lg shadow-2xl min-w-[120px] md:min-w-[170px] relative mb-3 ml-1">

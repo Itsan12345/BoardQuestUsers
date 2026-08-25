@@ -17,8 +17,9 @@ import {
   Brain,
   AlertCircle,
   Building2,
-  Sparkles,
-  Timer
+  FileText,
+  Eye,
+  Check
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -31,10 +32,19 @@ import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/
 import { CustomCalendar } from '@/components/ui/custom-calendar';
 import { cn } from '@/lib/utils';
 import { getStudyPlans, saveStudyPlan, getReviewCenterProgram, type ReviewCenterProgramData } from '@/app/actions/study-plan';
-import { getSubjectMetrics, getCategories, updateLessonStatus, getUserLessonCompletions, type SubjectMetrics } from '@/app/actions/study';
+import {
+  getSubjectMetrics,
+  getCategories,
+  getLearningModules,
+  updateLessonStatus,
+  getUserLessonCompletions,
+  type SubjectMetrics,
+  type LearningModuleData
+} from '@/app/actions/study';
 import { getUserProfile, getUserSettingsAction } from '@/app/actions/user';
 import { format, startOfDay, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { ModuleViewerDialog, type LearningModule as DialogLearningModule } from '@/components/study/ModuleViewerDialog';
 
 const INITIAL_CURRICULUM = [
   {
@@ -42,9 +52,9 @@ const INITIAL_CURRICULUM = [
     title: "Clinical Chemistry",
     icon: FlaskConical,
     lessons: [
-      { id: "cc1", title: "Carbohydrate Metabolism & Disorders", duration: "45m", status: "not-started" },
-      { id: "cc2", title: "Lipid Profile & Lipoproteins", duration: "60m", status: "not-started" },
-      { id: "cc3", title: "Renal Function Tests & NPNs", duration: "40m", status: "not-started" }
+      { id: "cc1", title: "Carbohydrate Metabolism & Disorders", duration: "45m", status: "not-started", description: "Overview of glucose regulation, diabetes mellitus, and laboratory testing protocols.", fileUrls: [] },
+      { id: "cc2", title: "Lipid Profile & Lipoproteins", duration: "60m", status: "not-started", description: "Assessment of chylomicrons, VLDL, LDL, HDL and atherosclerotic risk metrics.", fileUrls: [] },
+      { id: "cc3", title: "Renal Function Tests & NPNs", duration: "40m", status: "not-started", description: "BUN, Creatinine, Uric Acid and clearance equation interpretations.", fileUrls: [] }
     ]
   },
   {
@@ -52,8 +62,8 @@ const INITIAL_CURRICULUM = [
     title: "Hematology",
     icon: Microscope,
     lessons: [
-      { id: "hem1", title: "RBC Morphology & Anemias", duration: "50m", status: "not-started" },
-      { id: "hem2", title: "WBC Disorders & Leukemias", duration: "75m", status: "not-started" }
+      { id: "hem1", title: "RBC Morphology & Anemias", duration: "50m", status: "not-started", description: "Classification of microcytic, normocytic, and macrocytic anemias.", fileUrls: [] },
+      { id: "hem2", title: "WBC Disorders & Leukemias", duration: "75m", status: "not-started", description: "Acute vs chronic leukemias, FAB classification, and cytochemical stains.", fileUrls: [] }
     ]
   },
   {
@@ -61,8 +71,8 @@ const INITIAL_CURRICULUM = [
     title: "Microbiology",
     icon: Database,
     lessons: [
-      { id: "mic1", title: "Bacteriology: Gram Positives", duration: "65m", status: "not-started" },
-      { id: "mic2", title: "Enterobacteriaceae & Non-fermenters", duration: "90m", status: "not-started" }
+      { id: "mic1", title: "Bacteriology: Gram Positives", duration: "65m", status: "not-started", description: "Staphylococcus, Streptococcus, and Enterococcus identification keys.", fileUrls: [] },
+      { id: "mic2", title: "Enterobacteriaceae & Non-fermenters", duration: "90m", status: "not-started", description: "TSI, IMViC, and oxidase reactions for gram-negative bacilli.", fileUrls: [] }
     ]
   },
   {
@@ -70,8 +80,8 @@ const INITIAL_CURRICULUM = [
     title: "Immunology & Serology and Immunohematology",
     icon: Stethoscope,
     lessons: [
-      { id: "bb1", title: "ABO & Rh Blood Group Systems", duration: "55m", status: "not-started" },
-      { id: "bb2", title: "Blood Component Therapy", duration: "50m", status: "not-started" }
+      { id: "bb1", title: "ABO & Rh Blood Group Systems", duration: "55m", status: "not-started", description: "Forward/reverse typing, Rh antibodies, and discrepancy resolution.", fileUrls: [] },
+      { id: "bb2", title: "Blood Component Therapy", duration: "50m", status: "not-started", description: "PRBCs, FFP, Platelets, Cryoprecipitate indications and crossmatching.", fileUrls: [] }
     ]
   },
   {
@@ -79,8 +89,8 @@ const INITIAL_CURRICULUM = [
     title: "Clinical Microscopy & Parasitology",
     icon: FlaskConical,
     lessons: [
-      { id: "cm1", title: "Routine Urinalysis: Physical & Chemical", duration: "40m", status: "not-started" },
-      { id: "cm2", title: "CSF & Other Body Fluids Analysis", duration: "50m", status: "not-started" }
+      { id: "cm1", title: "Routine Urinalysis: Physical & Chemical", duration: "40m", status: "not-started", description: "Reagent strip parameters, specific gravity, and physical color correlates.", fileUrls: [] },
+      { id: "cm2", title: "CSF & Other Body Fluids Analysis", duration: "50m", status: "not-started", description: "Cell counts, protein/glucose ratios in spinal, synovial, and serous fluids.", fileUrls: [] }
     ]
   },
   {
@@ -88,8 +98,8 @@ const INITIAL_CURRICULUM = [
     title: "Histopathology & MT Laws",
     icon: ShieldAlert,
     lessons: [
-      { id: "hp1", title: "Tissue Fixation & Processing", duration: "50m", status: "not-started" },
-      { id: "law1", title: "RA 5527: Phil MedTech Act of 1969", duration: "45m", status: "not-started" }
+      { id: "hp1", title: "Tissue Fixation & Processing", duration: "50m", status: "not-started", description: "Fixatives, dehydration, clearing, infiltration, and embedding techniques.", fileUrls: [] },
+      { id: "law1", title: "RA 5527: Phil MedTech Act of 1969", duration: "45m", status: "not-started", description: "Legal definitions, Board of Medical Technology, and licensure rules.", fileUrls: [] }
     ]
   }
 ];
@@ -108,7 +118,7 @@ export default function StudyPage() {
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [focusSubject, setFocusSubject] = useState<string | null>(null);
-  const [curriculum, setCurriculum] = useState(INITIAL_CURRICULUM);
+  const [curriculum, setCurriculum] = useState<any[]>(INITIAL_CURRICULUM);
   const [selectedCategoryId, setSelectedCategoryId] = useState(INITIAL_CURRICULUM[0].id);
   const [targetDates, setTargetDates] = useState<Record<string, Date>>({});
   const [subjectMetrics, setSubjectMetrics] = useState<Record<string, SubjectMetrics>>({});
@@ -119,12 +129,18 @@ export default function StudyPage() {
   const [isDesktop, setIsDesktop] = useState(true);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
+  // Search & PDF Viewer Dialog State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewerModule, setViewerModule] = useState<DialogLearningModule | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+
   useEffect(() => {
     setMounted(true);
     async function loadData() {
       try {
-        const [dbCategories, plans, metrics, programData, userProfile, lessonCompletionsMap, userSettings] = await Promise.all([
+        const [dbCategories, dbModules, plans, metrics, programData, userProfile, lessonCompletionsMap, userSettings] = await Promise.all([
           getCategories().catch(() => []),
+          getLearningModules().catch(() => []),
           getStudyPlans().catch(() => []),
           getSubjectMetrics().catch(() => []),
           getReviewCenterProgram().catch(() => null),
@@ -134,6 +150,7 @@ export default function StudyPage() {
         ]);
 
         const compMap: Record<string, string> = lessonCompletionsMap || {};
+        const modulesList: LearningModuleData[] = dbModules || [];
 
         setProgram(programData);
         if (userProfile?.name) {
@@ -146,33 +163,55 @@ export default function StudyPage() {
           : INITIAL_CURRICULUM.map(c => ({ id: c.id, name: c.title }));
 
         const dynamicCurriculum = baseList.map((cat: any) => {
-          const existing = INITIAL_CURRICULUM.find(c => c.title.trim().toLowerCase() === cat.name.trim().toLowerCase());
-          if (existing) {
-            return {
-              ...existing,
-              id: cat.id || existing.id,
-              title: cat.name,
-              lessons: existing.lessons.map(lesson => ({
-                ...lesson,
-                status: compMap[lesson.id] || 'not-started'
-              }))
-            };
+          const catId = cat.id;
+          const normCatName = cat.name.trim().toLowerCase();
+
+          // Find dynamic modules uploaded for this category
+          const dynamicModulesForCat = modulesList.filter(m =>
+            m.categoryId === catId ||
+            (m.categoryId && m.categoryId.toString() === catId)
+          );
+
+          let lessons: any[] = [];
+          const hasUploadedModules = dynamicModulesForCat.length > 0;
+
+          if (hasUploadedModules) {
+            lessons = dynamicModulesForCat.map((m, idx) => ({
+              id: m.id,
+              title: m.title,
+              description: m.description || 'Uploaded learning module',
+              duration: `${m.fileUrls.length || 0} PDF ${m.fileUrls.length === 1 ? 'Doc' : 'Docs'}`,
+              fileUrls: m.fileUrls || [],
+              order: m.order || idx + 1,
+              isDynamic: true,
+              status: compMap[m.id] || 'not-started'
+            }));
+          } else {
+            // Fall back to matching standard curriculum
+            const existing = INITIAL_CURRICULUM.find(c => c.title.trim().toLowerCase() === normCatName);
+            if (existing) {
+              lessons = existing.lessons.map(l => ({
+                ...l,
+                fileUrls: [],
+                isDynamic: false,
+                status: compMap[l.id] || 'not-started'
+              }));
+            } else {
+              const slug = cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+              lessons = [
+                { id: `${slug}-1`, title: `${cat.name} Fundamentals & Core Concepts`, duration: "45m", description: `Core protocols and fundamental concepts for ${cat.name}`, fileUrls: [], isDynamic: false, status: compMap[`${slug}-1`] || 'not-started' },
+                { id: `${slug}-2`, title: `${cat.name} Protocols & Comprehensive Review`, duration: "60m", description: `Advanced case studies and review questions for ${cat.name}`, fileUrls: [], isDynamic: false, status: compMap[`${slug}-2`] || 'not-started' }
+              ];
+            }
           }
 
-          const slug = cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-          const defaultLessons = [
-            { id: `${slug}-1`, title: `${cat.name} Fundamentals & Core Concepts`, duration: "45m" },
-            { id: `${slug}-2`, title: `${cat.name} Protocols & Comprehensive Review`, duration: "60m" }
-          ];
-
           return {
-            id: slug,
+            id: cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
             title: cat.name,
             icon: ICON_MAP[cat.name] || BookMarked,
-            lessons: defaultLessons.map(l => ({
-              ...l,
-              status: compMap[l.id] || 'not-started'
-            }))
+            adminModuleCount: dynamicModulesForCat.length,
+            hasUploadedModules,
+            lessons
           };
         });
 
@@ -244,9 +283,7 @@ export default function StudyPage() {
           });
           setSubjectMetrics(metricsMap);
         }
-      } catch (err) {
-        // Silently ignore background polling network errors during dev reload
-      }
+      } catch (err) {}
     }, 30000);
 
     const checkDesktop = () => setIsDesktop(window.innerWidth >= 768);
@@ -287,20 +324,31 @@ export default function StudyPage() {
     }
   };
 
-  const handleSubmitLesson = async (lessonId: string) => {
+  const handleToggleComplete = async (lessonId: string) => {
+    if (!selectedCategory) return;
+    const currentLesson = selectedCategory.lessons.find((l: any) => l.id === lessonId);
+    if (!currentLesson) return;
+
+    const nextStatus = currentLesson.status === 'completed' ? 'not-started' : 'completed';
+
     try {
-      const updated = await updateLessonStatus(selectedCategory.title, lessonId, 'completed');
+      const updated = await updateLessonStatus(selectedCategory.title, lessonId, nextStatus);
       if (updated) {
         // Update local curriculum state immediately
         setCurriculum(prev => prev.map(cat => {
           if (cat.title === selectedCategory.title) {
             return {
               ...cat,
-              lessons: cat.lessons.map(l => l.id === lessonId ? { ...l, status: 'completed' } : l)
+              lessons: cat.lessons.map((l: any) => l.id === lessonId ? { ...l, status: nextStatus } : l)
             };
           }
           return cat;
         }));
+
+        // If the viewer dialog is open for this module, update its status as well
+        if (viewerModule && viewerModule.id === lessonId) {
+          setViewerModule(prev => prev ? { ...prev, status: nextStatus } : null);
+        }
 
         // Refresh metrics
         try {
@@ -315,8 +363,10 @@ export default function StudyPage() {
         } catch {}
 
         toast({
-          title: "Lesson Completed",
-          description: "Great work! Your progress has been saved.",
+          title: nextStatus === 'completed' ? "Module Completed ✓" : "Module Reset",
+          description: nextStatus === 'completed'
+            ? "Awesome work! Your subject completion bar has been updated."
+            : "Module status reset to not started.",
         });
       }
     } catch (err) {
@@ -328,8 +378,31 @@ export default function StudyPage() {
     }
   };
 
+  const handleOpenViewer = (lesson: any) => {
+    setViewerModule({
+      id: lesson.id,
+      title: lesson.title,
+      description: lesson.description || '',
+      fileUrls: lesson.fileUrls || [],
+      order: lesson.order,
+      status: lesson.status
+    });
+    setIsViewerOpen(true);
+  };
+
   const selectedCategory = curriculum.find(c => c.id === selectedCategoryId) || curriculum[0];
-  const selectedDate = targetDates[selectedCategory.title];
+  const selectedDate = selectedCategory ? targetDates[selectedCategory.title] : undefined;
+
+  // Filter lessons based on user search query
+  const filteredLessons = selectedCategory?.lessons.filter((l: any) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      l.title.toLowerCase().includes(q) ||
+      (l.description && l.description.toLowerCase().includes(q)) ||
+      (l.fileUrls && l.fileUrls.some((url: string) => url.toLowerCase().includes(q)))
+    );
+  }) || [];
 
   return (
     <div className="min-h-full pb-20 lg:pb-12 bg-background">
@@ -345,9 +418,9 @@ export default function StudyPage() {
               </p>
             </div>
 
-            {/* Dynamic Review Center Program Final Deadline Stat Card (Clean Minimalist Design) */}
+            {/* Dynamic Review Center Program Deadline */}
             {program ? (
-              <div id="tour-study-program" className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-3.5 sm:p-4 lg:p-5 shadow-sm space-y-2 w-full sm:w-auto min-w-0 sm:min-w-[280px] lg:min-w-[340px]">
+              <div id="tour-study-program" className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-3.5 sm:p-4 lg:p-5 shadow-xs space-y-2 w-full sm:w-auto min-w-0 sm:min-w-[280px] lg:min-w-[340px]">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -384,7 +457,7 @@ export default function StudyPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-card border-2 border-border rounded-2xl p-3.5 sm:p-4 lg:p-5 flex items-center gap-3 text-foreground shadow-sm w-full sm:w-auto">
+              <div className="bg-card border-2 border-border rounded-2xl p-3.5 sm:p-4 lg:p-5 flex items-center gap-3 text-foreground shadow-xs w-full sm:w-auto">
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <AlertCircle className="w-4 h-4" />
                 </div>
@@ -395,10 +468,14 @@ export default function StudyPage() {
               </div>
             )}
           </div>
+
+          {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             <Input
-              placeholder="Search concepts, protocols, or RA sections..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search learning modules, PDF titles, or study concepts..."
               className="pl-10 sm:pl-12 h-11 sm:h-14 bg-muted border-2 border-border rounded-xl sm:rounded-2xl focus-visible:ring-primary/20 text-xs sm:text-sm font-medium"
             />
           </div>
@@ -406,13 +483,59 @@ export default function StudyPage() {
       </header>
 
       <main className="p-3.5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 max-w-7xl mx-auto">
+        {/* Disciplines Sidebar / Mobile Carousel Selector */}
         <aside id="tour-study-subjects" className="lg:col-span-4 space-y-3 sm:space-y-4">
           <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 sm:px-2">Laboratory Disciplines</h2>
-          <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
+          
+          {/* Mobile Horizontal Carousel (< lg) */}
+          <div className="flex lg:hidden overflow-x-auto gap-2.5 pb-2 -mx-3.5 px-3.5 sm:mx-0 sm:px-0 scrollbar-none shrink-0">
+            {curriculum.map((cat) => {
+              const Icon = cat.icon;
+              const isActive = selectedCategoryId === cat.id;
+              const uploadedCount = cat.adminModuleCount || 0;
+
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategoryId(cat.id)}
+                  className={cn(
+                    "flex items-center gap-2.5 p-3 rounded-2xl transition-all border-2 shrink-0 min-w-[200px] text-left",
+                    isActive
+                      ? "bg-background border-primary shadow-md"
+                      : "hover:bg-muted border-border bg-background"
+                  )}
+                >
+                  <div className={cn(
+                    "p-2 rounded-xl shrink-0 transition-colors",
+                    isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
+                  )}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={cn(
+                      "font-bold text-xs uppercase tracking-tight truncate",
+                      isActive ? "text-primary" : "text-foreground"
+                    )}>
+                      {cat.title}
+                    </p>
+                    {uploadedCount > 0 && (
+                      <span className="text-[9px] font-semibold text-muted-foreground">
+                        {uploadedCount} {uploadedCount === 1 ? 'Module' : 'Modules'}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Desktop Vertical Card Stack (>= lg) */}
+          <div className="hidden lg:grid grid-cols-1 gap-2.5 sm:gap-3">
             {curriculum.map((cat) => {
               const Icon = cat.icon;
               const isActive = selectedCategoryId === cat.id;
               const catDate = targetDates[cat.title];
+              const uploadedCount = cat.adminModuleCount || 0;
 
               return (
                 <button
@@ -426,7 +549,7 @@ export default function StudyPage() {
                   )}
                 >
                   <div className={cn(
-                    "p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shrink-0 transition-colors",
+                    "p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shrink-0 transition-colors relative",
                     isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
                   )}>
                     <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -445,11 +568,17 @@ export default function StudyPage() {
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-                      <CalendarIcon className="w-3 h-3 text-muted-foreground shrink-0" />
-                      <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase truncate">
-                        {mounted && catDate ? format(catDate, "MMM dd, yyyy") : "No target set"}
-                      </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase truncate">
+                        <CalendarIcon className="w-3 h-3 shrink-0" />
+                        <span>{mounted && catDate ? format(catDate, "MMM dd, yyyy") : "No target set"}</span>
+                      </div>
+
+                      {uploadedCount > 0 && (
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/10 text-primary border-primary/30 font-bold shrink-0">
+                          {uploadedCount} {uploadedCount === 1 ? 'Module' : 'Modules'}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -458,14 +587,18 @@ export default function StudyPage() {
           </div>
         </aside>
 
+        {/* Selected Discipline Details & Modules */}
         <section className="lg:col-span-8 space-y-5 sm:space-y-6">
-          <Card id="tour-study-metrics" className="border border-border shadow-sm rounded-2xl sm:rounded-[2rem] bg-muted border-2 border-border overflow-hidden">
+          {/* Metrics Card */}
+          <Card id="tour-study-metrics" className="border border-border shadow-xs rounded-2xl sm:rounded-[2rem] bg-muted border-2 border-border overflow-hidden">
             <CardHeader className="p-4 sm:p-6 pb-4 space-y-3 sm:space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
                 <div className="space-y-0.5 sm:space-y-1">
-                  <CardTitle className="font-headline font-semibold text-lg sm:text-xl lg:text-2xl text-foreground uppercase">
-                    {selectedCategory.title}
-                  </CardTitle>
+                  <div>
+                    <CardTitle className="font-headline font-semibold text-lg sm:text-xl lg:text-2xl text-foreground uppercase">
+                      {selectedCategory.title}
+                    </CardTitle>
+                  </div>
                   <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Discipline Parameters</p>
                 </div>
 
@@ -593,56 +726,135 @@ export default function StudyPage() {
             </CardHeader>
           </Card>
 
-          <Card className="border border-border shadow-sm rounded-2xl sm:rounded-[2rem] bg-background border-2 border-border overflow-hidden">
-            <CardHeader className="bg-muted border-b p-4 sm:p-6 lg:p-8">
-              <CardTitle className="font-headline text-base sm:text-lg font-semibold uppercase tracking-tight flex items-center gap-2.5 sm:gap-3">
-                <BookMarked className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                Intel Expedition Modules
-              </CardTitle>
+          {/* Modules List Card */}
+          <Card className="border border-border shadow-xs rounded-2xl sm:rounded-[2rem] bg-background border-2 border-border overflow-hidden">
+            <CardHeader className="bg-muted border-b p-4 sm:p-6 lg:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                <CardTitle className="font-headline text-base sm:text-lg font-semibold uppercase tracking-tight flex items-center gap-2.5 sm:gap-3">
+                  <BookMarked className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+                  Learning Modules & Materials
+                </CardTitle>
+                <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">
+                  Tap any module to view attached PDF study materials and mark complete.
+                </p>
+              </div>
+
+              {selectedCategory.hasUploadedModules && (
+                <Badge variant="outline" className="self-start sm:self-auto bg-primary/10 text-primary border-primary/30 font-bold text-[10px] sm:text-xs px-2.5 sm:px-3 py-1 rounded-xl whitespace-nowrap shrink-0">
+                  {filteredLessons.length} {filteredLessons.length === 1 ? 'Module' : 'Modules'}
+                </Badge>
+              )}
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-[400px]">
-                <div className="divide-y divide-border/60">
-                  {selectedCategory.lessons.map((lesson, idx) => (
-                    <div key={lesson.id} className="p-3.5 sm:p-5 lg:p-6 flex items-center gap-3 sm:gap-5 hover:bg-muted transition-all cursor-pointer group min-w-0">
-                      <div className={cn(
-                        "flex h-9 w-9 sm:h-11 sm:w-11 lg:h-12 lg:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl font-semibold text-xs sm:text-sm border-2 transition-all",
-                        lesson.status === 'completed'
-                          ? "bg-accent/10 border-accent/20 text-accent"
-                          : "bg-background border-border text-muted-foreground group-hover:border-primary/20"
-                      )}>
-                        {idx + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-xs sm:text-sm lg:text-base text-foreground leading-snug line-clamp-2 sm:truncate">{lesson.title}</h4>
-                        <div className="flex items-center gap-3 text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-tighter mt-0.5">
-                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration} Intel</span>
+              <ScrollArea className="h-[450px]">
+                {filteredLessons.length === 0 ? (
+                  <div className="p-12 text-center space-y-3">
+                    <BookMarked className="w-10 h-10 text-muted-foreground/40 mx-auto" />
+                    <h4 className="text-sm font-bold text-foreground">No modules found matching search</h4>
+                    <p className="text-xs text-muted-foreground">Try clearing your search query or select another subject discipline.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border/60">
+                    {filteredLessons.map((lesson: any, idx: number) => {
+                      const isCompleted = lesson.status === 'completed';
+                      const pdfCount = lesson.fileUrls ? lesson.fileUrls.length : 0;
+
+                      return (
+                        <div
+                          key={lesson.id}
+                          onClick={() => handleOpenViewer(lesson)}
+                          className="p-4 sm:p-5 lg:p-6 flex items-center gap-3 sm:gap-5 hover:bg-muted/60 transition-all cursor-pointer group min-w-0"
+                        >
+                          {/* Index Badge */}
+                          <div className={cn(
+                            "flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl font-bold text-xs sm:text-sm border-2 transition-all shadow-xs",
+                            isCompleted
+                              ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                              : "bg-background border-border text-muted-foreground group-hover:border-primary/40 group-hover:text-primary"
+                          )}>
+                            {lesson.order || idx + 1}
+                          </div>
+
+                          {/* Info Column */}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-bold text-xs sm:text-sm lg:text-base text-foreground leading-snug line-clamp-1 group-hover:text-primary transition-colors">
+                                {lesson.title}
+                              </h4>
+                              {isCompleted && (
+                                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[9px] px-1.5 py-0 font-bold">
+                                  ✓ Done
+                                </Badge>
+                              )}
+                            </div>
+
+                            {lesson.description && (
+                              <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-1">
+                                {lesson.description}
+                              </p>
+                            )}
+
+                            <div className="flex items-center gap-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-tight pt-0.5">
+                              {pdfCount > 0 ? (
+                                <span className="flex items-center gap-1 text-primary font-bold">
+                                  <FileText className="h-3 w-3" />
+                                  {pdfCount} PDF Study {pdfCount === 1 ? 'Doc' : 'Docs'}
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {lesson.duration || "45m Intel"}
+                                </span>
+                              )}
+
+                              <span className="text-muted-foreground/40">•</span>
+                              <span className="flex items-center gap-1 group-hover:underline">
+                                <Eye className="h-3 w-3 text-primary" />
+                                Open Viewer
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Open PDF Viewer Action Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenViewer(lesson);
+                            }}
+                            className={cn(
+                              "h-9 w-9 sm:h-11 sm:w-11 shrink-0 flex items-center justify-center rounded-xl sm:rounded-2xl transition-all shadow-xs border-2",
+                              isCompleted
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25"
+                                : "bg-background border-border text-muted-foreground hover:bg-primary hover:text-white hover:border-primary"
+                            )}
+                            aria-label="Open PDF study module"
+                            title={isCompleted ? "Completed - Click to Open PDF" : "Click to Open PDF"}
+                          >
+                            {isCompleted ? (
+                              <Check className="h-5 w-5 stroke-[3]" />
+                            ) : (
+                              <PlayCircle className="h-5 w-5" />
+                            )}
+                          </button>
                         </div>
-                      </div>
-                      <button
-                        onClick={() => handleSubmitLesson(lesson.id)}
-                        className={cn(
-                          "h-8 w-8 sm:h-10 sm:w-10 shrink-0 flex items-center justify-center rounded-lg sm:rounded-xl transition-all shadow-sm",
-                          lesson.status === 'completed'
-                            ? "bg-accent/20 text-accent"
-                            : "bg-secondary text-muted-foreground group-hover:bg-primary group-hover:text-white"
-                        )}
-                        aria-label="Toggle lesson completion"
-                      >
-                        {lesson.status === 'completed' ? (
-                          <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6" />
-                        ) : (
-                          <PlayCircle className="h-5 w-5 sm:h-6 sm:w-6" />
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </ScrollArea>
             </CardContent>
           </Card>
         </section>
       </main>
+
+      {/* Coursera-Style PDF & Learning Module Viewer Dialog */}
+      <ModuleViewerDialog
+        open={isViewerOpen}
+        onOpenChange={setIsViewerOpen}
+        module={viewerModule}
+        subjectTitle={selectedCategory?.title || ''}
+        onToggleComplete={handleToggleComplete}
+      />
     </div>
   );
 }

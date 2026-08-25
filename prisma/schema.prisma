@@ -49,6 +49,7 @@ model AdminUser {
   departmentId  String?     @db.ObjectId 
 
   createdCategory Category[] @relation("CategoryAuthor")
+  createdModules  LearningModule[] @relation("ModuleAuthor")
 
   createdDepartments Department[] @relation("DepartmentAuthor")
   updatedDepartments Department[] @relation("DepartmentUpdater")
@@ -132,12 +133,31 @@ model Category {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   name String
   questions Question[]
+  learningModules LearningModule[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   author   AdminUser @relation("CategoryAuthor", fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   authorId String    @db.ObjectId
+}
+
+model LearningModule {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String?
+  fileUrls    String[] @default([])
+  order       Int      @default(0)
+  isPublished Boolean  @default(true)
+
+  categoryId  String   @db.ObjectId
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  authorId    String?  @db.ObjectId
+  author      AdminUser? @relation("ModuleAuthor", fields: [authorId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // [ Review Center Schema ]
