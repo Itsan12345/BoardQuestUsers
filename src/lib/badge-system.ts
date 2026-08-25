@@ -1,6 +1,6 @@
 import { Trophy, Flame, Zap, Star } from 'lucide-react';
 
-export type BadgeId = 'bronze' | 'silver' | 'gold' | 'streak-7' | 'streak-14' | 'streak-30' | 'speed';
+export type BadgeId = 'bronze' | 'silver' | 'gold' | 'adept' | 'master' | 'streak-7' | 'streak-14' | 'streak-30' | 'speed';
 export type ConfidenceLevel = 'Shaky' | 'Steady' | 'Unyielding';
 
 export interface Badge {
@@ -20,8 +20,8 @@ export const BADGES: Record<BadgeId, Badge> = {
   bronze: {
     id: 'bronze',
     name: 'Bronze Badge',
-    title: 'Aspirant',
-    description: 'Earned by completing a quest with 40-59% accuracy. You tried hard and learned along the way!',
+    title: 'Bronze',
+    description: 'Earned by completing a quest with 40-59% accuracy. Good effort on your journey!',
     icon: 'trophy',
     spriteUrl: '/ui/bronze-badge.png',
     color: '#CD7F32',
@@ -32,8 +32,8 @@ export const BADGES: Record<BadgeId, Badge> = {
   silver: {
     id: 'silver',
     name: 'Silver Badge',
-    title: 'Adept',
-    description: 'Earned by completing a quest with 60-79% accuracy. You demonstrated solid competence!',
+    title: 'Silver',
+    description: 'Earned by completing a quest with 60-79% accuracy. Solid medical board competence!',
     icon: 'trophy',
     spriteUrl: '/ui/silver-badge.png',
     color: '#C0C0C0',
@@ -44,20 +44,44 @@ export const BADGES: Record<BadgeId, Badge> = {
   gold: {
     id: 'gold',
     name: 'Gold Badge',
-    title: 'Master',
-    description: 'Earned by completing a quest with 100% accuracy. Perfect execution!',
+    title: 'Gold',
+    description: 'Earned by completing a quest with 80-99% accuracy. Outstanding high performance!',
     icon: 'trophy',
     spriteUrl: '/ui/gold-badge.png',
     color: '#FFD700',
-    unlockCondition: '100% accuracy',
-    xpReward: 200,
+    unlockCondition: '80-99% accuracy',
+    xpReward: 150,
+    confidenceFactor: 1.20,
+  },
+  adept: {
+    id: 'adept',
+    name: 'Adept Badge',
+    title: 'Adept',
+    description: 'Earned by maintaining a 7-day study streak or reaching high skill milestones.',
+    icon: 'star',
+    spriteUrl: '/ui/adept-badge.png',
+    color: '#7986CB',
+    unlockCondition: '7-day streak or High Skill',
+    xpReward: 150,
+    confidenceFactor: 1.20,
+  },
+  master: {
+    id: 'master',
+    name: 'Master Badge',
+    title: 'Master',
+    description: 'Earned by completing a quest with 100% perfect accuracy. Peak medical tech mastery!',
+    icon: 'trophy',
+    spriteUrl: '/ui/master-badge.png',
+    color: '#FFD700',
+    unlockCondition: '100% perfect accuracy',
+    xpReward: 250,
     confidenceFactor: 1.25,
   },
   'streak-7': {
     id: 'streak-7',
-    name: 'Consistent Champion (7 days)',
-    title: 'Consistent',
-    description: 'Maintained a 7-day streak of consistent daily learning.',
+    name: 'Consistent Champion',
+    title: '7-Day Streak',
+    description: 'Maintained a 7-day streak of consistent daily questing.',
     icon: 'flame',
     spriteUrl: '/ui/adept-badge.png',
     color: '#FF6B6B',
@@ -67,8 +91,8 @@ export const BADGES: Record<BadgeId, Badge> = {
   },
   'streak-14': {
     id: 'streak-14',
-    name: 'Unstoppable (14 days)',
-    title: 'Unstoppable',
+    name: 'Unstoppable Streak',
+    title: '14-Day Streak',
     description: 'Maintained a 14-day streak. Your dedication is inspiring!',
     icon: 'flame',
     spriteUrl: '/ui/silver-badge.png',
@@ -79,9 +103,9 @@ export const BADGES: Record<BadgeId, Badge> = {
   },
   'streak-30': {
     id: 'streak-30',
-    name: 'Legendary (30 days)',
-    title: 'Legendary',
-    description: 'Maintained a 30-day streak. You are a true champion!',
+    name: 'Legendary Streak',
+    title: '30-Day Streak',
+    description: 'Maintained a 30-day streak. You are a true champion of BoardQuest!',
     icon: 'flame',
     spriteUrl: '/ui/master-badge.png',
     color: '#FFB84D',
@@ -91,9 +115,9 @@ export const BADGES: Record<BadgeId, Badge> = {
   },
   speed: {
     id: 'speed',
-    name: 'Swift Solver',
+    name: 'Speed Master Badge',
     title: 'Speed Master',
-    description: 'Completed a quest in under 2 minutes. Lightning fast!',
+    description: 'Earned by completing a quest in under 2 minutes. Lightning fast!',
     icon: 'zap',
     spriteUrl: '/ui/speedmaster-badge.png',
     color: '#FFD700',
@@ -123,6 +147,8 @@ export function calculateEarnedBadges(result: QuestResult): Badge[] {
 
   // Performance badges
   if (accuracy >= 100) {
+    earnedBadges.push(BADGES['master' as BadgeId]);
+  } else if (accuracy >= 80) {
     earnedBadges.push(BADGES['gold' as BadgeId]);
   } else if (accuracy >= 60) {
     earnedBadges.push(BADGES['silver' as BadgeId]);
@@ -141,7 +167,7 @@ export function calculateEarnedBadges(result: QuestResult): Badge[] {
   } else if (result.streak >= 14) {
     earnedBadges.push(BADGES['streak-14' as BadgeId]);
   } else if (result.streak >= 7) {
-    earnedBadges.push(BADGES['streak-7' as BadgeId]);
+    earnedBadges.push(BADGES['adept' as BadgeId]);
   }
 
   return earnedBadges;

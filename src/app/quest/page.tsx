@@ -42,7 +42,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { QuizInterface, Question } from '@/components/quiz/QuizInterface';
 import { ChapterWorldMap } from '@/components/quiz/ChapterWorldMap';
-import { SUBJECT_AREAS, XP_PER_QUESTION } from '@/lib/game-logic';
+import { SUBJECT_AREAS, XP_PER_QUESTION, calculatePlayerStats } from '@/lib/game-logic';
 import { provideExamFeedback } from '@/ai/flows/provide-exam-feedback';
 import { getQuestQuestions } from '@/app/actions/arena';
 import { completeQuest, getNodeStarsAction, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
@@ -360,6 +360,12 @@ export default function LearningQuest() {
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
+  const [learningStage, setLearningStage] = useState<1 | 2 | 3>(1);
+  const [learningWaveEnemies, setLearningWaveEnemies] = useState<{
+    minion: { name: string; icon: string; badge: string };
+    enforcer: { name: string; icon: string; badge: string };
+    boss: { name: string; icon: string; badge: string; idleSprite: string | null; attackSprite: string | null; heavyAttackSprite: string | null; idleFrames: number; attackFrames: number; heavyAttackFrames: number };
+  } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('cc-1');
   const [showChapterMap, setShowChapterMap] = useState<boolean>(false);
   const [nodeStars, setNodeStars] = useState<Record<string, number>>({});
@@ -406,6 +412,96 @@ export default function LearningQuest() {
     ];
   };
 
+  const getLearningWaveState = (
+    questions: Question[],
+    userAnswersList: { isCorrect: boolean; difficulty?: string }[],
+    subject: string,
+    waveEnemies: any
+  ) => {
+    if (!questions || questions.length === 0) {
+      return {
+        waveStage: 1,
+        name: 'Lab Minion',
+        badge: 'MINION 👾',
+        icon: '🧪',
+        hp: 100,
+        maxHp: 100,
+        damagePerQ: 34,
+        idleSprite: null,
+        attackSprite: null,
+        heavyAttackSprite: null,
+      };
+    }
+
+    const currentQIndex = Math.min(questions.length - 1, userAnswersList.length);
+    const currentQ = questions[currentQIndex] || questions[0];
+    const currentDiff = String(currentQ?.difficulty || 'EASY').toUpperCase();
+
+    const waveStage = currentDiff === 'EASY' ? 1 : currentDiff === 'MEDIUM' ? 2 : 3;
+
+    // Filter questions that belong to the current wave difficulty
+    const waveQuestions = questions.filter(q => String(q.difficulty || 'EASY').toUpperCase() === currentDiff);
+    const waveQCount = Math.max(1, waveQuestions.length);
+
+    // Count ONLY CORRECT answers for THIS wave difficulty!
+    const correctInWave = userAnswersList.filter((ans, idx) => {
+      const qDiff = String(ans.difficulty || questions[idx]?.difficulty || 'EASY').toUpperCase();
+      return ans.isCorrect && qDiff === currentDiff;
+    }).length;
+
+    const damagePerQ = 100 / waveQCount;
+    const currentHp = Math.max(0, Math.round(100 - (correctInWave * damagePerQ)));
+
+    const waveMinion = waveEnemies?.minion;
+    const waveEnforcer = waveEnemies?.enforcer;
+    const waveBoss = waveEnemies?.boss;
+
+    if (waveStage === 1) {
+      return {
+        waveStage: 1,
+        name: waveMinion?.name || 'Reagent Strip Slime',
+        badge: 'MINION 👾',
+        icon: waveMinion?.icon || '🧪',
+        hp: currentHp,
+        maxHp: 100,
+        damagePerQ,
+        idleSprite: null,
+        attackSprite: null,
+        heavyAttackSprite: null,
+      };
+    } else if (waveStage === 2) {
+      return {
+        waveStage: 2,
+        name: waveEnforcer?.name || 'Nitrite Spectre',
+        badge: 'ENFORCER 👹',
+        icon: waveEnforcer?.icon || '👻',
+        hp: currentHp,
+        maxHp: 100,
+        damagePerQ,
+        idleSprite: null,
+        attackSprite: null,
+        heavyAttackSprite: null,
+      };
+    } else {
+      const meta = getSubjectMeta(subject);
+      return {
+        waveStage: 3,
+        name: waveBoss?.name || meta.enemy,
+        badge: 'ELITE 👑',
+        icon: waveBoss?.icon || '👑',
+        hp: currentHp,
+        maxHp: 100,
+        damagePerQ,
+        idleSprite: waveBoss?.idleSprite || meta?.idleSpriteUrl || null,
+        attackSprite: waveBoss?.attackSprite || meta?.attackSpriteUrl || null,
+        heavyAttackSprite: waveBoss?.heavyAttackSprite || meta?.heavyAttackSpriteUrl || null,
+        idleFrames: waveBoss?.idleFrames || meta?.idleFrames || 7,
+        attackFrames: waveBoss?.attackFrames || meta?.attackFrames || 17,
+        heavyAttackFrames: waveBoss?.heavyAttackFrames || meta?.heavyAttackFrames || 11,
+      };
+    }
+  };
+
   // Helper to calculate Level-Scaled HP for Player and 3-Stage Enemies
   const calculatePlayerMaxHp = (level: number, hasShield: boolean) => {
     const base = 100 + (Math.max(1, level) - 1) * 15;
@@ -413,9 +509,14 @@ export default function LearningQuest() {
   };
 
   const calculateEnemyStageHp = (stage: 1 | 2 | 3, level: number, difficulty: string) => {
-    const baseHp = stage === 1 ? 80 : stage === 2 ? 130 : 220;
-    const modeMul = difficulty === 'EASY' ? 0.85 : difficulty === 'HARD' ? 1.25 : 1.0;
-    return Math.floor(baseHp * (1 + (Math.max(1, level) - 1) * 0.12) * modeMul);
+    const safeLevel = Math.max(1, level);
+    const playerStats = calculatePlayerStats(safeLevel, 0, null);
+
+    // Number of base correct hits needed to defeat enemy
+    const turnsToDefeat = stage === 1 ? 5 : stage === 2 ? 8 : 12;
+    const modeMul = difficulty === 'EASY' ? 0.75 : difficulty === 'HARD' ? 1.4 : 1.0;
+
+    return Math.round(playerStats.totalDamage * turnsToDefeat * modeMul);
   };
 
   // Load Saved Node Stars & Clears from Database (User Scoped)
@@ -1010,11 +1111,15 @@ export default function LearningQuest() {
   const startQuest = async (limit: number = 50, specificDifficulty?: string) => {
     setIsLoading(true);
     setUserAnswers([]);
+    setScore(0);
     setConfidence(null);
     setEarnedBadges([]);
     setConfidenceSubmitted(false);
     setQuestStartTime(Date.now());
     isFinishingRef.current = false;
+    setBossAnimState('idle');
+    setPlayerAnimState('idle');
+    setIsAnimating(null);
     try {
       if (quizMode === 'boss-battle' && specificDifficulty) {
         setBossDifficulty(specificDifficulty);
@@ -1030,12 +1135,11 @@ export default function LearningQuest() {
         return;
       }
       setQuestions(selected);
-      // Level-scaled HP: 200 base + 5 per level
-      let startingHp = quizMode === 'boss-battle' ? 200 + (userLevel * 5) : 100;
+      const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (inventory.erlenmeyer_shield || 0) > 0;
+      const startingHp = quizMode === 'boss-battle' ? calculatePlayerMaxHp(userLevel, hasShieldEffect) : 100;
 
       // Erlenmeyer Shield Consumable Effect
-      if (quizMode === 'boss-battle' && equippedItem === 'erlenmeyer_shield' && (inventory.erlenmeyer_shield || 0) > 0) {
-        startingHp += 20;
+      if (quizMode === 'boss-battle' && hasShieldEffect) {
         addFloatingText('player', '+20 SHIELD HP! 🧪🛡️', 'text-blue-400');
         setInventory(prev => ({ ...prev, erlenmeyer_shield: Math.max(0, (prev.erlenmeyer_shield || 0) - 1) }));
       }
@@ -1053,6 +1157,37 @@ export default function LearningQuest() {
         const initialStage = isChapter3FinalBoss ? 3 : 1;
         setBattleStage(initialStage);
         bossStartingHp = calculateEnemyStageHp(initialStage, userLevel, specificDifficulty || 'MEDIUM');
+      } else if (quizMode === 'learning') {
+        setLearningStage(1);
+        const activeNodes = getSubjectNodes(selectedSubject);
+        const randomNode1 = activeNodes[Math.floor(Math.random() * activeNodes.length)] || activeNodes[0];
+        const randomNode2 = activeNodes[Math.floor(Math.random() * activeNodes.length)] || activeNodes[0];
+        const randomNode3 = activeNodes[Math.floor(Math.random() * activeNodes.length)] || activeNodes[0];
+        const subjectMeta = getSubjectMeta(selectedSubject);
+
+        setLearningWaveEnemies({
+          minion: {
+            name: randomNode1.minionName || 'Reagent Strip Slime',
+            icon: randomNode1.minionIcon || '🧪',
+            badge: 'MINION 👾',
+          },
+          enforcer: {
+            name: randomNode2.miniBossName || 'Nitrite Spectre',
+            icon: randomNode2.miniBossIcon || '👻',
+            badge: 'ENFORCER 👹',
+          },
+          boss: {
+            name: randomNode3.bossName || subjectMeta.enemy,
+            icon: randomNode3.bossIcon || '👑',
+            badge: 'ELITE 👑',
+            idleSprite: randomNode3.idleSpriteUrl || subjectMeta.idleSpriteUrl || null,
+            attackSprite: randomNode3.attackSpriteUrl || subjectMeta.attackSpriteUrl || null,
+            heavyAttackSprite: randomNode3.heavyAttackSpriteUrl || subjectMeta.heavyAttackSpriteUrl || null,
+            idleFrames: randomNode3.idleFrames || subjectMeta.idleFrames || 7,
+            attackFrames: randomNode3.attackFrames || subjectMeta.attackFrames || 17,
+            heavyAttackFrames: randomNode3.heavyAttackFrames || subjectMeta.heavyAttackFrames || 11,
+          },
+        });
       }
       setEnemyHealth(bossStartingHp);
       setTurnCount(0);
@@ -1095,6 +1230,7 @@ export default function LearningQuest() {
     }]);
 
     if (isCorrect) {
+      setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
       playSfx('correct');
       if (quizMode === 'boss-battle') {
@@ -1105,115 +1241,141 @@ export default function LearningQuest() {
       playSfx('wrong');
     }
 
-    const baseDamage = quizMode === 'boss-battle' ? 25 : 100 / (questions.length || 5);
     let enemyDmg = 0;
     let playerDmg = 0;
     let playerHeal = 0;
     let enemyHeal = 0;
+    let isCritHit = false;
 
     let newPoisonedState = playerPoisoned;
     let newShieldState = bossShieldActive;
 
-    // Apply poison tick at the very start of the turn
-    if (quizMode === 'boss-battle' && playerPoisoned) {
-      playerDmg += baseDamage * 0.5; // 50% of a normal hit in poison damage
-    }
+    if (quizMode === 'boss-battle') {
+      const playerStats = calculatePlayerStats(userLevel, streak, equippedItem);
 
-    // Evaluate Phase 3 Enrage Healing (if boss < 20% HP)
-    if (quizMode === 'boss-battle' && enemyHealth > 0 && enemyHealth <= 20) {
-      enemyHeal += baseDamage * 0.5; // Heals a bit every turn
-    }
+      // Roll Critical Strike chance based on Player's Crit Rate attribute
+      isCritHit = isCorrect && (Math.random() * 100 < playerStats.critRate);
+      const critMultiplier = isCritHit ? 1.5 : 1.0;
 
-    if (quizMode === 'boss-battle' && action) {
-      if (action === 'heavy') {
-        if (isCorrect) {
-          enemyDmg = baseDamage * 2;
-          newShieldState = false; // Heavy shatters the shield!
-        } else {
-          playerDmg += baseDamage * 2;
-        }
-      } else if (action === 'defend') {
-        if (isCorrect) {
-          playerHeal += baseDamage * 1.5;
-          newPoisonedState = false; // Cures poison!
-        } else {
-          playerDmg += baseDamage * 0.5;
-        }
-      } else {
-        // normal
-        if (isCorrect) {
-          if (!bossShieldActive || battleStage !== 3) {
-            enemyDmg = baseDamage;
+      // Base boss hit scales to player's Max HP (~22% of player's Max HP before defense)
+      const enemyBaseHit = playerStats.maxHp * 0.22;
+
+      // Apply poison tick at the very start of the turn
+      if (playerPoisoned) {
+        playerDmg += playerStats.maxHp * 0.08;
+      }
+
+      // Evaluate Phase 3 Enrage Healing (if boss < 20% HP)
+      if (enemyHealth > 0 && enemyHealth <= 20) {
+        enemyHeal += playerStats.totalDamage * 0.5;
+      }
+
+      if (action) {
+        if (action === 'heavy') {
+          if (isCorrect) {
+            enemyDmg = playerStats.totalDamage * 1.8 * critMultiplier;
+            newShieldState = false; // Heavy shatters the shield!
           } else {
-            // Shield absorbed the hit (Only Chapter Boss at Stage 3 has shield!)
-            enemyDmg = 0;
-            toast({ title: "Shield Absorbed Attack! 🛡️", description: "Normal attacks deal 0 damage while the Boss shield is active. Use Heavy Attack to shatter it!", variant: "destructive" });
+            playerDmg += enemyBaseHit * 1.5;
+          }
+        } else if (action === 'defend') {
+          if (isCorrect) {
+            playerHeal += playerStats.totalDamage * 1.2;
+            newPoisonedState = false; // Cures poison!
+          } else {
+            playerDmg += enemyBaseHit * 0.5;
           }
         } else {
-          playerDmg += baseDamage;
+          // normal
+          if (isCorrect) {
+            if (!bossShieldActive || battleStage !== 3) {
+              enemyDmg = playerStats.totalDamage * critMultiplier;
+            } else {
+              // Shield absorbed the hit (Only Chapter Boss at Stage 3 has shield!)
+              enemyDmg = 0;
+              toast({ title: "Shield Absorbed Attack! 🛡️", description: "Normal attacks deal 0 damage while the Boss shield is active. Use Heavy Attack to shatter it!", variant: "destructive" });
+            }
+          } else {
+            playerDmg += enemyBaseHit;
+          }
         }
-      }
 
-      // Aggressive Phase 2: ONLY the Stage 3 Boss has aggressive phases! (Boss <= 60% HP and > 20% HP) -> Double damage on player mistake
-      if (battleStage === 3 && !isCorrect && enemyHealth <= 60 && enemyHealth > 20) {
-        playerDmg *= 2;
-      }
+        // Aggressive Phase 2: ONLY the Stage 3 Boss has aggressive phases! (Boss <= 60% HP and > 20% HP) -> Double damage on player mistake
+        if (battleStage === 3 && !isCorrect && enemyHealth <= 60 && enemyHealth > 20) {
+          playerDmg *= 2;
+        }
 
-      // Poison Infliction Mechanics:
-      // Minion (Stage 1) -> NEVER poisons
-      // Mini-Boss (Stage 2) & Boss (Stage 3) -> Inflict poison debuffs on player mistakes
-      if (battleStage >= 2 && !isCorrect && Math.random() < 0.25) {
-        newPoisonedState = true;
-        toast({
-          title: "POISONED! ☠️",
-          description: battleStage === 2
-            ? "The Mini-Boss inflicted a toxic debuff! Use Defend to cure it."
-            : "The Chapter Boss inflicted a toxic debuff! Use Defend to cure it.",
-          variant: "destructive"
-        });
-      }
-
-      // Buffered Saline Consumable Effect (Nullifies 1st Poison/Debuff)
-      if (quizMode === 'boss-battle' && equippedItem === 'buffered_saline' && !salineUsedThisBattle && (inventory.buffered_saline || 0) > 0) {
-        if (newPoisonedState || (!isCorrect && playerDmg > 0)) {
-          newPoisonedState = false;
-          setSalineUsedThisBattle(true);
-          addFloatingText('player', 'DEBUFF NULLIFIED! 🧪💧', 'text-emerald-400');
+        // Poison Infliction Mechanics:
+        if (battleStage >= 2 && !isCorrect && Math.random() < 0.25) {
+          newPoisonedState = true;
           toast({
-            title: "Buffered Saline Activated! 🧪💧",
-            description: "Your Buffered Saline neutralized the toxic affliction!",
+            title: "POISONED! ☠️",
+            description: battleStage === 2
+              ? "The Mini-Boss inflicted a toxic debuff! Use Defend to cure it."
+              : "The Chapter Boss inflicted a toxic debuff! Use Defend to cure it.",
+            variant: "destructive"
           });
-          setInventory(prev => ({ ...prev, buffered_saline: Math.max(0, (prev.buffered_saline || 0) - 1) }));
         }
+
+        // Buffered Saline Consumable Effect (Nullifies 1st Poison/Debuff)
+        if (equippedItem === 'buffered_saline' && !salineUsedThisBattle && (inventory.buffered_saline || 0) > 0) {
+          if (newPoisonedState || (!isCorrect && playerDmg > 0)) {
+            newPoisonedState = false;
+            setSalineUsedThisBattle(true);
+            addFloatingText('player', 'DEBUFF NULLIFIED! 🧪💧', 'text-emerald-400');
+            toast({
+              title: "Buffered Saline Activated! 🧪💧",
+              description: "Your Buffered Saline neutralized the toxic affliction!",
+            });
+            setInventory(prev => ({ ...prev, buffered_saline: Math.max(0, (prev.buffered_saline || 0) - 1) }));
+          }
+        }
+
+        // Shield Mechanics: ONLY the Stage 3 Chapter Boss casts shield! (Every 4 turns)
+        if (battleStage === 3 && (turnCount + 1) % 4 === 0 && enemyHealth > 0) {
+          newShieldState = true;
+          toast({ title: "Boss Casts Shield! 🛡️", description: "The Chapter Boss puts up a magical shield. Only Heavy attacks can shatter it!", variant: "destructive" });
+        } else if (battleStage < 3) {
+          newShieldState = false;
+        }
+
+      } else {
+        if (isCorrect) enemyDmg = playerStats.totalDamage * critMultiplier;
+        else playerDmg = playerStats.totalDamage;
       }
 
-      // Shield Mechanics: ONLY the Stage 3 Chapter Boss casts shield! (Every 4 turns)
-      if (battleStage === 3 && (turnCount + 1) % 4 === 0 && enemyHealth > 0) {
-        newShieldState = true;
-        toast({ title: "Boss Casts Shield! 🛡️", description: "The Chapter Boss puts up a magical shield. Only Heavy attacks can shatter it!", variant: "destructive" });
-      } else if (battleStage < 3) {
-        newShieldState = false;
-      }
-
-    } else {
-      if (isCorrect) enemyDmg = baseDamage;
-      else playerDmg = baseDamage;
-    }
-
-    if (quizMode === 'boss-battle') {
       const bossMul = bossDifficulty === 'EASY' ? 0.7 : bossDifficulty === 'HARD' ? 1.5 : 1;
-      const playerMul = bossDifficulty === 'EASY' ? 1.5 : bossDifficulty === 'HARD' ? 0.7 : 1;
+      const playerMul = bossDifficulty === 'EASY' ? 1.4 : bossDifficulty === 'HARD' ? 0.75 : 1;
 
-      // Level-scaled damage: Add a bonus 0.5 base damage per level
-      const levelBonusDamage = userLevel * 0.5;
+      // Apply difficulty multiplier to player attack
+      enemyDmg = enemyDmg * playerMul;
 
-      enemyDmg = (enemyDmg + (enemyDmg > 0 ? levelBonusDamage : 0)) * playerMul;
-
-      const bossBonusDamage = userLevel * 0.4;
-      playerDmg = (playerDmg + (playerDmg > 0 ? bossBonusDamage : 0)) * bossMul;
+      // Apply Player Defense Attribute Mitigation to Incoming Boss Damage:
+      const defenseMitigation = 100 / (100 + playerStats.defense);
+      playerDmg = playerDmg * bossMul * defenseMitigation;
 
       enemyHeal *= bossMul;
       playerHeal *= playerMul;
+    } else if (quizMode === 'learning') {
+      const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
+      if (isCorrect) {
+        enemyDmg = waveState.damagePerQ;
+        playerHeal = 15; // Reward player with +15 HP heal on every correct answer!
+      } else {
+        enemyDmg = 0; // Enemy takes ZERO damage on player mistakes!
+        // Player HP Scaling: Allow ~35% mistake budget (minimum 5 allowed mistakes) across total questions
+        const totalQCount = questions.length || 10;
+        const allowedMistakes = Math.max(5, Math.ceil(totalQCount * 0.35));
+        playerDmg = 100 / allowedMistakes;
+      }
+    } else {
+      // Learning Mode & Test Mode: 100 HP proportional scaling across total questions
+      const baseStepDamage = 100 / (questions.length || 5);
+      if (isCorrect) {
+        enemyDmg = baseStepDamage;
+      } else {
+        playerDmg = baseStepDamage;
+      }
     }
 
     // Apply health changes
@@ -1240,6 +1402,8 @@ export default function LearningQuest() {
           } else if (battleStage === 1) {
             setBattleStage(2);
             setBossShieldActive(false);
+            setBossAnimState('idle');
+            setPlayerAnimState('idle');
             const stage2Hp = calculateEnemyStageHp(2, userLevel, bossDifficulty || 'MEDIUM');
             setEnemyHealth(stage2Hp);
             addFloatingText('enemy', '👾 MINION DEFEATED! 👹 MINI-BOSS ENTERS!', 'text-amber-300');
@@ -1250,6 +1414,8 @@ export default function LearningQuest() {
           } else if (battleStage === 2) {
             setBattleStage(3);
             setBossShieldActive(false);
+            setBossAnimState('idle');
+            setPlayerAnimState('idle');
             const stage3Hp = calculateEnemyStageHp(3, userLevel, bossDifficulty || 'MEDIUM');
             setEnemyHealth(stage3Hp);
             addFloatingText('enemy', '👹 MINI-BOSS DEFEATED! 👑 CHAPTER BOSS APPEARS!', 'text-red-400');
@@ -1258,10 +1424,43 @@ export default function LearningQuest() {
               description: "The Mini-Boss has fallen! The Chapter Boss enters the arena!",
             });
           }
+        } else if (quizMode === 'learning' && nextHp <= 0) {
+          // Learning Mode HP Progression: Defeat enemy first before advancing to next wave!
+          if (learningStage === 1) {
+            setLearningStage(2);
+            setEnemyHealth(100);
+            setIsAnimating("enemy");
+            setBossAnimState('idle');
+            setPlayerAnimState('idle');
+            addFloatingText('enemy', '👾 MINION DEFEATED! 👹 ENFORCER ENTERS!', 'text-amber-300 font-black');
+            toast({
+              title: "👾 Wave 1 Cleared!",
+              description: "You defeated the Minion! Prepare to face the Enforcer!",
+            });
+          } else if (learningStage === 2) {
+            setLearningStage(3);
+            setEnemyHealth(100);
+            setIsAnimating("enemy");
+            setBossAnimState('idle');
+            setPlayerAnimState('idle');
+            addFloatingText('enemy', '👹 ENFORCER DEFEATED! 👑 ELITE BOSS APPEARS!', 'text-red-400 font-black');
+            toast({
+              title: "👹 Wave 2 Cleared!",
+              description: "The Enforcer has fallen! The Elite Boss enters the arena!",
+            });
+          } else {
+            setEnemyHealth(100);
+            setIsAnimating("enemy");
+            addFloatingText('enemy', '👑 ELITE BOSS DEFEATED!', 'text-yellow-300 font-black');
+          }
         } else {
           setEnemyHealth(nextHp);
         }
-        addFloatingText('enemy', `-${Math.ceil(enemyDmg)} ${action === 'heavy' ? 'CRITICAL HIT!' : 'DMG!'}`, 'text-yellow-400');
+        addFloatingText(
+          'enemy',
+          `-${Math.ceil(enemyDmg)} ${isCritHit ? '⚡ CRITICAL STRIKE!' : action === 'heavy' ? 'HEAVY HIT!' : 'DMG!'}`,
+          isCritHit ? 'text-amber-300 font-black' : 'text-yellow-400'
+        );
       };
 
       if (isCorrect) {
@@ -1276,13 +1475,42 @@ export default function LearningQuest() {
     if (playerDmg > 0) {
       const applyPlayerDamage = () => {
         setIsAnimating("player");
-        setPlayerHealth(prev => Math.max(0, prev - playerDmg));
+        const nextHp = Math.max(0, playerHealth - playerDmg);
+        setPlayerHealth(nextHp);
+
         addFloatingText('player', `-${Math.ceil(playerDmg)} DMG!`, 'text-red-500');
-        if (playerDmg >= baseDamage || quizMode === 'boss-battle') {
-          const flashEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_hit_flash') !== 'false' : true;
-          if (flashEnabled) {
-            setHitFlash(true);
-            setTimeout(() => setHitFlash(false), 300);
+        const flashEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_hit_flash') !== 'false' : true;
+        if (flashEnabled) {
+          setHitFlash(true);
+          setTimeout(() => setHitFlash(false), 300);
+        }
+
+        if (nextHp <= 0 && !isFinishingRef.current) {
+          if (quizMode === 'learning') {
+            // Second Wind / Revive Mechanic for Learning Mode: Allows complete question & explanation coverage!
+            setPlayerHealth(100);
+            addFloatingText('player', '🧪 SECOND WIND! HP RESTORED!', 'text-emerald-400 font-black');
+            playSfx('heal');
+            toast({
+              title: "🧪 Second Wind Activated!",
+              description: "In Learning Mode, every question is a learning opportunity. Keep pushing forward!",
+            });
+          } else {
+            // Boss-Battle & Test Mode: Strict Game Over Defeat
+            addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-600 font-black');
+            setJudgementText('DEFEAT');
+            playSfx('wrong');
+            toast({
+              variant: "destructive",
+              title: "💀 Defeated in Arena!",
+              description: "Your health dropped to 0. Review your answer performance to strengthen your weak areas!",
+            });
+
+            setTimeout(() => {
+              setJudgementText(null);
+              const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+              handleFinish(currentScore, 'defeat');
+            }, 1800);
           }
         }
       };
@@ -1670,11 +1898,20 @@ export default function LearningQuest() {
                       {earnedBadges.map((badge) => (
                         <div
                           key={badge.id}
-                          className="bg-card/80 dark:bg-card/50 p-3 sm:p-4 rounded-xl border border-amber-500/30 text-center space-y-1 shadow-sm"
+                          className="bg-card/80 dark:bg-card/50 p-3.5 sm:p-5 rounded-xl border border-amber-500/30 text-center space-y-2 shadow-sm flex flex-col items-center justify-center hover:scale-105 transition-all duration-300"
                         >
-                          <div className="text-2xl">✨</div>
-                          <p className="font-bold text-xs md:text-sm text-foreground">{badge.title}</p>
-                          <p className="text-[9px] text-muted-foreground">{badge.name}</p>
+                          <div className="relative w-12 h-12 sm:w-16 sm:h-16 my-1 drop-shadow-[0_4px_12px_rgba(245,158,11,0.4)]">
+                            <Image
+                              src={badge.spriteUrl || `/ui/${badge.id}-badge.png`}
+                              alt={badge.title}
+                              fill
+                              className="object-contain"
+                              style={{ imageRendering: 'pixelated' }}
+                              unoptimized
+                            />
+                          </div>
+                          <p className="font-bold text-xs sm:text-sm text-foreground tracking-wide">{badge.title}</p>
+                          <p className="text-[9px] sm:text-[10px] text-amber-600/90 dark:text-amber-400/90 font-semibold">{badge.name}</p>
                         </div>
                       ))}
                     </div>
@@ -2070,21 +2307,46 @@ export default function LearningQuest() {
             {(() => {
               const activeNodes = getSubjectNodes(selectedSubject);
               const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-              const activeEnemyName = quizMode === 'boss-battle'
-                ? (battleStage === 1 ? currentActiveNode.minionName : battleStage === 2 ? currentActiveNode.miniBossName : currentActiveNode.bossName)
-                : subjectMeta.enemy;
-              const activeEnemyBadge = quizMode === 'boss-battle'
-                ? (battleStage === 1 ? 'MINION 👾' : battleStage === 2 ? 'MINI-BOSS 👹' : 'BOSS 👑')
-                : 'BOSS';
+
+              const currentQ = questions[Math.min(questions.length - 1, userAnswers.length)] || questions[0];
+              const currentDiff = String(currentQ?.difficulty || 'EASY').toUpperCase();
+
+              let activeEnemyName = subjectMeta.enemy;
+              let activeEnemyBadge = 'BOSS 👑';
+              let idleSprite: string | null = null;
+              let attackSprite: string | null = null;
+              let heavyAttackSprite: string | null = null;
+              let displayEnemyHp = enemyHealth;
+
+              if (quizMode === 'boss-battle') {
+                activeEnemyName = battleStage === 1 ? currentActiveNode.minionName : battleStage === 2 ? currentActiveNode.miniBossName : currentActiveNode.bossName;
+                activeEnemyBadge = battleStage === 1 ? 'MINION 👾' : battleStage === 2 ? 'MINI-BOSS 👹' : 'BOSS 👑';
+                const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
+                const isBossStageOrCh3 = battleStage === 3 || isChapter3FinalBoss;
+                idleSprite = isBossStageOrCh3 ? (currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null) : null;
+                attackSprite = isBossStageOrCh3 ? (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null) : null;
+                heavyAttackSprite = isBossStageOrCh3 ? (currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null) : null;
+                displayEnemyHp = enemyHealth;
+              } else if (quizMode === 'learning') {
+                const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
+                activeEnemyName = waveState.name;
+                activeEnemyBadge = waveState.badge;
+                idleSprite = waveState.idleSprite;
+                attackSprite = waveState.attackSprite;
+                heavyAttackSprite = waveState.heavyAttackSprite;
+                displayEnemyHp = waveState.hp;
+              } else {
+                activeEnemyName = subjectMeta.enemy;
+                activeEnemyBadge = 'BOSS 👑';
+                idleSprite = currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null;
+                attackSprite = currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null;
+                heavyAttackSprite = currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null;
+                displayEnemyHp = enemyHealth;
+              }
+
               const stageMaxHp = quizMode === 'boss-battle'
                 ? calculateEnemyStageHp(battleStage, userLevel, bossDifficulty || 'MEDIUM')
                 : 100;
-
-              const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
-              const isBossStageOrCh3 = (quizMode === 'boss-battle' && battleStage === 3) || isChapter3FinalBoss;
-              const idleSprite = isBossStageOrCh3 ? (currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl) : null;
-              const attackSprite = isBossStageOrCh3 ? (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl) : null;
-              const heavyAttackSprite = isBossStageOrCh3 ? (currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl) : null;
 
               return (
                 <div className={cn(
@@ -2107,10 +2369,10 @@ export default function LearningQuest() {
                     </div>
                     <div className="flex justify-between items-center mb-0.5 px-0.5 mt-0.5">
                       <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase">HP</span>
-                      <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(enemyHealth)} / {stageMaxHp}</span>
+                      <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(displayEnemyHp)} / {stageMaxHp}</span>
                     </div>
                     <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-full overflow-hidden border border-white/10">
-                      <div className="h-full bg-primary transition-all duration-500" style={{ width: `${Math.min(100, (enemyHealth / stageMaxHp) * 100)}%` }} />
+                      <div className="h-full bg-primary transition-all duration-500" style={{ width: `${Math.min(100, (displayEnemyHp / stageMaxHp) * 100)}%` }} />
                     </div>
                   </div>
                   <div className="flex justify-end pr-2 md:pr-4 mt-2 relative items-center min-h-[96px]">
@@ -2122,7 +2384,7 @@ export default function LearningQuest() {
                         idleFrames={currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7}
                         attackFrames={currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17}
                         heavyAttackFrames={currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11}
-                        animState={bossAnimState}
+                        animState={introPhase === 'active' ? bossAnimState : 'idle'}
                         onAttackComplete={() => setBossAnimState('idle')}
                         scale={1.35}
                         isHit={isAnimating === "enemy"}
@@ -2178,30 +2440,38 @@ export default function LearningQuest() {
               </div>
 
               {/* Player Health & Stats Card */}
-              <div className="bg-black/50 backdrop-blur-md border border-white/15 p-2 md:p-3 rounded-lg shadow-2xl min-w-[120px] md:min-w-[170px] relative mb-3 ml-1">
-                {streak >= 2 && (
-                  <div className="absolute -top-3.5 -right-2 z-30 animate-bounce">
-                    <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 border border-yellow-300 text-white font-bytebounce text-xs md:text-sm px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.8)] flex items-center gap-1 whitespace-nowrap">
-                      <Flame className="w-3 h-3 text-yellow-200 fill-yellow-200 animate-pulse" />
-                      {streak}x COMBO
-                    </span>
+              {(() => {
+                const maxPlayerHp = quizMode === 'boss-battle'
+                  ? calculatePlayerMaxHp(userLevel, equippedItem === 'erlenmeyer_shield')
+                  : 100;
+
+                return (
+                  <div className="bg-black/50 backdrop-blur-md border border-white/15 p-2 md:p-3 rounded-lg shadow-2xl min-w-[120px] md:min-w-[170px] relative mb-3 ml-1">
+                    {streak >= 2 && (
+                      <div className="absolute -top-3.5 -right-2 z-30 animate-bounce">
+                        <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 border border-yellow-300 text-white font-bytebounce text-xs md:text-sm px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.8)] flex items-center gap-1 whitespace-nowrap">
+                          <Flame className="w-3 h-3 text-yellow-200 fill-yellow-200 animate-pulse" />
+                          {streak}x COMBO
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center mb-1 gap-2">
+                      <span className="text-[7px] md:text-[8px] font-black text-white uppercase">Aspirant {userLastName}</span>
+                      <div className="flex items-center gap-1">
+                        {playerPoisoned && <span className="text-[7px] md:text-[8px] bg-green-500 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="Taking damage every turn! Defend to cure.">POISONED</span>}
+                        <span className="text-[7px] md:text-[8px] bg-background text-primary px-1.5 py-0.5 rounded font-black shrink-0">LVL {userLevel}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center mb-0.5 px-0.5 mt-0.5">
+                      <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase">HP</span>
+                      <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(playerHealth)} / {maxPlayerHp}</span>
+                    </div>
+                    <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-full overflow-hidden border border-white/10">
+                      <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min(100, (playerHealth / maxPlayerHp) * 100)}%` }} />
+                    </div>
                   </div>
-                )}
-                <div className="flex justify-between items-center mb-1 gap-2">
-                  <span className="text-[7px] md:text-[8px] font-black text-white uppercase">Aspirant {userLastName}</span>
-                  <div className="flex items-center gap-1">
-                    {playerPoisoned && <span className="text-[7px] md:text-[8px] bg-green-500 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="Taking damage every turn! Defend to cure.">POISONED</span>}
-                    <span className="text-[7px] md:text-[8px] bg-background text-primary px-1.5 py-0.5 rounded font-black shrink-0">LVL {userLevel}</span>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center mb-0.5 px-0.5 mt-0.5">
-                  <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase">HP</span>
-                  <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(playerHealth)} / {maxPlayerHp}</span>
-                </div>
-                <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-full overflow-hidden border border-white/10">
-                  <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min(100, (playerHealth / maxPlayerHp) * 100)}%` }} />
-                </div>
-              </div>
+                );
+              })()}
             </div>
           </div>
 

@@ -305,15 +305,16 @@ model EmailVerification {
 
 model Badge {
   id               String      @id @default(auto()) @map("_id") @db.ObjectId
-  badgeId          String      @unique
-  title            String
-  name             String
-  description      String?
-  category         String?     @default("QUEST")
-  icon             String?     @default("trophy")
-  spriteUrl        String?
-  color            String?     @default("#FFD700")
-  unlockCondition String?
+  badgeId          String      @unique // Master slug e.g. "master", "gold", "silver", "bronze", "adept", "speed", "streak-7", "streak-14", "streak-30"
+  title            String      // e.g. "Master", "Gold", "Silver", "Bronze", "Adept", "Speed Master"
+  name             String      // e.g. "Master Badge", "Gold Badge", "Silver Badge", "Bronze Badge", "Adept Badge", "Speed Master Badge"
+  description      String?     // Detailed description of achievement & unlock criteria
+  category         String?     @default("PERFORMANCE") // "PERFORMANCE", "STREAK", "SPEED", "MASTERY"
+  tier             String?     @default("STANDARD") // "MYTHIC", "GOLD", "SILVER", "BRONZE", "SPECIAL"
+  icon             String?     @default("trophy") // Lucide icon fallback e.g. "trophy", "star", "flame", "zap"
+  spriteUrl        String?     // Custom pixel-art sprite asset URL e.g. "/ui/master-badge.png", "/ui/gold-badge.png", etc.
+  color            String?     @default("#FFD700") // Hex accent color
+  unlockCondition String?     // e.g. "100% perfect accuracy", "80-99% accuracy", "7-day streak"
   xpReward         Int?        @default(50)
   confidenceFactor Float?      @default(1.0)
   isActive         Boolean?    @default(true)
@@ -327,15 +328,18 @@ model UserBadge {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
   userId          String    @db.ObjectId
   badgeId         String?   @db.ObjectId
-  badgeSlug       String
-  subject         String?
-  questMode       String?
-  accuracy        Float?
-  confidenceLevel String?
+  badgeSlug       String    // Maps to Badge.badgeId (e.g. "master", "gold", "silver", "bronze", "adept", "speed")
+  subject         String?   // Subject area where earned e.g. "Clinical Chemistry"
+  questMode       String?   // Mode where earned e.g. "learning", "test", "boss-battle"
+  accuracy        Float?    // Quest accuracy percentage e.g. 100.0
+  confidenceLevel String?   // Conviction level e.g. "Unyielding", "Steady", "Shaky"
   xpEarned        Int?      @default(0)
   unlockedAt      DateTime? @default(now())
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   badge Badge? @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([badgeSlug])
 }
 

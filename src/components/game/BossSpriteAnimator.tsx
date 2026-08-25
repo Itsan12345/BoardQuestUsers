@@ -94,6 +94,13 @@ export function BossSpriteAnimator({
 
   return (
     <div className={cn("relative inline-flex flex-col items-center justify-center select-none", className)}>
+      {/* Hidden Image Preloader to prevent sprite sheet flash/flicker */}
+      <div className="hidden pointer-events-none aria-hidden">
+        {idleSpriteUrl && <img src={idleSpriteUrl} alt="" />}
+        {attackSpriteUrl && <img src={attackSpriteUrl} alt="" />}
+        {heavyAttackSpriteUrl && <img src={heavyAttackSpriteUrl} alt="" />}
+      </div>
+
       {/* Immersive Shadow & Magical Boss Pedestal */}
       <div className="absolute -bottom-2 w-28 h-6 bg-black/60 rounded-[100%] blur-md scale-y-50 pointer-events-none" />
       {isShielded && (

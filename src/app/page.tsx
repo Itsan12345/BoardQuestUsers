@@ -14,9 +14,7 @@ import { getUserStats, getLeaderboard, generateDailyMissions, getUserSettingsAct
 import { getStudyPlans } from '@/app/actions/study-plan';
 import { getStudentGuidanceAssignmentsAction, type GuidanceAssignmentRecord } from '@/app/actions/guidance';
 import { recordDailyLoginAction, getDailyLoginStatusAction } from '@/app/actions/daily-login';
-import { getMtleReadinessData } from '@/app/actions/mtle-predictor';
 import { type DailyLoginStatusData } from '@/lib/daily-login-config';
-import { type MtleReadinessResult } from '@/lib/mtle-predictor-engine';
 import { DailyLoginWidget } from '@/components/dashboard/DailyLoginWidget';
 import { DailyLoginRewardModal } from '@/components/dashboard/DailyLoginRewardModal';
 import { ActiveGuidanceBanner } from '@/components/guidance/ActiveGuidanceBanner';
@@ -31,7 +29,6 @@ function DashboardContent() {
   const [dailyMissions, setDailyMissions] = useState<any[]>([]);
   const [guidanceList, setGuidanceList] = useState<GuidanceAssignmentRecord[]>([]);
   const [dailyLoginStatus, setDailyLoginStatus] = useState<DailyLoginStatusData | null>(null);
-  const [mtleData, setMtleData] = useState<MtleReadinessResult | null>(null);
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [nextMilestone, setNextMilestone] = useState<{ subject: string; date: Date } | null>(null);
   const [targetExamDate, setTargetExamDate] = useState<Date | null>(null);
@@ -41,22 +38,20 @@ function DashboardContent() {
 
   const loadData = useCallback(async () => {
     try {
-      const [stats, leadersData, plans, missions, settings, guidanceRes, loginRecordRes, mtleRes] = await Promise.all([
+      const [stats, leadersData, plans, missions, settings, guidanceRes, loginRecordRes] = await Promise.all([
         getUserStats(),
         getLeaderboard(),
         getStudyPlans(),
         generateDailyMissions(),
         getUserSettingsAction().catch(() => null),
         getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] })),
-        recordDailyLoginAction().catch(() => ({ success: false, isLoggedIn: false, status: undefined })),
-        getMtleReadinessData().catch(() => null)
+        recordDailyLoginAction().catch(() => ({ success: false, isLoggedIn: false, status: undefined }))
       ]);
 
       setUser(stats);
       setLeaderboard(leadersData.topUsers);
       setUserRank(leadersData.currentUserRank);
       setDailyMissions(missions);
-      setMtleData(mtleRes);
       if (guidanceRes?.success && guidanceRes.data) {
         setGuidanceList(guidanceRes.data);
       }
