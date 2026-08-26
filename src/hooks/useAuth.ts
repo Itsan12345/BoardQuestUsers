@@ -9,7 +9,7 @@ export function useAuth() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        const response = await fetch('/api/auth/verify');
+        const response = await fetch('/api/auth/verify', { cache: 'no-store' });
 
         if (response.ok) {
           setIsAuthenticated(true);
@@ -27,6 +27,16 @@ export function useAuth() {
     }
 
     checkAuth();
+
+    // Re-verify session when returning to this window/tab
+    const handleFocus = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [router]);
 
   return { isAuthenticated, isLoading };

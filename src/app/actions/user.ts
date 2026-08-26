@@ -138,7 +138,30 @@ export async function getUserProfile() {
   try {
     const cookieStore = await cookies();
     const userId = cookieStore.get('user_id')?.value;
-    if (!userId) return null;
+    // Verify if current device session token is still active in MongoDB UserSession
+    const sessionToken = cookieStore.get('bq_session_token')?.value;
+    if (sessionToken) {
+      const client = await clientPromise;
+      const db = client.db();
+
+      let userObjId: ObjectId | null = null;
+      try {
+        userObjId = new ObjectId(userId);
+      } catch (e) {}
+
+      const query = userObjId
+        ? { $or: [{ userId }, { userId: userObjId }], sessionId: sessionToken }
+        : { userId, sessionId: sessionToken };
+
+      const activeSession = await db.collection('UserSession').findOne(query);
+
+      if (!activeSession) {
+        // Session was logged out / revoked remotely by another device!
+        cookieStore.set('user_id', '', { path: '/', expires: new Date(0) });
+        cookieStore.set('bq_session_token', '', { path: '/', expires: new Date(0) });
+        return null;
+      }
+    }
 
     // Fetch current user data
     const user = await prisma.user.findUnique({
