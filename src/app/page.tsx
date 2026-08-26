@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, ChevronRight, Rocket, Loader2, Flame, Trophy, Target, Calendar as CalendarIcon } from 'lucide-react';
+import { Zap, ChevronRight, Rocket, Loader2, Flame, Trophy, Target, Calendar as CalendarIcon, Pencil, PlayCircle, BookOpen, GraduationCap, Sparkles, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -18,8 +18,41 @@ import { type DailyLoginStatusData } from '@/lib/daily-login-config';
 import { DailyLoginWidget } from '@/components/dashboard/DailyLoginWidget';
 import { DailyLoginRewardModal } from '@/components/dashboard/DailyLoginRewardModal';
 import { ActiveGuidanceBanner } from '@/components/guidance/ActiveGuidanceBanner';
+import { getUserLessonCompletions, getCategories, getLearningModules } from '@/app/actions/study';
 import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+const SUBJECT_LESSONS_MAP: Record<string, { id: string; title: string; duration?: string; description?: string }[]> = {
+  'Clinical Chemistry': [
+    { id: 'cc1', title: 'Carbohydrate Metabolism & Disorders', duration: '45m', description: 'Glucose regulation, diabetes mellitus diagnostics, and ketone body analysis.' },
+    { id: 'cc2', title: 'Lipid Profile & Lipoproteins', duration: '60m', description: 'Cholesterol, triglycerides, HDL/LDL fractionation, and hyperlipidemia.' },
+    { id: 'cc3', title: 'Renal Function Tests & NPNs', duration: '40m', description: 'BUN, creatinine, uric acid, and glomerular filtration clearance markers.' },
+  ],
+  'Hematology': [
+    { id: 'hem1', title: 'RBC Morphology & Anemias', duration: '50m', description: 'Erythropoiesis, hemoglobin synthesis, microcytic/macrocytic anemia evaluation.' },
+    { id: 'hem2', title: 'WBC Disorders & Leukemias', duration: '75m', description: 'Leukocyte kinetics, acute vs chronic leukemias, and flow cytometry markers.' },
+  ],
+  'Microbiology': [
+    { id: 'mic1', title: 'Bacteriology: Gram Positives', duration: '65m', description: 'Staphylococci, Streptococci, Enterococci identification & susceptibility.' },
+    { id: 'mic2', title: 'Enterobacteriaceae & Non-fermenters', duration: '90m', description: 'Gram-negative bacilli identification key, TSI reactions, and Pseudomonas.' },
+  ],
+  'Immunology & Serology and Immunohematology': [
+    { id: 'bb1', title: 'ABO & Rh Blood Group Systems', duration: '55m', description: 'Antigen-antibody interactions, forward/reverse typing, and Rh insolubilities.' },
+    { id: 'bb2', title: 'Blood Component Therapy', duration: '50m', description: 'PRBC, FFP, platelet concentrates processing, storage, and crossmatching.' },
+  ],
+  'Clinical Microscopy & Parasitology': [
+    { id: 'cm1', title: 'Routine Urinalysis: Physical & Chemical', duration: '40m', description: 'Specific gravity, reagent strip parameters, microscopic sediment analysis.' },
+    { id: 'cm2', title: 'CSF & Other Body Fluids Analysis', duration: '50m', description: 'Pleural, pericardial, peritoneal fluid cell counts and synovial crystal analysis.' },
+  ],
+  'Histopathology and Medtech Laws': [
+    { id: 'hp1', title: 'Tissue Fixation & Processing', duration: '50m', description: 'Fixatives, dehydration, clearing, infiltration, and H&E staining techniques.' },
+    { id: 'law1', title: 'RA 5527: Phil MedTech Act of 1969', duration: '45m', description: 'Legal definitions, Board of Medical Technology, and licensure rules.' },
+  ],
+  'Histopathology & MT Laws': [
+    { id: 'hp1', title: 'Tissue Fixation & Processing', duration: '50m', description: 'Fixatives, dehydration, clearing, infiltration, and H&E staining techniques.' },
+    { id: 'law1', title: 'RA 5527: Phil MedTech Act of 1969', duration: '45m', description: 'Legal definitions, Board of Medical Technology, and licensure rules.' },
+  ],
+};
 
 function DashboardContent() {
   const [mounted, setMounted] = useState(false);
@@ -35,17 +68,37 @@ function DashboardContent() {
   const [dailyQuota, setDailyQuota] = useState<number>(50);
   const [focusSubject, setFocusSubject] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeCourseInfo, setActiveCourseInfo] = useState<{
+    subject: string;
+    currentModuleTitle: string;
+    currentModuleDesc?: string;
+    completedCount: number;
+    totalLessons: number;
+    progressPercent: number;
+    upNextModule?: { title: string; duration?: string } | null;
+  }>({
+    subject: 'Clinical Chemistry',
+    currentModuleTitle: 'Carbohydrate Metabolism & Disorders',
+    currentModuleDesc: 'Glucose regulation, diabetes mellitus diagnostics, and ketone body analysis.',
+    completedCount: 0,
+    totalLessons: 3,
+    progressPercent: 0,
+    upNextModule: { title: 'Lipid Profile & Lipoproteins', duration: '60m' }
+  });
 
   const loadData = useCallback(async () => {
     try {
-      const [stats, leadersData, plans, missions, settings, guidanceRes, loginRecordRes] = await Promise.all([
+      const [stats, leadersData, plans, missions, settings, guidanceRes, loginRecordRes, completionsMap, dbCategories, dbModules] = await Promise.all([
         getUserStats(),
         getLeaderboard(),
         getStudyPlans(),
         generateDailyMissions(),
         getUserSettingsAction().catch(() => null),
         getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] })),
-        recordDailyLoginAction().catch(() => ({ success: false, isLoggedIn: false, status: undefined }))
+        recordDailyLoginAction().catch(() => ({ success: false, isLoggedIn: false, status: undefined })),
+        getUserLessonCompletions().catch(() => ({} as Record<string, string>)),
+        getCategories().catch(() => []),
+        getLearningModules().catch(() => []),
       ]);
 
       setUser(stats);
@@ -79,9 +132,10 @@ function DashboardContent() {
         } catch (e) {}
       }
 
+      let effectiveFocus = settings?.focusSubject && settings.focusSubject !== 'none' ? settings.focusSubject : null;
       if (settings) {
         setTargetExamDate(settings.targetExamDate ? new Date(settings.targetExamDate) : null);
-        setFocusSubject(settings.focusSubject && settings.focusSubject !== 'none' ? settings.focusSubject : null);
+        setFocusSubject(effectiveFocus);
       } else {
         setTargetExamDate(null);
         setFocusSubject(null);
@@ -92,6 +146,115 @@ function DashboardContent() {
         const futurePlans = plans.filter(p => new Date(p.targetDate) >= today);
         const activePlan = futurePlans.length > 0 ? futurePlans[0] : plans[plans.length - 1];
         setNextMilestone({ subject: activePlan.subject, date: new Date(activePlan.targetDate) });
+      }
+
+      // Build dynamic curriculum categories & modules from database
+      const baseCategories = (dbCategories && dbCategories.length > 0)
+        ? dbCategories.map((c: any) => ({ id: c.id, title: c.name }))
+        : Object.keys(SUBJECT_LESSONS_MAP).filter(k => k !== 'Histopathology & MT Laws').map(name => ({ id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), title: name }));
+
+      const dynamicCurriculum = baseCategories.map((cat: any) => {
+        const catId = cat.id;
+        const normCatName = cat.title.trim().toLowerCase();
+
+        const dynamicModulesForCat = (dbModules || []).filter((m: any) =>
+          m.categoryId === catId || (m.categoryId && m.categoryId.toString() === catId)
+        );
+
+        let lessons: any[] = [];
+        if (dynamicModulesForCat.length > 0) {
+          lessons = dynamicModulesForCat.map((m: any) => ({
+            id: m.id,
+            title: m.title,
+            description: m.description || 'Uploaded learning module',
+            duration: `${m.fileUrls?.length || 1} Doc`,
+            status: completionsMap[m.id] || 'not-started'
+          }));
+        } else {
+          const matchedKey = Object.keys(SUBJECT_LESSONS_MAP).find(k => k.trim().toLowerCase() === normCatName);
+          const staticLessons = matchedKey ? SUBJECT_LESSONS_MAP[matchedKey] : [
+            { id: `${cat.id}-1`, title: `${cat.title} Fundamentals & Core Concepts`, duration: "45m", description: `Core concepts for ${cat.title}` },
+            { id: `${cat.id}-2`, title: `${cat.title} Protocols & Review`, duration: "60m", description: `Review material for ${cat.title}` }
+          ];
+          lessons = staticLessons.map(l => ({
+            ...l,
+            status: completionsMap[l.id] || 'not-started'
+          }));
+        }
+
+        return {
+          id: cat.id,
+          title: cat.title,
+          lessons
+        };
+      });
+
+      // Load last studied info from localStorage or focus settings
+      let lastStudied: any = null;
+      try {
+        const raw = localStorage.getItem('bq_last_studied');
+        if (raw) lastStudied = JSON.parse(raw);
+      } catch (e) {}
+
+      let targetSubName = lastStudied?.subject || effectiveFocus || 'Clinical Chemistry';
+
+      let matchedCat = dynamicCurriculum.find(
+        c => c.title.toLowerCase() === targetSubName.toLowerCase() || c.id === targetSubName
+      );
+
+      if (!matchedCat && dynamicCurriculum.length > 0) {
+        matchedCat = dynamicCurriculum[0];
+      }
+
+      if (matchedCat) {
+        const lessons = matchedCat.lessons;
+        const totalL = lessons.length;
+        const compCount = lessons.filter(l => l.status === 'completed').length;
+        const progPct = totalL > 0 ? Math.min(100, Math.round((compCount / totalL) * 100)) : 0;
+
+        let curMod = lessons[0];
+        let upNext: { title: string; duration?: string } | null = null;
+
+        if (lastStudied?.subject?.toLowerCase() === matchedCat.title.toLowerCase() && lastStudied?.moduleId) {
+          const foundIdx = lessons.findIndex(l => l.id === lastStudied.moduleId);
+          if (foundIdx !== -1) {
+            curMod = lessons[foundIdx];
+            if (foundIdx + 1 < lessons.length) {
+              upNext = lessons[foundIdx + 1];
+            } else {
+              const currentSubIdx = dynamicCurriculum.findIndex(c => c.id === matchedCat!.id);
+              const nextCat = dynamicCurriculum[(currentSubIdx + 1) % dynamicCurriculum.length];
+              if (nextCat && nextCat.lessons.length > 0) {
+                upNext = { title: `${nextCat.title}: ${nextCat.lessons[0].title}`, duration: nextCat.lessons[0].duration };
+              }
+            }
+          }
+        } else {
+          const uncompletedIdx = lessons.findIndex(l => l.status !== 'completed');
+          if (uncompletedIdx !== -1) {
+            curMod = lessons[uncompletedIdx];
+            if (uncompletedIdx + 1 < lessons.length) {
+              upNext = lessons[uncompletedIdx + 1];
+            }
+          } else {
+            curMod = lessons[lessons.length - 1];
+            const currentSubIdx = dynamicCurriculum.findIndex(c => c.id === matchedCat!.id);
+            const nextCat = dynamicCurriculum[(currentSubIdx + 1) % dynamicCurriculum.length];
+            if (nextCat && nextCat.lessons.length > 0) {
+              upNext = { title: `${nextCat.title}: ${nextCat.lessons[0].title}`, duration: nextCat.lessons[0].duration };
+            }
+          }
+        }
+
+        setActiveCourseInfo({
+          subject: matchedCat.title,
+          currentModuleTitle: curMod.title,
+          currentModuleDesc: curMod.description,
+          completedCount: compCount,
+          totalLessons: totalL,
+          progressPercent: progPct,
+          upNextModule: upNext
+        });
       }
 
       // Load preferences from localStorage
@@ -124,17 +287,27 @@ function DashboardContent() {
     window.addEventListener('bq_stats_updated', handleSync);
     window.addEventListener('bq_guidance_updated', handleSync);
     window.addEventListener('bq_daily_login_updated', handleSync);
+    window.addEventListener('bq_last_studied_updated', handleSync);
+    window.addEventListener('storage', handleSync);
 
     return () => {
       window.removeEventListener('bq_settings_updated', handleSync);
       window.removeEventListener('bq_stats_updated', handleSync);
       window.removeEventListener('bq_guidance_updated', handleSync);
       window.removeEventListener('bq_daily_login_updated', handleSync);
+      window.removeEventListener('bq_last_studied_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
     };
   }, [loadData]);
 
   const totalMastery = user?.mastery?.length > 0
     ? Math.round(user.mastery.reduce((acc: number, m: any) => acc + m.proficiency, 0) / user.mastery.length)
+    : 0;
+
+  const completedModules = user?._count?.lessonCompletions || 0;
+  const totalModules = 13;
+  const courseProgressPercent = totalModules > 0
+    ? Math.min(100, Math.round((completedModules / totalModules) * 100))
     : 0;
 
   if (!mounted || loading) {
@@ -206,7 +379,7 @@ function DashboardContent() {
                   const daysLeft = differenceInCalendarDays(startOfDay(targetExamDate), today);
 
                   return (
-                    <div className="flex items-center justify-center shrink-0">
+                    <div className="flex items-center justify-center gap-2 shrink-0">
                       <div className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-muted/40 border border-border/80 flex items-baseline gap-1.5 shadow-sm">
                         <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary leading-none" style={{ fontFamily: "'Poppins', sans-serif" }}>
                           {daysLeft > 0 ? daysLeft : daysLeft === 0 ? '0' : Math.abs(daysLeft)}
@@ -215,12 +388,22 @@ function DashboardContent() {
                           {daysLeft > 0 ? 'DAYS LEFT' : daysLeft === 0 ? 'EXAM TODAY' : 'DAYS AGO'}
                         </span>
                       </div>
+                      <Link href="/profile?openSettings=true&tab=profile&focus=targetExam">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          title="Edit Target MTLE Board Schedule"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </Link>
                     </div>
                   );
                 })()
               ) : (
                 <div className="flex items-center justify-center shrink-0">
-                  <Link href="/profile">
+                  <Link href="/profile?openSettings=true&tab=profile&focus=targetExam">
                     <Button
                       variant="outline"
                       size="sm"
@@ -234,38 +417,91 @@ function DashboardContent() {
             </CardContent>
           </Card>
 
-          <Card id="tour-dashboard-studyplan" className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
-            <CardContent className="p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
-              <div className="space-y-1">
-                <p className="text-[10px] sm:text-xs font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Current Course</p>
-                <h3 className="text-lg sm:text-xl font-medium text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>MedTech Board Mastery</h3>
+          {/* Coursera-Style Current Course Progress Card */}
+          <Card id="tour-dashboard-studyplan" className="border-2 border-border shadow-md rounded-2xl bg-gradient-to-br from-background via-background to-muted/20 overflow-hidden relative group transition-all duration-300 hover:shadow-lg">
+            <div className="px-5 sm:px-6 pt-4 sm:pt-5 pb-3 flex items-center justify-between gap-3 border-b border-border/60">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shrink-0" />
+                <span className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-widest truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  In Progress • {activeCourseInfo.subject}
+                </span>
+              </div>
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0">
+                {activeCourseInfo.completedCount}/{activeCourseInfo.totalLessons} Modules
+              </Badge>
+            </div>
+
+            <CardContent className="p-5 sm:p-6 space-y-5">
+              {/* Subject & Current Module Title */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Current Module</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  {activeCourseInfo.currentModuleTitle}
+                </h3>
+                {activeCourseInfo.currentModuleDesc && (
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                    {activeCourseInfo.currentModuleDesc}
+                  </p>
+                )}
               </div>
 
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-1 sm:gap-0">
-                  <span className="text-4xl sm:text-5xl font-bold text-primary" style={{ fontFamily: "'Poppins', sans-serif" }}>{totalMastery}%</span>
-                  <span className="text-[10px] sm:text-xs font-normal text-muted-foreground uppercase tracking-widest sm:text-right" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                    {user?._count?.lessonCompletions || 0}/13 MODULES COMPLETED
+              {/* Progress Bar & Percentage */}
+              <div className="space-y-2.5 bg-muted/30 p-3.5 sm:p-4 rounded-xl border border-border/60">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-primary" /> Subject Mastery & Completion
+                  </span>
+                  <span className="font-bold text-primary text-sm">{activeCourseInfo.progressPercent}%</span>
+                </div>
+                <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border/40">
+                  <div
+                    className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-700 shadow-xs"
+                    style={{ width: `${activeCourseInfo.progressPercent}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium pt-0.5">
+                  <span>{activeCourseInfo.completedCount} of {activeCourseInfo.totalLessons} lessons completed</span>
+                  <span>
+                    {activeCourseInfo.totalLessons - activeCourseInfo.completedCount > 0
+                      ? `${activeCourseInfo.totalLessons - activeCourseInfo.completedCount} lessons left`
+                      : 'All subject lessons complete 🎉'}
                   </span>
                 </div>
-                <div className="w-full h-3 sm:h-4 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${totalMastery}%` }} />
-                </div>
               </div>
 
-              {(() => {
-                const continueSubject = focusSubject || nextMilestone?.subject || 'Clinical Chemistry';
-                return (
-                  <Link href={`/study?subject=${encodeURIComponent(continueSubject)}`} className="block">
-                    <Button className="w-full min-h-11 h-auto py-2.5 px-3 sm:px-4 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 sm:gap-2 leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                      <span className="truncate">
-                        {focusSubject ? `⭐ Focus: ${continueSubject}` : `Continue: ${continueSubject}`}
-                      </span>
-                      <ChevronRight className="w-4 h-4 shrink-0" />
-                    </Button>
-                  </Link>
-                );
-              })()}
+              {/* Up Next Module Section */}
+              {activeCourseInfo.upNextModule && (
+                <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl p-3.5 flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Up Next</span>
+                      {activeCourseInfo.upNextModule.duration && (
+                        <span className="text-[10px] text-muted-foreground font-medium">• {activeCourseInfo.upNextModule.duration}</span>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
+                      {activeCourseInfo.upNextModule.title}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* CTA Action Buttons */}
+              <div className="pt-1 w-full">
+                <Link href={`/study?subject=${encodeURIComponent(activeCourseInfo.subject)}`} className="block w-full">
+                  <Button className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs sm:text-sm font-semibold shadow-md flex items-center justify-center gap-2 transition-all" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    <PlayCircle className="w-4 h-4 fill-current" />
+                    <span>Resume Learning</span>
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
 
@@ -303,14 +539,100 @@ function DashboardContent() {
           </Card>
         </div>
 
-        {/* Right Sidebar - Daily Target & Missions */}
+        {/* Right Sidebar - Active Objectives, Daily Target & Missions */}
         <div id="tour-dashboard-dailygoal" className="space-y-5 sm:space-y-6">
+
+          {/* Active Mission Objective Card */}
+          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background p-4 sm:p-6 space-y-4 overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary shrink-0" />
+                <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-primary" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  Active Mission Objective
+                </h3>
+              </div>
+              <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary shrink-0">
+                Curriculum Milestone
+              </Badge>
+            </div>
+
+            {nextMilestone ? (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Focus Subject</p>
+                  <h4 className="text-base sm:text-lg font-bold text-foreground leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    {nextMilestone.subject}
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-muted/40 border border-border/70 text-xs">
+                  <div>
+                    <span className="text-[9px] font-bold uppercase text-muted-foreground block">Target Date</span>
+                    <span className="font-bold text-primary flex items-center gap-1 mt-0.5">
+                      <CalendarIcon className="w-3 h-3 shrink-0" />
+                      {format(nextMilestone.date, "MMM dd, yyyy")}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold uppercase text-muted-foreground block">Time Left</span>
+                    <span className="font-bold text-foreground flex items-center gap-1 mt-0.5">
+                      <Clock className="w-3 h-3 text-primary shrink-0" />
+                      {Math.max(0, differenceInCalendarDays(startOfDay(nextMilestone.date), startOfDay(new Date())))} Days
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-[10px] font-bold">
+                    <span className="text-muted-foreground">Mastery Level</span>
+                    <span className="text-primary">
+                      {user?.mastery?.find((m: any) => m.subject === nextMilestone.subject)?.proficiency || 0}%
+                    </span>
+                  </div>
+                  <Progress
+                    value={user?.mastery?.find((m: any) => m.subject === nextMilestone.subject)?.proficiency || 0}
+                    className="h-2 rounded-full"
+                  />
+                </div>
+
+                <Link href={`/study?subject=${encodeURIComponent(nextMilestone.subject)}`} className="block">
+                  <Button variant="outline" className="w-full h-9 rounded-xl text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 flex items-center justify-center gap-1">
+                    <span>Deploy Target Milestone</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="py-5 text-center space-y-2">
+                <Target className="w-8 h-8 text-muted-foreground/30 mx-auto" />
+                <p className="text-xs font-medium text-muted-foreground leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  No active objective scheduled.{' '}
+                  <Link href="/study" className="text-primary font-semibold hover:underline">
+                    Visit Study Subjects
+                  </Link>{' '}
+                  to deploy target milestones.
+                </p>
+              </div>
+            )}
+          </Card>
 
           {/* Daily Question Target Meter */}
           {/* Daily Target Card */}
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
             <CardHeader className="p-4 sm:p-6 pb-3 border-b border-border flex flex-row items-center justify-between">
-              <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
+                <Link href="/profile?openSettings=true&tab=goals">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
+                    title="Edit Daily Goals"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                </Link>
+              </div>
               <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5">
                 {user?.todayQuestions || 0} / {dailyQuota} Qs
               </Badge>
@@ -351,52 +673,7 @@ function DashboardContent() {
             />
           )}
 
-          {/* Daily Missions Card */}
-          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
-            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-border">
-              <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Missions</p>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-              {dailyMissions.length > 0 ? (
-                dailyMissions.map((mission) => {
-                  let MissionIcon = Target;
-                  let iconBgColor = 'bg-secondary';
-                  let iconColor = 'text-muted-foreground';
 
-                  if (mission.isStreakMission) {
-                    MissionIcon = Flame;
-                    iconBgColor = 'bg-orange-100 dark:bg-orange-950/30';
-                    iconColor = 'text-orange-600 dark:text-orange-400';
-                  } else if (mission.priority === 1) {
-                    MissionIcon = Trophy;
-                    iconBgColor = 'bg-red-100 dark:bg-red-950/30';
-                    iconColor = 'text-primary dark:text-red-400';
-                  } else if (mission.priority === 2) {
-                    MissionIcon = Zap;
-                    iconBgColor = 'bg-yellow-100 dark:bg-yellow-950/30';
-                    iconColor = 'text-yellow-600 dark:text-yellow-400';
-                  }
-
-                  return (
-                    <div key={mission.id} className="flex items-start gap-2.5 sm:gap-3 pb-3 sm:pb-4 last:pb-0 border-b border-border last:border-b-0 min-w-0">
-                      <div className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${iconBgColor}`}>
-                        <MissionIcon className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColor}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs sm:text-sm font-normal text-foreground truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>{mission.title}</p>
-                        <p className="text-[10px] sm:text-xs font-normal text-muted-foreground uppercase mt-0.5" style={{ fontFamily: "'Poppins', sans-serif" }}>{mission.proficiency}% Proficiency • +{mission.xp} XP</p>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-4 sm:py-6">
-                  <p className="text-xs sm:text-sm text-muted-foreground font-normal" style={{ fontFamily: "'Poppins', sans-serif" }}>No active missions yet.</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-normal" style={{ fontFamily: "'Poppins', sans-serif" }}>Set your study targets to generate personalized missions.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
 

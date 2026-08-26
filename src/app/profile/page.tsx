@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Settings, LogOut, MapPin, Mail, Calendar as CalendarIcon, Zap, Trophy, Clock, Award, Shield, Swords, Heart, Crosshair, Sparkles, FlaskConical, Target, Lock, CheckCircle2, GraduationCap, UserCheck, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -200,13 +200,20 @@ interface UserProfile {
 export default function ProfilePage() {
   return (
     <ProtectedRoute>
-      <ProfileContent />
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      }>
+        <ProfileContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }
 
 function ProfileContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [dbUserBadges, setDbUserBadges] = useState<UserBadgeDetails[]>([]);
@@ -214,10 +221,29 @@ function ProfileContent() {
   const [loading, setLoading] = useState(true);
   const [viewAllBadgesOpen, setViewAllBadgesOpen] = useState(false);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [initialSettingsTab, setInitialSettingsTab] = useState<string>('profile');
+  const [autoOpenCalendar, setAutoOpenCalendar] = useState<boolean>(false);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'earned' | 'locked'>('all');
   const [guidanceList, setGuidanceList] = useState<GuidanceAssignmentRecord[]>([]);
   const [selectedGuidance, setSelectedGuidance] = useState<GuidanceAssignmentRecord | null>(null);
   const [guidanceDialogOpen, setGuidanceDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const openParam = searchParams.get('openSettings');
+    const tabParam = searchParams.get('tab');
+    const focusParam = searchParams.get('focus');
+    const calendarParam = searchParams.get('openCalendar');
+
+    if (openParam === 'true' || tabParam || focusParam || calendarParam) {
+      setAccountSettingsOpen(true);
+      if (tabParam) {
+        setInitialSettingsTab(tabParam);
+      }
+      if (focusParam === 'targetExam' || calendarParam === 'true') {
+        setAutoOpenCalendar(true);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -509,19 +535,6 @@ function ProfileContent() {
                     </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Top Ranking Card */}
-            <Card className="border border-border shadow-lg rounded-2xl bg-[#8B0000] text-white">
-              <CardContent className="p-4 sm:p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-3xl sm:text-4xl font-semibold">Top {userProfile.rankingPercentage}%</p>
-                  <p className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-white/80 mt-1">
-                    Global Ranking
-                  </p>
-                </div>
-                <Trophy className="w-12 h-12 sm:w-16 sm:h-16 text-white/30 shrink-0" />
               </CardContent>
             </Card>
           </div>
@@ -936,6 +949,8 @@ function ProfileContent() {
           open={accountSettingsOpen}
           onOpenChange={setAccountSettingsOpen}
           userProfile={userProfile}
+          initialTab={initialSettingsTab}
+          autoOpenTargetExamCalendar={autoOpenCalendar}
           onProfileUpdated={(updatedUser) => {
             setUserProfile((prev) => (prev ? { ...prev, ...updatedUser } : null));
           }}

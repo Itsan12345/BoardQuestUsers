@@ -80,6 +80,8 @@ interface AccountSettingsDialogProps {
     classString: string;
   };
   onProfileUpdated: (updatedUser: any) => void;
+  initialTab?: string;
+  autoOpenTargetExamCalendar?: boolean;
 }
 
 export function AccountSettingsDialog({
@@ -87,10 +89,12 @@ export function AccountSettingsDialog({
   onOpenChange,
   userProfile,
   onProfileUpdated,
+  initialTab = 'profile',
+  autoOpenTargetExamCalendar = false,
 }: AccountSettingsDialogProps) {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   // Form states - Profile
   const [name, setName] = useState(userProfile.name || '');
@@ -98,7 +102,7 @@ export function AccountSettingsDialog({
   const [school, setSchool] = useState('');
   const [targetBatch, setTargetBatch] = useState('');
   const [targetExamDate, setTargetExamDate] = useState<Date | null>(null);
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(autoOpenTargetExamCalendar);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Form states - Study Goals
@@ -235,7 +239,13 @@ export function AccountSettingsDialog({
   // Auto-start tour on first time opening Account Settings (default 'profile' tab)
   useEffect(() => {
     if (open) {
-      const tourKey = `settings_${activeTab}`;
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
+      if (autoOpenTargetExamCalendar) {
+        setCalendarOpen(true);
+      }
+      const tourKey = `settings_${initialTab || activeTab}`;
       if (!isTourCompleted(tourKey)) {
         const timer = setTimeout(() => {
           startTourByKey(tourKey, false);
@@ -243,7 +253,7 @@ export function AccountSettingsDialog({
         return () => clearTimeout(timer);
       }
     }
-  }, [open]);
+  }, [open, initialTab, autoOpenTargetExamCalendar]);
 
   // Handle Profile Update
   const handleSaveProfile = async (e: React.FormEvent) => {

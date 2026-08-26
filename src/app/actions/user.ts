@@ -201,12 +201,15 @@ export async function getLeaderboard() {
   try {
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // Week starts on Monday
 
-    // Fetch all users to calculate rank
+    // Fetch all users to calculate rank (only users with positive XP)
     const weeklyXp = await prisma.achievement.groupBy({
       by: ['userId'],
       where: {
         timestamp: {
           gte: weekStart
+        },
+        xp: {
+          gt: 0
         }
       },
       _sum: {
@@ -226,7 +229,8 @@ export async function getLeaderboard() {
     const userIds = weeklyXp.map(item => item.userId);
     const users = await prisma.user.findMany({
       where: {
-        id: { in: userIds }
+        id: { in: userIds },
+        xp: { gt: 0 }
       },
       select: {
         id: true,
@@ -237,8 +241,8 @@ export async function getLeaderboard() {
 
     const userMap = new Map(users.map(u => [u.id, u]));
 
-    // Filter out achievements for users that no longer exist
-    const validWeeklyXp = weeklyXp.filter(item => userMap.has(item.userId));
+    // Filter out achievements for users that no longer exist or have 0 total xp
+    const validWeeklyXp = weeklyXp.filter(item => userMap.has(item.userId) && (item._sum.xp || 0) > 0);
 
     let currentUserRank = null;
     if (userId) {
@@ -274,8 +278,10 @@ export async function getGlobalLeaderboard(page: number = 1, limit: number = 10)
 
     const skip = (page - 1) * limit;
 
+    // Only include users who have earned XP (> 0) on the global leaderboard
     const [topUsers, totalUsers] = await Promise.all([
       prisma.user.findMany({
+        where: { xp: { gt: 0 } },
         orderBy: { xp: 'desc' },
         skip,
         take: limit,
@@ -286,7 +292,9 @@ export async function getGlobalLeaderboard(page: number = 1, limit: number = 10)
           xp: true
         }
       }),
-      prisma.user.count()
+      prisma.user.count({
+        where: { xp: { gt: 0 } }
+      })
     ]);
 
     let currentUserRank = null;
@@ -295,7 +303,8 @@ export async function getGlobalLeaderboard(page: number = 1, limit: number = 10)
         where: { id: userId },
         select: { xp: true }
       });
-      if (user) {
+      // Only rank user if they have XP > 0
+      if (user && user.xp > 0) {
         const usersWithHigherXp = await prisma.user.count({
           where: { xp: { gt: user.xp } }
         });

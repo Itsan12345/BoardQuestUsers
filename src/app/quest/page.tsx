@@ -2546,8 +2546,8 @@ export default function LearningQuest() {
     <div
       ref={fullscreenRef}
       className={cn(
-        "min-h-full flex flex-col pb-20 md:pb-12 overflow-hidden relative bg-black",
-        isFullscreen ? "h-screen w-screen" : ""
+        "flex flex-col justify-between overflow-hidden relative bg-black transition-all",
+        isFullscreen ? "h-screen w-screen p-2 sm:p-4 overflow-y-hidden" : "min-h-screen pb-12 md:pb-16"
       )}
       style={{
         backgroundImage: `url('${(getSubjectMeta(selectedSubject)).backgroundUrl || ''}')`,
@@ -2560,8 +2560,8 @@ export default function LearningQuest() {
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-[6px] transition-all duration-600" />
 
-      <header id="tour-quest-header" className="px-6 md:px-8 pt-6 md:pt-8 pb-4 space-y-1 relative z-10">
-        <div className="absolute top-6 right-6 md:top-8 md:right-8 z-50">
+      <header id="tour-quest-header" className="px-6 md:px-8 pt-3 md:pt-4 pb-1 space-y-1 relative z-10 shrink-0">
+        <div className="absolute top-3 right-6 md:top-4 md:right-8 z-50">
           <Button
             variant="outline"
             size="icon"
@@ -2573,7 +2573,7 @@ export default function LearningQuest() {
           </Button>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-0 mb-6 pr-12">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-0 mb-2 pr-12">
           <div className="flex-1">
             <h1 className="text-3xl md:text-5xl font-black font-headline leading-tight tracking-tight text-white">
               Select Your <br />
@@ -2593,16 +2593,22 @@ export default function LearningQuest() {
         </p>
       </header>
 
-      <div id="tour-quest-map" className="flex-1 flex flex-col justify-center py-6 md:py-10 relative z-10 overflow-hidden">
+      <div id="tour-quest-map" className={cn(
+        "flex-1 min-h-0 flex flex-col relative z-10 overflow-x-visible",
+        isFullscreen ? "justify-start pt-0 md:pt-1 overflow-y-hidden" : "justify-center py-4 md:py-8 overflow-y-visible"
+      )}>
         {categoriesLoading || dynamicCategories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[400px] md:min-h-[500px] space-y-3">
+          <div className="flex flex-col items-center justify-center min-h-[300px] space-y-3">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
             <p className="text-white font-bytebounce text-lg tracking-widest uppercase">
               Loading Quest Regions...
             </p>
           </div>
         ) : (
-          <div ref={carouselRef} className="flex overflow-x-auto gap-4 md:gap-8 px-8 md:px-12 no-scrollbar snap-x snap-mandatory items-center min-h-[400px] md:min-h-[500px]">
+          <div ref={carouselRef} className={cn(
+            "flex overflow-x-auto gap-4 md:gap-8 px-8 md:px-12 no-scrollbar snap-x snap-mandatory items-center min-h-[340px] md:min-h-[400px]",
+            isFullscreen ? "overflow-y-hidden pt-2 md:pt-4 pb-2 md:pb-4" : "overflow-y-visible pt-4 md:pt-6 pb-4 md:pb-6"
+          )}>
             {dynamicCategories.map((subject) => {
               const meta = getSubjectMeta(subject);
               const isSelected = selectedSubject === subject;
@@ -2613,18 +2619,18 @@ export default function LearningQuest() {
                   key={subject}
                   onClick={() => setSelectedSubject(subject)}
                   className={cn(
-                    "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center",
-                    isSelected ? "scale-100 w-64 md:w-80" : "scale-75 w-48 md:w-56 opacity-35"
+                    "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center py-1",
+                    isSelected ? "scale-100 w-52 sm:w-60 md:w-72 z-20" : "scale-75 w-36 sm:w-44 md:w-48 opacity-35 hover:opacity-60"
                   )}
                 >
-                  <div className="relative w-full flex flex-col items-center">
+                  <div className="relative w-full flex flex-col items-center pt-2">
                     <div className={cn(
-                      "relative w-full aspect-square transition-all duration-500",
+                      "relative w-full aspect-square transition-all duration-500 overflow-visible",
                       isSelected ? "animate-float" : ""
                     )}>
                       {meta.imageUrl ? (
-                        <div className="relative w-full h-full transform hover:scale-105 transition-transform">
-                          <Image src={meta.imageUrl} alt={subject} fill className="object-contain" priority={isSelected} />
+                        <div className="relative w-full h-full transform hover:scale-105 transition-transform p-2">
+                          <Image src={meta.imageUrl} alt={subject} fill className="object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)]" priority={isSelected} />
                         </div>
                       ) : (
                         <div className={cn("w-full h-full rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 flex flex-col items-center justify-center text-white shadow-2xl relative overflow-hidden group border-4 border-white/50", meta.color)}>
@@ -2633,19 +2639,19 @@ export default function LearningQuest() {
                       )}
                     </div>
 
-                    <div className={cn("mt-2 text-center space-y-3 md:space-y-2 transition-all", isSelected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}>
-                      <div className="space-y-1 w-full px-2">
+                    <div className={cn("mt-1.5 text-center space-y-2 md:space-y-1.5 transition-all", isSelected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}>
+                      <div className="space-y-0.5 w-full px-2">
                         <p className="text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80" style={{ fontFamily: "'Poppins', sans-serif" }}>{meta.biome}</p>
-                        <h3 className="text-3xl sm:text-4xl md:text-[3rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
+                        <h3 className="text-2xl sm:text-3xl md:text-[2.6rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
                       </div>
-                      <div className="flex flex-col items-center gap-3">
+                      <div className="flex flex-col items-center gap-2">
                         <div className="flex items-center gap-1">
                           {[...Array(5)].map((_, i) => (
                             <Star key={i} className={cn("w-3 h-3 md:w-4 md:h-4", i < meta.difficulty ? "text-primary fill-primary" : "text-white/30")} />
                           ))}
                         </div>
                         <div className="flex gap-2">
-                          <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-1 flex items-center gap-1 text-[8px] md:text-[10px]">
+                          <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-0.5 flex items-center gap-1 text-[8px] md:text-[10px]">
                             <Target className="w-2.5 h-2.5 md:w-3 md:h-3" /> {meta.enemy}
                           </Badge>
                         </div>
@@ -2659,21 +2665,27 @@ export default function LearningQuest() {
         )}
       </div>
 
-      <div id="tour-quest-inventory" className="px-6 md:px-8 mt-6 md:mt-10 relative z-20">
-        <div className="flex justify-center w-full mt-4">
+      <div id="tour-quest-inventory" className={cn(
+        "px-6 md:px-8 shrink-0 relative z-20",
+        isFullscreen ? "mt-1 md:mt-2 pb-3 md:pb-5" : "mt-8 md:mt-14 pb-6 md:pb-10"
+      )}>
+        <div className="flex justify-center w-full">
           <button
             onClick={() => {
               setSetupStep('mode');
               setModeSelectDialogOpen(true);
             }}
             disabled={isLoading}
-            className="relative w-full max-w-md md:max-w-2xl h-24 md:h-36 group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
+            className={cn(
+              "relative w-full group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none",
+              isFullscreen ? "max-w-md sm:max-w-xl md:max-w-2xl h-24 sm:h-28 md:h-36" : "max-w-sm sm:max-w-md md:max-w-xl h-20 sm:h-24 md:h-32"
+            )}
           >
             <Image
               src="/ui/btn-enterArena.png"
               alt="Enter Battle Arena"
               fill
-              className="object-contain"
+              className="object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
               style={{ imageRendering: 'pixelated' }}
               unoptimized
             />

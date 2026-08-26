@@ -1,8 +1,20 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Trophy, Medal, Star, TrendingUp, Loader2 } from 'lucide-react';
+import { 
+  Trophy, 
+  Medal, 
+  Star, 
+  TrendingUp, 
+  Loader2, 
+  Sparkles, 
+  ArrowRight, 
+  ShieldAlert, 
+  Award, 
+  Crown,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -10,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { getUserStats, getGlobalLeaderboard } from '@/app/actions/user';
 import { getRankTitle } from '@/lib/badge-system';
+import Link from 'next/link';
 
 function LeaderboardContent() {
   const [user, setUser] = useState<any>(null);
@@ -17,6 +30,7 @@ function LeaderboardContent() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
   const limit = 10;
 
   useEffect(() => {
@@ -27,125 +41,367 @@ function LeaderboardContent() {
         getGlobalLeaderboard(page, limit)
       ]);
       setUser(stats);
-      setTopUsers(leadersData.topUsers);
-      setTotalUsers(leadersData.totalUsers);
+      setTopUsers(leadersData.topUsers || []);
+      setTotalUsers(leadersData.totalUsers || 0);
+      setCurrentUserRank(leadersData.currentUserRank || null);
       setLoading(false);
     }
     loadData();
   }, [page]);
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    const tableElement = document.getElementById('tour-ranks-table');
+    if (tableElement) {
+      tableElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4">
+        <div className="relative flex items-center justify-center">
+          <div className="w-14 h-14 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+          <Trophy className="w-6 h-6 text-primary absolute animate-pulse" />
+        </div>
+        <p className="text-xs sm:text-sm font-medium text-muted-foreground animate-pulse">Loading Leaderboard Standings...</p>
       </div>
     );
   }
 
+  const isUserOnCurrentPage = user && topUsers.some(u => u.id === user.id);
+  const totalPages = Math.ceil(totalUsers / limit) || 1;
+  const userRankTitle = user ? getRankTitle(user.level || 1) : 'Apprentice Technician';
+  const fullLevelTitle = `Level ${user?.level || 1} ${userRankTitle}`;
+
   return (
-    <div className="max-w-4xl mx-auto py-6 sm:py-12 px-3 sm:px-4 space-y-6 sm:space-y-8">
-      <header className="text-center space-y-1.5 sm:space-y-2">
-        <div className="bg-primary/10 w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mx-auto mb-2 sm:mb-4">
-          <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+    <div className="max-w-4xl mx-auto py-6 sm:py-10 px-3 sm:px-4 space-y-6 sm:space-y-8">
+      {/* Header Banner */}
+      <header className="text-center space-y-2 sm:space-y-3 relative">
+        <div className="bg-gradient-to-tr from-amber-500/20 via-primary/20 to-red-500/10 border border-primary/20 w-14 h-14 sm:w-18 sm:h-18 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto shadow-inner group hover:scale-105 transition-transform duration-300">
+          <Trophy className="w-7 h-7 sm:w-9 sm:h-9 text-primary drop-shadow-sm" />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold font-headline">Global Hall of Fame</h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">Top aspirants preparing for the MedTech Licensure Examination.</p>
+        <h1 className="text-2xl sm:text-4xl font-extrabold font-headline tracking-tight text-foreground">
+          Global Hall of Fame
+        </h1>
       </header>
 
-      <div id="tour-ranks-overview" className="grid grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
-        <Card className="border border-border shadow-md bg-background p-2.5 sm:p-6 text-center space-y-1 sm:space-y-2">
-          <Medal className="w-5 h-5 sm:w-8 sm:h-8 text-yellow-500 mx-auto" />
-          <p className="text-[9px] sm:text-xs font-bold text-muted-foreground uppercase truncate">Expedition Level</p>
-          <h3 className="text-base sm:text-3xl font-semibold">Lvl {user?.level || 1}</h3>
+      {/* 0 XP / Unranked Banner for First-Time Users */}
+      {user && (user.xp === 0 || !user.xp) && (
+        <Card className="border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-primary/5 to-transparent p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-md">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl shrink-0 mt-0.5">
+                <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-bold text-sm sm:text-base text-foreground">
+                    Unranked Aspirant
+                  </h4>
+                  <Badge variant="secondary" className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold px-2 py-0.5">
+                    0 XP
+                  </Badge>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  You haven't claimed any XP yet! Claim your Daily Login reward or complete a quest in the Quest Arena to enter the global rankings and showcase your position.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              <Button asChild size="sm" className="w-full sm:w-auto rounded-full bg-primary hover:bg-primary/90 text-white text-xs gap-1.5 shadow-sm font-semibold">
+                <Link href="/">
+                  Claim Daily Login <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </div>
         </Card>
-        <Card className="border border-border shadow-md bg-background p-2.5 sm:p-6 text-center space-y-1 sm:space-y-2">
-          <Star className="w-5 h-5 sm:w-8 sm:h-8 text-primary mx-auto" />
-          <p className="text-[9px] sm:text-xs font-bold text-muted-foreground uppercase truncate">Total XP</p>
-          <h3 className="text-base sm:text-3xl font-semibold">{user?.xp?.toLocaleString() || 0}</h3>
+      )}
+
+      {/* Top Overview Cards */}
+      <div id="tour-ranks-overview" className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+        {/* Expedition Level Card */}
+        <Card className="border border-border/80 shadow-md bg-card/60 backdrop-blur-sm p-4 sm:p-6 text-center space-y-2 relative overflow-hidden group hover:border-amber-500/40 transition-all duration-300">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-bl-full pointer-events-none"></div>
+          <div className="bg-amber-500/10 text-amber-500 w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center mx-auto mb-1 group-hover:scale-110 transition-transform">
+            <Medal className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+          <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Expedition Level
+          </p>
+          <div className="space-y-0.5">
+            <h3 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              Lvl {user?.level || 1}
+            </h3>
+            <p className="text-[10px] sm:text-xs font-bold text-primary uppercase tracking-normal leading-tight">
+              {fullLevelTitle}
+            </p>
+          </div>
         </Card>
-        <Card className="border border-border shadow-md bg-background p-2.5 sm:p-6 text-center space-y-1 sm:space-y-2">
-          <TrendingUp className="w-5 h-5 sm:w-8 sm:h-8 text-accent mx-auto" />
-          <p className="text-[9px] sm:text-xs font-bold text-muted-foreground uppercase truncate">Streak</p>
-          <h3 className="text-base sm:text-3xl font-semibold">{user?.streak || 0} Days</h3>
+
+        {/* Total XP Card */}
+        <Card className="border border-border/80 shadow-md bg-card/60 backdrop-blur-sm p-4 sm:p-6 text-center space-y-2 relative overflow-hidden group hover:border-primary/40 transition-all duration-300">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-bl-full pointer-events-none"></div>
+          <div className="bg-primary/10 text-primary w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center mx-auto mb-1 group-hover:scale-110 transition-transform">
+            <Star className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+          <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Total XP
+          </p>
+          <div className="space-y-0.5">
+            <h3 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              {user?.xp?.toLocaleString() || 0}
+            </h3>
+            <p className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              XP Points Earned
+            </p>
+          </div>
+        </Card>
+
+        {/* Global Rank & Streak Card */}
+        <Card className="border border-border/80 shadow-md bg-card/60 backdrop-blur-sm p-4 sm:p-6 text-center space-y-2 relative overflow-hidden group hover:border-rose-500/40 transition-all duration-300">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-rose-500/5 rounded-bl-full pointer-events-none"></div>
+          <div className="bg-rose-500/10 text-rose-500 w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center mx-auto mb-1 group-hover:scale-110 transition-transform">
+            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+          <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Rank & Streak
+          </p>
+          <div className="space-y-0.5">
+            <h3 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+              {user?.xp > 0 && currentUserRank ? `#${currentUserRank}` : 'Unranked'}
+            </h3>
+            <p className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              {user?.streak || 0} Day Streak
+            </p>
+          </div>
         </Card>
       </div>
 
-      <Card id="tour-ranks-table" className="border border-border shadow-xl overflow-hidden rounded-2xl sm:rounded-3xl">
-        <CardHeader className="p-4 sm:p-6 bg-muted/30 border-b">
-          <CardTitle className="text-base sm:text-lg font-headline">Regional Rankings</CardTitle>
+      {/* Top Podium Showcase (If users exist on Page 1) */}
+      {page === 1 && topUsers.length >= 3 && (
+        <div className="hidden sm:grid grid-cols-3 gap-4 pt-2 pb-1">
+          {/* 2nd Place */}
+          <Card className="border border-slate-300 dark:border-slate-700 bg-gradient-to-b from-slate-100/50 via-card to-card p-4 text-center rounded-2xl space-y-2 relative transform translate-y-3 shadow-md">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-extrabold px-3 py-0.5 rounded-full border border-slate-400/30 shadow-sm flex items-center gap-1">
+              <Award className="w-3 h-3 text-slate-400" /> Rank 2
+            </div>
+            <Avatar className="h-14 w-14 border-2 border-slate-400 shadow-md mx-auto mt-2">
+              <AvatarFallback className="bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200 font-bold text-sm">
+                {topUsers[1]?.name?.[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-0.5">
+              <p className="font-bold text-sm truncate text-foreground">{topUsers[1]?.name}</p>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase truncate">
+                Level {topUsers[1]?.level} {getRankTitle(topUsers[1]?.level)}
+              </p>
+            </div>
+            <Badge variant="secondary" className="bg-slate-200/80 text-slate-800 dark:bg-slate-800 dark:text-slate-200 font-bold text-xs">
+              {topUsers[1]?.xp?.toLocaleString()} XP
+            </Badge>
+          </Card>
+
+          {/* 1st Place */}
+          <Card className="border-2 border-amber-400/80 dark:border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-card to-card p-5 text-center rounded-2xl space-y-2 relative shadow-xl z-10">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[11px] font-black px-3.5 py-0.5 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wider">
+              <Crown className="w-3.5 h-3.5 text-amber-200" /> Rank 1
+            </div>
+            <Avatar className="h-16 w-16 border-2 border-amber-400 shadow-lg mx-auto mt-1 ring-4 ring-amber-500/20">
+              <AvatarFallback className="bg-amber-500 text-white font-bold text-base">
+                {topUsers[0]?.name?.[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-0.5">
+              <p className="font-extrabold text-base truncate text-foreground">{topUsers[0]?.name}</p>
+              <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase truncate">
+                Level {topUsers[0]?.level} {getRankTitle(topUsers[0]?.level)}
+              </p>
+            </div>
+            <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs px-3 py-1 shadow-sm">
+              {topUsers[0]?.xp?.toLocaleString()} XP
+            </Badge>
+          </Card>
+
+          {/* 3rd Place */}
+          <Card className="border border-amber-700/30 bg-gradient-to-b from-amber-900/10 via-card to-card p-4 text-center rounded-2xl space-y-2 relative transform translate-y-3 shadow-md">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-800/80 text-amber-200 text-[10px] font-extrabold px-3 py-0.5 rounded-full border border-amber-600/30 shadow-sm flex items-center gap-1">
+              <Award className="w-3 h-3 text-amber-500" /> Rank 3
+            </div>
+            <Avatar className="h-14 w-14 border-2 border-amber-700/60 shadow-md mx-auto mt-2">
+              <AvatarFallback className="bg-amber-800 text-amber-100 font-bold text-sm">
+                {topUsers[2]?.name?.[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-0.5">
+              <p className="font-bold text-sm truncate text-foreground">{topUsers[2]?.name}</p>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase truncate">
+                Level {topUsers[2]?.level} {getRankTitle(topUsers[2]?.level)}
+              </p>
+            </div>
+            <Badge variant="secondary" className="bg-amber-900/20 text-amber-800 dark:text-amber-300 font-bold text-xs">
+              {topUsers[2]?.xp?.toLocaleString()} XP
+            </Badge>
+          </Card>
+        </div>
+      )}
+
+      {/* Regional Leaderboard Table */}
+      <Card id="tour-ranks-table" className="border border-border/80 shadow-xl overflow-hidden rounded-2xl sm:rounded-3xl bg-card">
+        <CardHeader className="p-4 sm:p-6 bg-muted/20 border-b flex flex-row items-center justify-between gap-2.5 sm:gap-4">
+          <div>
+            <CardTitle className="text-base sm:text-xl font-headline font-bold">Regional Rankings</CardTitle>
+          </div>
+          <Badge variant="outline" className="text-xs font-semibold px-3 py-1 bg-background whitespace-nowrap shrink-0">
+            {totalUsers} Ranked Aspirant{totalUsers !== 1 ? 's' : ''}
+          </Badge>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y divide-border/50">
-            {topUsers.map((u, idx) => {
-              const rank = (page - 1) * limit + idx + 1;
-              const isTop3 = rank <= 3;
-              const rankColors = {
-                1: 'text-yellow-500',
-                2: 'text-slate-400',
-                3: 'text-amber-600',
-              };
-              const rankColor = rankColors[rank as keyof typeof rankColors] || 'text-muted-foreground';
-              const borderColors = {
-                1: 'border-yellow-500',
-                2: 'border-slate-400',
-                3: 'border-amber-600',
-              };
-              const borderColor = borderColors[rank as keyof typeof borderColors] || 'border-border';
+          {topUsers.length === 0 ? (
+            <div className="py-12 px-4 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
+                <Trophy className="w-6 h-6" />
+              </div>
+              <h4 className="font-bold text-base text-foreground">No Ranked Aspirants Yet</h4>
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto">
+                Be the first aspirant to claim daily login XP or complete a quest to top the regional leaderboard!
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {topUsers.map((u, idx) => {
+                const rank = (page - 1) * limit + idx + 1;
+                const isCurrentUser = user && u.id === user.id;
 
-              return (
-                <div key={u.id} className={`flex items-center gap-2.5 sm:gap-4 lg:gap-6 p-3 sm:p-5 lg:p-6 transition-all duration-300 min-w-0 ${u.id === user?.id ? 'bg-primary/5' : 'hover:bg-muted/30'}`}>
-                  <div className={`w-6 sm:w-8 lg:w-10 flex justify-center items-center font-bold font-headline text-sm sm:text-lg lg:text-xl shrink-0 ${rankColor}`}>
-                    {rank === 1 ? <Trophy className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" /> : 
-                     rank === 2 ? <Medal className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" /> : 
-                     rank === 3 ? <Medal className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" /> : rank}
-                  </div>
-                  <Avatar className={`h-9 w-9 sm:h-12 sm:w-12 lg:h-14 lg:w-14 border-2 shadow-sm shrink-0 ${borderColor}`}>
-                    <AvatarFallback className={u.id === user?.id ? 'bg-primary text-white text-xs sm:text-sm' : 'bg-muted text-muted-foreground text-xs sm:text-sm'}>{u.name[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 sm:gap-3 mb-0.5 sm:mb-1 min-w-0">
-                      <p className="font-bold text-xs sm:text-base lg:text-lg tracking-tight truncate">{u.name}</p>
-                      {u.id === user?.id && <Badge className="bg-primary hover:bg-primary/90 text-[9px] sm:text-[10px] h-4 sm:h-5 px-1.5 sm:px-2 rounded-full shadow-sm shrink-0">You</Badge>}
+                const rankColors = {
+                  1: 'text-amber-500',
+                  2: 'text-slate-400',
+                  3: 'text-amber-700',
+                };
+                const rankColor = rankColors[rank as keyof typeof rankColors] || 'text-muted-foreground';
+
+                const borderColors = {
+                  1: 'border-amber-400 ring-2 ring-amber-400/30',
+                  2: 'border-slate-400',
+                  3: 'border-amber-700',
+                };
+                const borderColor = borderColors[rank as keyof typeof borderColors] || 'border-border';
+
+                return (
+                  <div 
+                    key={u.id} 
+                    className={`flex items-center gap-2.5 sm:gap-4 lg:gap-6 p-3.5 sm:p-5 transition-all duration-200 min-w-0 ${
+                      isCurrentUser 
+                        ? 'bg-primary/10 dark:bg-primary/15 border-l-4 border-l-primary' 
+                        : 'hover:bg-muted/30'
+                    }`}
+                  >
+                    {/* Rank Indicator */}
+                    <div className={`w-7 sm:w-10 flex justify-center items-center font-black font-headline text-sm sm:text-xl shrink-0 ${rankColor}`}>
+                      {rank === 1 ? (
+                        <Trophy className="w-5 h-5 sm:w-7 sm:h-7 text-amber-500 drop-shadow-sm" />
+                      ) : rank === 2 ? (
+                        <Medal className="w-5 h-5 sm:w-7 sm:h-7 text-slate-400" />
+                      ) : rank === 3 ? (
+                        <Medal className="w-5 h-5 sm:w-7 sm:h-7 text-amber-700" />
+                      ) : (
+                        `#${rank}`
+                      )}
                     </div>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 truncate">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/40 inline-block shrink-0"></span>
-                      <span className="truncate">Level {u.level} {getRankTitle(u.level)}</span>
-                    </p>
+
+                    {/* Avatar */}
+                    <Avatar className={`h-10 w-10 sm:h-12 sm:w-12 border-2 shadow-sm shrink-0 ${borderColor}`}>
+                      <AvatarFallback className={isCurrentUser ? 'bg-primary text-white text-xs sm:text-sm font-bold' : 'bg-muted text-muted-foreground text-xs sm:text-sm font-semibold'}>
+                        {u.name?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    {/* User Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2.5 mb-0.5 min-w-0">
+                        <p className="font-bold text-xs sm:text-base text-foreground tracking-tight truncate">
+                          {u.name}
+                        </p>
+                        {isCurrentUser && (
+                          <Badge className="bg-primary hover:bg-primary/90 text-white text-[9px] sm:text-[10px] h-4 sm:h-5 px-2 rounded-full shadow-sm shrink-0 font-bold">
+                            You
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 truncate">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary/60 inline-block shrink-0"></span>
+                        <span className="truncate">Level {u.level} {getRankTitle(u.level)}</span>
+                      </p>
+                    </div>
+
+                    {/* XP Score */}
+                    <div className="text-right shrink-0">
+                      <p className="font-extrabold text-primary text-base sm:text-xl lg:text-2xl tracking-tight">
+                        {u.xp?.toLocaleString()}
+                      </p>
+                      <p className="text-[8px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Total XP
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-bold text-primary text-sm sm:text-xl lg:text-2xl tracking-tight">{u.xp.toLocaleString()}</p>
-                    <p className="text-[8px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total XP</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Pagination Controls */}
       <div className="flex items-center justify-between pt-2 sm:pt-4 gap-2">
         <Button 
           variant="outline" 
-          onClick={() => setPage(p => Math.max(1, p - 1))}
+          onClick={() => handlePageChange(Math.max(1, page - 1))}
           disabled={page === 1}
-          className="rounded-full px-3 sm:px-6 text-xs sm:text-sm h-9 sm:h-10 hover:bg-primary/5 hover:text-primary transition-colors shrink-0"
+          className="rounded-full px-3 sm:px-5 text-xs sm:text-sm h-9 sm:h-10 hover:bg-primary/5 hover:text-primary transition-colors shrink-0 gap-1"
         >
-          Previous
+          <ChevronLeft className="w-4 h-4" />
+          <span>Previous</span>
         </Button>
-        <div className="flex items-center gap-1 sm:gap-2 bg-muted/30 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full border border-border/50 text-center truncate">
+
+        <div className="flex items-center gap-1 sm:gap-2 bg-muted/40 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-border/50 text-center truncate shadow-xs">
           <span className="text-xs sm:text-sm font-medium text-muted-foreground">
-            Page <span className="text-foreground font-bold">{page}</span> of <span className="text-foreground font-bold">{Math.ceil(totalUsers / limit) || 1}</span>
+            Page <span className="text-foreground font-bold">{page}</span> of <span className="text-foreground font-bold">{totalPages}</span>
           </span>
         </div>
+
         <Button 
           variant="outline" 
-          onClick={() => setPage(p => p + 1)}
-          disabled={page >= Math.ceil(totalUsers / limit)}
-          className="rounded-full px-3 sm:px-6 text-xs sm:text-sm h-9 sm:h-10 hover:bg-primary/5 hover:text-primary transition-colors shrink-0"
+          onClick={() => handlePageChange(page + 1)}
+          disabled={page >= totalPages}
+          className="rounded-full px-3 sm:px-5 text-xs sm:text-sm h-9 sm:h-10 hover:bg-primary/5 hover:text-primary transition-colors shrink-0 gap-1"
         >
-          Next
+          <span>Next</span>
+          <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
+
+      {/* Sticky User Position Bar (If user is ranked but not visible on current page) */}
+      {user && user.xp > 0 && currentUserRank && !isUserOnCurrentPage && (
+        <div className="sticky bottom-4 z-20">
+          <Card className="border border-primary/40 bg-card/95 backdrop-blur-md p-3 sm:p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-3 text-foreground">
+            <div className="flex items-center gap-3 min-w-0">
+              <Badge className="bg-primary text-white font-extrabold text-xs px-2.5 py-1 rounded-lg shrink-0">
+                #{currentUserRank}
+              </Badge>
+              <div className="min-w-0">
+                <p className="font-bold text-xs sm:text-sm truncate">Your Leaderboard Standing</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate uppercase font-semibold">
+                  {fullLevelTitle}
+                </p>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="font-extrabold text-primary text-sm sm:text-base">{user.xp?.toLocaleString()} XP</p>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

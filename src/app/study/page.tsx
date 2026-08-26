@@ -19,7 +19,8 @@ import {
   Building2,
   FileText,
   Eye,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -388,21 +389,60 @@ export default function StudyPage() {
       status: lesson.status
     });
     setIsViewerOpen(true);
+
+    if (selectedCategory) {
+      try {
+        localStorage.setItem('bq_last_studied', JSON.stringify({
+          subject: selectedCategory.title,
+          subjectId: selectedCategory.id,
+          moduleId: lesson.id,
+          moduleTitle: lesson.title,
+          timestamp: Date.now()
+        }));
+        window.dispatchEvent(new CustomEvent('bq_last_studied_updated'));
+      } catch (e) {}
+    }
   };
+
+  // Filter subjects matching search query (matches subject name or modules inside)
+  const matchingCategories = curriculum.filter((cat: any) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const matchesSubject = cat.title.toLowerCase().includes(q);
+    const matchesModule = cat.lessons?.some((l: any) =>
+      l.title.toLowerCase().includes(q) ||
+      (l.description && l.description.toLowerCase().includes(q)) ||
+      (l.fileUrls && l.fileUrls.some((url: string) => url.toLowerCase().includes(q)))
+    );
+    return matchesSubject || matchesModule;
+  });
+
+  // Automatically switch active subject if searching matches another subject or its modules
+  useEffect(() => {
+    if (searchQuery.trim() && matchingCategories.length > 0) {
+      const isSelectedInMatching = matchingCategories.some(c => c.id === selectedCategoryId);
+      if (!isSelectedInMatching) {
+        setSelectedCategoryId(matchingCategories[0].id);
+      }
+    }
+  }, [searchQuery, matchingCategories, selectedCategoryId]);
 
   const selectedCategory = curriculum.find(c => c.id === selectedCategoryId) || curriculum[0];
   const selectedDate = selectedCategory ? targetDates[selectedCategory.title] : undefined;
 
   // Filter lessons based on user search query
-  const filteredLessons = selectedCategory?.lessons.filter((l: any) => {
+  const filteredLessons = (selectedCategory?.lessons || []).filter((l: any) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
+    if (selectedCategory.title.toLowerCase().includes(q)) return true;
     return (
       l.title.toLowerCase().includes(q) ||
       (l.description && l.description.toLowerCase().includes(q)) ||
       (l.fileUrls && l.fileUrls.some((url: string) => url.toLowerCase().includes(q)))
     );
-  }) || [];
+  });
+
+  const displayCurriculum = searchQuery.trim() ? matchingCategories : curriculum;
 
   return (
     <div className="min-h-full pb-20 lg:pb-12 bg-background">
@@ -475,21 +515,30 @@ export default function StudyPage() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search learning modules, PDF titles, or study concepts..."
-              className="pl-10 sm:pl-12 h-11 sm:h-14 bg-muted border-2 border-border rounded-xl sm:rounded-2xl focus-visible:ring-primary/20 text-xs sm:text-sm font-medium"
+              placeholder="Search subjects or modules..."
+              className="pl-10 sm:pl-12 pr-10 h-11 sm:h-14 bg-muted border-2 border-border rounded-xl sm:rounded-2xl focus-visible:ring-primary/20 text-xs sm:text-sm font-medium"
             />
+            {searchQuery.trim() && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-background transition-colors"
+                title="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="p-3.5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 max-w-7xl mx-auto">
-        {/* Disciplines Sidebar / Mobile Carousel Selector */}
+        {/* Subjects Sidebar / Mobile Carousel Selector */}
         <aside id="tour-study-subjects" className="lg:col-span-4 space-y-3 sm:space-y-4">
-          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 sm:px-2">Laboratory Disciplines</h2>
+          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 sm:px-2">Subjects</h2>
           
           {/* Mobile Horizontal Carousel (< lg) */}
           <div className="flex lg:hidden overflow-x-auto gap-2.5 pb-2 -mx-3.5 px-3.5 sm:mx-0 sm:px-0 scrollbar-none shrink-0">
-            {curriculum.map((cat) => {
+            {displayCurriculum.map((cat) => {
               const Icon = cat.icon;
               const isActive = selectedCategoryId === cat.id;
               const uploadedCount = cat.adminModuleCount || 0;
@@ -531,7 +580,7 @@ export default function StudyPage() {
 
           {/* Desktop Vertical Card Stack (>= lg) */}
           <div className="hidden lg:grid grid-cols-1 gap-2.5 sm:gap-3">
-            {curriculum.map((cat) => {
+            {displayCurriculum.map((cat) => {
               const Icon = cat.icon;
               const isActive = selectedCategoryId === cat.id;
               const catDate = targetDates[cat.title];
@@ -599,7 +648,7 @@ export default function StudyPage() {
                       {selectedCategory.title}
                     </CardTitle>
                   </div>
-                  <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Discipline Parameters</p>
+                  <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Subject Parameters</p>
                 </div>
 
                 {isDesktop ? (

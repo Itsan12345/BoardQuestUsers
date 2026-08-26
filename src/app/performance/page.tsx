@@ -15,14 +15,16 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { getUserStats } from '@/app/actions/user';
+import { getUserStats, getUserSettingsAction } from '@/app/actions/user';
 import { getStudyPlans } from '@/app/actions/study-plan';
 import { getSubjectMetrics, getCategories, getSubjectPerformanceHistoryAction, type SubjectAccuracyHistoryItem } from '@/app/actions/study';
 import { getMtleReadinessData } from '@/app/actions/mtle-predictor';
 import { MtleReadinessResult } from '@/lib/mtle-predictor-engine';
 import { StudentPointingCard } from '@/components/performance/StudentPointingCard';
+import { AiDiagnosticPrescription } from '@/components/performance/AiDiagnosticPrescription';
 import { SubjectTechnicalBreakdown, SubjectMasteryItem } from '@/components/performance/SubjectTechnicalBreakdown';
 import { PointScorecardModal } from '@/components/performance/PointScorecardModal';
+import { AccountSettingsDialog } from '@/components/profile/AccountSettingsDialog';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
@@ -40,6 +42,7 @@ const RADAR_LABELS: Record<string, string> = {
 function PerformanceContent() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [userSettings, setUserSettings] = useState<any>(null);
   const [subjectMetrics, setSubjectMetrics] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [nextObjective, setNextObjective] = useState<any>(null);
@@ -47,20 +50,23 @@ function PerformanceContent() {
   const [loading, setLoading] = useState(true);
   const [performanceHistory, setPerformanceHistory] = useState<SubjectAccuracyHistoryItem[]>([]);
   const [scorecardOpen, setScorecardOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [stats, plans, metrics, dbCategories, mtleRes, historyData] = await Promise.all([
+        const [stats, plans, metrics, dbCategories, mtleRes, historyData, settings] = await Promise.all([
           getUserStats().catch(() => null),
           getStudyPlans().catch(() => []),
           getSubjectMetrics().catch(() => []),
           getCategories().catch(() => []),
           getMtleReadinessData().catch(() => null),
-          getSubjectPerformanceHistoryAction().catch(() => [])
+          getSubjectPerformanceHistoryAction().catch(() => []),
+          getUserSettingsAction().catch(() => null)
         ]);
 
         setUser(stats);
+        setUserSettings(settings);
         setSubjectMetrics(metrics || []);
         setMtleData(mtleRes);
         setPerformanceHistory(historyData || []);
@@ -89,19 +95,31 @@ function PerformanceContent() {
     }
     loadData();
 
+    // Listen for setting updates across the app
+    const handleSettingsUpdated = async () => {
+      const settings = await getUserSettingsAction().catch(() => null);
+      if (settings) setUserSettings(settings);
+    };
+    window.addEventListener('bq_settings_updated', handleSettingsUpdated);
+
     // Refresh metrics every 30 seconds
     const metricsRefreshInterval = setInterval(async () => {
-      const [metrics, mtleRes, historyData] = await Promise.all([
+      const [metrics, mtleRes, historyData, settings] = await Promise.all([
         getSubjectMetrics().catch(() => []),
         getMtleReadinessData().catch(() => null),
-        getSubjectPerformanceHistoryAction().catch(() => [])
+        getSubjectPerformanceHistoryAction().catch(() => []),
+        getUserSettingsAction().catch(() => null)
       ]);
       setSubjectMetrics(metrics || []);
       if (mtleRes) setMtleData(mtleRes);
       if (historyData) setPerformanceHistory(historyData);
+      if (settings) setUserSettings(settings);
     }, 30000);
 
-    return () => clearInterval(metricsRefreshInterval);
+    return () => {
+      window.removeEventListener('bq_settings_updated', handleSettingsUpdated);
+      clearInterval(metricsRefreshInterval);
+    };
   }, []);
 
   if (loading) {
@@ -199,7 +217,34 @@ function PerformanceContent() {
         onOpenScorecard={() => setScorecardOpen(true)}
       />
 
-      {/* 3. Section I: Subject Technical Breakdown Grid (Dual Progress Bars: Completion & Mastery) */}
+      {/* 3. Section I: Full-Width AI Diagnostic & Remediation Prescription Card */}
+      <section id="ai-diagnostic-prescription">
+        <AiDiagnosticPrescription
+          avgMastery={avgMasteryNum}
+          avgCompletion={parseFloat(avgCompletion)}
+          fullMastery={fullMastery}
+          mtleData={mtleData}
+          nextObjective={nextObjective}
+          userSettings={userSettings}
+          onNavigateToStudy={(subjectName) => {
+            if (subjectName) {
+              router.push(`/study?subject=${encodeURIComponent(subjectName)}`);
+            } else {
+              router.push('/study');
+            }
+          }}
+          onNavigateToQuest={(subjectName) => {
+            if (subjectName) {
+              router.push(`/quest?subject=${encodeURIComponent(subjectName)}`);
+            } else {
+              router.push('/quest');
+            }
+          }}
+          onOpenGoalSettings={() => router.push('/profile?openSettings=true&tab=goals')}
+        />
+      </section>
+
+      {/* 4. Section II: Subject Technical Breakdown Grid (Dual Progress Bars: Completion & Mastery) */}
       <section id="subject-technical-breakdown">
         <SubjectTechnicalBreakdown
           items={fullMastery}
@@ -209,7 +254,7 @@ function PerformanceContent() {
         />
       </section>
 
-      {/* 4. Section II: Competency Diagnostics & Active Objectives */}
+      {/* 5. Section III: Competency Diagnostics & Active Objectives */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
         
         {/* Left 2-Column: Visual Analytics Tabbed Hub (Radar + Quest History) */}
@@ -365,10 +410,8 @@ function PerformanceContent() {
           </Card>
         </div>
 
-        {/* Right 1-Column: Active Objectives & AI Diagnostic Insight */}
+        {/* Right 1-Column: Active Mission Objective Milestone */}
         <div className="space-y-6">
-          
-          {/* Active Objective Milestone */}
           <Card className="border border-border shadow-xl rounded-2xl sm:rounded-3xl bg-background p-5 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -430,23 +473,6 @@ function PerformanceContent() {
               </div>
             )}
           </Card>
-
-          {/* AI Study Prescription */}
-          <Card className="border border-border shadow-xl rounded-2xl sm:rounded-3xl bg-background p-5 sm:p-6 space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
-                AI Diagnostic Prescription
-              </h3>
-            </div>
-            <p className="text-xs text-muted-foreground italic leading-relaxed">
-              {avgMasteryNum >= 85
-                ? "🎯 Exceptional performance! You are performing in the top score tier. Reinforce retention with daily rapid-fire quizzes."
-                : avgMasteryNum >= 60
-                ? "📈 Strong foundation! Direct your study quota toward your lowest-scoring subject to push your total point standing higher."
-                : "⚠️ Critical intervention: Focus intensely on core subjects (Clinical Chemistry & Microbiology) to quickly build your point score."}
-            </p>
-          </Card>
         </div>
       </section>
 
@@ -460,6 +486,28 @@ function PerformanceContent() {
         subjects={fullMastery}
         userName={user?.name}
       />
+
+      {/* Account Settings Modal initialized on Goals tab */}
+      {user && (
+        <AccountSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          initialTab="goals"
+          userProfile={{
+            id: user.id || '',
+            name: user.name || 'Candidate',
+            email: user.email || '',
+            level: user.level || 1,
+            xp: user.xp || 0,
+            streak: user.streak || 0,
+            location: user.location || 'Philippines',
+            classString: 'Aspirant'
+          }}
+          onProfileUpdated={(updated) => {
+            if (updated) setUser((prev: any) => ({ ...prev, ...updated }));
+          }}
+        />
+      )}
     </div>
   );
 }
