@@ -46,9 +46,12 @@ import {
   Sun,
   Moon,
   Palette,
-  Trash2,
   AlertTriangle,
+  Smartphone,
+  RefreshCw,
+  Trash2,
 } from 'lucide-react';
+import { getActiveSessionsAction, terminateSessionAction, type ActiveSessionRecord } from '@/app/actions/session';
 import { useTheme } from 'next-themes';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -138,6 +141,31 @@ export function AccountSettingsDialog({
 
   // Form states - Data Export
   const [isExporting, setIsExporting] = useState(false);
+
+  // Active Sessions state
+  const [activeSessions, setActiveSessions] = useState<ActiveSessionRecord[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [terminatingSessionId, setTerminatingSessionId] = useState<string | null>(null);
+
+  const fetchActiveSessions = async () => {
+    setLoadingSessions(true);
+    try {
+      const res = await getActiveSessionsAction();
+      if (res.success && res.sessions) {
+        setActiveSessions(res.sessions);
+      }
+    } catch (e) {
+      console.error('Failed to fetch active sessions:', e);
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      fetchActiveSessions();
+    }
+  }, [open]);
 
   // Sync initial user values
   useEffect(() => {
@@ -1118,20 +1146,114 @@ export function AccountSettingsDialog({
                 </div>
               </div>
 
-              {/* Active Session Info */}
-              <div id="tour-security-session" className="p-3 sm:p-3.5 bg-muted/20 border border-border rounded-xl sm:rounded-2xl space-y-1.5">
+              {/* Active Session Info - Dynamic Multi-device tracking */}
+              <div id="tour-security-session" className="p-3.5 sm:p-4 bg-muted/20 border border-border rounded-xl sm:rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Laptop className="w-4 h-4 text-[#8B0000]" />
-                    <span className="text-xs font-semibold text-foreground">Current Active Session</span>
+                    <span className="text-xs sm:text-sm font-bold text-foreground">Active Signed-in Sessions</span>
+                    <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0">
+                      {activeSessions.length} {activeSessions.length === 1 ? 'Device' : 'Devices'}
+                    </Badge>
                   </div>
-                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[10px]">
-                    Active Now
-                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={fetchActiveSessions}
+                    disabled={loadingSessions}
+                    className="h-7 text-[11px] text-muted-foreground hover:text-foreground px-2"
+                  >
+                    {loadingSessions ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <RefreshCw className="w-3.5 h-3.5 mr-1" />}
+                    Refresh
+                  </Button>
                 </div>
+
                 <p className="text-[11px] sm:text-xs text-muted-foreground">
-                  Signed in via Web Client • TLS 1.3 End-to-End Encryption
+                  Devices currently signed into your BoardQuest account. Signed-in devices appear dynamically below.
                 </p>
+
+                {loadingSessions && activeSessions.length === 0 ? (
+                  <div className="py-4 text-center">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#8B0000]" />
+                    <span className="text-xs text-muted-foreground mt-1 inline-block">Checking active sessions...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    {activeSessions.map((sess) => {
+                      const isMobile = /iphone|ipad|android/i.test(sess.os);
+
+                      return (
+                        <div
+                          key={sess.id}
+                          className={cn(
+                            "p-3 rounded-xl border flex items-center justify-between gap-3 transition-all",
+                            sess.isCurrent
+                              ? "bg-emerald-500/5 border-emerald-500/30"
+                              : "bg-background/80 border-border/60"
+                          )}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={cn(
+                              "p-2 rounded-xl border shrink-0",
+                              sess.isCurrent
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                                : "bg-muted/40 border-border text-muted-foreground"
+                            )}>
+                              {isMobile ? <Smartphone className="w-4 h-4" /> : <Laptop className="w-4 h-4" />}
+                            </div>
+
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-xs text-foreground truncate">{sess.deviceName}</span>
+                                {sess.isCurrent ? (
+                                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[9px] px-1.5 py-0 font-bold">
+                                    Current Device (Active Now)
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground font-medium">
+                                    Active Device
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">
+                                {sess.isCurrent
+                                  ? 'This session is currently in use on your current browser'
+                                  : `Last active: ${format(new Date(sess.lastActive), 'MMM dd, yyyy • h:mm a')}`}
+                              </p>
+                            </div>
+                          </div>
+
+                          {!sess.isCurrent && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={terminatingSessionId === sess.sessionId}
+                              onClick={async () => {
+                                setTerminatingSessionId(sess.sessionId);
+                                const res = await terminateSessionAction(sess.sessionId);
+                                setTerminatingSessionId(null);
+                                if (res.success) {
+                                  toast({
+                                    title: "Session Terminated",
+                                    description: "The remote device session was logged out.",
+                                  });
+                                  fetchActiveSessions();
+                                }
+                              }}
+                              className="text-[10px] h-7 px-2.5 rounded-lg border-red-500/30 text-red-600 hover:bg-red-500/10 shrink-0 font-semibold"
+                            >
+                              {terminatingSessionId === sess.sessionId ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                'Log Out Device'
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Danger Zone: Permanent Account Deletion */}

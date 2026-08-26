@@ -255,6 +255,14 @@ export async function login(formData: FormData) {
     } catch (loginTrackErr) {
       console.warn('Daily login tracking notice on login:', loginTrackErr);
     }
+
+    // Dynamically record active device session
+    try {
+      const { trackActiveSessionAction } = await import('@/app/actions/session');
+      await trackActiveSessionAction();
+    } catch (sessionErr) {
+      console.warn('Active session tracking notice on login:', sessionErr);
+    }
     
     return { success: true, userId: user.id };
   } catch (error) {
@@ -265,7 +273,24 @@ export async function login(formData: FormData) {
 
 export async function logout() {
   const cookieStore = await cookies();
+  const currentSessionId = cookieStore.get('bq_session_token')?.value;
+
+  if (currentSessionId) {
+    try {
+      const { terminateSessionAction } = await import('@/app/actions/session');
+      await terminateSessionAction(currentSessionId);
+    } catch (e) {}
+  }
+
   cookieStore.set('user_id', '', {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    expires: new Date(0),
+  });
+
+  cookieStore.set('bq_session_token', '', {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
