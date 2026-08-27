@@ -350,7 +350,7 @@ function ProfileContent() {
                 <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto">
                   <Avatar className="h-16 w-16 sm:h-24 sm:w-24 border-4 border-primary/20 shrink-0">
                     <AvatarImage src="" />
-                    <AvatarFallback className="bg-[#8B0000] text-white text-xl sm:text-2xl font-semibold">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xl sm:text-2xl font-semibold">
                       {initialsFromName}
                     </AvatarFallback>
                   </Avatar>
@@ -364,10 +364,10 @@ function ProfileContent() {
                     </div>
 
                     <div className="flex gap-1.5 sm:gap-2 flex-wrap mt-1">
-                      <Badge className="bg-[#8B0000] text-white font-semibold text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1">
+                      <Badge className="bg-primary text-primary-foreground font-semibold text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1">
                         LVL {userProfile.level} {getRankTitle(userProfile.level).toUpperCase()}
                       </Badge>
-                      <Badge variant="outline" className="border-[#8B0000] text-[#8B0000] font-semibold text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1">
+                      <Badge variant="outline" className="border-primary/40 text-primary font-semibold text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1">
                         {userProfile.classString}
                       </Badge>
                     </div>
@@ -380,13 +380,13 @@ function ProfileContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setAccountSettingsOpen(true)}
-                    className="flex-1 md:flex-none rounded-xl border-[#8B0000] text-[#8B0000] font-semibold text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4"
+                    className="flex-1 md:flex-none rounded-xl border-primary/50 text-primary hover:bg-primary/10 font-semibold text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4"
                   >
                     <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Account Settings
                   </Button>
                   <Button
                     size="sm"
-                    className="flex-1 md:flex-none rounded-xl bg-[#8B0000] hover:bg-[#660000] text-white font-semibold text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4"
+                    className="flex-1 md:flex-none rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4"
                     onClick={handleLogout}
                   >
                     <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Logout
@@ -401,7 +401,7 @@ function ProfileContent() {
                   <div className="flex flex-col gap-1 w-full mt-1 sm:mt-2">
                     <div className="flex justify-between items-end px-1">
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">XP Progress</span>
-                      <span className="text-[10px] font-bold text-[#8B0000]">
+                      <span className="text-[10px] font-bold text-primary">
                         {progress.currentLevelXp} <span className="text-muted-foreground">/ {progress.xpForNextLevel}</span>
                       </span>
                     </div>
@@ -432,10 +432,10 @@ function ProfileContent() {
                 <Card className="border border-border shadow-md rounded-2xl bg-card overflow-hidden">
                   <CardHeader className="pb-3 pt-5 px-5 flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                      <Swords className="w-4 h-4 text-[#8B0000]" />
+                      <Swords className="w-4 h-4 text-primary" />
                       Combat Attributes
                     </CardTitle>
-                    <Badge variant="outline" className="text-[10px] font-semibold text-[#8B0000] border-[#8B0000]/30 px-2 py-0.5">
+                    <Badge variant="outline" className="text-[10px] font-semibold text-primary border-primary/30 px-2 py-0.5">
                       LVL {userProfile.level}
                     </Badge>
                   </CardHeader>
@@ -546,14 +546,14 @@ function ProfileContent() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Award className="w-6 h-6 text-[#8B0000]" />
+                    <Award className="w-6 h-6 text-primary" />
                     <CardTitle className="text-xl font-bold text-foreground">
                       Achievements
                     </CardTitle>
                   </div>
                   <button
                     onClick={() => setViewAllBadgesOpen(true)}
-                    className="text-sm font-semibold text-[#8B0000] underline underline-offset-4 hover:opacity-80 transition-opacity cursor-pointer"
+                    className="text-sm font-semibold text-primary underline underline-offset-4 hover:opacity-80 transition-opacity cursor-pointer"
                   >
                     View ALL
                   </button>
@@ -658,7 +658,7 @@ function ProfileContent() {
             <Card className="border border-border shadow-lg rounded-2xl">
               <CardHeader className="pb-3 p-4 sm:p-6 sm:pb-3">
                 <CardTitle className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2">
-                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B0000] shrink-0" /> Recent Activity
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" /> Recent Activity
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
@@ -671,7 +671,7 @@ function ProfileContent() {
                       >
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                           <div className="w-8 h-8 sm:w-10 sm:h-10 bg-secondary rounded-lg flex items-center justify-center shrink-0">
-                            <Award className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B0000]" />
+                            <Award className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                           </div>
                           <div className="min-w-0">
                             <p className="font-semibold text-xs sm:text-sm text-foreground truncate">{achievement.task}</p>
@@ -680,7 +680,7 @@ function ProfileContent() {
                             </p>
                           </div>
                         </div>
-                        <span className="font-semibold text-[#8B0000] text-xs sm:text-sm shrink-0">+{achievement.xp} XP</span>
+                        <span className="font-semibold text-primary text-xs sm:text-sm shrink-0">+{achievement.xp} XP</span>
                       </div>
                     ))
                   ) : (
@@ -814,8 +814,8 @@ function ProfileContent() {
                 <DialogHeader className="pb-3 sm:pb-4 border-b border-border">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 pr-6">
                     <div className="flex items-center gap-2.5 sm:gap-3">
-                      <div className="p-2 sm:p-2.5 bg-[#8B0000]/10 border border-[#8B0000]/20 rounded-xl sm:rounded-2xl shrink-0">
-                        <Award className="w-5 h-5 sm:w-6 sm:h-6 text-[#8B0000]" />
+                      <div className="p-2 sm:p-2.5 bg-primary/10 border border-primary/20 rounded-xl sm:rounded-2xl shrink-0">
+                        <Award className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                       </div>
                       <div>
                         <DialogTitle className="text-lg sm:text-2xl font-bold text-foreground">
@@ -827,7 +827,7 @@ function ProfileContent() {
                       </div>
                     </div>
 
-                    <Badge className="bg-[#8B0000] text-white font-bold text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 self-start sm:self-auto">
+                    <Badge className="bg-primary text-primary-foreground font-bold text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 self-start sm:self-auto">
                       {earnedCount} / {combinedBadgeTypes.length} UNLOCKED
                     </Badge>
                   </div>
@@ -838,7 +838,7 @@ function ProfileContent() {
                       size="sm"
                       variant={badgeFilter === 'all' ? 'default' : 'outline'}
                       onClick={() => setBadgeFilter('all')}
-                      className={cn("rounded-xl text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3.5 h-7 sm:h-8 flex-1 sm:flex-none justify-center", badgeFilter === 'all' && "bg-[#8B0000] hover:bg-[#660000] text-white")}
+                      className={cn("rounded-xl text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3.5 h-7 sm:h-8 flex-1 sm:flex-none justify-center", badgeFilter === 'all' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
                     >
                       All Badges ({combinedBadgeTypes.length})
                     </Button>
@@ -846,7 +846,7 @@ function ProfileContent() {
                       size="sm"
                       variant={badgeFilter === 'earned' ? 'default' : 'outline'}
                       onClick={() => setBadgeFilter('earned')}
-                      className={cn("rounded-xl text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3.5 h-7 sm:h-8 flex-1 sm:flex-none justify-center", badgeFilter === 'earned' && "bg-[#8B0000] hover:bg-[#660000] text-white")}
+                      className={cn("rounded-xl text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3.5 h-7 sm:h-8 flex-1 sm:flex-none justify-center", badgeFilter === 'earned' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
                     >
                       Unlocked ({earnedCount})
                     </Button>
@@ -854,7 +854,7 @@ function ProfileContent() {
                       size="sm"
                       variant={badgeFilter === 'locked' ? 'default' : 'outline'}
                       onClick={() => setBadgeFilter('locked')}
-                      className={cn("rounded-xl text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3.5 h-7 sm:h-8 flex-1 sm:flex-none justify-center", badgeFilter === 'locked' && "bg-[#8B0000] hover:bg-[#660000] text-white")}
+                      className={cn("rounded-xl text-[11px] sm:text-xs font-semibold px-2.5 sm:px-3.5 h-7 sm:h-8 flex-1 sm:flex-none justify-center", badgeFilter === 'locked' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
                     >
                       Locked ({combinedBadgeTypes.length - earnedCount})
                     </Button>

@@ -159,93 +159,25 @@ function LeaderboardContent() {
           </div>
         </Card>
 
-        {/* Global Rank & Streak Card */}
+        {/* Daily Streak Card */}
         <Card className="border border-border/80 shadow-md bg-card/60 backdrop-blur-sm p-4 sm:p-6 text-center space-y-2 relative overflow-hidden group hover:border-rose-500/40 transition-all duration-300">
           <div className="absolute top-0 right-0 w-16 h-16 bg-rose-500/5 rounded-bl-full pointer-events-none"></div>
           <div className="bg-rose-500/10 text-rose-500 w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center mx-auto mb-1 group-hover:scale-110 transition-transform">
             <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            Rank & Streak
+            Streak
           </p>
           <div className="space-y-0.5">
             <h3 className="text-xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-              {user?.xp > 0 && currentUserRank ? `#${currentUserRank}` : 'Unranked'}
+              {user?.streak || 0} Days
             </h3>
             <p className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              {user?.streak || 0} Day Streak
+              Daily Active Streak
             </p>
           </div>
         </Card>
       </div>
-
-      {/* Top Podium Showcase (If users exist on Page 1) */}
-      {page === 1 && topUsers.length >= 3 && (
-        <div className="hidden sm:grid grid-cols-3 gap-4 pt-2 pb-1">
-          {/* 2nd Place */}
-          <Card className="border border-slate-300 dark:border-slate-700 bg-gradient-to-b from-slate-100/50 via-card to-card p-4 text-center rounded-2xl space-y-2 relative transform translate-y-3 shadow-md">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-extrabold px-3 py-0.5 rounded-full border border-slate-400/30 shadow-sm flex items-center gap-1">
-              <Award className="w-3 h-3 text-slate-400" /> Rank 2
-            </div>
-            <Avatar className="h-14 w-14 border-2 border-slate-400 shadow-md mx-auto mt-2">
-              <AvatarFallback className="bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200 font-bold text-sm">
-                {topUsers[1]?.name?.[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="space-y-0.5">
-              <p className="font-bold text-sm truncate text-foreground">{topUsers[1]?.name}</p>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase truncate">
-                Level {topUsers[1]?.level} {getRankTitle(topUsers[1]?.level)}
-              </p>
-            </div>
-            <Badge variant="secondary" className="bg-slate-200/80 text-slate-800 dark:bg-slate-800 dark:text-slate-200 font-bold text-xs">
-              {topUsers[1]?.xp?.toLocaleString()} XP
-            </Badge>
-          </Card>
-
-          {/* 1st Place */}
-          <Card className="border-2 border-amber-400/80 dark:border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-card to-card p-5 text-center rounded-2xl space-y-2 relative shadow-xl z-10">
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[11px] font-black px-3.5 py-0.5 rounded-full shadow-md flex items-center gap-1 uppercase tracking-wider">
-              <Crown className="w-3.5 h-3.5 text-amber-200" /> Rank 1
-            </div>
-            <Avatar className="h-16 w-16 border-2 border-amber-400 shadow-lg mx-auto mt-1 ring-4 ring-amber-500/20">
-              <AvatarFallback className="bg-amber-500 text-white font-bold text-base">
-                {topUsers[0]?.name?.[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="space-y-0.5">
-              <p className="font-extrabold text-base truncate text-foreground">{topUsers[0]?.name}</p>
-              <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase truncate">
-                Level {topUsers[0]?.level} {getRankTitle(topUsers[0]?.level)}
-              </p>
-            </div>
-            <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs px-3 py-1 shadow-sm">
-              {topUsers[0]?.xp?.toLocaleString()} XP
-            </Badge>
-          </Card>
-
-          {/* 3rd Place */}
-          <Card className="border border-amber-700/30 bg-gradient-to-b from-amber-900/10 via-card to-card p-4 text-center rounded-2xl space-y-2 relative transform translate-y-3 shadow-md">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-800/80 text-amber-200 text-[10px] font-extrabold px-3 py-0.5 rounded-full border border-amber-600/30 shadow-sm flex items-center gap-1">
-              <Award className="w-3 h-3 text-amber-500" /> Rank 3
-            </div>
-            <Avatar className="h-14 w-14 border-2 border-amber-700/60 shadow-md mx-auto mt-2">
-              <AvatarFallback className="bg-amber-800 text-amber-100 font-bold text-sm">
-                {topUsers[2]?.name?.[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="space-y-0.5">
-              <p className="font-bold text-sm truncate text-foreground">{topUsers[2]?.name}</p>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase truncate">
-                Level {topUsers[2]?.level} {getRankTitle(topUsers[2]?.level)}
-              </p>
-            </div>
-            <Badge variant="secondary" className="bg-amber-900/20 text-amber-800 dark:text-amber-300 font-bold text-xs">
-              {topUsers[2]?.xp?.toLocaleString()} XP
-            </Badge>
-          </Card>
-        </div>
-      )}
 
       {/* Regional Leaderboard Table */}
       <Card id="tour-ranks-table" className="border border-border/80 shadow-xl overflow-hidden rounded-2xl sm:rounded-3xl bg-card">
@@ -253,8 +185,8 @@ function LeaderboardContent() {
           <div>
             <CardTitle className="text-base sm:text-xl font-headline font-bold">Regional Rankings</CardTitle>
           </div>
-          <Badge variant="outline" className="text-xs font-semibold px-3 py-1 bg-background whitespace-nowrap shrink-0">
-            {totalUsers} Ranked Aspirant{totalUsers !== 1 ? 's' : ''}
+          <Badge variant="outline" className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary border-primary/30 whitespace-nowrap shrink-0">
+            {user?.xp > 0 && currentUserRank ? `Ranked #${currentUserRank} on Leaderboard` : 'Unranked Aspirant'}
           </Badge>
         </CardHeader>
         <CardContent className="p-0">
@@ -380,28 +312,6 @@ function LeaderboardContent() {
           <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
-
-      {/* Sticky User Position Bar (If user is ranked but not visible on current page) */}
-      {user && user.xp > 0 && currentUserRank && !isUserOnCurrentPage && (
-        <div className="sticky bottom-4 z-20">
-          <Card className="border border-primary/40 bg-card/95 backdrop-blur-md p-3 sm:p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-3 text-foreground">
-            <div className="flex items-center gap-3 min-w-0">
-              <Badge className="bg-primary text-white font-extrabold text-xs px-2.5 py-1 rounded-lg shrink-0">
-                #{currentUserRank}
-              </Badge>
-              <div className="min-w-0">
-                <p className="font-bold text-xs sm:text-sm truncate">Your Leaderboard Standing</p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate uppercase font-semibold">
-                  {fullLevelTitle}
-                </p>
-              </div>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="font-extrabold text-primary text-sm sm:text-base">{user.xp?.toLocaleString()} XP</p>
-            </div>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

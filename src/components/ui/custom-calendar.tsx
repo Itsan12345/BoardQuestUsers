@@ -77,7 +77,7 @@ export function CustomCalendar({ selected, onSelect, disabled }: CustomCalendarP
               className={`
                 h-8 w-8 sm:h-9 sm:w-9 mx-auto rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center
                 ${!isCurrentMonth ? 'text-muted-foreground/30' : 'text-foreground'}
-                ${isSelected ? 'bg-[#8B0000] text-white font-bold shadow-lg ring-2 ring-primary/20 scale-105' : ''}
+                ${isSelected ? 'bg-primary text-primary-foreground font-bold shadow-lg ring-2 ring-primary/30 scale-105' : ''}
                 ${!isSelected && isCurrentMonth && !isDisabled ? 'hover:bg-secondary cursor-pointer' : ''}
                 ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:cursor-pointer'}
               `}

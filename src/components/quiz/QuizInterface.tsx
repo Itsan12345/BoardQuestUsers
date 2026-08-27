@@ -293,7 +293,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                   Heavy Attack 
                   {bossShieldActive && <span className="block text-[6px] md:text-xs bg-blue-500 text-white px-1 md:px-2 py-0.5 rounded mt-1 md:mt-2 animate-pulse">BREAKS SHIELD</span>}
                 </h3>
-                <p className="text-[6.5px] sm:text-[8px] md:text-xs font-bold text-slate-600 mt-1 md:mt-2 leading-[1.2] md:leading-relaxed">Attempt a hard difficulty question. If correct, it deals massive damage. If wrong, the player takes a heavy counter-attack.</p>
+                <p className="text-[6.5px] sm:text-[8px] md:text-xs font-bold text-muted-foreground mt-1 md:mt-2 leading-[1.2] md:leading-relaxed">Attempt a hard difficulty question. If correct, it deals massive damage. If wrong, the player takes a heavy counter-attack.</p>
               </div>
             </button>
             
@@ -301,18 +301,18 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
             <button
               onClick={() => handleSelectMove('normal')}
               className={cn("border-2 transition-all p-2 sm:p-4 md:p-8 rounded-xl md:rounded-3xl flex flex-col items-center text-center space-y-2 md:space-y-6 group", 
-                bossShieldActive ? "bg-slate-50 border-slate-200 opacity-60" : "bg-background border-primary/20 hover:border-primary hover:shadow-xl hover:shadow-primary/10"
+                bossShieldActive ? "bg-muted/40 border-border opacity-60" : "bg-background border-primary/20 hover:border-primary hover:shadow-xl hover:shadow-primary/10"
               )}
             >
-              <div className={cn("w-10 h-10 md:w-24 md:h-24 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shrink-0", bossShieldActive ? "bg-slate-200" : "bg-primary/10")}>
-                <Sword className={cn("w-5 h-5 md:w-12 md:h-12", bossShieldActive ? "text-slate-500" : "text-primary")} strokeWidth={1.5} />
+              <div className={cn("w-10 h-10 md:w-24 md:h-24 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shrink-0", bossShieldActive ? "bg-muted" : "bg-primary/10")}>
+                <Sword className={cn("w-5 h-5 md:w-12 md:h-12", bossShieldActive ? "text-muted-foreground" : "text-primary")} strokeWidth={1.5} />
               </div>
               <div className="flex flex-col flex-1 justify-start">
-                <h3 className={cn("font-black uppercase tracking-tight text-[8px] sm:text-[10px] md:text-lg leading-tight", bossShieldActive ? "text-slate-500" : "text-primary")}>
+                <h3 className={cn("font-black uppercase tracking-tight text-[8px] sm:text-[10px] md:text-lg leading-tight", bossShieldActive ? "text-muted-foreground" : "text-primary")}>
                   Normal Attack 
                   {bossShieldActive && <span className="block text-[6px] md:text-xs bg-slate-500 text-white px-1 md:px-2 py-0.5 rounded mt-1 md:mt-2">INEFFECTIVE</span>}
                 </h3>
-                <p className="text-[6.5px] sm:text-[8px] md:text-xs font-bold text-slate-600 mt-1 md:mt-2 leading-[1.2] md:leading-relaxed">Answer a normal-difficulty question. Deals standard damage.</p>
+                <p className="text-[6.5px] sm:text-[8px] md:text-xs font-bold text-muted-foreground mt-1 md:mt-2 leading-[1.2] md:leading-relaxed">Answer a normal-difficulty question. Deals standard damage.</p>
               </div>
             </button>
             
@@ -320,18 +320,18 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
             <button
               onClick={() => handleSelectMove('defend')}
               className={cn("border-2 hover:shadow-xl transition-all p-2 sm:p-4 md:p-8 rounded-xl md:rounded-3xl flex flex-col items-center text-center space-y-2 md:space-y-6 group", 
-                playerPoisoned ? "bg-green-100 border-green-500 shadow-green-200 animate-pulse" : "bg-background border-green-200 hover:border-green-500 hover:shadow-green-100"
+                playerPoisoned ? "bg-emerald-500/10 border-emerald-500 shadow-emerald-500/20 animate-pulse" : "bg-background border-emerald-500/30 hover:border-emerald-500 hover:shadow-emerald-500/10"
               )}
             >
-              <div className="w-10 h-10 md:w-24 md:h-24 rounded-full bg-green-50 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
-                <ShieldPlus className="w-5 h-5 md:w-12 md:h-12 text-green-600" strokeWidth={1.5} />
+              <div className="w-10 h-10 md:w-24 md:h-24 rounded-full bg-emerald-500/10 dark:bg-emerald-950/40 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                <ShieldPlus className="w-5 h-5 md:w-12 md:h-12 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
               </div>
               <div className="flex flex-col flex-1 justify-start">
-                <h3 className="font-black text-green-700 uppercase tracking-tight text-[8px] sm:text-[10px] md:text-lg leading-tight">
+                <h3 className="font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-tight text-[8px] sm:text-[10px] md:text-lg leading-tight">
                   Defend / Heal 
-                  {playerPoisoned && <span className="block text-[6px] md:text-xs bg-green-500 text-white px-1 md:px-2 py-0.5 rounded mt-1 md:mt-2">CURES POISON</span>}
+                  {playerPoisoned && <span className="block text-[6px] md:text-xs bg-emerald-500 text-white px-1 md:px-2 py-0.5 rounded mt-1 md:mt-2">CURES POISON</span>}
                 </h3>
-                <p className="text-[6.5px] sm:text-[8px] md:text-xs font-bold text-slate-600 mt-1 md:mt-2 leading-[1.2] md:leading-relaxed">Answer an easier question dealing no damage to the boss, but restoring the player's HP. Great for when they are close to dying.</p>
+                <p className="text-[6.5px] sm:text-[8px] md:text-xs font-bold text-muted-foreground mt-1 md:mt-2 leading-[1.2] md:leading-relaxed">Answer an easier question dealing no damage to the boss, but restoring the player's HP. Great for when they are close to dying.</p>
               </div>
             </button>
           </div>
@@ -355,8 +355,8 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                   className={cn(
                     "w-full text-lg p-6 rounded-2xl border-2 transition-all shadow-sm focus-visible:ring-primary focus-visible:border-primary",
                     isAnswered && (selectedAnswer?.trim().toLowerCase() === currentQuestion.correctAnswer.trim().toLowerCase()
-                      ? "bg-green-50 border-green-500 text-green-700" 
-                      : "bg-red-50 border-red-500 text-red-700")
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-900 dark:text-emerald-300" 
+                      : "bg-red-50 dark:bg-red-950/40 border-red-500 text-red-900 dark:text-red-300")
                   )}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !isAnswered && selectedAnswer) {
@@ -366,12 +366,12 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                 />
                 
                 {isAnswered && (
-                  <div className="p-4 rounded-xl bg-green-50 border-2 border-green-200 flex items-center justify-between shadow-sm">
+                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500/40 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                      <span className="text-xs font-bold text-green-800 uppercase tracking-wider">Correct Answer</span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Correct Answer</span>
                     </div>
-                    <span className="font-black text-green-700 text-sm">{currentQuestion.correctAnswer}</span>
+                    <span className="font-black text-emerald-700 dark:text-emerald-300 text-sm">{currentQuestion.correctAnswer}</span>
                   </div>
                 )}
                 
@@ -402,12 +402,12 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                     disabled={isAnswered || isTransitioning || isEliminated}
                     onClick={() => handleSubmit(letter)}
                     className={cn(
-                      "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left shadow-sm relative overflow-hidden",
-                      !isAnswered && !isTransitioning && !isEliminated && "bg-background border-transparent hover:border-primary/20",
-                      isCorrect && "bg-green-50 border-green-500 shadow-green-100",
-                      isWrong && "bg-red-50 border-red-500 shadow-red-100",
+                      "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left shadow-sm relative overflow-hidden text-foreground",
+                      !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10",
+                      isCorrect && "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-950 dark:text-emerald-200",
+                      isWrong && "bg-red-50 dark:bg-red-950/40 border-red-500 text-red-950 dark:text-red-200",
                       isAnswered && !isSelected && !isCorrect && "opacity-50 grayscale",
-                      isEliminated && "opacity-40 grayscale bg-slate-100 border-slate-300 cursor-not-allowed line-through"
+                      isEliminated && "opacity-40 grayscale bg-muted border-border cursor-not-allowed line-through"
                     )}
                   >
                     <div className={cn(

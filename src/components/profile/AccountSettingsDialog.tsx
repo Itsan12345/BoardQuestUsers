@@ -722,7 +722,7 @@ export function AccountSettingsDialog({
           <TabsContent value="profile" className="flex-1 overflow-y-auto min-h-0 pr-1 sm:pr-2 pt-3 space-y-3 sm:space-y-3.5 min-w-0 max-w-full focus-visible:outline-none">
             <form onSubmit={handleSaveProfile} className="space-y-3.5 min-w-0 max-w-full">
               <div id="tour-profile-identity" className="p-2.5 sm:p-3 bg-muted/30 border border-border rounded-xl sm:rounded-2xl flex items-center gap-2.5 sm:gap-3.5 w-full min-w-0 max-w-full overflow-hidden">
-                <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-[#8B0000] text-white flex items-center justify-center text-sm sm:text-lg font-bold border-2 border-primary/20 shadow-md shrink-0">
+                <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm sm:text-lg font-bold border-2 border-primary/20 shadow-md shrink-0">
                   {name
                     ? name
                       .split(' ')
@@ -778,7 +778,7 @@ export function AccountSettingsDialog({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
                   <div className="space-y-1 w-full min-w-0">
                     <Label htmlFor="school" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1 truncate">
-                      <School className="w-3.5 h-3.5 text-[#8B0000] shrink-0" /> University / Review Center
+                      <School className="w-3.5 h-3.5 text-primary shrink-0" /> University / Review Center
                     </Label>
                     <Input
                       id="school"
@@ -791,10 +791,10 @@ export function AccountSettingsDialog({
                   <div id="tour-profile-target-exam" className="space-y-1.5 w-full min-w-0">
                     <div className="flex items-center justify-between min-w-0 gap-1">
                       <Label className="text-xs font-semibold flex items-center gap-1 truncate">
-                        <Calendar className="w-3.5 h-3.5 text-[#8B0000]" /> Target MTLE Board Schedule
+                        <Calendar className="w-3.5 h-3.5 text-primary" /> Target MTLE Board Schedule
                       </Label>
                       {daysRemaining > 0 && (
-                        <span className="text-xs font-bold text-[#8B0000] shrink-0">
+                        <span className="text-xs font-bold text-primary shrink-0">
                           {daysRemaining} days left
                         </span>
                       )}
@@ -807,7 +807,7 @@ export function AccountSettingsDialog({
                           className="w-full h-10 px-3 bg-background hover:bg-muted/50 border border-input hover:border-primary/50 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between transition-all group shadow-sm text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/30 min-w-0 cursor-pointer"
                         >
                           <div className="flex items-center gap-2 min-w-0 truncate">
-                            <Calendar className="w-4 h-4 text-[#8B0000] shrink-0 group-hover:scale-110 transition-transform" />
+                            <Calendar className="w-4 h-4 text-primary shrink-0 group-hover:scale-110 transition-transform" />
                             <span className="truncate text-xs sm:text-sm font-normal text-foreground">
                               {targetExamDate ? format(targetExamDate, 'MMMM d, yyyy') : 'Pick examination date'}
                             </span>
@@ -843,7 +843,7 @@ export function AccountSettingsDialog({
                 {/* Row 3: Regional Testing Hub / City */}
                 <div className="space-y-1 w-full min-w-0">
                   <Label htmlFor="location" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#8B0000] shrink-0" /> Regional Testing Hub / City
+                    <MapPin className="w-3.5 h-3.5 text-primary shrink-0" /> Regional Testing Hub / City
                   </Label>
                   <Input
                     id="location"
@@ -860,7 +860,7 @@ export function AccountSettingsDialog({
                   id="tour-profile-save"
                   type="submit"
                   disabled={isSavingProfile}
-                  className="w-full sm:w-auto bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-6 h-10 shadow-sm"
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-xs px-6 h-10 shadow-sm"
                 >
                   {isSavingProfile && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
                   Save Profile Details
@@ -879,7 +879,7 @@ export function AccountSettingsDialog({
                     <Label className="text-sm font-semibold text-foreground">Daily Question Target</Label>
                     <p className="text-xs text-muted-foreground">Target questions to complete every day</p>
                   </div>
-                  <Badge className="bg-[#8B0000] text-white text-[11px] sm:text-xs font-bold px-2.5 py-0.5 w-fit shrink-0">
+                  <Badge className="bg-primary text-primary-foreground text-[11px] sm:text-xs font-bold px-2.5 py-0.5 w-fit shrink-0">
                     {dailyQuota} Questions/Day
                   </Badge>
                 </div>
@@ -893,7 +893,7 @@ export function AccountSettingsDialog({
                       onClick={() => setDailyQuota(quota)}
                       className={cn(
                         'w-full rounded-xl text-xs font-bold h-9 sm:h-8 transition-all',
-                        dailyQuota === quota ? 'bg-[#8B0000] hover:bg-[#660000] text-white' : 'hover:bg-muted/80'
+                        dailyQuota === quota ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'hover:bg-muted/80'
                       )}
                     >
                       {quota} Qs
@@ -961,7 +961,7 @@ export function AccountSettingsDialog({
                   id="tour-goals-save"
                   type="button"
                   onClick={handleSaveGoals}
-                  className="w-full sm:w-auto bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-bold text-xs px-5 h-10 sm:h-9 shadow-sm"
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-xs px-5 h-10 sm:h-9 shadow-sm"
                 >
                   Save Study Preferences
                 </Button>
@@ -975,7 +975,7 @@ export function AccountSettingsDialog({
               <div id="tour-audio-sfx" className="p-4 bg-muted/20 border border-border rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Volume2 className="w-4 h-4 text-[#8B0000]" />
+                    <Volume2 className="w-4 h-4 text-primary" />
                     <Label className="text-sm font-semibold text-foreground">Sound Effects (SFX) Volume</Label>
                   </div>
                   <span className="text-xs font-mono font-bold text-muted-foreground">{sfxVolume[0]}%</span>
@@ -1020,7 +1020,7 @@ export function AccountSettingsDialog({
                   id="tour-audio-save"
                   type="button"
                   onClick={handleSaveAudio}
-                  className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-xs px-5 h-9"
                 >
                   Save Audio Preferences
                 </Button>
@@ -1063,7 +1063,7 @@ export function AccountSettingsDialog({
                   id="tour-alerts-save"
                   type="button"
                   onClick={handleSaveNotifications}
-                  className="bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-semibold text-xs px-5 h-9"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold text-xs px-5 h-9"
                 >
                   Save Notification Alerts
                 </Button>
@@ -1138,7 +1138,7 @@ export function AccountSettingsDialog({
                     id="tour-security-save"
                     type="submit"
                     disabled={isChangingPassword}
-                    className="w-full sm:w-auto bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-bold text-xs px-5 h-9"
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-xs px-5 h-9"
                   >
                     {isChangingPassword && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
                     Update Password
@@ -1150,7 +1150,7 @@ export function AccountSettingsDialog({
               <div id="tour-security-session" className="p-3.5 sm:p-4 bg-muted/20 border border-border rounded-xl sm:rounded-2xl space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Laptop className="w-4 h-4 text-[#8B0000]" />
+                    <Laptop className="w-4 h-4 text-primary" />
                     <span className="text-xs sm:text-sm font-bold text-foreground">Active Signed-in Sessions</span>
                     <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0">
                       {activeSessions.length} {activeSessions.length === 1 ? 'Device' : 'Devices'}
@@ -1174,7 +1174,7 @@ export function AccountSettingsDialog({
 
                 {loadingSessions && activeSessions.length === 0 ? (
                   <div className="py-4 text-center">
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#8B0000]" />
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto text-primary" />
                     <span className="text-xs text-muted-foreground mt-1 inline-block">Checking active sessions...</span>
                   </div>
                 ) : (
@@ -1310,7 +1310,7 @@ export function AccountSettingsDialog({
                     type="button"
                     onClick={handleExportData}
                     disabled={isExporting}
-                    className="w-full sm:w-auto shrink-0 bg-[#8B0000] hover:bg-[#660000] text-white rounded-xl font-bold text-xs px-5 h-10 sm:h-9 flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all"
+                    className="w-full sm:w-auto shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-xs px-5 h-10 sm:h-9 flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all"
                   >
                     {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                     Export Data (JSON)

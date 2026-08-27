@@ -33,6 +33,8 @@ import {
   Flame,
   Package,
   ShoppingBag,
+  Compass,
+  RotateCw,
   X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -251,40 +253,46 @@ export default function LearningQuest() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   // Fetch dynamic categories directly from MongoDB Category collection
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const [cats, userSettings] = await Promise.all([
-          getCategories().catch(() => []),
-          getUserSettingsAction().catch(() => null),
-        ]);
-        if (cats && cats.length > 0) {
-          const names = cats.map(c => c.name);
-          setDynamicCategories(names);
+  const loadCategories = async () => {
+    setCategoriesLoading(true);
+    try {
+      const [cats, userSettings] = await Promise.all([
+        getCategories().catch(() => []),
+        getUserSettingsAction().catch(() => null),
+      ]);
 
-          // Priority 1: URL search param ?subject=
-          const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-          const urlSubject = searchParams?.get('subject');
+      if (cats && cats.length > 0) {
+        const names = cats.map(c => c.name);
+        setDynamicCategories(names);
 
-          // Priority 2: Priority Focus Subject from Account Settings
-          const settingsFocus = userSettings?.focusSubject;
-          const savedFocus = settingsFocus !== undefined ? settingsFocus : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null);
-          const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
+        // Priority 1: URL search param ?subject=
+        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+        const urlSubject = searchParams?.get('subject');
 
-          if (urlSubject && names.includes(urlSubject)) {
-            setSelectedSubject(urlSubject);
-          } else if (validFocus && names.includes(validFocus)) {
-            setSelectedSubject(validFocus);
-          } else {
-            setSelectedSubject(names[0]);
-          }
+        // Priority 2: Priority Focus Subject from Account Settings
+        const settingsFocus = userSettings?.focusSubject;
+        const savedFocus = settingsFocus !== undefined ? settingsFocus : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null);
+        const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
+
+        if (urlSubject && names.includes(urlSubject)) {
+          setSelectedSubject(urlSubject);
+        } else if (validFocus && names.includes(validFocus)) {
+          setSelectedSubject(validFocus);
+        } else {
+          setSelectedSubject(names[0]);
         }
-      } catch (err) {
-        console.error("Error loading categories from MongoDB:", err);
-      } finally {
-        setCategoriesLoading(false);
+      } else {
+        setDynamicCategories([]);
       }
+    } catch (err) {
+      console.error("Error loading categories from MongoDB:", err);
+      setDynamicCategories([]);
+    } finally {
+      setCategoriesLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadCategories();
   }, []);
 
@@ -2595,14 +2603,38 @@ export default function LearningQuest() {
 
       <div id="tour-quest-map" className={cn(
         "flex-1 min-h-0 flex flex-col relative z-10 overflow-x-visible",
-        isFullscreen ? "justify-start pt-0 md:pt-1 overflow-y-hidden" : "justify-center py-4 md:py-8 overflow-y-visible"
+        isFullscreen
+          ? (categoriesLoading || dynamicCategories.length === 0 ? "justify-center items-center overflow-y-hidden my-auto" : "justify-start pt-0 md:pt-1 overflow-y-hidden")
+          : "justify-center py-4 md:py-8 overflow-y-visible"
       )}>
-        {categoriesLoading || dynamicCategories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[300px] space-y-3">
+        {categoriesLoading ? (
+          <div className="flex flex-col items-center justify-center min-h-[300px] space-y-3 my-auto">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
             <p className="text-white font-bytebounce text-lg tracking-widest uppercase">
-              Loading Quest Regions...
+              Scanning Laboratory Realms...
             </p>
+          </div>
+        ) : dynamicCategories.length === 0 ? (
+          <div className="flex flex-col items-center justify-center min-h-[320px] max-w-lg mx-auto p-6 text-center z-20 my-auto">
+            <div className="relative mb-4 flex items-center justify-center">
+              <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-xl animate-pulse" />
+              <div className="w-20 h-20 rounded-2xl bg-black/60 border-2 border-amber-500/50 flex items-center justify-center backdrop-blur-md shadow-[0_0_30px_rgba(245,158,11,0.3)]">
+                <Compass className="w-10 h-10 text-amber-400 animate-spin-slow" />
+              </div>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bytebounce text-amber-400 tracking-wider uppercase mb-2" style={{ textShadow: '2px 2px 0 #000' }}>
+              No Quest Regions Discovered
+            </h2>
+            <p className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed mb-6 max-w-md">
+              There are currently no active subject domains configured in the database. Please contact your Review Center Administrator or check your connection.
+            </p>
+            <Button
+              onClick={() => loadCategories()}
+              className="font-bytebounce text-lg tracking-widest bg-amber-600 hover:bg-amber-500 text-white border-2 border-amber-300/40 shadow-lg px-6 py-3 rounded-xl transition-transform active:scale-95 flex items-center gap-2"
+            >
+              <RotateCw className="w-4 h-4" />
+              Re-Scan Laboratory Realms
+            </Button>
           </div>
         ) : (
           <div ref={carouselRef} className={cn(
@@ -2665,38 +2697,40 @@ export default function LearningQuest() {
         )}
       </div>
 
-      <div id="tour-quest-inventory" className={cn(
-        "px-6 md:px-8 shrink-0 relative z-20",
-        isFullscreen ? "mt-1 md:mt-2 pb-3 md:pb-5" : "mt-8 md:mt-14 pb-6 md:pb-10"
-      )}>
-        <div className="flex justify-center w-full">
-          <button
-            onClick={() => {
-              setSetupStep('mode');
-              setModeSelectDialogOpen(true);
-            }}
-            disabled={isLoading}
-            className={cn(
-              "relative w-full group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none",
-              isFullscreen ? "max-w-md sm:max-w-xl md:max-w-2xl h-24 sm:h-28 md:h-36" : "max-w-sm sm:max-w-md md:max-w-xl h-20 sm:h-24 md:h-32"
-            )}
-          >
-            <Image
-              src="/ui/btn-enterArena.png"
-              alt="Enter Battle Arena"
-              fill
-              className="object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
-              style={{ imageRendering: 'pixelated' }}
-              unoptimized
-            />
-            <div className="absolute inset-0 flex items-center justify-center pb-2">
-              {isLoading && (
-                <Loader2 className="w-8 h-8 animate-spin text-white drop-shadow-[2px_2px_0_rgba(0,0,0,1)]" />
+      {!categoriesLoading && dynamicCategories.length > 0 && (
+        <div id="tour-quest-inventory" className={cn(
+          "px-6 md:px-8 shrink-0 relative z-20",
+          isFullscreen ? "mt-1 md:mt-2 pb-3 md:pb-5" : "mt-8 md:mt-14 pb-6 md:pb-10"
+        )}>
+          <div className="flex justify-center w-full">
+            <button
+              onClick={() => {
+                setSetupStep('mode');
+                setModeSelectDialogOpen(true);
+              }}
+              disabled={isLoading}
+              className={cn(
+                "relative w-full group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none",
+                isFullscreen ? "max-w-md sm:max-w-xl md:max-w-2xl h-24 sm:h-28 md:h-36" : "max-w-sm sm:max-w-md md:max-w-xl h-20 sm:h-24 md:h-32"
               )}
-            </div>
-          </button>
+            >
+              <Image
+                src="/ui/btn-enterArena.png"
+                alt="Enter Battle Arena"
+                fill
+                className="object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
+                style={{ imageRendering: 'pixelated' }}
+                unoptimized
+              />
+              <div className="absolute inset-0 flex items-center justify-center pb-2">
+                {isLoading && (
+                  <Loader2 className="w-8 h-8 animate-spin text-white drop-shadow-[2px_2px_0_rgba(0,0,0,1)]" />
+                )}
+              </div>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mode Selection Dialog */}
       <Dialog open={modeSelectDialogOpen} onOpenChange={setModeSelectDialogOpen}>

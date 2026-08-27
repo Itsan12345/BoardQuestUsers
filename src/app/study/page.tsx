@@ -47,64 +47,6 @@ import { format, startOfDay, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ModuleViewerDialog, type LearningModule as DialogLearningModule } from '@/components/study/ModuleViewerDialog';
 
-const INITIAL_CURRICULUM = [
-  {
-    id: "clinical-chemistry",
-    title: "Clinical Chemistry",
-    icon: FlaskConical,
-    lessons: [
-      { id: "cc1", title: "Carbohydrate Metabolism & Disorders", duration: "45m", status: "not-started", description: "Overview of glucose regulation, diabetes mellitus, and laboratory testing protocols.", fileUrls: [] },
-      { id: "cc2", title: "Lipid Profile & Lipoproteins", duration: "60m", status: "not-started", description: "Assessment of chylomicrons, VLDL, LDL, HDL and atherosclerotic risk metrics.", fileUrls: [] },
-      { id: "cc3", title: "Renal Function Tests & NPNs", duration: "40m", status: "not-started", description: "BUN, Creatinine, Uric Acid and clearance equation interpretations.", fileUrls: [] }
-    ]
-  },
-  {
-    id: "hematology",
-    title: "Hematology",
-    icon: Microscope,
-    lessons: [
-      { id: "hem1", title: "RBC Morphology & Anemias", duration: "50m", status: "not-started", description: "Classification of microcytic, normocytic, and macrocytic anemias.", fileUrls: [] },
-      { id: "hem2", title: "WBC Disorders & Leukemias", duration: "75m", status: "not-started", description: "Acute vs chronic leukemias, FAB classification, and cytochemical stains.", fileUrls: [] }
-    ]
-  },
-  {
-    id: "microbiology",
-    title: "Microbiology",
-    icon: Database,
-    lessons: [
-      { id: "mic1", title: "Bacteriology: Gram Positives", duration: "65m", status: "not-started", description: "Staphylococcus, Streptococcus, and Enterococcus identification keys.", fileUrls: [] },
-      { id: "mic2", title: "Enterobacteriaceae & Non-fermenters", duration: "90m", status: "not-started", description: "TSI, IMViC, and oxidase reactions for gram-negative bacilli.", fileUrls: [] }
-    ]
-  },
-  {
-    id: "immunohematology",
-    title: "Immunology & Serology and Immunohematology",
-    icon: Stethoscope,
-    lessons: [
-      { id: "bb1", title: "ABO & Rh Blood Group Systems", duration: "55m", status: "not-started", description: "Forward/reverse typing, Rh antibodies, and discrepancy resolution.", fileUrls: [] },
-      { id: "bb2", title: "Blood Component Therapy", duration: "50m", status: "not-started", description: "PRBCs, FFP, Platelets, Cryoprecipitate indications and crossmatching.", fileUrls: [] }
-    ]
-  },
-  {
-    id: "clinical-microscopy",
-    title: "Clinical Microscopy & Parasitology",
-    icon: FlaskConical,
-    lessons: [
-      { id: "cm1", title: "Routine Urinalysis: Physical & Chemical", duration: "40m", status: "not-started", description: "Reagent strip parameters, specific gravity, and physical color correlates.", fileUrls: [] },
-      { id: "cm2", title: "CSF & Other Body Fluids Analysis", duration: "50m", status: "not-started", description: "Cell counts, protein/glucose ratios in spinal, synovial, and serous fluids.", fileUrls: [] }
-    ]
-  },
-  {
-    id: "histopathology-mt-laws",
-    title: "Histopathology & MT Laws",
-    icon: ShieldAlert,
-    lessons: [
-      { id: "hp1", title: "Tissue Fixation & Processing", duration: "50m", status: "not-started", description: "Fixatives, dehydration, clearing, infiltration, and embedding techniques.", fileUrls: [] },
-      { id: "law1", title: "RA 5527: Phil MedTech Act of 1969", duration: "45m", status: "not-started", description: "Legal definitions, Board of Medical Technology, and licensure rules.", fileUrls: [] }
-    ]
-  }
-];
-
 const ICON_MAP: Record<string, any> = {
   "Clinical Chemistry": FlaskConical,
   "Hematology": Microscope,
@@ -119,8 +61,8 @@ export default function StudyPage() {
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [focusSubject, setFocusSubject] = useState<string | null>(null);
-  const [curriculum, setCurriculum] = useState<any[]>(INITIAL_CURRICULUM);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(INITIAL_CURRICULUM[0].id);
+  const [curriculum, setCurriculum] = useState<any[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [targetDates, setTargetDates] = useState<Record<string, Date>>({});
   const [subjectMetrics, setSubjectMetrics] = useState<Record<string, SubjectMetrics>>({});
   const [program, setProgram] = useState<ReviewCenterProgramData | null>(null);
@@ -159,25 +101,22 @@ export default function StudyPage() {
           setUserLastName(parts[parts.length - 1]);
         }
 
-        const baseList = (dbCategories && dbCategories.length > 0)
-          ? dbCategories
-          : INITIAL_CURRICULUM.map(c => ({ id: c.id, name: c.title }));
+        const baseList = (dbCategories && Array.isArray(dbCategories)) ? dbCategories : [];
 
-        const dynamicCurriculum = baseList.map((cat: any) => {
-          const catId = cat.id;
-          const normCatName = cat.name.trim().toLowerCase();
+        if (baseList.length === 0) {
+          setCurriculum([]);
+          setSelectedCategoryId(null);
+        } else {
+          const dynamicCurriculum = baseList.map((cat: any) => {
+            const catId = cat.id;
 
-          // Find dynamic modules uploaded for this category
-          const dynamicModulesForCat = modulesList.filter(m =>
-            m.categoryId === catId ||
-            (m.categoryId && m.categoryId.toString() === catId)
-          );
+            // Find dynamic modules uploaded for this category
+            const dynamicModulesForCat = modulesList.filter(m =>
+              m.categoryId === catId ||
+              (m.categoryId && m.categoryId.toString() === catId)
+            );
 
-          let lessons: any[] = [];
-          const hasUploadedModules = dynamicModulesForCat.length > 0;
-
-          if (hasUploadedModules) {
-            lessons = dynamicModulesForCat.map((m, idx) => ({
+            const lessons = dynamicModulesForCat.map((m, idx) => ({
               id: m.id,
               title: m.title,
               description: m.description || 'Uploaded learning module',
@@ -187,66 +126,47 @@ export default function StudyPage() {
               isDynamic: true,
               status: compMap[m.id] || 'not-started'
             }));
+
+            return {
+              id: cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              title: cat.name,
+              icon: ICON_MAP[cat.name] || BookMarked,
+              adminModuleCount: dynamicModulesForCat.length,
+              hasUploadedModules: dynamicModulesForCat.length > 0,
+              lessons
+            };
+          });
+
+          // Check URL param ?subject= or Focus Subject from settings
+          const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+          const urlSubject = searchParams?.get('subject');
+          const settingsFocus = userSettings?.focusSubject;
+          const savedFocus = settingsFocus !== undefined ? settingsFocus : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null);
+          const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
+          const prioritySubject = urlSubject || validFocus;
+
+          if (validFocus) {
+            setFocusSubject(validFocus);
           } else {
-            // Fall back to matching standard curriculum
-            const existing = INITIAL_CURRICULUM.find(c => c.title.trim().toLowerCase() === normCatName);
-            if (existing) {
-              lessons = existing.lessons.map(l => ({
-                ...l,
-                fileUrls: [],
-                isDynamic: false,
-                status: compMap[l.id] || 'not-started'
-              }));
-            } else {
-              const slug = cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-              lessons = [
-                { id: `${slug}-1`, title: `${cat.name} Fundamentals & Core Concepts`, duration: "45m", description: `Core protocols and fundamental concepts for ${cat.name}`, fileUrls: [], isDynamic: false, status: compMap[`${slug}-1`] || 'not-started' },
-                { id: `${slug}-2`, title: `${cat.name} Protocols & Comprehensive Review`, duration: "60m", description: `Advanced case studies and review questions for ${cat.name}`, fileUrls: [], isDynamic: false, status: compMap[`${slug}-2`] || 'not-started' }
-              ];
-            }
+            setFocusSubject(null);
           }
 
-          return {
-            id: cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            title: cat.name,
-            icon: ICON_MAP[cat.name] || BookMarked,
-            adminModuleCount: dynamicModulesForCat.length,
-            hasUploadedModules,
-            lessons
-          };
-        });
+          if (prioritySubject) {
+            dynamicCurriculum.sort((a: any, b: any) => {
+              if (a.title.toLowerCase() === prioritySubject.toLowerCase()) return -1;
+              if (b.title.toLowerCase() === prioritySubject.toLowerCase()) return 1;
+              return 0;
+            });
+          }
 
-        // Check URL param ?subject= or Focus Subject from settings
-        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const urlSubject = searchParams?.get('subject');
-        const settingsFocus = userSettings?.focusSubject;
-        const savedFocus = settingsFocus !== undefined ? settingsFocus : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null);
-        const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
-        const prioritySubject = urlSubject || validFocus;
-
-        if (validFocus) {
-          setFocusSubject(validFocus);
-        } else {
-          setFocusSubject(null);
-        }
-
-        if (prioritySubject) {
-          dynamicCurriculum.sort((a: any, b: any) => {
-            if (a.title.toLowerCase() === prioritySubject.toLowerCase()) return -1;
-            if (b.title.toLowerCase() === prioritySubject.toLowerCase()) return 1;
-            return 0;
-          });
-        }
-
-        setCurriculum(dynamicCurriculum);
-        if (dynamicCurriculum.length > 0) {
+          setCurriculum(dynamicCurriculum);
           setSelectedCategoryId(prev => {
             if (prioritySubject) {
               const matched = dynamicCurriculum.find((c: any) => c.title.toLowerCase() === prioritySubject.toLowerCase());
               if (matched) return matched.id;
             }
             const existsInNew = dynamicCurriculum.some((c: any) => c.id === prev);
-            return existsInNew ? prev : dynamicCurriculum[0].id;
+            return existsInNew && prev ? prev : dynamicCurriculum[0].id;
           });
         }
 
@@ -284,7 +204,7 @@ export default function StudyPage() {
           });
           setSubjectMetrics(metricsMap);
         }
-      } catch (err) {}
+      } catch (err) { }
     }, 30000);
 
     const checkDesktop = () => setIsDesktop(window.innerWidth >= 768);
@@ -295,7 +215,7 @@ export default function StudyPage() {
       try {
         const updatedFocus = localStorage.getItem('bq_pref_focus_subject');
         setFocusSubject(updatedFocus && updatedFocus !== 'none' ? updatedFocus : null);
-      } catch {}
+      } catch { }
     };
 
     window.addEventListener('bq_settings_updated', handleSettingsUpdate);
@@ -361,7 +281,7 @@ export default function StudyPage() {
             });
             setSubjectMetrics(metricsMap);
           }
-        } catch {}
+        } catch { }
 
         toast({
           title: nextStatus === 'completed' ? "Module Completed ✓" : "Module Reset",
@@ -400,7 +320,7 @@ export default function StudyPage() {
           timestamp: Date.now()
         }));
         window.dispatchEvent(new CustomEvent('bq_last_studied_updated'));
-      } catch (e) {}
+      } catch (e) { }
     }
   };
 
@@ -427,14 +347,17 @@ export default function StudyPage() {
     }
   }, [searchQuery, matchingCategories, selectedCategoryId]);
 
-  const selectedCategory = curriculum.find(c => c.id === selectedCategoryId) || curriculum[0];
+  const selectedCategory = (curriculum && curriculum.length > 0)
+    ? (curriculum.find(c => c.id === selectedCategoryId) || curriculum[0])
+    : null;
+
   const selectedDate = selectedCategory ? targetDates[selectedCategory.title] : undefined;
 
   // Filter lessons based on user search query
   const filteredLessons = (selectedCategory?.lessons || []).filter((l: any) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    if (selectedCategory.title.toLowerCase().includes(q)) return true;
+    if (selectedCategory?.title && selectedCategory.title.toLowerCase().includes(q)) return true;
     return (
       l.title.toLowerCase().includes(q) ||
       (l.description && l.description.toLowerCase().includes(q)) ||
@@ -443,6 +366,45 @@ export default function StudyPage() {
   });
 
   const displayCurriculum = searchQuery.trim() ? matchingCategories : curriculum;
+
+  if (loading) {
+    return (
+      <div className="min-h-[75vh] flex flex-col items-center justify-center p-6 bg-background">
+        <Loader2 className="w-10 h-10 animate-spin text-primary mb-3" />
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Loading Study Subjects...</p>
+      </div>
+    );
+  }
+
+  if (!selectedCategory || curriculum.length === 0) {
+    return (
+      <div className="min-h-[75vh] flex flex-col items-center justify-center p-6 bg-background text-center">
+        <div className="max-w-lg space-y-6 flex flex-col items-center animate-in fade-in duration-500">
+          <div className="w-20 h-20 rounded-3xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-lg">
+            <BookMarked className="w-10 h-10 text-primary" />
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-2xl sm:text-3xl font-black text-foreground uppercase tracking-tight font-headline">
+              No Subjects Available
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium max-w-md mx-auto">
+              There are currently no board exam subjects or learning modules uploaded in the database. Please contact your review center administrator to publish study materials.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs uppercase px-7 py-3 rounded-2xl shadow-lg transition-all"
+            >
+              Refresh Study Subjects
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full pb-20 lg:pb-12 bg-background">
@@ -473,8 +435,8 @@ export default function StudyPage() {
                     return (
                       <span className={cn(
                         "text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider border shrink-0",
-                        daysLeft <= 14 
-                          ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/40" 
+                        daysLeft <= 14
+                          ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/40"
                           : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40"
                       )}>
                         {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
@@ -535,105 +497,123 @@ export default function StudyPage() {
         {/* Subjects Sidebar / Mobile Carousel Selector */}
         <aside id="tour-study-subjects" className="lg:col-span-4 space-y-3 sm:space-y-4">
           <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 sm:px-2">Subjects</h2>
-          
-          {/* Mobile Horizontal Carousel (< lg) */}
-          <div className="flex lg:hidden overflow-x-auto gap-2.5 pb-2 -mx-3.5 px-3.5 sm:mx-0 sm:px-0 scrollbar-none shrink-0">
-            {displayCurriculum.map((cat) => {
-              const Icon = cat.icon;
-              const isActive = selectedCategoryId === cat.id;
-              const uploadedCount = cat.adminModuleCount || 0;
 
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategoryId(cat.id)}
-                  className={cn(
-                    "flex items-center gap-2.5 p-3 rounded-2xl transition-all border-2 shrink-0 min-w-[200px] text-left",
-                    isActive
-                      ? "bg-background border-primary shadow-md"
-                      : "hover:bg-muted border-border bg-background"
-                  )}
-                >
-                  <div className={cn(
-                    "p-2 rounded-xl shrink-0 transition-colors",
-                    isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
-                  )}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={cn(
-                      "font-bold text-xs uppercase tracking-tight truncate",
-                      isActive ? "text-primary" : "text-foreground"
-                    )}>
-                      {cat.title}
-                    </p>
-                    {uploadedCount > 0 && (
-                      <span className="text-[9px] font-semibold text-muted-foreground">
-                        {uploadedCount} {uploadedCount === 1 ? 'Module' : 'Modules'}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          {displayCurriculum.length === 0 ? (
+            <div className="p-5 sm:p-6 text-center bg-card border-2 border-dashed border-border/80 rounded-3xl space-y-3 shadow-xs">
+              <Search className="w-6 h-6 text-muted-foreground/40 mx-auto" />
+              <p className="text-xs font-bold text-foreground leading-snug">No subjects match "{searchQuery}"</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearchQuery('')}
+                className="text-[11px] font-bold rounded-xl h-8 border-primary/30 text-primary hover:bg-primary/10"
+              >
+                Clear Search
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Mobile Horizontal Carousel (< lg) */}
+              <div className="flex lg:hidden overflow-x-auto gap-2.5 pb-2 -mx-3.5 px-3.5 sm:mx-0 sm:px-0 scrollbar-none shrink-0">
+                {displayCurriculum.map((cat) => {
+                  const Icon = cat.icon;
+                  const isActive = selectedCategoryId === cat.id;
+                  const uploadedCount = cat.adminModuleCount || 0;
 
-          {/* Desktop Vertical Card Stack (>= lg) */}
-          <div className="hidden lg:grid grid-cols-1 gap-2.5 sm:gap-3">
-            {displayCurriculum.map((cat) => {
-              const Icon = cat.icon;
-              const isActive = selectedCategoryId === cat.id;
-              const catDate = targetDates[cat.title];
-              const uploadedCount = cat.adminModuleCount || 0;
-
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategoryId(cat.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 lg:p-5 rounded-2xl sm:rounded-3xl transition-all text-left border-2",
-                    isActive
-                      ? "bg-background border-primary shadow-lg"
-                      : "hover:bg-muted border-border bg-background"
-                  )}
-                >
-                  <div className={cn(
-                    "p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shrink-0 transition-colors relative",
-                    isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
-                  )}>
-                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 justify-between">
-                      <p className={cn(
-                        "font-semibold text-xs sm:text-sm uppercase tracking-tight truncate",
-                        isActive ? "text-primary" : "text-foreground"
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategoryId(cat.id)}
+                      className={cn(
+                        "flex items-center gap-2.5 p-3 rounded-2xl transition-all border-2 shrink-0 min-w-[200px] text-left",
+                        isActive
+                          ? "bg-background border-primary shadow-md"
+                          : "hover:bg-muted border-border bg-background"
+                      )}
+                    >
+                      <div className={cn(
+                        "p-2 rounded-xl shrink-0 transition-colors",
+                        isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
                       )}>
-                        {cat.title}
-                      </p>
-                      {mounted && focusSubject && focusSubject.toLowerCase() === cat.title.toLowerCase() && (
-                        <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[8px] px-1.5 py-0 shrink-0">
-                          ⭐ Focus
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase truncate">
-                        <CalendarIcon className="w-3 h-3 shrink-0" />
-                        <span>{mounted && catDate ? format(catDate, "MMM dd, yyyy") : "No target set"}</span>
+                        <Icon className="h-4 w-4" />
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn(
+                          "font-bold text-xs uppercase tracking-tight truncate",
+                          isActive ? "text-primary" : "text-foreground"
+                        )}>
+                          {cat.title}
+                        </p>
+                        <span className="text-[9px] font-semibold text-muted-foreground">
+                          {uploadedCount > 0 ? `${uploadedCount} ${uploadedCount === 1 ? 'Module' : 'Modules'}` : '0 Modules'}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
 
-                      {uploadedCount > 0 && (
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/10 text-primary border-primary/30 font-bold shrink-0">
-                          {uploadedCount} {uploadedCount === 1 ? 'Module' : 'Modules'}
-                        </Badge>
+              {/* Desktop Vertical Card Stack (>= lg) */}
+              <div className="hidden lg:grid grid-cols-1 gap-2.5 sm:gap-3">
+                {displayCurriculum.map((cat) => {
+                  const Icon = cat.icon;
+                  const isActive = selectedCategoryId === cat.id;
+                  const catDate = targetDates[cat.title];
+                  const uploadedCount = cat.adminModuleCount || 0;
+
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategoryId(cat.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 lg:p-5 rounded-2xl sm:rounded-3xl transition-all text-left border-2",
+                        isActive
+                          ? "bg-background border-primary shadow-lg"
+                          : "hover:bg-muted border-border bg-background"
                       )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                    >
+                      <div className={cn(
+                        "p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shrink-0 transition-colors relative",
+                        isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
+                      )}>
+                        <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 justify-between">
+                          <p className={cn(
+                            "font-semibold text-xs sm:text-sm uppercase tracking-tight truncate",
+                            isActive ? "text-primary" : "text-foreground"
+                          )}>
+                            {cat.title}
+                          </p>
+                          {mounted && focusSubject && focusSubject.toLowerCase() === cat.title.toLowerCase() && (
+                            <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[8px] px-1.5 py-0 shrink-0">
+                              ⭐ Focus
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase truncate">
+                            <CalendarIcon className="w-3 h-3 shrink-0" />
+                            <span>{mounted && catDate ? format(catDate, "MMM dd, yyyy") : "No target set"}</span>
+                          </div>
+
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] px-1.5 py-0 font-bold shrink-0",
+                            uploadedCount > 0
+                              ? "bg-primary/10 text-primary border-primary/30"
+                              : "bg-secondary text-muted-foreground border-border"
+                          )}>
+                            {uploadedCount > 0 ? `${uploadedCount} ${uploadedCount === 1 ? 'Module' : 'Modules'}` : '0 Modules'}
+                          </Badge>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </aside>
 
         {/* Selected Discipline Details & Modules */}
@@ -788,19 +768,53 @@ export default function StudyPage() {
                 </p>
               </div>
 
-              {selectedCategory.hasUploadedModules && (
+              {filteredLessons.length > 0 ? (
                 <Badge variant="outline" className="self-start sm:self-auto bg-primary/10 text-primary border-primary/30 font-bold text-[10px] sm:text-xs px-2.5 sm:px-3 py-1 rounded-xl whitespace-nowrap shrink-0">
                   {filteredLessons.length} {filteredLessons.length === 1 ? 'Module' : 'Modules'}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="self-start sm:self-auto bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold text-[10px] sm:text-xs px-2.5 sm:px-3 py-1 rounded-xl whitespace-nowrap shrink-0">
+                  0 Modules Available
                 </Badge>
               )}
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-[450px]">
+              <ScrollArea className={filteredLessons.length === 0 ? "h-auto" : "h-[450px]"}>
                 {filteredLessons.length === 0 ? (
-                  <div className="p-12 text-center space-y-3">
-                    <BookMarked className="w-10 h-10 text-muted-foreground/40 mx-auto" />
-                    <h4 className="text-sm font-bold text-foreground">No modules found matching search</h4>
-                    <p className="text-xs text-muted-foreground">Try clearing your search query or select another subject discipline.</p>
+                  <div className="p-10 sm:p-14 text-center space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mx-auto shadow-xs">
+                      {searchQuery.trim() ? <Search className="w-7 h-7" /> : <FileText className="w-7 h-7" />}
+                    </div>
+
+                    <div className="space-y-1.5 max-w-md mx-auto">
+                      <h4 className="text-sm sm:text-base font-bold text-foreground uppercase tracking-tight font-headline">
+                        {searchQuery.trim()
+                          ? "No matching modules found"
+                          : "No Learning Modules Available Yet"}
+                      </h4>
+                      <p className="text-xs text-muted-foreground font-medium leading-relaxed">
+                        {searchQuery.trim()
+                          ? `No learning modules in ${selectedCategory?.title || 'this subject'} match "${searchQuery}".`
+                          : `Learning modules and study materials for ${selectedCategory?.title || 'this subject'} are currently being prepared by the review center admin team.`}
+                      </p>
+                    </div>
+
+                    <div className="pt-1">
+                      {searchQuery.trim() ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSearchQuery('')}
+                          className="text-xs font-bold rounded-xl border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                        >
+                          Clear Search Filter
+                        </Button>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 px-3 py-1 rounded-xl">
+                          Awaiting Upload
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="divide-y divide-border/60">

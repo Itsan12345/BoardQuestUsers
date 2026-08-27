@@ -150,7 +150,7 @@ export function TargetExamCalendar({
                   "h-7 sm:h-8.5 w-full rounded-full flex items-center justify-center text-[10px] sm:text-xs font-semibold transition-all relative select-none cursor-pointer",
                   !isCurrentMonth && "text-muted-foreground/30 hover:text-muted-foreground/60",
                   isCurrentMonth && !isSelected && "text-foreground hover:bg-muted font-medium",
-                  isSelected && "bg-[#8B0000] text-white font-bold shadow-md ring-2 ring-primary/30 scale-105"
+                  isSelected && "bg-primary text-primary-foreground font-bold shadow-md ring-2 ring-primary/40 scale-105"
                 )}
               >
                 {format(d, 'd')}

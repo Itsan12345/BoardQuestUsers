@@ -170,17 +170,24 @@ export async function getCategories(): Promise<{ id: string; name: string }[]> {
       }
     });
 
-    return JSON.parse(JSON.stringify(categories));
+    if (categories && categories.length > 0) {
+      return JSON.parse(JSON.stringify(categories));
+    }
   } catch (error) {
-    console.warn('Failed to fetch categories from DB, using standard fallback list:', error);
-    return [
-      { id: '1', name: 'Clinical Chemistry' },
-      { id: '2', name: 'Microbiology' },
-      { id: '3', name: 'Hematology' },
-      { id: '4', name: 'Immunology & Serology and Immunohematology' },
-      { id: '5', name: 'Clinical Microscopy & Parasitology' },
-      { id: '6', name: 'Histopathology and Medtech Laws' },
-    ];
+    // Fallback to raw MongoDB client if Prisma ORM has engine sync issues
+  }
+
+  try {
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+    const docs = await db.collection('Category').find({}).sort({ createdAt: 1 }).toArray();
+    return docs.map(doc => ({
+      id: doc._id.toString(),
+      name: doc.name || 'Untitled Category'
+    }));
+  } catch (rawErr) {
+    console.error('Failed to fetch categories via MongoDB client:', rawErr);
+    return [];
   }
 }
 
