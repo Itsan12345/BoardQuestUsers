@@ -57,11 +57,11 @@ export function SubjectTechnicalBreakdown({ items, onSelectSubject }: SubjectTec
           </p>
         </div>
         <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary uppercase shrink-0">
-          6 Licensure Disciplines
+          {items.length} {items.length === 1 ? 'Licensure Discipline' : 'Licensure Disciplines'}
         </Badge>
       </div>
 
-      {/* 6 Discipline Grid */}
+      {/* Discipline Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
         {items.map((item) => {
           const IconComponent = SUBJECT_ICONS[item.subject] || FlaskConical;

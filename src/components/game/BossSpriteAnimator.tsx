@@ -9,6 +9,8 @@ interface BossSpriteAnimatorProps {
   idleSpriteUrl: string;
   attackSpriteUrl: string;
   heavyAttackSpriteUrl?: string;
+  attackProjectileUrl?: string;
+  attackProjectileFrames?: number;
   idleFrames?: number;
   attackFrames?: number;
   heavyAttackFrames?: number;
@@ -31,6 +33,8 @@ export function BossSpriteAnimator({
   idleSpriteUrl,
   attackSpriteUrl,
   heavyAttackSpriteUrl,
+  attackProjectileUrl,
+  attackProjectileFrames = 5,
   idleFrames = 7,
   attackFrames = 17,
   heavyAttackFrames = 11,
@@ -50,27 +54,37 @@ export function BossSpriteAnimator({
 }: BossSpriteAnimatorProps) {
   const isAttacking = animState === "normal_attack" || animState === "heavy_attack";
   const isHeavy = animState === "heavy_attack";
+  const isNormalAttack = animState === "normal_attack";
+  const hasProjectile = isNormalAttack && !!attackProjectileUrl;
 
   const currentSpriteUrl = isHeavy
     ? (heavyAttackSpriteUrl || attackSpriteUrl)
+    : (isNormalAttack && hasProjectile)
+    ? idleSpriteUrl
     : isAttacking
     ? attackSpriteUrl
     : idleSpriteUrl;
 
   const currentTotalFrames = isHeavy
     ? (heavyAttackFrames || 11)
+    : (isNormalAttack && hasProjectile)
+    ? idleFrames
     : isAttacking
     ? attackFrames
     : idleFrames;
 
   const currentFrameWidth = isHeavy
     ? (heavyFrameWidth || 176)
+    : (isNormalAttack && hasProjectile)
+    ? (idleFrameWidth || 128)
     : isAttacking
     ? (attackFrameWidth || 128)
     : (idleFrameWidth || 128);
 
   const currentFrameHeight = isHeavy
     ? (heavyFrameHeight || (heavyFrameWidth && heavyFrameWidth >= 300 ? 256 : 128))
+    : (isNormalAttack && hasProjectile)
+    ? (idleFrameHeight || 128)
     : isAttacking
     ? (attackFrameHeight || (attackFrameWidth && attackFrameWidth >= 300 ? 256 : 128))
     : (idleFrameHeight || 128);
@@ -78,8 +92,8 @@ export function BossSpriteAnimator({
   const isWideBeam = isAttacking && currentFrameWidth >= 300;
 
   // Frame rates (fps)
-  const fps = isHeavy ? (currentTotalFrames >= 12 ? 12 : 11) : isAttacking ? 14 : 8;
-  const animDuration = currentTotalFrames / fps;
+  const fps = isHeavy ? currentTotalFrames : (isNormalAttack && hasProjectile) ? 8 : isAttacking ? 14 : 8;
+  const animDuration = (isNormalAttack && hasProjectile) ? 0.8 : currentTotalFrames / fps;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
   const onCompleteRef = useRef(onAttackComplete);
@@ -111,6 +125,7 @@ export function BossSpriteAnimator({
         {idleSpriteUrl && <img src={idleSpriteUrl} alt="" />}
         {attackSpriteUrl && <img src={attackSpriteUrl} alt="" />}
         {heavyAttackSpriteUrl && <img src={heavyAttackSpriteUrl} alt="" />}
+        {attackProjectileUrl && <img src={attackProjectileUrl} alt="" />}
       </div>
 
       {/* Immersive Shadow & Magical Boss Pedestal */}
@@ -122,6 +137,35 @@ export function BossSpriteAnimator({
         <div className="absolute inset-0 rounded-full bg-red-600/30 blur-2xl animate-pulse pointer-events-none" />
       )}
 
+      {/* Dynamic Projectile Overlay for Normal Attack (e.g. Plasma Ball flying out of Boss's mouth) */}
+      {hasProjectile && (
+        <div
+          key={`projectile-${animKey}`}
+          className="absolute top-2 right-6 overflow-hidden pointer-events-none z-30 animate-boss-projectile-fly"
+          style={{
+            width: `${128 * scale}px`,
+            height: `${128 * scale}px`,
+            animationDuration: `${animDuration}s`,
+            animationTimingFunction: "cubic-bezier(0.25, 1, 0.5, 1)",
+            animationIterationCount: "1",
+            animationFillMode: "forwards",
+          }}
+        >
+          <div
+            className="absolute top-0 left-0"
+            style={{
+              width: `${128 * (attackProjectileFrames || 5) * scale}px`,
+              height: `${128 * scale}px`,
+              backgroundImage: `url('${attackProjectileUrl}')`,
+              backgroundRepeat: "no-repeat",
+              backgroundSize: `${128 * (attackProjectileFrames || 5) * scale}px ${128 * scale}px`,
+              imageRendering: "pixelated",
+              animation: `bossSpriteAnim ${(attackProjectileFrames || 5) / 12}s steps(${attackProjectileFrames || 5}) infinite`,
+            }}
+          />
+        </div>
+      )}
+
       {/* Main Animated Sprite Container - Uses Container Relative Units to Prevent Sidebar Overlap */}
       <div
         key={`container-${animState}-${animKey}`}
@@ -129,7 +173,7 @@ export function BossSpriteAnimator({
           "relative overflow-hidden transition-all transform-gpu z-20",
           isWideBeam && "animate-boss-beam-recoil",
           isHeavy && !isWideBeam && "animate-boss-heavy-lunge",
-          isAttacking && !isHeavy && !isWideBeam && "animate-boss-lunge",
+          isAttacking && !isHeavy && !isWideBeam && !hasProjectile && "animate-boss-lunge",
           isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
         )}
         style={{
@@ -316,6 +360,60 @@ export function BossSpriteAnimator({
 
         .animate-boss-beam-recoil {
           animation-name: bossBeamRecoil;
+        }
+
+        @keyframes bossProjectileFly {
+          0% {
+            opacity: 0;
+            transform: translate(0px, 0px) scale(0.5);
+          }
+          15% {
+            opacity: 1;
+            transform: translate(-30px, 5px) scale(0.85);
+          }
+          55% {
+            opacity: 1;
+            /* Travels downwards to impact the player's torso/body */
+            transform: translate(min(-120px, calc(-100cqw + 220px)), 45px) scale(1.3);
+          }
+          75% {
+            opacity: 1;
+            transform: translate(min(-120px, calc(-100cqw + 200px)), 52px) scale(1.4);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(min(-120px, calc(-100cqw + 180px)), 55px) scale(1.5);
+          }
+        }
+
+        @media (min-width: 768px) {
+          @keyframes bossProjectileFly {
+            0% {
+              opacity: 0;
+              transform: translate(0px, 0px) scale(0.5);
+            }
+            15% {
+              opacity: 1;
+              transform: translate(-45px, 5px) scale(0.85);
+            }
+            55% {
+              opacity: 1;
+              /* Arcs downwards to impact the player's chest/torso */
+              transform: translate(calc(-100cqw + 340px), 52px) scale(1.35);
+            }
+            75% {
+              opacity: 1;
+              transform: translate(calc(-100cqw + 320px), 60px) scale(1.45);
+            }
+            100% {
+              opacity: 0;
+              transform: translate(calc(-100cqw + 300px), 65px) scale(1.5);
+            }
+          }
+        }
+
+        .animate-boss-projectile-fly {
+          animation-name: bossProjectileFly;
         }
 
         /* Player Attack Lunge (Lunge right in front of the boss on its left side) */

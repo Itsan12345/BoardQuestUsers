@@ -21,14 +21,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { MtleReadinessResult } from '@/lib/mtle-predictor-engine';
 import { SubjectMasteryItem } from './SubjectTechnicalBreakdown';
 
 export interface AiDiagnosticPrescriptionProps {
   avgMastery: number;
   avgCompletion: number;
   fullMastery: SubjectMasteryItem[];
-  mtleData?: MtleReadinessResult | null;
   nextObjective?: any;
   userSettings?: any;
   onNavigateToStudy?: (subjectName?: string) => void;
@@ -40,7 +38,6 @@ export function AiDiagnosticPrescription({
   avgMastery,
   avgCompletion,
   fullMastery,
-  mtleData,
   nextObjective,
   userSettings,
   onNavigateToStudy,
@@ -57,24 +54,17 @@ export function AiDiagnosticPrescription({
   // Sort subjects by mastery score to determine weakest and strongest dynamically
   const sortedSubjects = [...fullMastery].sort((a, b) => a.mastery - b.mastery);
   
-  const weakest = mtleData?.weakestSubject
-    ? { subject: mtleData.weakestSubject.subject, mastery: mtleData.weakestSubject.score }
-    : sortedSubjects[0] || { subject: "Clinical Chemistry", mastery: 0 };
+  const weakest = sortedSubjects[0] || { subject: "Clinical Chemistry", mastery: 0 };
+  const strongest = sortedSubjects[sortedSubjects.length - 1] || { subject: "Clinical Chemistry", mastery: 0 };
 
   const prioritySubjectItem = accountFocusSubject
     ? fullMastery.find(m => m.subject.toLowerCase() === accountFocusSubject.toLowerCase()) || { subject: accountFocusSubject, mastery: 0 }
     : null;
 
-  const strongest = mtleData?.strongestSubject
-    ? { subject: mtleData.strongestSubject.subject, mastery: mtleData.strongestSubject.score }
-    : sortedSubjects[sortedSubjects.length - 1] || { subject: "Hematology", mastery: 0 };
-
   const hasRecordedMastery = fullMastery.some(m => m.mastery > 0 || m.completion > 0);
 
-  // Calculate dynamic readiness rating if mtleData is missing
-  const performanceIndex = mtleData?.predictedGwa
-    ? Math.round(mtleData.predictedGwa)
-    : Math.round(avgMastery * 0.7 + avgCompletion * 0.3);
+  // Dynamic performance index based strictly on syllabus completion & quiz mastery
+  const performanceIndex = Math.round(avgMastery * 0.7 + avgCompletion * 0.3);
 
   // Status tier determination using system maroon & status colors
   const getStatusBadge = () => {

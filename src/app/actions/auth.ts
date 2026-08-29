@@ -133,9 +133,20 @@ export async function verifyEmailAndSignUp(formData: FormData) {
       { $set: { verified: true } }
     );
 
-    // 4. Initialize Subject Mastery for all 6 areas at 0%
+    // 4. Initialize Subject Mastery for dynamically created categories
+    let dbCategories: { name: string }[] = [];
+    try {
+      dbCategories = await prisma.category.findMany({ select: { name: true } });
+    } catch (catErr) {
+      console.warn('Could not fetch categories for signup initialization:', catErr);
+    }
+
+    const activeSubjects = dbCategories.length > 0
+      ? dbCategories.map(c => c.name)
+      : SUBJECT_AREAS;
+
     await prisma.subjectMastery.createMany({
-      data: SUBJECT_AREAS.map(subject => ({
+      data: activeSubjects.map(subject => ({
         userId: user.id,
         subject,
         proficiency: 0,

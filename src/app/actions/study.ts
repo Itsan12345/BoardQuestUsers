@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import clientPromise from '@/lib/mongodb-client';
 import { cookies } from 'next/headers';
+import { SUBJECT_AREAS } from '@/lib/game-logic';
 
 export interface LearningModuleData {
   id: string;
@@ -24,7 +25,10 @@ export async function getLearningModules(): Promise<LearningModuleData[]> {
         where: { isPublished: true },
         orderBy: { order: 'asc' },
       });
-      return JSON.parse(JSON.stringify(modules));
+      return JSON.parse(JSON.stringify(modules)).map((m: any) => ({
+        ...m,
+        categoryId: m.subjectId ? m.subjectId.toString() : (m.categoryId ? m.categoryId.toString() : '')
+      }));
     } catch (err) {
       // Fallback silently to raw MongoDB client
     }
@@ -41,7 +45,7 @@ export async function getLearningModules(): Promise<LearningModuleData[]> {
       fileUrls: Array.isArray(doc.fileUrls) ? doc.fileUrls : [],
       order: typeof doc.order === 'number' ? doc.order : 0,
       isPublished: doc.isPublished !== false,
-      categoryId: doc.categoryId ? doc.categoryId.toString() : '',
+      categoryId: doc.subjectId ? doc.subjectId.toString() : (doc.categoryId ? doc.categoryId.toString() : ''),
       authorId: doc.authorId ? doc.authorId.toString() : null,
       createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : new Date().toISOString(),
       updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : new Date().toISOString(),
@@ -158,38 +162,41 @@ export interface SubjectMetrics {
   masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered';
 }
 
-export async function getCategories(): Promise<{ id: string; name: string }[]> {
-  try {
-    const categories = await prisma.category.findMany({
-      select: {
-        id: true,
-        name: true,
-      },
-      orderBy: {
-        createdAt: 'asc'
+export async function getCategories(): Promise<{ id: string; name: string; icon?: string | null }[]> {
+  // 1. Try Prisma ORM Subject table
+  if (typeof (prisma as any).subject?.findMany === 'function') {
+    try {
+      const subjects = await (prisma as any).subject.findMany({
+        select: { id: true, name: true, icon: true },
+        orderBy: { createdAt: 'asc' }
+      });
+      if (subjects && subjects.length > 0) {
+        return JSON.parse(JSON.stringify(subjects));
       }
-    });
-
-    if (categories && categories.length > 0) {
-      return JSON.parse(JSON.stringify(categories));
-    }
-  } catch (error) {
-    // Fallback to raw MongoDB client if Prisma ORM has engine sync issues
+    } catch (err) {}
   }
 
+  // 2. Query MongoDB 'Subject' collection directly
   try {
     const client = await clientPromise;
-    const db = client.db('boardquest');
-    const docs = await db.collection('Category').find({}).sort({ createdAt: 1 }).toArray();
-    return docs.map(doc => ({
-      id: doc._id.toString(),
-      name: doc.name || 'Untitled Category'
-    }));
+    const db = client.db();
+    const subjectDocs = await db.collection('Subject').find({}).sort({ createdAt: 1 }).toArray();
+    if (subjectDocs && subjectDocs.length > 0) {
+      return subjectDocs.map(doc => ({
+        id: doc._id.toString(),
+        name: doc.name || 'Untitled Subject',
+        icon: doc.icon || null
+      }));
+    }
   } catch (rawErr) {
-    console.error('Failed to fetch categories via MongoDB client:', rawErr);
-    return [];
+    console.error('Failed to fetch subjects via MongoDB client:', rawErr);
   }
+
+  // If no subjects exist in Subject collection, return empty array
+  return [];
 }
+
+export const getSubjects = getCategories;
 
 export async function getUserLessonCompletions(): Promise<Record<string, string>> {
   try {
@@ -263,6 +270,14 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
 
     if (categoriesList && categoriesList.length > 0) {
       subjects = categoriesList.map(c => c.name);
+
+      // Clean up orphan SubjectMastery records in MongoDB for non-existent subjects
+      prisma.subjectMastery.deleteMany({
+        where: {
+          userId,
+          subject: { notIn: subjects }
+        }
+      }).catch(err => console.warn('SubjectMastery cleanup notice:', err));
     }
 
     const metrics: SubjectMetrics[] = [];

@@ -55,10 +55,7 @@ export async function getMtleReadinessData(targetUserId?: string): Promise<MtleR
       ? Array.from(new Set(dbCategories.map(c => c.name)))
       : STANDARD_MTLE_SUBJECTS;
 
-    // Ensure all 6 core MTLE subjects are represented
-    const allSubjects = Array.from(
-      new Set([...STANDARD_MTLE_SUBJECTS, ...categoryNames])
-    );
+    const allSubjects = categoryNames;
 
     // Parallel fetch user activity records
     const [lessonCompletions, examResults, questionAttempts] = await Promise.all([
@@ -112,7 +109,6 @@ export async function getMtleReadinessData(targetUserId?: string): Promise<MtleR
       }
 
       // 3. Spaced Repetition / Question Attempt Mastery
-      // We estimate subject question attempts by matching questions from category if available
       let masteryScore = 0;
       let subjectQuestionAttempts = 0;
       if (relevantExams.length > 0) {
@@ -122,19 +118,16 @@ export async function getMtleReadinessData(targetUserId?: string): Promise<MtleR
       if (examScore > 0) {
         masteryScore = examScore;
       } else if (lessonCompletion > 0) {
-        masteryScore = lessonCompletion * 0.7; // baseline estimation from study completion
+        masteryScore = lessonCompletion * 0.7;
       }
 
       // 4. Blended Subject Score Calculation
       let finalSubjectScore = 0;
       if (relevantExams.length > 0) {
-        // High data: 50% Exam accuracy, 30% Mastery, 20% Syllabus completion
         finalSubjectScore = (examScore * 0.50) + (masteryScore * 0.30) + (lessonCompletion * 0.20);
       } else if (lessonCompletion > 0) {
-        // Partial data: 60% Curriculum completion, 40% baseline
         finalSubjectScore = (lessonCompletion * 0.60) + (masteryScore * 0.40);
       } else {
-        // Unstarted subject: baseline 0%
         finalSubjectScore = 0;
       }
 
@@ -159,11 +152,11 @@ export async function getMtleReadinessData(targetUserId?: string): Promise<MtleR
       });
     }
 
-    // Ensure all 6 canonical subjects are present
+    // Build final subjects list dynamically based ONLY on active database categories (or fallback list)
     const finalSubjectsList: MtleSubjectScore[] = [];
     let totalWeight = 0;
 
-    for (const std of STANDARD_MTLE_SUBJECTS) {
+    for (const std of categoryNames) {
       const { canonicalName, weight, shortName } = normalizeMtleSubject(std);
       if (evaluatedSubjectMap.has(canonicalName)) {
         const item = evaluatedSubjectMap.get(canonicalName)!;

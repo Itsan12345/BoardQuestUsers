@@ -63,6 +63,7 @@ import {
   deleteUserAccountAction,
 } from '@/app/actions/user';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
+import { getSubjects } from '@/app/actions/study';
 import { startTourByKey, isTourCompleted } from '@/lib/tour-config';
 import { TargetExamCalendar } from '@/components/profile/TargetExamCalendar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -111,6 +112,7 @@ export function AccountSettingsDialog({
   // Form states - Study Goals
   const [dailyQuota, setDailyQuota] = useState('50');
   const [focusSubject, setFocusSubject] = useState<string>('none');
+  const [dynamicSubjects, setDynamicSubjects] = useState<string[]>([]);
   const [defaultDifficulty, setDefaultDifficulty] = useState('MEDIUM');
   const [confidencePrompts, setConfidencePrompts] = useState(true);
 
@@ -176,7 +178,17 @@ export function AccountSettingsDialog({
 
     async function loadSettings() {
       try {
-        const dbSettings = await getUserSettingsAction();
+        const [dbSettings, dbSubjects] = await Promise.all([
+          getUserSettingsAction(),
+          getSubjects().catch(() => [])
+        ]);
+
+        if (dbSubjects && dbSubjects.length > 0) {
+          setDynamicSubjects(dbSubjects.map(s => s.name));
+        } else {
+          setDynamicSubjects([]);
+        }
+
         if (dbSettings) {
           if (dbSettings.dailyQuota) setDailyQuota(String(dbSettings.dailyQuota));
           if (dbSettings.focusSubject) setFocusSubject(dbSettings.focusSubject);
@@ -917,8 +929,8 @@ export function AccountSettingsDialog({
                       <SelectItem value="none" className="text-xs font-medium">
                         None (No Priority Subject)
                       </SelectItem>
-                      {SUBJECT_AREAS.map(sub => (
-                        <SelectItem key={sub} value={sub} className="text-xs">
+                      {dynamicSubjects.map(sub => (
+                        <SelectItem key={sub} value={sub} className="text-xs truncate max-w-full">
                           {sub}
                         </SelectItem>
                       ))}

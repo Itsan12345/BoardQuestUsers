@@ -48,7 +48,9 @@ model AdminUser {
   department    Department? @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   departmentId  String?     @db.ObjectId 
 
-  createdCategory Category[] @relation("CategoryAuthor")
+  createdSubjects Subject[]  @relation("SubjectAuthor")
+  handledSubjects Subject[]  @relation("HandledSubjects", fields: [handledSubjectIds], references: [id])
+  handledSubjectIds String[] @db.ObjectId
   createdModules  LearningModule[] @relation("ModuleAuthor")
 
   createdDepartments Department[] @relation("DepartmentAuthor")
@@ -88,9 +90,9 @@ model Question {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  category Category @relation(fields: [categoryId], references: [id])
-  categoryId String @db.ObjectId
-  topic String
+  subjectId   String?  @db.ObjectId
+  subject     Subject? @relation(fields: [subjectId], references: [id])
+  topic       String
 
   difficulty QuestionDifficulty
 
@@ -129,17 +131,21 @@ model UserQuestionAttempt {
   @@unique([userId, questionId])
 }
 
-model Category {
+model Subject {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  name String
-  questions Question[]
+  name          String
+  icon          String?
+  questions     Question[]
   learningModules LearningModule[]
+
+  handlers      AdminUser[] @relation("HandledSubjects", fields: [handlerIds], references: [id])
+  handlerIds    String[]    @db.ObjectId
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  author   AdminUser @relation("CategoryAuthor", fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  authorId String    @db.ObjectId
+  author        AdminUser @relation("SubjectAuthor", fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  authorId      String    @db.ObjectId
 }
 
 model LearningModule {
@@ -150,8 +156,8 @@ model LearningModule {
   order       Int      @default(0)
   isPublished Boolean  @default(true)
 
-  categoryId  String   @db.ObjectId
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  subjectId   String   @db.ObjectId
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   authorId    String?  @db.ObjectId
   author      AdminUser? @relation("ModuleAuthor", fields: [authorId], references: [id])

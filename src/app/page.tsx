@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, ChevronRight, Rocket, Loader2, Flame, Trophy, Target, Calendar as CalendarIcon, Pencil, PlayCircle, BookOpen, GraduationCap, Sparkles, CheckCircle2, Clock } from 'lucide-react';
+import { Zap, ChevronRight, Rocket, Loader2, Flame, Trophy, Target, Calendar as CalendarIcon, Pencil, PlayCircle, BookOpen, GraduationCap, Sparkles, CheckCircle2, Clock, FolderKanban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -22,38 +22,6 @@ import { getUserLessonCompletions, getCategories, getLearningModules } from '@/a
 import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const SUBJECT_LESSONS_MAP: Record<string, { id: string; title: string; duration?: string; description?: string }[]> = {
-  'Clinical Chemistry': [
-    { id: 'cc1', title: 'Carbohydrate Metabolism & Disorders', duration: '45m', description: 'Glucose regulation, diabetes mellitus diagnostics, and ketone body analysis.' },
-    { id: 'cc2', title: 'Lipid Profile & Lipoproteins', duration: '60m', description: 'Cholesterol, triglycerides, HDL/LDL fractionation, and hyperlipidemia.' },
-    { id: 'cc3', title: 'Renal Function Tests & NPNs', duration: '40m', description: 'BUN, creatinine, uric acid, and glomerular filtration clearance markers.' },
-  ],
-  'Hematology': [
-    { id: 'hem1', title: 'RBC Morphology & Anemias', duration: '50m', description: 'Erythropoiesis, hemoglobin synthesis, microcytic/macrocytic anemia evaluation.' },
-    { id: 'hem2', title: 'WBC Disorders & Leukemias', duration: '75m', description: 'Leukocyte kinetics, acute vs chronic leukemias, and flow cytometry markers.' },
-  ],
-  'Microbiology': [
-    { id: 'mic1', title: 'Bacteriology: Gram Positives', duration: '65m', description: 'Staphylococci, Streptococci, Enterococci identification & susceptibility.' },
-    { id: 'mic2', title: 'Enterobacteriaceae & Non-fermenters', duration: '90m', description: 'Gram-negative bacilli identification key, TSI reactions, and Pseudomonas.' },
-  ],
-  'Immunology & Serology and Immunohematology': [
-    { id: 'bb1', title: 'ABO & Rh Blood Group Systems', duration: '55m', description: 'Antigen-antibody interactions, forward/reverse typing, and Rh insolubilities.' },
-    { id: 'bb2', title: 'Blood Component Therapy', duration: '50m', description: 'PRBC, FFP, platelet concentrates processing, storage, and crossmatching.' },
-  ],
-  'Clinical Microscopy & Parasitology': [
-    { id: 'cm1', title: 'Routine Urinalysis: Physical & Chemical', duration: '40m', description: 'Specific gravity, reagent strip parameters, microscopic sediment analysis.' },
-    { id: 'cm2', title: 'CSF & Other Body Fluids Analysis', duration: '50m', description: 'Pleural, pericardial, peritoneal fluid cell counts and synovial crystal analysis.' },
-  ],
-  'Histopathology and Medtech Laws': [
-    { id: 'hp1', title: 'Tissue Fixation & Processing', duration: '50m', description: 'Fixatives, dehydration, clearing, infiltration, and H&E staining techniques.' },
-    { id: 'law1', title: 'RA 5527: Phil MedTech Act of 1969', duration: '45m', description: 'Legal definitions, Board of Medical Technology, and licensure rules.' },
-  ],
-  'Histopathology & MT Laws': [
-    { id: 'hp1', title: 'Tissue Fixation & Processing', duration: '50m', description: 'Fixatives, dehydration, clearing, infiltration, and H&E staining techniques.' },
-    { id: 'law1', title: 'RA 5527: Phil MedTech Act of 1969', duration: '45m', description: 'Legal definitions, Board of Medical Technology, and licensure rules.' },
-  ],
-};
-
 function DashboardContent() {
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -69,21 +37,24 @@ function DashboardContent() {
   const [focusSubject, setFocusSubject] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeCourseInfo, setActiveCourseInfo] = useState<{
+    status: 'not_started' | 'in_progress' | 'completed' | 'no_modules';
     subject: string;
     currentModuleTitle: string;
     currentModuleDesc?: string;
+    currentModuleId?: string;
     completedCount: number;
     totalLessons: number;
     progressPercent: number;
     upNextModule?: { title: string; duration?: string } | null;
   }>({
-    subject: 'Clinical Chemistry',
-    currentModuleTitle: 'Carbohydrate Metabolism & Disorders',
-    currentModuleDesc: 'Glucose regulation, diabetes mellitus diagnostics, and ketone body analysis.',
+    status: 'no_modules',
+    subject: 'BoardQuest Curriculum',
+    currentModuleTitle: 'No Learning Modules Available',
+    currentModuleDesc: 'Learning materials and review subjects are currently being prepared.',
     completedCount: 0,
-    totalLessons: 3,
+    totalLessons: 0,
     progressPercent: 0,
-    upNextModule: { title: 'Lipid Profile & Lipoproteins', duration: '60m' }
+    upNextModule: null
   });
 
   const loadData = useCallback(async () => {
@@ -129,7 +100,7 @@ function DashboardContent() {
             setDailyModalOpen(true);
             sessionStorage.removeItem('bq_just_logged_in');
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       let effectiveFocus = settings?.focusSubject && settings.focusSubject !== 'none' ? settings.focusSubject : null;
@@ -148,39 +119,25 @@ function DashboardContent() {
         setNextMilestone({ subject: activePlan.subject, date: new Date(activePlan.targetDate) });
       }
 
-      // Build dynamic curriculum categories & modules from database
+      // Build dynamic curriculum categories & modules purely from database
       const baseCategories = (dbCategories && dbCategories.length > 0)
         ? dbCategories.map((c: any) => ({ id: c.id, title: c.name }))
-        : Object.keys(SUBJECT_LESSONS_MAP).filter(k => k !== 'Histopathology & MT Laws').map(name => ({ id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), title: name }));
+        : [];
 
       const dynamicCurriculum = baseCategories.map((cat: any) => {
         const catId = cat.id;
-        const normCatName = cat.title.trim().toLowerCase();
 
         const dynamicModulesForCat = (dbModules || []).filter((m: any) =>
           m.categoryId === catId || (m.categoryId && m.categoryId.toString() === catId)
         );
 
-        let lessons: any[] = [];
-        if (dynamicModulesForCat.length > 0) {
-          lessons = dynamicModulesForCat.map((m: any) => ({
-            id: m.id,
-            title: m.title,
-            description: m.description || 'Uploaded learning module',
-            duration: `${m.fileUrls?.length || 1} Doc`,
-            status: completionsMap[m.id] || 'not-started'
-          }));
-        } else {
-          const matchedKey = Object.keys(SUBJECT_LESSONS_MAP).find(k => k.trim().toLowerCase() === normCatName);
-          const staticLessons = matchedKey ? SUBJECT_LESSONS_MAP[matchedKey] : [
-            { id: `${cat.id}-1`, title: `${cat.title} Fundamentals & Core Concepts`, duration: "45m", description: `Core concepts for ${cat.title}` },
-            { id: `${cat.id}-2`, title: `${cat.title} Protocols & Review`, duration: "60m", description: `Review material for ${cat.title}` }
-          ];
-          lessons = staticLessons.map(l => ({
-            ...l,
-            status: completionsMap[l.id] || 'not-started'
-          }));
-        }
+        const lessons = dynamicModulesForCat.map((m: any) => ({
+          id: m.id,
+          title: m.title,
+          description: m.description || 'Uploaded learning module',
+          duration: `${m.fileUrls?.length || 1} Doc`,
+          status: completionsMap[m.id] || 'not-started'
+        }));
 
         return {
           id: cat.id,
@@ -194,7 +151,7 @@ function DashboardContent() {
       try {
         const raw = localStorage.getItem('bq_last_studied');
         if (raw) lastStudied = JSON.parse(raw);
-      } catch (e) {}
+      } catch (e) { }
 
       let targetSubName = lastStudied?.subject || effectiveFocus || 'Clinical Chemistry';
 
@@ -206,50 +163,85 @@ function DashboardContent() {
         matchedCat = dynamicCurriculum[0];
       }
 
-      if (matchedCat) {
+      if (!matchedCat || matchedCat.lessons.length === 0) {
+        setActiveCourseInfo({
+          status: 'no_modules',
+          subject: targetSubName,
+          currentModuleTitle: 'No Learning Modules Available',
+          currentModuleDesc: `Learning materials for ${targetSubName} are currently being prepared. Select another subject in Study Subjects to begin.`,
+          completedCount: 0,
+          totalLessons: 0,
+          progressPercent: 0,
+          upNextModule: null
+        });
+      } else {
         const lessons = matchedCat.lessons;
         const totalL = lessons.length;
-        const compCount = lessons.filter(l => l.status === 'completed').length;
+        const compCount = lessons.filter((l: any) => l.status === 'completed').length;
         const progPct = totalL > 0 ? Math.min(100, Math.round((compCount / totalL) * 100)) : 0;
 
         let curMod = lessons[0];
         let upNext: { title: string; duration?: string } | null = null;
+        let computedStatus: 'not_started' | 'in_progress' | 'completed' = 'not_started';
 
-        if (lastStudied?.subject?.toLowerCase() === matchedCat.title.toLowerCase() && lastStudied?.moduleId) {
-          const foundIdx = lessons.findIndex(l => l.id === lastStudied.moduleId);
+        if (compCount === totalL && totalL > 0) {
+          computedStatus = 'completed';
+          curMod = lessons[lessons.length - 1];
+
+          const currentSubIdx = dynamicCurriculum.findIndex(c => c.id === matchedCat!.id);
+          if (dynamicCurriculum.length > 1) {
+            const nextCat = dynamicCurriculum[(currentSubIdx + 1) % dynamicCurriculum.length];
+            if (nextCat && nextCat.lessons.length > 0 && nextCat.id !== matchedCat.id) {
+              upNext = { title: `${nextCat.title}: ${nextCat.lessons[0].title}`, duration: nextCat.lessons[0].duration };
+            }
+          }
+        } else if (lastStudied?.subject?.toLowerCase() === matchedCat.title.toLowerCase() && lastStudied?.moduleId) {
+          const foundIdx = lessons.findIndex((l: any) => l.id === lastStudied.moduleId);
           if (foundIdx !== -1) {
             curMod = lessons[foundIdx];
+            computedStatus = compCount > 0 ? 'in_progress' : 'not_started';
+
             if (foundIdx + 1 < lessons.length) {
               upNext = lessons[foundIdx + 1];
             } else {
               const currentSubIdx = dynamicCurriculum.findIndex(c => c.id === matchedCat!.id);
-              const nextCat = dynamicCurriculum[(currentSubIdx + 1) % dynamicCurriculum.length];
-              if (nextCat && nextCat.lessons.length > 0) {
-                upNext = { title: `${nextCat.title}: ${nextCat.lessons[0].title}`, duration: nextCat.lessons[0].duration };
+              if (dynamicCurriculum.length > 1) {
+                const nextCat = dynamicCurriculum[(currentSubIdx + 1) % dynamicCurriculum.length];
+                if (nextCat && nextCat.lessons.length > 0 && nextCat.id !== matchedCat.id) {
+                  upNext = { title: `${nextCat.title}: ${nextCat.lessons[0].title}`, duration: nextCat.lessons[0].duration };
+                }
               }
             }
           }
         } else {
-          const uncompletedIdx = lessons.findIndex(l => l.status !== 'completed');
+          const uncompletedIdx = lessons.findIndex((l: any) => l.status !== 'completed');
           if (uncompletedIdx !== -1) {
             curMod = lessons[uncompletedIdx];
+            computedStatus = compCount > 0 ? 'in_progress' : 'not_started';
+
             if (uncompletedIdx + 1 < lessons.length) {
               upNext = lessons[uncompletedIdx + 1];
+            } else {
+              const currentSubIdx = dynamicCurriculum.findIndex(c => c.id === matchedCat!.id);
+              if (dynamicCurriculum.length > 1) {
+                const nextCat = dynamicCurriculum[(currentSubIdx + 1) % dynamicCurriculum.length];
+                if (nextCat && nextCat.lessons.length > 0 && nextCat.id !== matchedCat.id) {
+                  upNext = { title: `${nextCat.title}: ${nextCat.lessons[0].title}`, duration: nextCat.lessons[0].duration };
+                }
+              }
             }
           } else {
             curMod = lessons[lessons.length - 1];
-            const currentSubIdx = dynamicCurriculum.findIndex(c => c.id === matchedCat!.id);
-            const nextCat = dynamicCurriculum[(currentSubIdx + 1) % dynamicCurriculum.length];
-            if (nextCat && nextCat.lessons.length > 0) {
-              upNext = { title: `${nextCat.title}: ${nextCat.lessons[0].title}`, duration: nextCat.lessons[0].duration };
-            }
+            computedStatus = compCount > 0 ? 'in_progress' : 'not_started';
           }
         }
 
         setActiveCourseInfo({
+          status: computedStatus,
           subject: matchedCat.title,
           currentModuleTitle: curMod.title,
           currentModuleDesc: curMod.description,
+          currentModuleId: curMod.id,
           completedCount: compCount,
           totalLessons: totalL,
           progressPercent: progPct,
@@ -357,8 +349,8 @@ function DashboardContent() {
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 <div className={cn(
                   "w-10 h-10 sm:w-12 sm:h-12 rounded-xl border flex items-center justify-center shrink-0 shadow-sm",
-                  targetExamDate 
-                    ? "bg-red-50 dark:bg-red-950/40 border-primary/20 text-primary" 
+                  targetExamDate
+                    ? "bg-red-50 dark:bg-red-950/40 border-primary/20 text-primary"
                     : "bg-muted/50 border-border text-muted-foreground"
                 )}>
                   <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -417,70 +409,147 @@ function DashboardContent() {
             </CardContent>
           </Card>
 
-          {/* Coursera-Style Current Course Progress Card */}
+          {/* Coursera-Style Current Course Progress Card with Dynamic Fallbacks */}
           <Card id="tour-dashboard-studyplan" className="border-2 border-border shadow-md rounded-2xl bg-gradient-to-br from-background via-background to-muted/20 overflow-hidden relative group transition-all duration-300 hover:shadow-lg">
-            <div className="px-5 sm:px-6 pt-4 sm:pt-5 pb-3 flex items-center justify-between gap-3 border-b border-border/60">
+            {/* Top Badge & Header Pill */}
+            <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 flex items-center justify-between gap-3 border-b border-border/60 flex-wrap">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shrink-0" />
-                <span className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-widest truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  In Progress • {activeCourseInfo.subject}
-                </span>
+                {activeCourseInfo.status === 'no_modules' ? (
+                  <>
+                    <FolderKanban className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span className="text-[11px] sm:text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      Curriculum Overview • {activeCourseInfo.subject}
+                    </span>
+                  </>
+                ) : activeCourseInfo.status === 'completed' ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span className="text-[11px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      Completed • {activeCourseInfo.subject}
+                    </span>
+                  </>
+                ) : activeCourseInfo.status === 'not_started' ? (
+                  <>
+                    <span className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-widest truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      Ready to Begin • {activeCourseInfo.subject}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shrink-0" />
+                    <span className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-widest truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                      In Progress • {activeCourseInfo.subject}
+                    </span>
+                  </>
+                )}
               </div>
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0">
-                {activeCourseInfo.completedCount}/{activeCourseInfo.totalLessons} Modules
+
+              <Badge variant="outline" className={cn(
+                "text-[10px] font-semibold px-2.5 py-0.5 rounded-full shrink-0",
+                activeCourseInfo.status === 'no_modules'
+                  ? "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                  : activeCourseInfo.status === 'completed'
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                    : "bg-primary/10 text-primary border-primary/30"
+              )}>
+                {activeCourseInfo.status === 'no_modules'
+                  ? '0 Modules Available'
+                  : activeCourseInfo.status === 'completed'
+                    ? `All ${activeCourseInfo.totalLessons} Modules Mastered 🎉`
+                    : `${activeCourseInfo.completedCount}/${activeCourseInfo.totalLessons} Modules`}
               </Badge>
             </div>
 
-            <CardContent className="p-5 sm:p-6 space-y-5">
-              {/* Subject & Current Module Title */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span>Current Module</span>
+            <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+              {/* Fallback View: No Modules in Database */}
+              {activeCourseInfo.status === 'no_modules' ? (
+                <div className="py-4 sm:py-6 px-4 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-3 text-center sm:text-left">
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <FolderKanban className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-bold text-foreground" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                        No Learning Modules Uploaded Yet
+                      </h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Curriculum materials for {activeCourseInfo.subject} are currently being prepared. Check back soon or select another subject in Study Subjects.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                  {activeCourseInfo.currentModuleTitle}
-                </h3>
-                {activeCourseInfo.currentModuleDesc && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                    {activeCourseInfo.currentModuleDesc}
-                  </p>
-                )}
-              </div>
+              ) : (
+                /* Main Subject & Current Module Title */
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span>
+                      {activeCourseInfo.status === 'not_started'
+                        ? 'Recommended Starting Point'
+                        : activeCourseInfo.status === 'completed'
+                          ? 'Subject Completed'
+                          : 'Current Module'}
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-snug" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                    {activeCourseInfo.currentModuleTitle}
+                  </h3>
+                  {activeCourseInfo.currentModuleDesc && (
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {activeCourseInfo.currentModuleDesc}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Progress Bar & Percentage */}
               <div className="space-y-2.5 bg-muted/30 p-3.5 sm:p-4 rounded-xl border border-border/60">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-foreground flex items-center gap-1.5">
-                    <GraduationCap className="w-4 h-4 text-primary" /> Subject Mastery & Completion
+                    <GraduationCap className="w-4 h-4 text-primary shrink-0" /> Subject Mastery & Completion
                   </span>
                   <span className="font-bold text-primary text-sm">{activeCourseInfo.progressPercent}%</span>
                 </div>
                 <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border/40">
                   <div
-                    className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-700 shadow-xs"
+                    className={cn(
+                      "h-full rounded-full transition-all duration-700 shadow-xs",
+                      activeCourseInfo.status === 'completed'
+                        ? "bg-emerald-500"
+                        : "bg-gradient-to-r from-primary/80 to-primary"
+                    )}
                     style={{ width: `${activeCourseInfo.progressPercent}%` }}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium pt-0.5">
-                  <span>{activeCourseInfo.completedCount} of {activeCourseInfo.totalLessons} lessons completed</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-muted-foreground font-medium gap-1 pt-0.5">
                   <span>
-                    {activeCourseInfo.totalLessons - activeCourseInfo.completedCount > 0
-                      ? `${activeCourseInfo.totalLessons - activeCourseInfo.completedCount} lessons left`
-                      : 'All subject lessons complete 🎉'}
+                    {activeCourseInfo.status === 'no_modules'
+                      ? 'Awaiting module deployment by review center'
+                      : activeCourseInfo.status === 'not_started'
+                        ? `0 of ${activeCourseInfo.totalLessons} lessons completed • Ready to start`
+                        : `${activeCourseInfo.completedCount} of ${activeCourseInfo.totalLessons} lessons completed`}
+                  </span>
+                  <span>
+                    {activeCourseInfo.status === 'completed'
+                      ? 'All subject lessons complete 🎉'
+                      : activeCourseInfo.status === 'no_modules'
+                        ? '0 lessons available'
+                        : `${activeCourseInfo.totalLessons - activeCourseInfo.completedCount} lessons left`}
                   </span>
                 </div>
               </div>
 
               {/* Up Next Module Section */}
-              {activeCourseInfo.upNextModule && (
+              {activeCourseInfo.upNextModule && activeCourseInfo.status !== 'no_modules' && (
                 <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl p-3.5 flex items-start gap-3">
                   <div className="w-7 h-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div className="space-y-0.5 min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Up Next</span>
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                        {activeCourseInfo.status === 'completed' ? 'Up Next Subject' : 'Up Next'}
+                      </span>
                       {activeCourseInfo.upNextModule.duration && (
                         <span className="text-[10px] text-muted-foreground font-medium">• {activeCourseInfo.upNextModule.duration}</span>
                       )}
@@ -492,13 +561,28 @@ function DashboardContent() {
                 </div>
               )}
 
-              {/* CTA Action Buttons */}
+              {/* Responsive Dynamic CTA Action Button */}
               <div className="pt-1 w-full">
-                <Link href={`/study?subject=${encodeURIComponent(activeCourseInfo.subject)}`} className="block w-full">
+                <Link
+                  href={
+                    activeCourseInfo.status === 'no_modules'
+                      ? '/study'
+                      : `/study?subject=${encodeURIComponent(activeCourseInfo.subject)}${activeCourseInfo.currentModuleId ? '&module=' + activeCourseInfo.currentModuleId : ''}`
+                  }
+                  className="block w-full"
+                >
                   <Button className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs sm:text-sm font-semibold shadow-md flex items-center justify-center gap-2 transition-all" style={{ fontFamily: "'Poppins', sans-serif" }}>
-                    <PlayCircle className="w-4 h-4 fill-current" />
-                    <span>Resume Learning</span>
-                    <ChevronRight className="w-4 h-4 ml-1" />
+                    <PlayCircle className="w-4 h-4 fill-current shrink-0" />
+                    <span>
+                      {activeCourseInfo.status === 'no_modules'
+                        ? 'Explore Study Subjects'
+                        : activeCourseInfo.status === 'not_started'
+                          ? 'Start Learning Module'
+                          : activeCourseInfo.status === 'completed'
+                            ? 'Review Subject Material'
+                            : 'Resume Learning'}
+                    </span>
+                    <ChevronRight className="w-4 h-4 ml-1 shrink-0" />
                   </Button>
                 </Link>
               </div>
@@ -685,7 +769,7 @@ function DashboardContent() {
           if (!open && dailyLoginStatus?.todayDate) {
             try {
               sessionStorage.setItem('bq_daily_modal_dismissed', dailyLoginStatus.todayDate);
-            } catch (e) {}
+            } catch (e) { }
           }
         }}
         statusData={dailyLoginStatus}

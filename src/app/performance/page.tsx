@@ -6,20 +6,20 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts';
+import Link from 'next/link';
 import {
   TrendingUp, Target, Award, Sparkles, Loader2, Clock, Calendar as CalendarIcon,
-  Zap, BookOpen, GraduationCap, ShieldCheck, BarChart3, Activity, Trophy
+  Zap, BookOpen, GraduationCap, ShieldCheck, BarChart3, Activity, Trophy, ChevronRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { getUserStats, getUserSettingsAction } from '@/app/actions/user';
 import { getStudyPlans } from '@/app/actions/study-plan';
 import { getSubjectMetrics, getCategories, getSubjectPerformanceHistoryAction, type SubjectAccuracyHistoryItem } from '@/app/actions/study';
-import { getMtleReadinessData } from '@/app/actions/mtle-predictor';
-import { MtleReadinessResult } from '@/lib/mtle-predictor-engine';
 import { StudentPointingCard } from '@/components/performance/StudentPointingCard';
 import { AiDiagnosticPrescription } from '@/components/performance/AiDiagnosticPrescription';
 import { SubjectTechnicalBreakdown, SubjectMasteryItem } from '@/components/performance/SubjectTechnicalBreakdown';
@@ -46,7 +46,6 @@ function PerformanceContent() {
   const [subjectMetrics, setSubjectMetrics] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [nextObjective, setNextObjective] = useState<any>(null);
-  const [mtleData, setMtleData] = useState<MtleReadinessResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [performanceHistory, setPerformanceHistory] = useState<SubjectAccuracyHistoryItem[]>([]);
   const [scorecardOpen, setScorecardOpen] = useState(false);
@@ -55,12 +54,11 @@ function PerformanceContent() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [stats, plans, metrics, dbCategories, mtleRes, historyData, settings] = await Promise.all([
+        const [stats, plans, metrics, dbCategories, historyData, settings] = await Promise.all([
           getUserStats().catch(() => null),
           getStudyPlans().catch(() => []),
           getSubjectMetrics().catch(() => []),
           getCategories().catch(() => []),
-          getMtleReadinessData().catch(() => null),
           getSubjectPerformanceHistoryAction().catch(() => []),
           getUserSettingsAction().catch(() => null)
         ]);
@@ -68,7 +66,6 @@ function PerformanceContent() {
         setUser(stats);
         setUserSettings(settings);
         setSubjectMetrics(metrics || []);
-        setMtleData(mtleRes);
         setPerformanceHistory(historyData || []);
 
         const fetchedCategoryNames = dbCategories && dbCategories.length > 0
@@ -104,14 +101,12 @@ function PerformanceContent() {
 
     // Refresh metrics every 30 seconds
     const metricsRefreshInterval = setInterval(async () => {
-      const [metrics, mtleRes, historyData, settings] = await Promise.all([
+      const [metrics, historyData, settings] = await Promise.all([
         getSubjectMetrics().catch(() => []),
-        getMtleReadinessData().catch(() => null),
         getSubjectPerformanceHistoryAction().catch(() => []),
         getUserSettingsAction().catch(() => null)
       ]);
       setSubjectMetrics(metrics || []);
-      if (mtleRes) setMtleData(mtleRes);
       if (historyData) setPerformanceHistory(historyData);
       if (settings) setUserSettings(settings);
     }, 30000);
@@ -185,7 +180,7 @@ function PerformanceContent() {
 
   // Total Points Calculation
   const totalEarnedPoints = fullMastery.reduce((acc, m) => acc + (m.points || 0), 0) + (user?.xp || 0);
-  const totalQuestionsAttempted = mtleData?.totalQuestionsAttempted || performanceHistory.reduce((acc, p) => acc + p.totalQuestions, 0) || 0;
+  const totalQuestionsAttempted = performanceHistory.reduce((acc, p) => acc + p.totalQuestions, 0) || 0;
 
   return (
     <div className="max-w-6xl mx-auto py-5 sm:py-8 lg:py-10 px-3 sm:px-4 lg:px-6 space-y-6 sm:space-y-8 pb-24 lg:pb-12">
@@ -223,7 +218,6 @@ function PerformanceContent() {
           avgMastery={avgMasteryNum}
           avgCompletion={parseFloat(avgCompletion)}
           fullMastery={fullMastery}
-          mtleData={mtleData}
           nextObjective={nextObjective}
           userSettings={userSettings}
           onNavigateToStudy={(subjectName) => {
@@ -412,15 +406,17 @@ function PerformanceContent() {
 
         {/* Right 1-Column: Active Mission Objective Milestone */}
         <div className="space-y-6">
-          <Card className="border border-border shadow-xl rounded-2xl sm:rounded-3xl bg-background p-5 sm:p-6 space-y-4">
+          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background p-4 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-primary" />
-                <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <Target className="w-3.5 h-3.5" />
+                </div>
+                <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-primary" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   Active Mission Objective
                 </h3>
               </div>
-              <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary">
+              <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary shrink-0">
                 Curriculum Milestone
               </Badge>
             </div>
@@ -428,24 +424,24 @@ function PerformanceContent() {
             {nextObjective ? (
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase text-primary/70">Focus Subject</p>
-                  <h4 className="text-lg font-black font-headline text-foreground leading-tight">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Focus Subject</p>
+                  <h4 className="text-base sm:text-lg font-bold text-foreground leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
                     {nextObjective.subject}
                   </h4>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-muted/30 border border-border text-xs">
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-muted/40 border border-border/70 text-xs">
                   <div>
                     <span className="text-[9px] font-bold uppercase text-muted-foreground block">Target Date</span>
                     <span className="font-bold text-primary flex items-center gap-1 mt-0.5">
-                      <CalendarIcon className="w-3 h-3" />
+                      <CalendarIcon className="w-3 h-3 shrink-0" />
                       {format(new Date(nextObjective.targetDate), "MMM dd, yyyy")}
                     </span>
                   </div>
                   <div>
                     <span className="text-[9px] font-bold uppercase text-muted-foreground block">Time Left</span>
                     <span className="font-bold text-foreground flex items-center gap-1 mt-0.5">
-                      <Clock className="w-3 h-3 text-primary" />
+                      <Clock className="w-3 h-3 text-primary shrink-0" />
                       {Math.max(0, daysRemaining)} Days
                     </span>
                   </div>
@@ -463,12 +459,23 @@ function PerformanceContent() {
                     className="h-2 rounded-full"
                   />
                 </div>
+
+                <Link href={`/study?subject=${encodeURIComponent(nextObjective.subject)}`} className="block">
+                  <Button variant="outline" className="w-full h-9 rounded-xl text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 flex items-center justify-center gap-1">
+                    <span>Deploy Target Milestone</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </Link>
               </div>
             ) : (
-              <div className="py-6 text-center space-y-2">
+              <div className="py-5 text-center space-y-2">
                 <Target className="w-8 h-8 text-muted-foreground/30 mx-auto" />
-                <p className="text-xs font-medium text-muted-foreground">
-                  No active objective scheduled. Visit Study Subjects to deploy target milestones.
+                <p className="text-xs font-medium text-muted-foreground leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  No active objective scheduled.{' '}
+                  <Link href="/study" className="text-primary font-semibold hover:underline">
+                    Visit Study Subjects
+                  </Link>{' '}
+                  to deploy target milestones.
                 </p>
               </div>
             )}

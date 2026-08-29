@@ -70,9 +70,11 @@ const SUBJECT_METADATA: Record<string, {
   idleSpriteUrl?: string;
   attackSpriteUrl?: string;
   heavyAttackSpriteUrl?: string;
+  attackProjectileUrl?: string;
   idleFrames?: number;
   attackFrames?: number;
   heavyAttackFrames?: number;
+  attackProjectileFrames?: number;
   idleFrameWidth?: number;
   attackFrameWidth?: number;
   heavyFrameWidth?: number;
@@ -253,48 +255,60 @@ export default function LearningQuest() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   // Fetch dynamic categories directly from MongoDB Category collection
-  const loadCategories = async () => {
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const [cats, userSettings] = await Promise.all([
+          getCategories().catch(() => []),
+          getUserSettingsAction().catch(() => null),
+        ]);
+        if (cats && cats.length > 0) {
+          const names = cats.map(c => c.name);
+          setDynamicCategories(names);
+
+          // Priority 1: URL search param ?subject=
+          const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+          const urlSubject = searchParams?.get('subject');
+
+          // Priority 2: Priority Focus Subject from Account Settings
+          const settingsFocus = userSettings?.focusSubject;
+          const savedFocus = settingsFocus !== undefined ? settingsFocus : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null);
+          const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
+
+          if (urlSubject && names.includes(urlSubject)) {
+            setSelectedSubject(urlSubject);
+          } else if (validFocus && names.includes(validFocus)) {
+            setSelectedSubject(validFocus);
+          } else {
+            setSelectedSubject(names[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading categories from MongoDB:", err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    }
+    loadCategories();
+  }, []);
+
+  const handleRescan = async () => {
     setCategoriesLoading(true);
     try {
-      const [cats, userSettings] = await Promise.all([
-        getCategories().catch(() => []),
-        getUserSettingsAction().catch(() => null),
-      ]);
-
+      const cats = await getCategories().catch(() => []);
       if (cats && cats.length > 0) {
         const names = cats.map(c => c.name);
         setDynamicCategories(names);
-
-        // Priority 1: URL search param ?subject=
-        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const urlSubject = searchParams?.get('subject');
-
-        // Priority 2: Priority Focus Subject from Account Settings
-        const settingsFocus = userSettings?.focusSubject;
-        const savedFocus = settingsFocus !== undefined ? settingsFocus : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null);
-        const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
-
-        if (urlSubject && names.includes(urlSubject)) {
-          setSelectedSubject(urlSubject);
-        } else if (validFocus && names.includes(validFocus)) {
-          setSelectedSubject(validFocus);
-        } else {
-          setSelectedSubject(names[0]);
-        }
+        setSelectedSubject(names[0]);
       } else {
         setDynamicCategories([]);
       }
     } catch (err) {
-      console.error("Error loading categories from MongoDB:", err);
-      setDynamicCategories([]);
+      console.error("Error re-scanning categories:", err);
     } finally {
       setCategoriesLoading(false);
     }
   };
-
-  useEffect(() => {
-    loadCategories();
-  }, []);
 
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -368,9 +382,11 @@ export default function LearningQuest() {
     idleSpriteUrl?: string;
     attackSpriteUrl?: string;
     heavyAttackSpriteUrl?: string;
+    attackProjectileUrl?: string;
     idleFrames?: number;
     attackFrames?: number;
     heavyAttackFrames?: number;
+    attackProjectileFrames?: number;
     idleFrameWidth?: number;
     attackFrameWidth?: number;
     heavyFrameWidth?: number;
@@ -407,13 +423,16 @@ export default function LearningQuest() {
         bossName: 'Hyperglycemic Specter',
         bossIcon: '👑',
         idleSpriteUrl: '/images/bosses/clinchem_finalboss_IdleAnimation.png',
-        attackSpriteUrl: '/images/bosses/clinchem_finalboss_heavyAttackAnimation.png',
+        attackSpriteUrl: '/images/bosses/clinchem_finalboss_normalAttackprojectileAnimation.png',
         heavyAttackSpriteUrl: '/images/bosses/clinchem_finalboss_heavyAttackAnimation.png',
+        attackProjectileUrl: '/images/bosses/clinchem_finalboss_normalAttackprojectileAnimation.png',
         idleFrames: 6,
-        attackFrames: 13,
+        attackFrames: 5,
         heavyAttackFrames: 13,
+        attackProjectileFrames: 5,
         idleFrameWidth: 128,
-        attackFrameWidth: 480,
+        attackFrameWidth: 128,
+        attackFrameHeight: 128,
         heavyFrameWidth: 480,
         heavyFrameHeight: 256,
       },
@@ -1291,7 +1310,6 @@ export default function LearningQuest() {
     let enemyDmg = 0;
     let playerDmg = 0;
     let playerHeal = 0;
-    let enemyHeal = 0;
     let isCritHit = false;
 
     let newPoisonedState = playerPoisoned;
@@ -1310,11 +1328,6 @@ export default function LearningQuest() {
       // Apply poison tick at the very start of the turn
       if (playerPoisoned) {
         playerDmg += playerStats.maxHp * 0.08;
-      }
-
-      // Evaluate Phase 3 Enrage Healing (if boss < 20% HP)
-      if (enemyHealth > 0 && enemyHealth <= 20) {
-        enemyHeal += playerStats.totalDamage * 0.5;
       }
 
       if (action) {
@@ -1347,13 +1360,22 @@ export default function LearningQuest() {
           }
         }
 
-        // Aggressive Phase 2: ONLY the Stage 3 Boss has aggressive phases! (Boss <= 60% HP and > 20% HP) -> Double damage on player mistake
-        if (battleStage === 3 && !isCorrect && enemyHealth <= 60 && enemyHealth > 20) {
-          playerDmg *= 2;
+        // Aggressive & Enraged Phase Multipliers:
+        // Boss <= 60% HP and > 20% HP -> 1.5x damage on player mistake
+        // Boss <= 20% HP (Enraged) -> 2.0x damage on player mistake (Enemies NEVER heal HP!)
+        if (battleStage === 3 && !isCorrect) {
+          if (enemyHealth <= 20 && enemyHealth > 0) {
+            playerDmg *= 2.0;
+          } else if (enemyHealth <= 60 && enemyHealth > 20) {
+            playerDmg *= 1.5;
+          }
         }
 
-        // Poison Infliction Mechanics:
-        if (battleStage >= 2 && !isCorrect && Math.random() < 0.25) {
+        const playerMul = bossDifficulty === 'EASY' ? 1.4 : bossDifficulty === 'HARD' ? 0.75 : 1;
+        const willEnemyBeDefeated = isCorrect && (enemyHealth - (enemyDmg * playerMul) <= 0);
+
+        // Poison Infliction Mechanics: (Only if boss is NOT being defeated on this turn)
+        if (battleStage >= 2 && !isCorrect && !willEnemyBeDefeated && enemyHealth > 0 && Math.random() < 0.25) {
           newPoisonedState = true;
           toast({
             title: "POISONED! ☠️",
@@ -1378,11 +1400,11 @@ export default function LearningQuest() {
           }
         }
 
-        // Shield Mechanics: ONLY the Stage 3 Chapter Boss casts shield! (Every 4 turns)
-        if (battleStage === 3 && (turnCount + 1) % 4 === 0 && enemyHealth > 0) {
+        // Shield Mechanics: ONLY the Stage 3 Chapter Boss casts shield! (Every 4 turns, and NOT when defeated!)
+        if (battleStage === 3 && (turnCount + 1) % 4 === 0 && !willEnemyBeDefeated && enemyHealth > 0) {
           newShieldState = true;
           toast({ title: "Boss Casts Shield! 🛡️", description: "The Chapter Boss puts up a magical shield. Only Heavy attacks can shatter it!", variant: "destructive" });
-        } else if (battleStage < 3) {
+        } else if (battleStage < 3 || willEnemyBeDefeated) {
           newShieldState = false;
         }
 
@@ -1401,7 +1423,6 @@ export default function LearningQuest() {
       const defenseMitigation = 100 / (100 + playerStats.defense);
       playerDmg = playerDmg * bossMul * defenseMitigation;
 
-      enemyHeal *= bossMul;
       playerHeal *= playerMul;
     } else if (quizMode === 'learning') {
       const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
@@ -1425,20 +1446,12 @@ export default function LearningQuest() {
       }
     }
 
-    // Apply health changes
-    if (enemyHeal > 0) {
-      setIsAnimating("enemy");
-      const diffBase = bossDifficulty === 'EASY' ? 400 : bossDifficulty === 'HARD' ? 800 : 600;
-      const levelScaling = bossDifficulty === 'EASY' ? 5 : bossDifficulty === 'HARD' ? 12 : 8;
-      const maxEnemyHp = quizMode === 'boss-battle' ? Math.floor(diffBase + (userLevel * levelScaling)) : 100;
-      setEnemyHealth(prev => Math.min(maxEnemyHp, prev + enemyHeal));
-      addFloatingText('enemy', `+${Math.ceil(enemyHeal)} HEALED!`, 'text-green-400');
-    }
-
+    // Apply health changes (Enemies NEVER heal)
     if (enemyDmg > 0) {
       const applyEnemyDamage = () => {
         setIsAnimating("enemy");
         const nextHp = Math.max(0, enemyHealth - enemyDmg);
+
         if (quizMode === 'boss-battle' && nextHp <= 0) {
           const activeNodes = getSubjectNodes(selectedSubject);
           const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
@@ -1446,6 +1459,8 @@ export default function LearningQuest() {
 
           if (isChapter3FinalBoss || battleStage === 3) {
             setEnemyHealth(0);
+            setBossShieldActive(false);
+            setPlayerPoisoned(false);
           } else if (battleStage === 1) {
             setBattleStage(2);
             setBossShieldActive(false);
@@ -1472,7 +1487,6 @@ export default function LearningQuest() {
             });
           }
         } else if (quizMode === 'learning' && nextHp <= 0) {
-          // Learning Mode HP Progression: Defeat enemy first before advancing to next wave!
           if (learningStage === 1) {
             setLearningStage(2);
             setEnemyHealth(100);
@@ -1503,6 +1517,7 @@ export default function LearningQuest() {
         } else {
           setEnemyHealth(nextHp);
         }
+
         addFloatingText(
           'enemy',
           `-${Math.ceil(enemyDmg)} ${isCritHit ? '⚡ CRITICAL STRIKE!' : action === 'heavy' ? 'HEAVY HIT!' : 'DMG!'}`,
@@ -2407,7 +2422,7 @@ export default function LearningQuest() {
                       <div className="flex items-center gap-1">
                         {bossShieldActive && <span className="text-[7px] md:text-[8px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="Immune to Normal Attacks">SHIELDED</span>}
                         {quizMode === 'boss-battle' && enemyHealth <= 20 && enemyHealth > 0 ? (
-                          <span className="text-[7px] md:text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="Healing every turn!">ENRAGED</span>
+                          <span className="text-[7px] md:text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="2.0x damage on player mistakes!">ENRAGED</span>
                         ) : quizMode === 'boss-battle' && enemyHealth <= 60 && enemyHealth > 0 ? (
                           <span className="text-[7px] md:text-[8px] bg-orange-500 text-white px-1.5 py-0.5 rounded font-black shrink-0" title="Double damage on player mistakes!">AGGRESSIVE</span>
                         ) : null}
@@ -2428,6 +2443,8 @@ export default function LearningQuest() {
                         idleSpriteUrl={idleSprite}
                         attackSpriteUrl={attackSprite}
                         heavyAttackSpriteUrl={heavyAttackSprite || undefined}
+                        attackProjectileUrl={currentActiveNode?.attackProjectileUrl || subjectMeta?.attackProjectileUrl || undefined}
+                        attackProjectileFrames={currentActiveNode?.attackProjectileFrames || subjectMeta?.attackProjectileFrames || 5}
                         idleFrames={currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7}
                         attackFrames={currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17}
                         heavyAttackFrames={currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11}
@@ -2554,8 +2571,8 @@ export default function LearningQuest() {
     <div
       ref={fullscreenRef}
       className={cn(
-        "flex flex-col justify-between overflow-hidden relative bg-black transition-all",
-        isFullscreen ? "h-screen w-screen p-2 sm:p-4 overflow-y-hidden" : "min-h-screen pb-12 md:pb-16"
+        "min-h-full flex flex-col pb-20 md:pb-12 overflow-hidden relative bg-black",
+        isFullscreen ? "h-screen w-screen" : ""
       )}
       style={{
         backgroundImage: `url('${(getSubjectMeta(selectedSubject)).backgroundUrl || ''}')`,
@@ -2568,8 +2585,8 @@ export default function LearningQuest() {
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-[6px] transition-all duration-600" />
 
-      <header id="tour-quest-header" className="px-6 md:px-8 pt-3 md:pt-4 pb-1 space-y-1 relative z-10 shrink-0">
-        <div className="absolute top-3 right-6 md:top-4 md:right-8 z-50">
+      <header id="tour-quest-header" className="px-6 md:px-8 pt-6 md:pt-8 pb-4 space-y-1 relative z-10">
+        <div className="absolute top-6 right-6 md:top-8 md:right-8 z-50">
           <Button
             variant="outline"
             size="icon"
@@ -2581,7 +2598,7 @@ export default function LearningQuest() {
           </Button>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-0 mb-2 pr-12">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-0 mb-6 pr-12">
           <div className="flex-1">
             <h1 className="text-3xl md:text-5xl font-black font-headline leading-tight tracking-tight text-white">
               Select Your <br />
@@ -2602,45 +2619,40 @@ export default function LearningQuest() {
       </header>
 
       <div id="tour-quest-map" className={cn(
-        "flex-1 min-h-0 flex flex-col relative z-10 overflow-x-visible",
-        isFullscreen
-          ? (categoriesLoading || dynamicCategories.length === 0 ? "justify-center items-center overflow-y-hidden my-auto" : "justify-start pt-0 md:pt-1 overflow-y-hidden")
-          : "justify-center py-4 md:py-8 overflow-y-visible"
+        "flex-1 flex flex-col justify-center py-6 md:py-10 relative z-10 overflow-hidden",
+        isFullscreen && (!categoriesLoading && dynamicCategories.length === 0) ? "my-auto items-center" : ""
       )}>
         {categoriesLoading ? (
-          <div className="flex flex-col items-center justify-center min-h-[300px] space-y-3 my-auto">
+          <div className="flex flex-col items-center justify-center min-h-[400px] md:min-h-[500px] space-y-3">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
             <p className="text-white font-bytebounce text-lg tracking-widest uppercase">
-              Scanning Laboratory Realms...
+              Loading Quest Regions...
             </p>
           </div>
         ) : dynamicCategories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[320px] max-w-lg mx-auto p-6 text-center z-20 my-auto">
-            <div className="relative mb-4 flex items-center justify-center">
-              <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-xl animate-pulse" />
-              <div className="w-20 h-20 rounded-2xl bg-black/60 border-2 border-amber-500/50 flex items-center justify-center backdrop-blur-md shadow-[0_0_30px_rgba(245,158,11,0.3)]">
-                <Compass className="w-10 h-10 text-amber-400 animate-spin-slow" />
-              </div>
+          <div className="flex flex-col items-center justify-center min-h-[400px] md:min-h-[500px] px-6 text-center max-w-xl mx-auto my-auto space-y-4">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-black/80 border-2 border-amber-500/60 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.25)]">
+              <Compass className="w-8 h-8 md:w-10 md:h-10 text-amber-400" />
             </div>
-            <h2 className="text-2xl md:text-3xl font-bytebounce text-amber-400 tracking-wider uppercase mb-2" style={{ textShadow: '2px 2px 0 #000' }}>
-              No Quest Regions Discovered
-            </h2>
-            <p className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed mb-6 max-w-md">
-              There are currently no active subject domains configured in the database. Please contact your Review Center Administrator or check your connection.
-            </p>
+            <div className="space-y-2">
+              <h3 className="text-xl md:text-2xl font-bytebounce text-amber-400 tracking-widest uppercase font-bold" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
+                NO QUEST REGIONS DISCOVERED
+              </h3>
+              <p className="text-xs md:text-sm text-slate-300 font-sans max-w-sm md:max-w-md mx-auto leading-relaxed opacity-90 font-medium">
+                There are currently no active subject domains configured in the database. Please contact your Review Center Administrator or check your connection.
+              </p>
+            </div>
             <Button
-              onClick={() => loadCategories()}
-              className="font-bytebounce text-lg tracking-widest bg-amber-600 hover:bg-amber-500 text-white border-2 border-amber-300/40 shadow-lg px-6 py-3 rounded-xl transition-transform active:scale-95 flex items-center gap-2"
+              onClick={handleRescan}
+              disabled={categoriesLoading}
+              className="mt-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold text-xs uppercase tracking-wider px-6 py-2.5 md:px-8 md:py-3 rounded-full shadow-lg border border-amber-400/40 flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
             >
-              <RotateCw className="w-4 h-4" />
+              <RotateCw className={cn("w-4 h-4 text-white", categoriesLoading && "animate-spin")} />
               Re-Scan Laboratory Realms
             </Button>
           </div>
         ) : (
-          <div ref={carouselRef} className={cn(
-            "flex overflow-x-auto gap-4 md:gap-8 px-8 md:px-12 no-scrollbar snap-x snap-mandatory items-center min-h-[340px] md:min-h-[400px]",
-            isFullscreen ? "overflow-y-hidden pt-2 md:pt-4 pb-2 md:pb-4" : "overflow-y-visible pt-4 md:pt-6 pb-4 md:pb-6"
-          )}>
+          <div ref={carouselRef} className="flex overflow-x-auto gap-4 md:gap-8 px-8 md:px-12 no-scrollbar snap-x snap-mandatory items-center min-h-[400px] md:min-h-[500px]">
             {dynamicCategories.map((subject) => {
               const meta = getSubjectMeta(subject);
               const isSelected = selectedSubject === subject;
@@ -2651,18 +2663,18 @@ export default function LearningQuest() {
                   key={subject}
                   onClick={() => setSelectedSubject(subject)}
                   className={cn(
-                    "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center py-1",
-                    isSelected ? "scale-100 w-52 sm:w-60 md:w-72 z-20" : "scale-75 w-36 sm:w-44 md:w-48 opacity-35 hover:opacity-60"
+                    "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center",
+                    isSelected ? "scale-100 w-64 md:w-80" : "scale-75 w-48 md:w-56 opacity-35"
                   )}
                 >
-                  <div className="relative w-full flex flex-col items-center pt-2">
+                  <div className="relative w-full flex flex-col items-center">
                     <div className={cn(
-                      "relative w-full aspect-square transition-all duration-500 overflow-visible",
+                      "relative w-full aspect-square transition-all duration-500",
                       isSelected ? "animate-float" : ""
                     )}>
                       {meta.imageUrl ? (
-                        <div className="relative w-full h-full transform hover:scale-105 transition-transform p-2">
-                          <Image src={meta.imageUrl} alt={subject} fill className="object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)]" priority={isSelected} />
+                        <div className="relative w-full h-full transform hover:scale-105 transition-transform">
+                          <Image src={meta.imageUrl} alt={subject} fill className="object-contain" priority={isSelected} />
                         </div>
                       ) : (
                         <div className={cn("w-full h-full rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 flex flex-col items-center justify-center text-white shadow-2xl relative overflow-hidden group border-4 border-white/50", meta.color)}>
@@ -2671,19 +2683,19 @@ export default function LearningQuest() {
                       )}
                     </div>
 
-                    <div className={cn("mt-1.5 text-center space-y-2 md:space-y-1.5 transition-all", isSelected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}>
-                      <div className="space-y-0.5 w-full px-2">
+                    <div className={cn("mt-2 text-center space-y-3 md:space-y-2 transition-all", isSelected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}>
+                      <div className="space-y-1 w-full px-2">
                         <p className="text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80" style={{ fontFamily: "'Poppins', sans-serif" }}>{meta.biome}</p>
-                        <h3 className="text-2xl sm:text-3xl md:text-[2.6rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
+                        <h3 className="text-3xl sm:text-4xl md:text-[3rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
                       </div>
-                      <div className="flex flex-col items-center gap-2">
+                      <div className="flex flex-col items-center gap-3">
                         <div className="flex items-center gap-1">
                           {[...Array(5)].map((_, i) => (
                             <Star key={i} className={cn("w-3 h-3 md:w-4 md:h-4", i < meta.difficulty ? "text-primary fill-primary" : "text-white/30")} />
                           ))}
                         </div>
                         <div className="flex gap-2">
-                          <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-0.5 flex items-center gap-1 text-[8px] md:text-[10px]">
+                          <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-1 flex items-center gap-1 text-[8px] md:text-[10px]">
                             <Target className="w-2.5 h-2.5 md:w-3 md:h-3" /> {meta.enemy}
                           </Badge>
                         </div>
@@ -2698,27 +2710,21 @@ export default function LearningQuest() {
       </div>
 
       {!categoriesLoading && dynamicCategories.length > 0 && (
-        <div id="tour-quest-inventory" className={cn(
-          "px-6 md:px-8 shrink-0 relative z-20",
-          isFullscreen ? "mt-1 md:mt-2 pb-3 md:pb-5" : "mt-8 md:mt-14 pb-6 md:pb-10"
-        )}>
-          <div className="flex justify-center w-full">
+        <div id="tour-quest-inventory" className="px-6 md:px-8 mt-6 md:mt-10 relative z-20">
+          <div className="flex justify-center w-full mt-4">
             <button
               onClick={() => {
                 setSetupStep('mode');
                 setModeSelectDialogOpen(true);
               }}
               disabled={isLoading}
-              className={cn(
-                "relative w-full group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none",
-                isFullscreen ? "max-w-md sm:max-w-xl md:max-w-2xl h-24 sm:h-28 md:h-36" : "max-w-sm sm:max-w-md md:max-w-xl h-20 sm:h-24 md:h-32"
-              )}
+              className="relative w-full max-w-md md:max-w-2xl h-24 md:h-36 group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
             >
               <Image
                 src="/ui/btn-enterArena.png"
                 alt="Enter Battle Arena"
                 fill
-                className="object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
+                className="object-contain"
                 style={{ imageRendering: 'pixelated' }}
                 unoptimized
               />

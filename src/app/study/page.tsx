@@ -48,6 +48,12 @@ import { useToast } from '@/hooks/use-toast';
 import { ModuleViewerDialog, type LearningModule as DialogLearningModule } from '@/components/study/ModuleViewerDialog';
 
 const ICON_MAP: Record<string, any> = {
+  "FlaskConical": FlaskConical,
+  "Microscope": Microscope,
+  "Database": Database,
+  "Stethoscope": Stethoscope,
+  "ShieldAlert": ShieldAlert,
+  "BookMarked": BookMarked,
   "Clinical Chemistry": FlaskConical,
   "Hematology": Microscope,
   "Microbiology": Database,
@@ -130,7 +136,7 @@ export default function StudyPage() {
             return {
               id: cat.id || cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
               title: cat.name,
-              icon: ICON_MAP[cat.name] || BookMarked,
+              icon: (cat.icon && ICON_MAP[cat.icon]) ? ICON_MAP[cat.icon] : (ICON_MAP[cat.name] || BookMarked),
               adminModuleCount: dynamicModulesForCat.length,
               hasUploadedModules: dynamicModulesForCat.length > 0,
               lessons

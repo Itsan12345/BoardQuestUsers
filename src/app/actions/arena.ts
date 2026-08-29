@@ -3,6 +3,8 @@
 import { prisma } from '@/lib/prisma';
 import { Question as QuizQuestion } from '@/components/quiz/QuizInterface';
 import { cookies } from 'next/headers';
+import clientPromise from '@/lib/mongodb-client';
+import { ObjectId } from 'mongodb';
 
 const difficultyOrder: Record<string, number> = {
   'EASY': 1,
@@ -10,54 +12,149 @@ const difficultyOrder: Record<string, number> = {
   'HARD': 3,
 };
 
+function escapeRegex(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export async function getQuestQuestions(subject: string, mode: string = 'learning', limit: number = 50, specificDifficulty?: string): Promise<QuizQuestion[]> {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('user_id')?.value;
+    let userId: string | undefined = undefined;
+    try {
+      const cookieStore = await cookies();
+      userId = cookieStore.get('user_id')?.value;
+    } catch (e) {}
 
-    const category = await prisma.category.findFirst({
-      where: { name: subject }
-    });
+    const matchingSubjectIds: string[] = [];
+    const matchingObjectIds: ObjectId[] = [];
 
-    if (!category) {
-      console.warn(`Category not found for subject: ${subject}`);
+    const addId = (idStr: string) => {
+      if (idStr && !matchingSubjectIds.includes(idStr)) {
+        matchingSubjectIds.push(idStr);
+        if (ObjectId.isValid(idStr)) {
+          try {
+            matchingObjectIds.push(new ObjectId(idStr));
+          } catch (e) {}
+        }
+      }
+    };
+
+    // 1. Resolve Subject IDs from MongoDB 'Subject' collection & Prisma Subject model
+    try {
+      const dbSubjects = await (prisma as any).subject?.findMany({
+        where: { name: { equals: subject, mode: 'insensitive' } }
+      });
+      dbSubjects?.forEach((s: any) => addId(s.id));
+    } catch (e) {}
+
+    try {
+      const client = await clientPromise;
+      const db = client.db('boardquest');
+      const nameRegex = new RegExp('^' + escapeRegex(subject) + '$', 'i');
+
+      const rawSubjects = await db.collection('Subject').find({ name: nameRegex }).toArray();
+      rawSubjects.forEach(s => addId(s._id.toString()));
+    } catch (e) {}
+
+    const isBossBattle = mode === 'boss-battle';
+    const targetDiff = specificDifficulty ? specificDifficulty.toUpperCase() : undefined;
+
+    let rawQuestions: any[] = [];
+
+    // 2. Fetch questions using Raw MongoDB Driver for max compatibility with ObjectId / String fields
+    try {
+      const client = await clientPromise;
+      const db = client.db('boardquest');
+
+      const idOrConditions: any[] = [];
+      matchingSubjectIds.forEach(idStr => {
+        idOrConditions.push({ categoryId: idStr });
+        idOrConditions.push({ subjectId: idStr });
+      });
+
+      matchingObjectIds.forEach(objId => {
+        idOrConditions.push({ categoryId: objId });
+        idOrConditions.push({ subjectId: objId });
+      });
+
+      idOrConditions.push({ topic: new RegExp(escapeRegex(subject), 'i') });
+
+      const queryFilter: any = {
+        $or: idOrConditions.length > 0 ? idOrConditions : [{ topic: new RegExp(escapeRegex(subject), 'i') }]
+      };
+
+      const approvedStatusFilter = {
+        $or: [
+          { status: { $regex: /^approved$/i } },
+          { isPublished: true },
+          { status: { $exists: false } }
+        ]
+      };
+
+      const fullQuery: any = {
+        $and: [
+          queryFilter,
+          approvedStatusFilter,
+          ...(!isBossBattle && targetDiff ? [{ difficulty: { $regex: new RegExp('^' + targetDiff + '$', 'i') } }] : [])
+        ]
+      };
+
+      rawQuestions = await db.collection('Question').find(fullQuery).toArray();
+
+      if (rawQuestions.length === 0 && !isBossBattle && targetDiff) {
+        const fallbackDiffQuery = { $and: [queryFilter, approvedStatusFilter] };
+        rawQuestions = await db.collection('Question').find(fallbackDiffQuery).toArray();
+      }
+
+      if (rawQuestions.length === 0) {
+        rawQuestions = await db.collection('Question').find(queryFilter).toArray();
+      }
+
+      if (rawQuestions.length === 0) {
+        rawQuestions = await db.collection('Question').find(approvedStatusFilter).limit(limit).toArray();
+      }
+
+      if (rawQuestions.length === 0) {
+        rawQuestions = await db.collection('Question').find({}).limit(limit).toArray();
+      }
+    } catch (dbErr) {
+      console.warn('Raw MongoDB question query failed, attempting Prisma query fallback:', dbErr);
+      try {
+        const prismaQuestions = await prisma.question.findMany({
+          where: {
+            OR: [
+              ...(matchingSubjectIds.length > 0 ? [{ categoryId: { in: matchingSubjectIds } }] : []),
+              ...(matchingSubjectIds.length > 0 ? [{ subjectId: { in: matchingSubjectIds } }] : []),
+              { topic: { contains: subject, mode: 'insensitive' } }
+            ]
+          } as any,
+          select: {
+            id: true,
+            question: true,
+            choices: true,
+            correctAnswer: true,
+            difficulty: true,
+            type: true,
+          }
+        });
+        rawQuestions = prismaQuestions;
+      } catch (prismaErr) {
+        console.error('Prisma question query failed:', prismaErr);
+      }
+    }
+
+    if (!rawQuestions || rawQuestions.length === 0) {
+      console.warn(`No questions found for subject ${subject} in Question collection.`);
       return [];
     }
 
-    const isBossBattle = mode === 'boss-battle';
-
-    const allQuestions = await prisma.question.findMany({
-      where: {
-        categoryId: category.id,
-        status: 'APPROVED',
-        ...(!isBossBattle && specificDifficulty ? { difficulty: specificDifficulty } : {})
-      } as any,
-      select: {
-        id: true,
-        question: true,
-        choices: true,
-        correctAnswer: true,
-        difficulty: true,
-        type: true,
-      }
-    });
-
-    if (allQuestions.length === 0) {
-      // Fallback: fetch any approved questions for this category
-      const fallback = await prisma.question.findMany({
-        where: { categoryId: category.id, status: 'APPROVED' },
-        select: {
-          id: true,
-          question: true,
-          choices: true,
-          correctAnswer: true,
-          difficulty: true,
-          type: true,
-        }
-      });
-      if (fallback.length === 0) return [];
-      allQuestions.push(...fallback);
-    }
+    const allQuestions = rawQuestions.map((q: any) => ({
+      id: q._id ? q._id.toString() : q.id,
+      question: q.question || 'Untitled Question',
+      choices: q.choices || q.options || [],
+      correctAnswer: q.correctAnswer || '',
+      difficulty: String(q.difficulty || 'EASY').toUpperCase(),
+      type: q.type || 'MCQ'
+    }));
 
     let selected = [...allQuestions];
 
