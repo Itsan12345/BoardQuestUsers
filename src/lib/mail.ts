@@ -19,16 +19,23 @@ interface SendEmailResult {
 function createTransporter() {
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
-  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const gmailUser = process.env.GMAIL_USER?.trim();
+  const gmailPass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, '');
+  const user = (process.env.SMTP_USER || gmailUser)?.trim();
+  const pass = (process.env.SMTP_PASS || gmailPass);
 
-  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+  if (gmailUser && gmailPass) {
     return nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
+        user: gmailUser,
+        pass: gmailPass,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
   }
 
@@ -41,6 +48,9 @@ function createTransporter() {
         user,
         pass,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
   }
 
@@ -137,8 +147,9 @@ export async function sendVerificationEmail({
     console.log(`Valid for: 10 minutes`);
     console.log('======================================================\n');
     return {
-      success: true,
+      success: process.env.NODE_ENV !== 'production',
       devCode: code,
+      error: process.env.NODE_ENV === 'production' ? 'Email service not configured on server (missing credentials)' : undefined,
     };
   }
 
@@ -167,7 +178,7 @@ export async function sendVerificationEmail({
     console.log(`Verification Code: ${code}`);
     console.log('======================================================\n');
     return {
-      success: true,
+      success: process.env.NODE_ENV !== 'production',
       devCode: code,
       error: error instanceof Error ? error.message : 'Failed to send email via SMTP transporter',
     };
@@ -270,8 +281,9 @@ export async function sendPasswordResetEmail({
     console.log(`Valid for: 15 minutes`);
     console.log('======================================================\n');
     return {
-      success: true,
+      success: process.env.NODE_ENV !== 'production',
       devCode: code,
+      error: process.env.NODE_ENV === 'production' ? 'Email service not configured on server (missing credentials)' : undefined,
     };
   }
 
@@ -300,7 +312,7 @@ export async function sendPasswordResetEmail({
     console.log(`Reset Code: ${code}`);
     console.log('======================================================\n');
     return {
-      success: true,
+      success: process.env.NODE_ENV !== 'production',
       devCode: code,
       error: error instanceof Error ? error.message : 'Failed to send email via SMTP transporter',
     };

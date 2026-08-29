@@ -53,6 +53,13 @@ export async function sendVerificationCode(email: string, name?: string) {
       code,
     });
 
+    if (!mailResult.success) {
+      return {
+        success: false,
+        error: mailResult.error || 'Failed to dispatch verification email. Please check your email settings or try again.',
+      };
+    }
+
     return {
       success: true,
       message: 'Verification code sent to your email.',
@@ -356,6 +363,13 @@ export async function sendPasswordResetCode(email: string) {
       name: user.name,
       code,
     });
+
+    if (!mailResult.success) {
+      return {
+        success: false,
+        error: mailResult.error || 'Failed to dispatch password recovery email. Please try again.',
+      };
+    }
 
     return {
       success: true,
