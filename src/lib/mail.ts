@@ -1,4 +1,12 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+
+// Force Node.js to resolve IPv4 addresses first to avoid ENETUNREACH on Render/Cloud hosts
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {
+  // Ignore on Node versions that do not support this API
+}
 
 interface SendVerificationEmailOptions {
   email: string;
@@ -24,6 +32,11 @@ function createTransporter() {
   const user = (process.env.SMTP_USER || gmailUser)?.trim();
   const pass = (process.env.SMTP_PASS || gmailPass);
 
+  // Custom DNS lookup to strictly enforce IPv4
+  const ipv4Lookup = (hostname: string, _options: any, callback: any) => {
+    dns.lookup(hostname, { family: 4 }, callback);
+  };
+
   if (gmailUser && gmailPass) {
     return nodemailer.createTransport({
       host: 'smtp.gmail.com',
@@ -33,10 +46,11 @@ function createTransporter() {
         user: gmailUser,
         pass: gmailPass,
       },
+      lookup: ipv4Lookup,
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,
-    });
+    } as any);
   }
 
   if (host && user && pass) {
@@ -48,10 +62,11 @@ function createTransporter() {
         user,
         pass,
       },
+      lookup: ipv4Lookup,
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,
-    });
+    } as any);
   }
 
   return null;
