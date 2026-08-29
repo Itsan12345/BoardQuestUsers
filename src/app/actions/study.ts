@@ -240,15 +240,17 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
     ];
 
     try {
-      const dbCategories = await prisma.category.findMany({
-        select: { name: true },
-        orderBy: { createdAt: 'asc' }
-      });
-      if (dbCategories && dbCategories.length > 0) {
-        subjects = dbCategories.map(c => c.name);
+      if (typeof (prisma as any).subject?.findMany === 'function') {
+        const dbCategories = await (prisma as any).subject.findMany({
+          select: { name: true },
+          orderBy: { createdAt: 'asc' }
+        });
+        if (dbCategories && dbCategories.length > 0) {
+          subjects = dbCategories.map((c: any) => c.name);
+        }
       }
     } catch (dbErr) {
-      console.warn('Database timeout on category fetch, using fallback subjects list:', dbErr);
+      console.warn('Database timeout on subject fetch, using fallback subjects list:', dbErr);
     }
 
     const [allCompletions, allExamResults, allMasteryRecords, categoriesList, allModulesList] = await Promise.all([

@@ -70,6 +70,7 @@ export default function StudyPage() {
   const [curriculum, setCurriculum] = useState<any[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [targetDates, setTargetDates] = useState<Record<string, Date>>({});
+  const [subjectPlans, setSubjectPlans] = useState<Record<string, { startDate: Date; endDate: Date }>>({});
   const [subjectMetrics, setSubjectMetrics] = useState<Record<string, SubjectMetrics>>({});
   const [program, setProgram] = useState<ReviewCenterProgramData | null>(null);
   const [userLastName, setUserLastName] = useState<string>('');
@@ -177,12 +178,22 @@ export default function StudyPage() {
         }
 
         const dates: Record<string, Date> = {};
+        const plansMap: Record<string, { startDate: Date; endDate: Date }> = {};
         if (plans && Array.isArray(plans)) {
           plans.forEach((p: any) => {
-            dates[p.subject] = new Date(p.targetDate);
+            const rawStart = p.startDate || p.createdAt;
+            const rawEnd = p.endDate || p.targetDate || p.createdAt;
+            if (rawEnd) dates[p.subject] = new Date(rawEnd);
+            if (rawStart && rawEnd) {
+              plansMap[p.subject] = {
+                startDate: new Date(rawStart),
+                endDate: new Date(rawEnd)
+              };
+            }
           });
         }
         setTargetDates(dates);
+        setSubjectPlans(plansMap);
 
         const metricsMap: Record<string, SubjectMetrics> = {};
         if (metrics && Array.isArray(metrics)) {
@@ -233,15 +244,27 @@ export default function StudyPage() {
     };
   }, []);
 
-  const handleSetDate = async (subject: string, date: Date | undefined) => {
-    if (!date) return;
+  const handleSetDateRange = async (subject: string, range: { startDate: Date; endDate: Date }) => {
+    if (!range.startDate || !range.endDate) return;
 
     setIsSaving(subject);
     try {
-      const result = await saveStudyPlan({ [subject]: date });
+      const result = await saveStudyPlan({
+        [subject]: {
+          startDate: range.startDate,
+          endDate: range.endDate,
+        }
+      });
       if (result.success) {
-        setTargetDates(prev => ({ ...prev, [subject]: date }));
-        toast({ title: "Target Synchronized", description: `${subject} deadline set for ${format(date, "PPP")}.` });
+        setSubjectPlans(prev => ({
+          ...prev,
+          [subject]: { startDate: range.startDate, endDate: range.endDate }
+        }));
+        setTargetDates(prev => ({ ...prev, [subject]: range.endDate }));
+        toast({
+          title: "Study Period Synchronized ✓",
+          description: `${subject} set from ${format(range.startDate, "MMM dd")} to ${format(range.endDate, "MMM dd, yyyy")}.`
+        });
         setCalendarOpen(false);
       } else {
         toast({ variant: "destructive", title: "Sync Failed", description: result.error });
@@ -565,6 +588,7 @@ export default function StudyPage() {
                   const Icon = cat.icon;
                   const isActive = selectedCategoryId === cat.id;
                   const catDate = targetDates[cat.title];
+                  const catPlan = subjectPlans[cat.title];
                   const uploadedCount = cat.adminModuleCount || 0;
 
                   return (
@@ -601,7 +625,13 @@ export default function StudyPage() {
                         <div className="flex items-center gap-2 mt-1">
                           <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase truncate">
                             <CalendarIcon className="w-3 h-3 shrink-0" />
-                            <span>{mounted && catDate ? format(catDate, "MMM dd, yyyy") : "No target set"}</span>
+                            <span>
+                              {mounted && catPlan ? (
+                                `${format(catPlan.startDate, "MMM dd")} - ${format(catPlan.endDate, "MMM dd")}`
+                              ) : (
+                                mounted && catDate ? format(catDate, "MMM dd, yyyy") : "No target set"
+                              )}
+                            </span>
                           </div>
 
                           <Badge variant="outline" className={cn(
@@ -637,85 +667,101 @@ export default function StudyPage() {
                   <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Subject Parameters</p>
                 </div>
 
-                {isDesktop ? (
-                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "rounded-xl border-2 h-10 sm:h-12 px-4 sm:px-6 flex items-center gap-2 sm:gap-3 transition-all hover:shadow-lg hover:border-primary/40",
-                          selectedDate ? "border-primary/30 bg-primary/10 text-primary shadow-md" : "border-border hover:border-slate-300"
-                        )}
-                        disabled={isSaving === selectedCategory.title}
-                      >
-                        {isSaving === selectedCategory.title ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <CalendarIcon className="w-4 h-4" />
-                        )}
-                        <div className="text-left">
-                          <p className="text-[8px] font-semibold uppercase text-muted-foreground leading-none mb-1">Target Date</p>
-                          <p className="text-xs font-semibold leading-none">
-                            {mounted && selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Set Target"}
-                          </p>
-                        </div>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 shadow-2xl border-2 border-border rounded-2xl bg-background" align="end">
-                      <div className="space-y-4 p-4">
-                        <div className="space-y-1 border-b pb-4">
-                          <h3 className="font-black text-sm uppercase text-foreground">Select Target Date</h3>
-                          <p className="text-[10px] text-muted-foreground font-semibold">For {selectedCategory.title}</p>
-                        </div>
-                        <CustomCalendar
-                          selected={selectedDate}
-                          onSelect={(date) => handleSetDate(selectedCategory.title, date)}
-                          disabled={(date) => date < startOfDay(new Date())}
-                        />
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full sm:w-auto rounded-xl border-2 h-10 sm:h-12 px-4 sm:px-6 flex items-center justify-center gap-2 sm:gap-3 transition-all hover:shadow-lg hover:border-primary/40",
-                          selectedDate ? "border-primary/30 bg-primary/10 text-primary shadow-md" : "border-border hover:border-slate-300"
-                        )}
-                        disabled={isSaving === selectedCategory.title}
-                      >
-                        {isSaving === selectedCategory.title ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <CalendarIcon className="w-4 h-4" />
-                        )}
-                        <div className="text-left">
-                          <p className="text-[8px] font-semibold uppercase text-muted-foreground leading-none mb-0.5">Target Date</p>
-                          <p className="text-xs font-semibold leading-none">
-                            {mounted && selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Set Target"}
-                          </p>
-                        </div>
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="w-[90vw] max-w-sm rounded-3xl p-4 sm:p-6 border-0 shadow-2xl gap-0">
-                      <div className="space-y-4 sm:space-y-6">
-                        <div className="space-y-1 border-b pb-4 text-center px-4 sm:px-8">
-                          <DialogTitle className="font-black text-sm sm:text-base uppercase text-foreground leading-tight">Select Target Date</DialogTitle>
-                          <p className="text-xs text-muted-foreground font-semibold">For {selectedCategory.title}</p>
-                        </div>
-                        <div className="flex justify-center">
+                {(() => {
+                  const activeSubjectPlan = selectedCategory ? subjectPlans[selectedCategory.title] : undefined;
+
+                  return isDesktop ? (
+                    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "rounded-2xl border-2 h-11 sm:h-13 px-4 sm:px-6 flex items-center gap-2.5 sm:gap-3 transition-all hover:shadow-lg hover:border-primary/50",
+                            activeSubjectPlan || selectedDate ? "border-primary/40 bg-primary/10 text-primary shadow-md" : "border-border hover:border-slate-300"
+                          )}
+                          disabled={isSaving === selectedCategory.title}
+                        >
+                          {isSaving === selectedCategory.title ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                          ) : (
+                            <CalendarIcon className="w-4 h-4 text-primary shrink-0" />
+                          )}
+                          <div className="text-left">
+                            <p className="text-[8px] font-extrabold uppercase text-muted-foreground leading-none mb-1">Study Period Target</p>
+                            <p className="text-xs font-black leading-none text-foreground">
+                              {mounted && activeSubjectPlan ? (
+                                `${format(activeSubjectPlan.startDate, "MMM dd")} - ${format(activeSubjectPlan.endDate, "MMM dd, yyyy")}`
+                              ) : (
+                                mounted && selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Set Target Period"
+                              )}
+                            </p>
+                          </div>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 shadow-2xl border-2 border-border rounded-3xl bg-background" align="end">
+                        <div className="space-y-3 p-4">
+                          <div className="space-y-1 border-b pb-3 text-center">
+                            <h3 className="font-black text-sm uppercase text-foreground">Set Target Study Period</h3>
+                            <p className="text-[10px] text-muted-foreground font-semibold">For {selectedCategory.title}</p>
+                          </div>
                           <CustomCalendar
+                            startDate={activeSubjectPlan?.startDate}
+                            endDate={activeSubjectPlan?.endDate}
                             selected={selectedDate}
-                            onSelect={(date) => handleSetDate(selectedCategory.title, date)}
+                            onSelectRange={(range) => handleSetDateRange(selectedCategory.title, range)}
                             disabled={(date) => date < startOfDay(new Date())}
                           />
                         </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full sm:w-auto rounded-2xl border-2 h-11 sm:h-13 px-4 sm:px-6 flex items-center justify-center gap-2.5 sm:gap-3 transition-all hover:shadow-lg hover:border-primary/50",
+                            activeSubjectPlan || selectedDate ? "border-primary/40 bg-primary/10 text-primary shadow-md" : "border-border hover:border-slate-300"
+                          )}
+                          disabled={isSaving === selectedCategory.title}
+                        >
+                          {isSaving === selectedCategory.title ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                          ) : (
+                            <CalendarIcon className="w-4 h-4 text-primary shrink-0" />
+                          )}
+                          <div className="text-left">
+                            <p className="text-[8px] font-extrabold uppercase text-muted-foreground leading-none mb-1">Study Period Target</p>
+                            <p className="text-xs font-black leading-none text-foreground">
+                              {mounted && activeSubjectPlan ? (
+                                `${format(activeSubjectPlan.startDate, "MMM dd")} - ${format(activeSubjectPlan.endDate, "MMM dd, yyyy")}`
+                              ) : (
+                                mounted && selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Set Target Period"
+                              )}
+                            </p>
+                          </div>
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="w-[92vw] max-w-sm rounded-3xl p-4 sm:p-6 border-0 shadow-2xl gap-0">
+                        <div className="space-y-3 sm:space-y-4">
+                          <div className="space-y-1 border-b pb-3 text-center px-4">
+                            <DialogTitle className="font-black text-sm sm:text-base uppercase text-foreground leading-tight">Set Target Study Period</DialogTitle>
+                            <p className="text-xs text-muted-foreground font-semibold">For {selectedCategory.title}</p>
+                          </div>
+                          <div className="flex justify-center">
+                            <CustomCalendar
+                              startDate={activeSubjectPlan?.startDate}
+                              endDate={activeSubjectPlan?.endDate}
+                              selected={selectedDate}
+                              onSelectRange={(range) => handleSetDateRange(selectedCategory.title, range)}
+                              disabled={(date) => date < startOfDay(new Date())}
+                            />
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  );
+                })()}
               </div>
               <div className="space-y-3 sm:space-y-4 pt-2">
                 {/* Completion Metric */}

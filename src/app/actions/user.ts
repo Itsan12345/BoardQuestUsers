@@ -353,7 +353,7 @@ export async function generateDailyMissions() {
       include: {
         mastery: true,
         studyPlans: {
-          orderBy: { targetDate: 'asc' }
+          orderBy: { endDate: 'asc' }
         }
       }
     });
@@ -368,13 +368,16 @@ export async function generateDailyMissions() {
     const missions: any[] = [];
 
     // Sort plans by urgency (closest deadline first)
-    const sortedPlans = user.studyPlans.sort((a, b) =>
-      new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime()
-    );
+    const sortedPlans = user.studyPlans.sort((a: any, b: any) => {
+      const dateA = new Date(a.endDate || a.targetDate || a.createdAt).getTime();
+      const dateB = new Date(b.endDate || b.targetDate || b.createdAt).getTime();
+      return dateA - dateB;
+    });
 
-    for (const plan of sortedPlans) {
+    for (const plan of sortedPlans as any[]) {
+      const planEndDate = plan.endDate || plan.targetDate || plan.createdAt;
       const daysRemaining = Math.ceil(
-        (new Date(plan.targetDate).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        (new Date(planEndDate).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
       );
 
       // Skip past deadlines
@@ -413,7 +416,7 @@ export async function generateDailyMissions() {
         proficiency: currentProficiency,
         priority,
         xp: daysRemaining <= 3 ? 150 : daysRemaining <= 7 ? 100 : daysRemaining <= 14 ? 75 : 50,
-        targetDate: plan.targetDate
+        endDate: planEndDate
       });
 
       // Limit to 3 most urgent missions

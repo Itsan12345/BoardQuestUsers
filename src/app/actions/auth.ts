@@ -136,9 +136,9 @@ export async function verifyEmailAndSignUp(formData: FormData) {
     // 4. Initialize Subject Mastery for dynamically created categories
     let dbCategories: { name: string }[] = [];
     try {
-      dbCategories = await prisma.category.findMany({ select: { name: true } });
+      dbCategories = await (prisma as any).subject?.findMany({ select: { name: true } }) || [];
     } catch (catErr) {
-      console.warn('Could not fetch categories for signup initialization:', catErr);
+      console.warn('Could not fetch subjects for signup initialization:', catErr);
     }
 
     const activeSubjects = dbCategories.length > 0

@@ -114,9 +114,10 @@ function DashboardContent() {
 
       if (plans && plans.length > 0) {
         const today = new Date();
-        const futurePlans = plans.filter(p => new Date(p.targetDate) >= today);
+        const futurePlans = plans.filter(p => new Date(p.endDate || p.targetDate || p.createdAt) >= today);
         const activePlan = futurePlans.length > 0 ? futurePlans[0] : plans[plans.length - 1];
-        setNextMilestone({ subject: activePlan.subject, date: new Date(activePlan.targetDate) });
+        const planDate = activePlan.endDate || activePlan.targetDate || activePlan.createdAt;
+        setNextMilestone({ subject: activePlan.subject, date: new Date(planDate) });
       }
 
       // Build dynamic curriculum categories & modules purely from database

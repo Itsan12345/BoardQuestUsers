@@ -77,8 +77,12 @@ function PerformanceContent() {
         if (plans && plans.length > 0) {
           const today = new Date();
           const futurePlans = plans
-            .filter((p: any) => new Date(p.targetDate) >= today)
-            .sort((a: any, b: any) => new Date(a.targetDate).getTime() - new Date(b.targetDate).getTime());
+            .filter((p: any) => new Date(p.endDate || p.targetDate || p.createdAt) >= today)
+            .sort((a: any, b: any) => {
+              const dateA = new Date(a.endDate || a.targetDate || a.createdAt).getTime();
+              const dateB = new Date(b.endDate || b.targetDate || b.createdAt).getTime();
+              return dateA - dateB;
+            });
 
           if (futurePlans.length > 0) {
             setNextObjective(futurePlans[0]);
@@ -175,7 +179,7 @@ function PerformanceContent() {
 
   const masteredCount = fullMastery.filter(m => m.status === "Mastered").length;
   const daysRemaining = nextObjective
-    ? differenceInDays(new Date(nextObjective.targetDate), new Date())
+    ? differenceInDays(new Date(nextObjective.endDate || nextObjective.targetDate || nextObjective.createdAt), new Date())
     : 0;
 
   // Total Points Calculation
@@ -435,7 +439,7 @@ function PerformanceContent() {
                     <span className="text-[9px] font-bold uppercase text-muted-foreground block">Target Date</span>
                     <span className="font-bold text-primary flex items-center gap-1 mt-0.5">
                       <CalendarIcon className="w-3 h-3 shrink-0" />
-                      {format(new Date(nextObjective.targetDate), "MMM dd, yyyy")}
+                      {format(new Date(nextObjective.endDate || nextObjective.targetDate || nextObjective.createdAt), "MMM dd, yyyy")}
                     </span>
                   </div>
                   <div>

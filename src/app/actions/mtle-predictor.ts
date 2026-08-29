@@ -43,12 +43,14 @@ export async function getMtleReadinessData(targetUserId?: string): Promise<MtleR
     // Fetch all categories from DB or fallback to standard MTLE subjects
     let dbCategories: { id: string; name: string }[] = [];
     try {
-      dbCategories = await prisma.category.findMany({
-        select: { id: true, name: true },
-        orderBy: { createdAt: 'asc' },
-      });
+      if (typeof (prisma as any).subject?.findMany === 'function') {
+        dbCategories = await (prisma as any).subject.findMany({
+          select: { id: true, name: true },
+          orderBy: { createdAt: 'asc' },
+        });
+      }
     } catch (e) {
-      console.warn('Failed to fetch categories, using standard MTLE list', e);
+      console.warn('Failed to fetch subjects, using standard MTLE list', e);
     }
 
     const categoryNames = dbCategories.length > 0
