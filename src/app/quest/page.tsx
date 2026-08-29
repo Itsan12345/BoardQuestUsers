@@ -625,6 +625,7 @@ export default function LearningQuest() {
   const [clarityUsedThisBattle, setClarityUsedThisBattle] = useState(false);
 
   const MAX_REAGENT_CAP = 5;
+  const [isInventoryLoaded, setIsInventoryLoaded] = useState(false);
 
   // Load Inventory, Equipped Item, and User XP from localStorage on mount
   useEffect(() => {
@@ -639,11 +640,14 @@ export default function LearningQuest() {
       }
     } catch (e) {
       console.error('Error loading inventory from localStorage:', e);
+    } finally {
+      setIsInventoryLoaded(true);
     }
   }, []);
 
-  // Sync state changes to localStorage and DB
+  // Sync state changes to localStorage and DB only after initialization
   useEffect(() => {
+    if (!isInventoryLoaded) return;
     try {
       localStorage.setItem('boardquest_reagent_inventory', JSON.stringify(inventory));
       localStorage.setItem('boardquest_equipped_reagent', equippedItem || 'none');
@@ -653,7 +657,7 @@ export default function LearningQuest() {
     } catch (e) {
       console.error('Error saving inventory to DB:', e);
     }
-  }, [inventory, equippedItem]);
+  }, [inventory, equippedItem, isInventoryLoaded]);
 
   useEffect(() => {
     try {

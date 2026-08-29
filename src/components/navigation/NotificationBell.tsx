@@ -67,13 +67,7 @@ export function NotificationBell({ user }: NotificationBellProps) {
     window.addEventListener('bq_stats_updated', handleSync);
     window.addEventListener('bq_guidance_updated', handleSync);
 
-    // Refresh every 30s to detect live admin assignments
-    const interval = setInterval(() => {
-      fetchGuidanceAndSync();
-    }, 30000);
-
     return () => {
-      clearInterval(interval);
       window.removeEventListener('bq_settings_updated', handleSync);
       window.removeEventListener('bq_stats_updated', handleSync);
       window.removeEventListener('bq_guidance_updated', handleSync);

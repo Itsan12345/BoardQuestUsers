@@ -27,16 +27,6 @@ export function useAuth() {
     }
 
     checkAuth();
-
-    // Re-verify session when returning to this window/tab
-    const handleFocus = () => {
-      checkAuth();
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
   }, [router]);
 
   return { isAuthenticated, isLoading };
