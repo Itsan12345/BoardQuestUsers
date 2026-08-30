@@ -42,7 +42,8 @@ async function sendViaResend({
   }
 
   try {
-    const fromEmail = process.env.RESEND_FROM || process.env.EMAIL_FROM || 'BoardQuest <onboarding@resend.dev>';
+    const rawFrom = (process.env.RESEND_FROM || process.env.EMAIL_FROM || 'BoardQuest <noreply@boardquestusers.online>').trim();
+    const fromEmail = rawFrom.replace(/^["']|["']$/g, '');
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
