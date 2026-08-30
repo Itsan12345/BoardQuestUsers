@@ -619,6 +619,12 @@ export default function LearningQuest() {
     buffered_saline: 2,
   });
   const [equippedItem, setEquippedItem] = useState<string | null>('erlenmeyer_shield');
+
+  // Ensure playerHealth never exceeds max HP when unequipping items or changing stats
+  useEffect(() => {
+    const currentMax = getPlayerMaxHp();
+    setPlayerHealth(prev => Math.min(prev, currentMax));
+  }, [equippedItem, inventory, userLevel, quizMode]);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [selectedItemSlot, setSelectedItemSlot] = useState<string>('erlenmeyer_shield');
   const [salineUsedThisBattle, setSalineUsedThisBattle] = useState(false);
@@ -1045,7 +1051,11 @@ export default function LearningQuest() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => setEquippedItem(null)}
+                      onClick={() => {
+                        setEquippedItem(null);
+                        const newMax = calculatePlayerMaxHp(userLevel, false);
+                        setPlayerHealth(prev => Math.min(prev, newMax));
+                      }}
                       className="bg-red-600 hover:bg-red-700 text-white font-bytebounce text-[9px] min-[360px]:text-[10px] sm:text-xs uppercase tracking-wider h-5.5 min-[360px]:h-6 sm:h-7 px-1.5 sm:px-2.5 border border-red-400 shadow-md whitespace-nowrap active:scale-95 leading-none"
                     >
                       Unequip
@@ -2534,10 +2544,10 @@ export default function LearningQuest() {
                     </div>
                     <div className="flex justify-between items-center mb-0.5 px-0.5 mt-0.5">
                       <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase">HP</span>
-                      <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(playerHealth)} / {maxPlayerHp}</span>
+                      <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(Math.min(playerHealth, maxPlayerHp))} / {maxPlayerHp}</span>
                     </div>
                     <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-full overflow-hidden border border-white/10">
-                      <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min(100, (playerHealth / maxPlayerHp) * 100)}%` }} />
+                      <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min(100, (Math.min(playerHealth, maxPlayerHp) / maxPlayerHp) * 100)}%` }} />
                     </div>
                   </div>
                 );
