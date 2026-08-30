@@ -78,8 +78,13 @@ async function sendViaResend({
 }
 
 /**
- * Creates a nodemailer transporter based on available environment variables.
+ * Checks whether the app is running in a deployed environment (e.g. Render) vs local development / localhost.
  */
+function isDeployedEnvironment(): boolean {
+  if (process.env.EMAIL_PROVIDER === 'resend') return true;
+  if (process.env.EMAIL_PROVIDER === 'gmail') return false;
+  return process.env.RENDER === 'true' || process.env.VERCEL === '1' || process.env.IS_DEPLOYED === 'true';
+}
 function createTransporter() {
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
@@ -211,19 +216,21 @@ export async function sendVerificationEmail({
     </html>
   `;
 
-  // 1. Try Resend HTTPS API first (Bypasses all cloud firewall / Render SMTP port blocks)
-  const resendResult = await sendViaResend({
-    to: email,
-    subject,
-    html: htmlContent,
-    text: textContent,
-  });
+  // 1. Deployed System (Render / Cloud): Use Resend HTTP API
+  if (isDeployedEnvironment() && process.env.RESEND_API_KEY) {
+    const resendResult = await sendViaResend({
+      to: email,
+      subject,
+      html: htmlContent,
+      text: textContent,
+    });
 
-  if (resendResult) {
-    return resendResult;
+    if (resendResult) {
+      return resendResult;
+    }
   }
 
-  // 2. Fallback to standard Nodemailer SMTP
+  // 2. Localhost Development (npm run dev / npm run start): Use Nodemailer Gmail SMTP
   const transporter = createTransporter();
 
   if (!transporter) {
@@ -362,19 +369,21 @@ export async function sendPasswordResetEmail({
     </html>
   `;
 
-  // 1. Try Resend HTTPS API first (Bypasses all cloud firewall / Render SMTP port blocks)
-  const resendResult = await sendViaResend({
-    to: email,
-    subject,
-    html: htmlContent,
-    text: textContent,
-  });
+  // 1. Deployed System (Render / Cloud): Use Resend HTTP API
+  if (isDeployedEnvironment() && process.env.RESEND_API_KEY) {
+    const resendResult = await sendViaResend({
+      to: email,
+      subject,
+      html: htmlContent,
+      text: textContent,
+    });
 
-  if (resendResult) {
-    return resendResult;
+    if (resendResult) {
+      return resendResult;
+    }
   }
 
-  // 2. Fallback to standard Nodemailer SMTP
+  // 2. Localhost Development (npm run dev / npm run start): Use Nodemailer Gmail SMTP
   const transporter = createTransporter();
 
   if (!transporter) {
