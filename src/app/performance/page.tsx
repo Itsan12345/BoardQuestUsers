@@ -140,24 +140,30 @@ function PerformanceContent() {
       m.subject === subjectName || (m.subject && m.subject.trim().toLowerCase() === normTarget)
     );
     const completionVal = metrics?.completion ?? 0;
-    const masteryVal = metrics?.mastery ?? 0;
+    const proficiencyVal = (metrics as any)?.proficiency ?? metrics?.mastery ?? 0;
+    const totalCorrect = (metrics as any)?.totalCorrect ?? 0;
+    const totalQAnswered = (metrics as any)?.totalQuestionsAnswered ?? 0;
 
     let status = metrics?.masteryStatus;
     if (!status || status === "Not Started") {
-      if (masteryVal >= 90) status = "Mastered";
-      else if (masteryVal >= 75) status = "Proficient";
-      else if (masteryVal >= 50) status = "In Training";
+      if (totalQAnswered === 0 && completionVal === 0) status = "Not Started";
+      else if (proficiencyVal >= 80 && totalQAnswered >= 25) status = "Mastered";
+      else if (proficiencyVal >= 65 && totalQAnswered >= 15) status = "Proficient";
+      else if (proficiencyVal >= 35 || totalQAnswered >= 1) status = "In Training";
       else status = "Needs Focus";
     }
+
+    // Points earned = 25 Pts per correct question answered + 6 Pts per % completion (capped at 1200 max)
+    const points = Math.min(1200, Math.round(totalCorrect * 25 + completionVal * 6));
 
     return {
       subject: subjectName,
       shortName: subjectName.split(' ')[0],
       radarLabel: RADAR_LABELS[subjectName] || (subjectName.length > 12 ? subjectName.split(' ')[0] : subjectName),
       completion: completionVal,
-      mastery: masteryVal,
+      mastery: proficiencyVal,
       status: status,
-      points: Math.round(masteryVal * 12 + completionVal * 6)
+      points: points
     };
   });
 

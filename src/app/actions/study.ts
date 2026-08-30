@@ -128,27 +128,33 @@ export async function syncSubjectMastery(userId: string, subject: string) {
 
     const examResults = await prisma.examResult.findMany({
       where: { userId, subject },
-      select: { accuracy: true },
+      select: { accuracy: true, score: true, total: true },
     });
-    let mastery = 0;
-    if (examResults.length > 0) {
-      const totalAccuracy = examResults.reduce((sum, result) => sum + result.accuracy, 0);
-      mastery = totalAccuracy / examResults.length;
-    }
+
+    const totalQAnswered = examResults.reduce((sum, result) => sum + (result.total || 0), 0);
+    const totalCorrect = examResults.reduce((sum, result) => sum + (result.score || 0), 0);
+    const rawAccuracy = totalQAnswered > 0 ? (totalCorrect / totalQAnswered) * 100 : 0;
+
+    // Volume Weight Factor: Requires answering at least 100 questions for full accuracy weight (matches 1 full 100-question PRC board paper per subject)
+    const volumeWeight = Math.min(1.0, totalQAnswered / 100);
 
     let proficiency = 0;
-    if (examResults.length === 0) {
-      proficiency = completion;
-    } else {
-      proficiency = (completion + mastery) / 2;
+    if (totalQAnswered > 0) {
+      proficiency = Math.round(rawAccuracy * volumeWeight);
     }
-    proficiency = Math.round(proficiency);
 
     let status = "Not Started";
-    if (mastery >= 90 || proficiency >= 90) status = "Mastered";
-    else if (mastery >= 75 || proficiency >= 75) status = "Proficient";
-    else if (mastery >= 60 || proficiency >= 60) status = "In Training";
-    else status = "Not Started";
+    if (totalQAnswered === 0 && completion === 0) {
+      status = "Not Started";
+    } else if (proficiency >= 80 && totalQAnswered >= 25) {
+      status = "Mastered";
+    } else if (proficiency >= 65 && totalQAnswered >= 15) {
+      status = "Proficient";
+    } else if (proficiency >= 35 || totalQAnswered >= 1) {
+      status = "In Training";
+    } else {
+      status = "Needs Focus";
+    }
 
     await prisma.subjectMastery.upsert({
       where: { userId_subject: { userId, subject } },
@@ -163,8 +169,11 @@ export async function syncSubjectMastery(userId: string, subject: string) {
 export interface SubjectMetrics {
   subject: string;
   completion: number; // 0-100: percentage of lessons completed
-  mastery: number; // 0-100: based on actual quest performance
-  masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered';
+  mastery: number; // 0-100: raw accuracy
+  proficiency: number; // 0-100: volume-weighted proficiency
+  totalQuestionsAnswered: number;
+  totalCorrect: number;
+  masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' | 'Needs Focus';
 }
 
 export const getCategories = unstable_cache(
@@ -185,7 +194,7 @@ export const getCategories = unstable_cache(
     // 2. Query MongoDB 'Subject' collection directly
     try {
       const client = await clientPromise;
-      const db = client.db();
+      const db = client.db('boardquest');
       const subjectDocs = await db.collection('Subject').find({}).sort({ createdAt: 1 }).toArray();
       if (subjectDocs && subjectDocs.length > 0) {
         return subjectDocs.map(doc => ({
@@ -218,14 +227,14 @@ export async function getUserLessonCompletions(): Promise<Record<string, string>
       select: { lessonId: true, status: true }
     });
 
-    const completionMap: Record<string, string> = {};
+    const map: Record<string, string> = {};
     completions.forEach(c => {
-      completionMap[c.lessonId] = c.status;
+      map[c.lessonId] = c.status;
     });
 
-    return completionMap;
+    return map;
   } catch (error) {
-    console.warn('Failed to get user lesson completions:', error);
+    console.error('Failed to get lesson completions:', error);
     return {};
   }
 }
@@ -269,7 +278,7 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       }),
       prisma.examResult.findMany({
         where: { userId },
-        select: { subject: true, accuracy: true }
+        select: { subject: true, accuracy: true, score: true, total: true }
       }),
       prisma.subjectMastery.findMany({
         where: { userId },
@@ -326,29 +335,42 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
 
       const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
 
-      let mastery = 0;
-      if (examResults.length > 0) {
-        const totalAccuracy = examResults.reduce((sum, result) => sum + result.accuracy, 0);
-        mastery = totalAccuracy / examResults.length;
+      const totalQAnswered = examResults.reduce((sum, result) => sum + (result.total || 0), 0);
+      const totalCorrect = examResults.reduce((sum, result) => sum + (result.score || 0), 0);
+      const rawAccuracy = totalQAnswered > 0 ? (totalCorrect / totalQAnswered) * 100 : 0;
+
+      // Volume Weight Factor: Requires answering at least 100 questions for full accuracy weight (matches 1 full 100-question PRC board paper per subject)
+      const volumeWeight = Math.min(1.0, totalQAnswered / 100);
+
+      let proficiency = 0;
+      if (totalQAnswered > 0) {
+        proficiency = Math.round(rawAccuracy * volumeWeight);
       } else if (dbMastery && typeof dbMastery.proficiency === 'number') {
-        mastery = dbMastery.proficiency;
+        proficiency = dbMastery.proficiency;
+      } else {
+        proficiency = 0;
       }
 
-      let masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' = 'Not Started';
-      if (mastery >= 90) {
+      let masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' | 'Needs Focus' = 'Not Started';
+      if (totalQAnswered === 0 && completion === 0) {
+        masteryStatus = 'Not Started';
+      } else if (proficiency >= 80 && totalQAnswered >= 25) {
         masteryStatus = 'Mastered';
-      } else if (mastery >= 75) {
+      } else if (proficiency >= 65 && totalQAnswered >= 15) {
         masteryStatus = 'Proficient';
-      } else if (mastery >= 50) {
+      } else if (proficiency >= 35 || totalQAnswered >= 1) {
         masteryStatus = 'In Training';
       } else {
-        masteryStatus = 'Not Started';
+        masteryStatus = 'Needs Focus';
       }
 
       metrics.push({
         subject,
         completion,
-        mastery: Math.round(mastery),
+        mastery: Math.round(rawAccuracy),
+        proficiency,
+        totalQuestionsAnswered: totalQAnswered,
+        totalCorrect,
         masteryStatus,
       });
     }
