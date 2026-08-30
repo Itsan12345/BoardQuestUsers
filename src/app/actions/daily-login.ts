@@ -30,11 +30,6 @@ function buildDailyLoginQuery(userId: string, userEmail?: string, dateStr?: stri
     userConditions.push({ studentId: userObjId });
   }
 
-  if (userEmail) {
-    userConditions.push({ studentEmail: userEmail.toLowerCase() });
-    userConditions.push({ userEmail: userEmail.toLowerCase() });
-  }
-
   return {
     $and: [
       { $or: userConditions },

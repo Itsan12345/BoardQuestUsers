@@ -189,8 +189,13 @@ export async function verifyEmailAndSignUp(formData: FormData) {
       { upsert: true }
     );
 
-    // 6. Clean up the used verification code
-    await db.collection('EmailVerification').deleteOne({ email });
+    // 6. Clean up the used verification code and any legacy orphaned DailyLogin records for this email
+    await Promise.all([
+      db.collection('EmailVerification').deleteOne({ email }),
+      db.collection('DailyLogin').deleteMany({
+        $or: [{ studentEmail: email }, { userEmail: email }],
+      }),
+    ]);
 
     // 7. Set session cookie
     try {

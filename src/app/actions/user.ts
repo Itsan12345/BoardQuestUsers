@@ -731,6 +731,11 @@ export async function deleteUserAccountAction(data: {
 
     const idQueries = userObjectId ? [{ userId }, { userId: userObjectId }] : [{ userId }];
     const userDocQueries = userObjectId ? [{ _id: userObjectId }, { _id: userId as any }] : [{ _id: userId as any }];
+    const emailQueries = user.email ? [
+      { studentEmail: user.email.toLowerCase() },
+      { userEmail: user.email.toLowerCase() },
+      { email: user.email.toLowerCase() }
+    ] : [];
 
     await Promise.all([
       db.collection('UserSettings').deleteMany({ $or: idQueries }),
@@ -742,11 +747,18 @@ export async function deleteUserAccountAction(data: {
       db.collection('Achievement').deleteMany({ $or: idQueries }),
       db.collection('StudyPlan').deleteMany({ $or: idQueries }),
       db.collection('AiAnalysis').deleteMany({ $or: idQueries }),
-      db.collection('EmailVerification').deleteMany({ email: user.email }),
+      db.collection('DailyLogin').deleteMany({ $or: [...idQueries, ...emailQueries] }),
+      db.collection('UserSession').deleteMany({ $or: [...idQueries, ...emailQueries] }),
+      db.collection('Notification').deleteMany({ $or: idQueries }),
+      db.collection('GuidanceAssignment').deleteMany({ $or: idQueries }),
+      db.collection('EmailVerification').deleteMany({ email: user.email.toLowerCase() }),
     ]);
 
-    // 2. Delete primary user record
-    await db.collection('User').deleteOne({ $or: userDocQueries });
+    // 2. Delete primary user record from MongoDB & Prisma
+    await Promise.all([
+      db.collection('User').deleteOne({ $or: userDocQueries }),
+      prisma.user.delete({ where: { id: userId } }).catch(() => null),
+    ]);
 
     // 3. Clear session cookie
     cookieStore.set('user_id', '', {
