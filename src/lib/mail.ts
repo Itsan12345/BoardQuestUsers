@@ -22,6 +22,62 @@ interface SendEmailResult {
 }
 
 /**
+ * Sends email via Resend HTTP REST API (port 443 HTTPS) to bypass cloud SMTP port blocks.
+ */
+async function sendViaResend({
+  to,
+  subject,
+  html,
+  text,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<SendEmailResult | null> {
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+
+  if (!resendApiKey) {
+    return null;
+  }
+
+  try {
+    const fromEmail = process.env.RESEND_FROM || process.env.EMAIL_FROM || 'BoardQuest <onboarding@resend.dev>';
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [to],
+        subject,
+        html,
+        text,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.message || data?.error?.message || 'Resend HTTP API failed');
+    }
+
+    console.log(`\n[BoardQuest] Email successfully delivered via Resend HTTP API to ${to} (ID: ${data.id})\n`);
+    return {
+      success: true,
+      messageId: data.id,
+    };
+  } catch (err) {
+    console.error('Failed to send email via Resend HTTP API:', err);
+    return {
+      success: process.env.NODE_ENV !== 'production',
+      error: err instanceof Error ? err.message : 'Resend API delivery error',
+    };
+  }
+}
+
+/**
  * Creates a nodemailer transporter based on available environment variables.
  */
 function createTransporter() {
@@ -81,7 +137,9 @@ export async function sendVerificationEmail({
   code,
 }: SendVerificationEmailOptions): Promise<SendEmailResult> {
   const displayName = name ? name.trim() : 'Aspirant';
-  const transporter = createTransporter();
+
+  const textContent = `Welcome to BoardQuest, ${displayName}! Your 6-digit verification code is: ${code}. This code expires in 10 minutes.`;
+  const subject = `[BoardQuest] ${code} is your aspirant verification code`;
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -153,6 +211,21 @@ export async function sendVerificationEmail({
     </html>
   `;
 
+  // 1. Try Resend HTTPS API first (Bypasses all cloud firewall / Render SMTP port blocks)
+  const resendResult = await sendViaResend({
+    to: email,
+    subject,
+    html: htmlContent,
+    text: textContent,
+  });
+
+  if (resendResult) {
+    return resendResult;
+  }
+
+  // 2. Fallback to standard Nodemailer SMTP
+  const transporter = createTransporter();
+
   if (!transporter) {
     console.log('\n======================================================');
     console.log(`[BoardQuest EMAIL VERIFICATION - DEV MODE]`);
@@ -215,7 +288,9 @@ export async function sendPasswordResetEmail({
   code,
 }: SendPasswordResetEmailOptions): Promise<SendEmailResult> {
   const displayName = name ? name.trim() : 'Aspirant';
-  const transporter = createTransporter();
+
+  const textContent = `Hello ${displayName}, your 6-digit BoardQuest password recovery code is: ${code}. This code expires in 15 minutes.`;
+  const subject = `[BoardQuest] ${code} is your password reset code`;
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -286,6 +361,21 @@ export async function sendPasswordResetEmail({
       </body>
     </html>
   `;
+
+  // 1. Try Resend HTTPS API first (Bypasses all cloud firewall / Render SMTP port blocks)
+  const resendResult = await sendViaResend({
+    to: email,
+    subject,
+    html: htmlContent,
+    text: textContent,
+  });
+
+  if (resendResult) {
+    return resendResult;
+  }
+
+  // 2. Fallback to standard Nodemailer SMTP
+  const transporter = createTransporter();
 
   if (!transporter) {
     console.log('\n======================================================');
