@@ -1,27 +1,36 @@
-/* BoardQuest Driver.js Custom Sophisticated Theme */
+/* ==========================================================================
+   BoardQuest Driver.js Custom Sophisticated Theme
+   Designed for crystal-clear visibility, no blur, and world-class contrast in both Light & Dark modes.
+   ========================================================================== */
 
-/* Active Stage Highlight with Glowing Maroon Aura */
+/* Active Stage Highlight with Glowing Maroon Aura (Spotlight Cutout) */
 .driver-stage {
   border-radius: 16px !important;
-  box-shadow: 0 0 0 3px rgba(153, 27, 27, 0.45), 0 0 30px rgba(153, 27, 27, 0.25) !important;
+  box-shadow: 0 0 0 3px rgba(153, 27, 27, 0.65), 0 0 24px rgba(153, 27, 27, 0.2) !important;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
 }
 
-/* Darkened Sophisticated Overlay */
-.driver-overlay {
-  background-color: rgba(10, 15, 29, 0.78) !important;
-  backdrop-filter: blur(4px) !important;
-  -webkit-backdrop-filter: blur(4px) !important;
+/* Crisp Dimming Overlay (Zero Blur, Crisp Contrast) */
+.driver-overlay,
+svg.driver-overlay,
+path.driver-overlay-path {
+  background-color: rgba(15, 23, 42, 0.38) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
   transition: opacity 0.3s ease !important;
 }
 
-/* Popover Container Card */
+/* Popover Container Card - Light Mode */
 .driver-popover.bq-tour-popover {
   background: #ffffff !important;
   color: #0f172a !important;
   border-radius: 20px !important;
-  border: 1px solid rgba(226, 232, 240, 0.9) !important;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(226, 232, 240, 0.95) !important;
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
   padding: 20px 22px !important;
   max-width: 380px !important;
   width: 100% !important;
@@ -72,7 +81,7 @@
   word-break: break-word !important;
 }
 
-/* Popover Close Button */
+/* Popover Close Button ('X') */
 .driver-popover.bq-tour-popover .driver-popover-close-btn {
   top: 14px !important;
   right: 14px !important;
@@ -109,14 +118,14 @@
   flex-wrap: wrap !important;
 }
 
-/* Progress Step Indicator (e.g. 1 of 4) */
+/* Progress Step Indicator (e.g. 1 OF 4) */
 .driver-popover.bq-tour-popover .driver-popover-progress-text {
   font-family: 'Space Grotesk', sans-serif !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.08em !important;
-  color: #991b1b !important; /* Maroon */
+  color: #991b1b !important;
   background: #fef2f2 !important;
   padding: 4px 10px !important;
   border-radius: 9999px !important;
@@ -174,7 +183,7 @@
 @media (max-width: 640px) {
   .driver-stage {
     border-radius: 12px !important;
-    box-shadow: 0 0 0 2px rgba(153, 27, 27, 0.5), 0 0 16px rgba(153, 27, 27, 0.25) !important;
+    box-shadow: 0 0 0 2px rgba(153, 27, 27, 0.6), 0 0 16px rgba(153, 27, 27, 0.2) !important;
   }
 
   .driver-popover.bq-tour-popover {
@@ -226,13 +235,29 @@
 }
 
 /* ==========================================================================
-   Dark Mode Overrides for Tour Popovers
+   Dark Mode Overrides for Tour Popovers & Overlay
    ========================================================================== */
+.dark .driver-overlay,
+.dark svg.driver-overlay,
+.dark path.driver-overlay-path {
+  background-color: rgba(0, 0, 0, 0.58) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+
+.dark .driver-stage {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.75), 0 0 30px rgba(239, 68, 68, 0.3) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+
 .dark .driver-popover.bq-tour-popover {
   background: #171922 !important;
-  color: #f3f4f6 !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
 }
 
 .dark .driver-popover.bq-tour-popover .driver-popover-arrow {
@@ -253,7 +278,7 @@
 }
 
 .dark .driver-popover.bq-tour-popover .driver-popover-close-btn:hover {
-  background: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
   color: #ffffff !important;
 }
 
@@ -279,7 +304,14 @@
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-.dark .driver-stage {
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.55), 0 0 30px rgba(239, 68, 68, 0.3) !important;
+.dark .driver-popover.bq-tour-popover .driver-popover-next-btn {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35) !important;
 }
 
+.dark .driver-popover.bq-tour-popover .driver-popover-next-btn:hover {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important;
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.45) !important;
+}

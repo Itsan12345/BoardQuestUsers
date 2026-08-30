@@ -556,12 +556,13 @@ export function startTourByKey(tourKey: string, force: boolean = false): boolean
     }
   }
 
-  if (availableSteps.length === 0) return false;
+  const isDarkMode = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const overlayColor = isDarkMode ? 'rgba(0, 0, 0, 0.55)' : 'rgba(15, 23, 42, 0.35)';
 
   const driverObj = driver({
     showProgress: true,
     animate: true,
-    overlayColor: 'rgba(10, 15, 29, 0.78)',
+    overlayColor: overlayColor,
     stagePadding: isMobile ? 4 : 8,
     stageRadius: isMobile ? 12 : 16,
     popoverClass: 'bq-tour-popover',
