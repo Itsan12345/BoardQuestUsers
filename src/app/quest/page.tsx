@@ -651,6 +651,22 @@ export default function LearningQuest() {
     }
   }, []);
 
+  // Preload Inventory Assets on Mount for Instant Dialog Rendering
+  useEffect(() => {
+    const assetsToPreload = [
+      '/ui/Inventory_bg.png',
+      '/ui/Inventory_icon.png',
+      '/ui/Inventory_available_exp.png',
+      '/ui/Inventory_weekly_bg.png',
+      '/ui/Inventory_slot.png',
+      '/ui/Inventory_shop_bg.png',
+    ];
+    assetsToPreload.forEach(src => {
+      const img = new window.Image();
+      img.src = src;
+    });
+  }, []);
+
   // Sync state changes to localStorage and DB only after initialization
   useEffect(() => {
     if (!isInventoryLoaded) return;
@@ -828,7 +844,7 @@ export default function LearningQuest() {
         <DialogTitle className="sr-only">Inventory</DialogTitle>
 
         {/* Parchment / Leather Frame Container - Naturally scaled to fit content on all screens */}
-        <div className="relative w-full p-2.5 min-[360px]:p-3 sm:p-5 flex flex-col gap-1.5 sm:gap-2.5 overflow-hidden rounded-xl">
+        <div className="relative w-full p-2.5 min-[360px]:p-3 sm:p-5 flex flex-col gap-1.5 sm:gap-2.5 overflow-hidden rounded-xl bg-[#2b1408] border-2 border-[#5c2a1a] shadow-2xl">
           {/* Main Inventory Background */}
           <Image
             src="/ui/Inventory_bg.png"
