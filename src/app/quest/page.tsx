@@ -346,6 +346,8 @@ export default function LearningQuest() {
   const [thankYouDialogOpen, setThankYouDialogOpen] = useState(false);
   const [judgementText, setJudgementText] = useState<string | null>(null);
   const isFinishingRef = useRef(false);
+  const hasSubmittedConfidenceRef = useRef(false);
+  const hasShownThankYouRef = useRef(false);
 
   // Cutscene State
   const [introPhase, setIntroPhase] = useState<'hidden' | 'cutscene' | 'vs' | 'active'>('active');
@@ -513,6 +515,11 @@ export default function LearningQuest() {
     const damagePerQ = 100 / waveQCount;
     const currentHp = Math.max(0, Math.round(100 - (correctInWave * damagePerQ)));
 
+    const totalCorrect = userAnswersList.filter(a => a.isCorrect).length;
+    const isFinished = userAnswersList.length >= questions.length;
+    const isPassing = (totalCorrect / Math.max(1, questions.length)) >= 0.75;
+    const effectiveHp = isFinished ? (isPassing ? 0 : Math.max(20, currentHp)) : currentHp;
+
     const waveMinion = waveEnemies?.minion;
     const waveEnforcer = waveEnemies?.enforcer;
     const waveBoss = waveEnemies?.boss;
@@ -523,7 +530,7 @@ export default function LearningQuest() {
         name: waveMinion?.name || 'Reagent Strip Slime',
         badge: 'MINION 👾',
         icon: waveMinion?.icon || '🧪',
-        hp: currentHp,
+        hp: effectiveHp,
         maxHp: 100,
         damagePerQ,
         idleSprite: null,
@@ -536,7 +543,7 @@ export default function LearningQuest() {
         name: waveEnforcer?.name || 'Nitrite Spectre',
         badge: 'ENFORCER 👹',
         icon: waveEnforcer?.icon || '👻',
-        hp: currentHp,
+        hp: effectiveHp,
         maxHp: 100,
         damagePerQ,
         idleSprite: null,
@@ -553,7 +560,7 @@ export default function LearningQuest() {
         name: waveBoss?.name || meta.enemy,
         badge: 'ELITE 👑',
         icon: waveBoss?.icon || '👑',
-        hp: currentHp,
+        hp: effectiveHp,
         maxHp: 100,
         damagePerQ,
         idleSprite: ch3Node?.idleSpriteUrl || meta?.idleSpriteUrl || null,
@@ -1225,11 +1232,16 @@ export default function LearningQuest() {
     setConfidence(null);
     setEarnedBadges([]);
     setConfidenceSubmitted(false);
+    setConfidenceDialogOpen(false);
+    setThankYouDialogOpen(false);
     setQuestStartTime(Date.now());
     isFinishingRef.current = false;
+    hasSubmittedConfidenceRef.current = false;
+    hasShownThankYouRef.current = false;
     setBossAnimState('idle');
     setPlayerAnimState('idle');
     setIsAnimating(null);
+    setJudgementText(null);
     try {
       if (quizMode === 'boss-battle' && specificDifficulty) {
         setBossDifficulty(specificDifficulty);
@@ -1578,6 +1590,7 @@ export default function LearningQuest() {
       };
 
       if (isCorrect) {
+        setBossAnimState('idle');
         setPlayerAnimState('attack');
         setTimeout(() => setPlayerAnimState('idle'), 1200);
         setTimeout(applyEnemyDamage, 450);
@@ -1639,12 +1652,15 @@ export default function LearningQuest() {
           setBossAnimState(attackType);
           const impactDelay = attackType === 'heavy_attack' ? 580 : 450;
           setTimeout(applyPlayerDamage, impactDelay);
+          setTimeout(() => setBossAnimState('idle'), 1200);
         } else {
           setBossAnimState(action === 'heavy' ? 'heavy_attack' : 'normal_attack');
           const impactDelay = action === 'heavy' ? 580 : 450;
           setTimeout(applyPlayerDamage, impactDelay);
+          setTimeout(() => setBossAnimState('idle'), 1200);
         }
       } else {
+        setBossAnimState('idle');
         applyPlayerDamage();
       }
     }
@@ -1658,6 +1674,31 @@ export default function LearningQuest() {
         setPlayerHealth(prev => Math.min(currentMaxHp, prev + actualHeal));
         addFloatingText('player', `+${Math.ceil(actualHeal)} HEALED!`, 'text-emerald-400 font-black');
       }
+    }
+
+    // In Learning Mode: If this was the final question, execute the 75% PRC Licensure Passing Threshold verdict!
+    if (quizMode === 'learning' && userAnswers.length + 1 >= questions.length) {
+      const currentTotalCorrect = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+      const isOverallPassing = (currentTotalCorrect / questions.length) >= 0.75;
+
+      setTimeout(() => {
+        if (isOverallPassing) {
+          setEnemyHealth(0);
+          setHitEffectTarget('enemy');
+          setHitEffectKey(k => k + 1);
+          setPlayerAnimState('attack');
+          addFloatingText('enemy', '💥 FINISHING STRIKE! 👑 BOSS DEFEATED!', 'text-amber-300 font-black');
+          setJudgementText('YOU WON');
+          playSfx('victory');
+        } else {
+          setPlayerHealth(0);
+          setHitEffectTarget('player');
+          setHitEffectKey(k => k + 1);
+          addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-500 font-black');
+          setJudgementText('YOU FAILED');
+          playSfx('defeat');
+        }
+      }, 750);
     }
 
     setPlayerPoisoned(newPoisonedState);
@@ -1720,9 +1761,19 @@ export default function LearningQuest() {
             setPlayerHealth(0);
           }
         }
+      } else if (quizMode === 'learning') {
+        // Approach 1: PRC Board Licensure Passing Benchmark (75%)
+        const actualTotal = questions.length || 10;
+        const passPercent = (finalScore / actualTotal) * 100;
+        finalOutcome = passPercent >= 75 ? 'victory' : 'defeat';
+        if (finalOutcome === 'victory') {
+          setEnemyHealth(0); // Finishing strike: Boss defeated
+        } else {
+          setPlayerHealth(0); // Boss counter: Player defeated
+        }
       } else {
-        // In Learning/Test mode, force a visual victor based on the final score
-        finalOutcome = finalScore > questions.length / 2 ? 'victory' : 'defeat';
+        // Test mode: standard 60% passing baseline
+        finalOutcome = finalScore >= Math.ceil(questions.length * 0.6) ? 'victory' : 'defeat';
         if (finalOutcome === 'victory') {
           setEnemyHealth(0); // Player wins, Enemy dies
         } else {
@@ -1771,6 +1822,9 @@ export default function LearningQuest() {
   };
 
   const handleConfidenceSubmit = async (selectedLevel: string) => {
+    if (hasSubmittedConfidenceRef.current) return;
+    hasSubmittedConfidenceRef.current = true;
+
     setConfidence(selectedLevel);
     setConfidenceSubmitted(true);
     setConfidenceDialogOpen(false);
@@ -1831,8 +1885,11 @@ export default function LearningQuest() {
         });
         setEarnedBadges(updatedBadges);
 
-        // Open thank you dialog after a short delay
-        setTimeout(() => setThankYouDialogOpen(true), 200);
+        // Open thank you dialog strictly once after a short delay
+        if (!hasShownThankYouRef.current) {
+          hasShownThankYouRef.current = true;
+          setTimeout(() => setThankYouDialogOpen(true), 200);
+        }
 
         window.dispatchEvent(new CustomEvent('bq_stats_updated'));
 
@@ -2341,17 +2398,6 @@ export default function LearningQuest() {
           </DialogContent>
         </Dialog>
 
-        {judgementText && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-500">
-            <h1 className={cn(
-              "text-6xl md:text-8xl font-black font-bytebounce uppercase tracking-widest animate-in zoom-in-50 duration-700 drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]",
-              judgementText === 'VICTORY' ? 'text-green-500' : 'text-red-500'
-            )}>
-              {judgementText}
-            </h1>
-          </div>
-        )}
-
         <main className={cn("flex-1 flex flex-col relative", introPhase !== 'active' && "overflow-hidden")}>
           <div
             className={cn(
@@ -2376,9 +2422,56 @@ export default function LearningQuest() {
 
             {/* Hit Flash Overlay */}
             <div className={cn(
-              "absolute inset-0 bg-red-600 z-50 pointer-events-none transition-opacity duration-300",
+              "absolute inset-0 bg-red-600 z-40 pointer-events-none transition-opacity duration-300",
               hitFlash ? "opacity-30" : "opacity-0"
             )} />
+
+            {/* Gamified Battle Simulation Floating Verdict (No Box/Container) */}
+            {judgementText && (
+              <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/65 backdrop-blur-md animate-in fade-in duration-500 pointer-events-none p-4 select-none">
+                {/* Ambient Radial Color Glow */}
+                <div className={cn(
+                  "absolute w-72 sm:w-96 h-40 sm:h-48 rounded-full blur-3xl pointer-events-none -translate-y-2 opacity-60",
+                  (judgementText === 'VICTORY' || judgementText === 'YOU WON') ? "bg-emerald-500/50" : "bg-red-500/50"
+                )} />
+
+                {/* Header Subtitle Tag */}
+                <div className="flex items-center gap-2 z-10 mb-1 animate-in slide-in-from-top-3 duration-500">
+                  {(judgementText === 'VICTORY' || judgementText === 'YOU WON') ? (
+                    <>
+                      <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
+                      <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-emerald-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                        QUEST CLEARED • 75%+ LICENSURE BENCHMARK MET
+                      </span>
+                      <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-red-400 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                        QUEST FAILED • BELOW 75% PASSING GRADE
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* Giant RPG Floating Title */}
+                <h2 className={cn(
+                  "font-bytebounce text-6xl sm:text-8xl md:text-9xl font-black uppercase tracking-wider leading-none animate-in zoom-in-75 duration-700 z-10 my-0.5",
+                  (judgementText === 'VICTORY' || judgementText === 'YOU WON')
+                    ? "text-emerald-300 drop-shadow-[0_0_35px_rgba(16,185,129,0.95)]"
+                    : "text-red-500 drop-shadow-[0_0_35px_rgba(239,68,68,0.95)]"
+                )}>
+                  {judgementText}
+                </h2>
+
+                {/* Floating Instruction Subtitle */}
+                <p className="text-[10px] sm:text-xs md:text-sm font-medium text-white/90 font-mono tracking-tight max-w-md text-center z-10 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] mt-1">
+                  {(judgementText === 'VICTORY' || judgementText === 'YOU WON')
+                    ? "Outstanding performance! Click Finish Quest below to view your full scorecard & claim rewards."
+                    : "Passing standard not reached. Review the AI Tutor Logic Analysis below to master these concepts!"}
+                </p>
+              </div>
+            )}
 
             <header className="px-4 py-3 flex items-center justify-between relative z-10 w-full drop-shadow-md">
               <Button variant="ghost" size="icon" onClick={() => setLeaveConfirmDialogOpen(true)} className="rounded-full shrink-0 text-white hover:bg-white/20">
