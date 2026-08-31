@@ -205,12 +205,57 @@ export async function getUserProfile() {
     const classYear = new Date(user.createdAt).getFullYear() - 1;
     const classString = `MedTech Class of ${classYear}`;
 
+    // Query ReviewCenterCandidate in MongoDB
+    let reviewCenterEnrollment: ReviewCenterEnrollmentInfo = { isEnrolled: false };
+    try {
+      const client = await clientPromise;
+      const db = client.db();
+
+      let userObjId: ObjectId | null = null;
+      try {
+        userObjId = new ObjectId(user.id);
+      } catch (e) {}
+
+      const normalizedEmail = user.email ? String(user.email).trim().toLowerCase() : '';
+      const candidateQueries: any[] = [];
+      if (user.id) candidateQueries.push({ studentId: user.id });
+      if (userObjId) candidateQueries.push({ studentId: userObjId });
+      if (normalizedEmail) {
+        candidateQueries.push({ email: normalizedEmail });
+        candidateQueries.push({ email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+      }
+
+      if (candidateQueries.length > 0) {
+        const candidate = await db.collection('ReviewCenterCandidate').findOne({
+          $or: candidateQueries
+        });
+
+        if (candidate) {
+          const candidateStatus = String(candidate.status || 'ENROLLED').toUpperCase();
+          const isEnrolled = candidateStatus === 'ENROLLED' || candidateStatus === 'ACTIVE';
+
+          if (isEnrolled) {
+            reviewCenterEnrollment = {
+              isEnrolled: true,
+              companyName: candidate.companyName || candidate.name || 'Enrolled Review Center',
+              batch: candidate.batch || 'Batch 1',
+              schoolYear: candidate.schoolYear || '2026-2027',
+              status: candidateStatus,
+            };
+          }
+        }
+      }
+    } catch (rcErr) {
+      console.error('Error fetching review center candidate in getUserProfile:', rcErr);
+    }
+
     const result = {
       ...user,
       todayQuestions,
       classString,
       userRank,
-      rankingPercentage
+      rankingPercentage,
+      reviewCenterEnrollment,
     };
 
     return JSON.parse(JSON.stringify(result));
@@ -783,4 +828,78 @@ export async function deleteUserAccountAction(data: {
     return { success: false, error: 'Failed to delete account. Please try again later.' };
   }
 }
+
+export interface ReviewCenterEnrollmentInfo {
+  isEnrolled: boolean;
+  companyName?: string;
+  batch?: string;
+  schoolYear?: string;
+  status?: string;
+}
+
+/**
+ * Checks if the logged-in student is enrolled in a Review Center
+ * by querying MongoDB's ReviewCenterCandidate collection by email or studentId.
+ */
+export async function checkUserReviewCenterEnrollmentAction(): Promise<ReviewCenterEnrollmentInfo> {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return { isEnrolled: false };
+
+    const client = await clientPromise;
+    const db = client.db();
+
+    // 1. Fetch user profile
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true }
+    });
+
+    if (!user) return { isEnrolled: false };
+
+    let userObjId: ObjectId | null = null;
+    try {
+      userObjId = new ObjectId(user.id);
+    } catch (e) {}
+
+    const normalizedEmail = user?.email ? String(user.email).trim().toLowerCase() : '';
+
+    // 2. Query ReviewCenterCandidate collection by studentId or email (case-insensitive)
+    const candidateQueries: any[] = [];
+    if (user.id) candidateQueries.push({ studentId: user.id });
+    if (userObjId) candidateQueries.push({ studentId: userObjId });
+    if (normalizedEmail) {
+      candidateQueries.push({ email: normalizedEmail });
+      candidateQueries.push({ email: { $regex: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+    }
+
+    if (candidateQueries.length === 0) return { isEnrolled: false };
+
+    const candidate = await db.collection('ReviewCenterCandidate').findOne({
+      $or: candidateQueries
+    });
+
+    if (candidate) {
+      const candidateStatus = (candidate.status || 'ENROLLED').toUpperCase();
+      const isEnrolled = candidateStatus === 'ENROLLED' || candidateStatus === 'ACTIVE';
+
+      if (isEnrolled) {
+        return {
+          isEnrolled: true,
+          companyName: candidate.companyName || candidate.name || 'Enrolled Review Center',
+          batch: candidate.batch || 'Batch 1',
+          schoolYear: candidate.schoolYear || '2026-2027',
+          status: candidateStatus,
+        };
+      }
+    }
+
+    return { isEnrolled: false };
+  } catch (error) {
+    console.error('Error checking review center candidate enrollment status:', error);
+    return { isEnrolled: false };
+  }
+}
+
 

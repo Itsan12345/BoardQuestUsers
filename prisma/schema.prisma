@@ -371,3 +371,20 @@ model UserBadge {
   @@index([badgeSlug])
 }
 
+model ReviewCenterCandidate {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  reviewCenterId String?  @db.ObjectId
+  companyName    String
+  name           String
+  email          String
+  schoolId       String?
+  schoolYear     String   @default("2026-2027")
+  batch          String   @default("Batch 1")
+  status         String   @default("ENROLLED")
+  studentId      String?  @db.ObjectId
+  enrolledAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+
