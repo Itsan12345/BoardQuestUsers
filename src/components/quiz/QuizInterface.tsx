@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
   const [activeMove, setActiveMove] = useState<'heavy' | 'normal' | 'defend' | null>(null);
   const [turnMap, setTurnMap] = useState<number[]>([]);
   const [eliminatedOptionLetters, setEliminatedOptionLetters] = useState<string[]>([]);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const nextActionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEliminatedOptionLetters([]);
@@ -135,6 +138,13 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       setIsAnswered(true);
       if (isCorrect) setScore(s => s + 1);
       if (onAnswer) onAnswer(isCorrect, currentQuestionIndex, letter, undefined, currentQuestion);
+
+      // Auto-smooth scroll down to explanation after battle animations complete
+      setTimeout(() => {
+        if (nextActionRef.current) {
+          nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 1350);
     } else if (mode === 'boss-battle') {
       setIsAnswered(true);
       if (isCorrect) setScore(s => s + 1);
@@ -203,13 +213,31 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       setSelectedAnswer(null);
       setIsAnswered(false);
       setActiveMove(null);
+      
+      // Smoothly scroll window, document, and all parent containers (including fullscreen arena) to the very top
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+        document.body.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        let parent = containerRef.current.parentElement;
+        while (parent) {
+          if (parent.scrollHeight > parent.clientHeight || parent.classList.contains('overflow-y-auto') || parent.classList.contains('overflow-auto')) {
+            parent.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          parent = parent.parentElement;
+        }
+      }
     } else {
       onFinish(score);
     }
   };
 
   return (
-    <div className="w-full flex flex-col h-full overflow-y-auto pb-20 no-scrollbar">
+    <div ref={containerRef} className="w-full flex flex-col h-full overflow-y-auto pb-20 no-scrollbar relative">
       <div className="px-6 pt-6 flex justify-between items-center mb-4 gap-4">
         <div className="flex flex-col">
           {mode !== 'boss-battle' ? (
@@ -444,7 +472,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
           </div>
 
           {mode === 'learning' && isAnswered && (
-            <div className="mx-6 mt-8 space-y-6">
+            <div ref={nextActionRef} className="mx-6 mt-8 space-y-6">
               <div className="p-5 bg-primary/5 rounded-2xl border-2 border-dashed border-primary/20 animate-in fade-in slide-in-from-bottom-4 duration-500">
                  <div className="flex items-center gap-2 mb-3">
                    <div className="bg-primary/10 p-1.5 rounded-lg">
@@ -481,7 +509,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                    </div>
                  )}
               </div>
-              <div className="flex justify-end animate-in fade-in duration-500 delay-150">
+              <div className="flex justify-end animate-in fade-in duration-500 delay-150 pb-6">
                 <Button 
                   onClick={handleNext}
                   size="lg"

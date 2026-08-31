@@ -145,4 +145,13 @@
   .animate-float {
     animation: float 4.5s ease-in-out infinite;
   }
+
+  @keyframes hit-sprite-anim {
+    0% { background-position: 0px 0px; }
+    100% { background-position: -640px 0px; }
+  }
+
+  .animate-hit-sprite {
+    animation: hit-sprite-anim 0.35s steps(5) 1 forwards;
+  }
 }

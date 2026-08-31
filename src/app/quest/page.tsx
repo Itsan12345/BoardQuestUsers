@@ -55,6 +55,7 @@ import { playSfx } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
+import { HitEffectAnimator } from '@/components/game/HitEffectAnimator';
 
 const SUBJECT_METADATA: Record<string, {
   name: string;
@@ -544,6 +545,9 @@ export default function LearningQuest() {
       };
     } else {
       const meta = getSubjectMeta(subject);
+      const activeNodes = getSubjectNodes(subject);
+      const ch3Node = activeNodes.find(n => n.nodeNumber === 3) || activeNodes[0];
+
       return {
         waveStage: 3,
         name: waveBoss?.name || meta.enemy,
@@ -552,12 +556,20 @@ export default function LearningQuest() {
         hp: currentHp,
         maxHp: 100,
         damagePerQ,
-        idleSprite: waveBoss?.idleSprite || meta?.idleSpriteUrl || null,
-        attackSprite: waveBoss?.attackSprite || meta?.attackSpriteUrl || null,
-        heavyAttackSprite: waveBoss?.heavyAttackSprite || meta?.heavyAttackSpriteUrl || null,
-        idleFrames: waveBoss?.idleFrames || meta?.idleFrames || 7,
-        attackFrames: waveBoss?.attackFrames || meta?.attackFrames || 17,
-        heavyAttackFrames: waveBoss?.heavyAttackFrames || meta?.heavyAttackFrames || 11,
+        idleSprite: ch3Node?.idleSpriteUrl || meta?.idleSpriteUrl || null,
+        attackSprite: ch3Node?.attackSpriteUrl || meta?.attackSpriteUrl || null,
+        heavyAttackSprite: ch3Node?.heavyAttackSpriteUrl || meta?.heavyAttackSpriteUrl || null,
+        attackProjectileUrl: ch3Node?.attackProjectileUrl || meta?.attackProjectileUrl || null,
+        idleFrames: ch3Node?.idleFrames || meta?.idleFrames || 6,
+        attackFrames: ch3Node?.attackFrames || meta?.attackFrames || 5,
+        heavyAttackFrames: ch3Node?.heavyAttackFrames || meta?.heavyAttackFrames || 12,
+        attackProjectileFrames: ch3Node?.attackProjectileFrames || meta?.attackProjectileFrames || 5,
+        idleFrameWidth: ch3Node?.idleFrameWidth || meta?.idleFrameWidth || 128,
+        attackFrameWidth: ch3Node?.attackFrameWidth || meta?.attackFrameWidth || 128,
+        heavyFrameWidth: ch3Node?.heavyFrameWidth || meta?.heavyFrameWidth || 480,
+        idleFrameHeight: ch3Node?.idleFrameHeight || meta?.idleFrameHeight || 128,
+        attackFrameHeight: ch3Node?.attackFrameHeight || meta?.attackFrameHeight || 128,
+        heavyFrameHeight: ch3Node?.heavyFrameHeight || meta?.heavyFrameHeight || 256,
       };
     }
   };
@@ -610,6 +622,8 @@ export default function LearningQuest() {
   }, []);
   const [floatingTexts, setFloatingTexts] = useState<{ id: string, target: 'player' | 'enemy', text: string, color: string }[]>([]);
   const [hitFlash, setHitFlash] = useState(false);
+  const [hitEffectTarget, setHitEffectTarget] = useState<'player' | 'enemy' | null>(null);
+  const [hitEffectKey, setHitEffectKey] = useState<number>(0);
 
   // Inventory & Consumables State
   const [userXp, setUserXp] = useState<number>(100);
@@ -1458,7 +1472,13 @@ export default function LearningQuest() {
       const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
       if (isCorrect) {
         enemyDmg = waveState.damagePerQ;
-        playerHeal = 15; // Reward player with +15 HP heal on every correct answer!
+        const currentMaxHp = getPlayerMaxHp();
+        // Reward player with heal ONLY when player is below max HP
+        if (playerHealth < currentMaxHp) {
+          playerHeal = Math.min(15, currentMaxHp - playerHealth);
+        } else {
+          playerHeal = 0;
+        }
       } else {
         enemyDmg = 0; // Enemy takes ZERO damage on player mistakes!
         // Player HP Scaling: Allow ~35% mistake budget (minimum 5 allowed mistakes) across total questions
@@ -1480,6 +1500,8 @@ export default function LearningQuest() {
     if (enemyDmg > 0) {
       const applyEnemyDamage = () => {
         setIsAnimating("enemy");
+        setHitEffectTarget('enemy');
+        setHitEffectKey(k => k + 1);
         const nextHp = Math.max(0, enemyHealth - enemyDmg);
 
         if (quizMode === 'boss-battle' && nextHp <= 0) {
@@ -1567,6 +1589,8 @@ export default function LearningQuest() {
     if (playerDmg > 0) {
       const applyPlayerDamage = () => {
         setIsAnimating("player");
+        setHitEffectTarget('player');
+        setHitEffectKey(k => k + 1);
         const nextHp = Math.max(0, playerHealth - playerDmg);
         setPlayerHealth(nextHp);
 
@@ -1609,20 +1633,31 @@ export default function LearningQuest() {
 
       // Trigger Boss Attack animation & physical lunge ONLY on player mistake (!isCorrect)
       if (!isCorrect) {
-        setBossAnimState(action === 'heavy' ? 'heavy_attack' : 'normal_attack');
-        const impactDelay = action === 'heavy' ? 580 : 450;
-        setTimeout(applyPlayerDamage, impactDelay);
+        if (quizMode === 'learning') {
+          // In Learning Mode (no action cards), randomize 50/50 between Normal Attack and Heavy Attack on wrong answer!
+          const attackType = Math.random() < 0.5 ? 'normal_attack' : 'heavy_attack';
+          setBossAnimState(attackType);
+          const impactDelay = attackType === 'heavy_attack' ? 580 : 450;
+          setTimeout(applyPlayerDamage, impactDelay);
+        } else {
+          setBossAnimState(action === 'heavy' ? 'heavy_attack' : 'normal_attack');
+          const impactDelay = action === 'heavy' ? 580 : 450;
+          setTimeout(applyPlayerDamage, impactDelay);
+        }
       } else {
         applyPlayerDamage();
       }
     }
 
     if (playerHeal > 0) {
-      setIsAnimating("player");
-      playSfx('heal');
       const currentMaxHp = getPlayerMaxHp();
-      setPlayerHealth(prev => Math.min(currentMaxHp, prev + playerHeal));
-      addFloatingText('player', `+${Math.ceil(playerHeal)} HEALED!`, 'text-green-400');
+      const actualHeal = Math.min(playerHeal, Math.max(0, currentMaxHp - playerHealth));
+      if (actualHeal > 0) {
+        setIsAnimating("player");
+        playSfx('heal');
+        setPlayerHealth(prev => Math.min(currentMaxHp, prev + actualHeal));
+        addFloatingText('player', `+${Math.ceil(actualHeal)} HEALED!`, 'text-emerald-400 font-black');
+      }
     }
 
     setPlayerPoisoned(newPoisonedState);
@@ -2410,6 +2445,8 @@ export default function LearningQuest() {
               let heavyAttackSprite: string | null = null;
               let displayEnemyHp = enemyHealth;
 
+              let waveState: any = null;
+
               if (quizMode === 'boss-battle') {
                 activeEnemyName = battleStage === 1 ? currentActiveNode.minionName : battleStage === 2 ? currentActiveNode.miniBossName : currentActiveNode.bossName;
                 activeEnemyBadge = battleStage === 1 ? 'MINION 👾' : battleStage === 2 ? 'MINI-BOSS 👹' : 'BOSS 👑';
@@ -2420,7 +2457,7 @@ export default function LearningQuest() {
                 heavyAttackSprite = isBossStageOrCh3 ? (currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null) : null;
                 displayEnemyHp = enemyHealth;
               } else if (quizMode === 'learning') {
-                const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
+                waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
                 activeEnemyName = waveState.name;
                 activeEnemyBadge = waveState.badge;
                 idleSprite = waveState.idleSprite;
@@ -2468,30 +2505,39 @@ export default function LearningQuest() {
                     </div>
                   </div>
                   <div className="flex justify-end pr-2 md:pr-4 mt-2 relative items-center min-h-[96px]">
-                    {idleSprite && attackSprite ? (
-                      <BossSpriteAnimator
-                        idleSpriteUrl={idleSprite}
-                        attackSpriteUrl={attackSprite}
-                        heavyAttackSpriteUrl={heavyAttackSprite || undefined}
-                        attackProjectileUrl={currentActiveNode?.attackProjectileUrl || subjectMeta?.attackProjectileUrl || undefined}
-                        attackProjectileFrames={currentActiveNode?.attackProjectileFrames || subjectMeta?.attackProjectileFrames || 5}
-                        idleFrames={currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7}
-                        attackFrames={currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17}
-                        heavyAttackFrames={currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11}
-                        idleFrameWidth={currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128}
-                        attackFrameWidth={currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128}
-                        heavyFrameWidth={currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176}
-                        heavyFrameHeight={currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128}
-                        animState={introPhase === 'active' ? bossAnimState : 'idle'}
-                        onAttackComplete={() => setBossAnimState('idle')}
-                        scale={1.35}
-                        isHit={isAnimating === "enemy"}
-                        isEnraged={quizMode === 'boss-battle' && enemyHealth <= 20 && enemyHealth > 0}
-                        isShielded={bossShieldActive}
+                    <div className="relative inline-flex items-center justify-center">
+                      {idleSprite && attackSprite ? (
+                        <BossSpriteAnimator
+                          idleSpriteUrl={idleSprite}
+                          attackSpriteUrl={attackSprite}
+                          heavyAttackSpriteUrl={heavyAttackSprite || undefined}
+                          attackProjectileUrl={waveState?.attackProjectileUrl || currentActiveNode?.attackProjectileUrl || subjectMeta?.attackProjectileUrl || undefined}
+                          attackProjectileFrames={waveState?.attackProjectileFrames || currentActiveNode?.attackProjectileFrames || subjectMeta?.attackProjectileFrames || 5}
+                          idleFrames={waveState?.idleFrames || currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7}
+                          attackFrames={waveState?.attackFrames || currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17}
+                          heavyAttackFrames={waveState?.heavyAttackFrames || currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11}
+                          idleFrameWidth={waveState?.idleFrameWidth || currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128}
+                          attackFrameWidth={waveState?.attackFrameWidth || currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128}
+                          heavyFrameWidth={waveState?.heavyFrameWidth || currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176}
+                          heavyFrameHeight={waveState?.heavyFrameHeight || currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128}
+                          animState={introPhase === 'active' ? bossAnimState : 'idle'}
+                          onAttackComplete={() => setBossAnimState('idle')}
+                          scale={1.35}
+                          isHit={isAnimating === "enemy"}
+                          isEnraged={quizMode === 'boss-battle' && enemyHealth <= 20 && enemyHealth > 0}
+                          isShielded={bossShieldActive}
+                        />
+                      ) : (
+                        <EnemyIcon className="w-16 h-16 md:w-24 md:h-24 text-white drop-shadow-glow" />
+                      )}
+                      {/* Enemy Hit Animation directly on boss/enemy chest/neck */}
+                      <HitEffectAnimator
+                        isActive={hitEffectTarget === 'enemy'}
+                        triggerKey={hitEffectKey}
+                        scale={2.2}
+                        className="top-[32%] left-[48%]"
                       />
-                    ) : (
-                      <EnemyIcon className="w-12 h-12 md:w-20 md:h-20 text-white drop-shadow-glow" />
-                    )}
+                    </div>
                     {/* Enemy Floating Text */}
                     {floatingTexts.filter(ft => ft.target === 'enemy').map(ft => (
                       <div key={ft.id} className={cn("absolute -top-4 right-10 font-bytebounce text-2xl md:text-3xl animate-float-up pointer-events-none z-50 whitespace-nowrap", ft.color)} style={{ textShadow: '2px 2px 0 #000' }}>
@@ -2526,6 +2572,13 @@ export default function LearningQuest() {
                     className="w-full h-full object-contain object-bottom filter drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]"
                     style={{ imageRendering: 'pixelated' }}
                     unoptimized
+                  />
+                  {/* Player Hit Animation directly on player chest/body */}
+                  <HitEffectAnimator
+                    isActive={hitEffectTarget === 'player'}
+                    triggerKey={hitEffectKey}
+                    scale={2.2}
+                    className="top-[45%] left-[52%]"
                   />
                 </div>
 
