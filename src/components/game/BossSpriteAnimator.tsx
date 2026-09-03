@@ -91,9 +91,18 @@ export function BossSpriteAnimator({
 
   const isWideBeam = isAttacking && currentFrameWidth >= 300;
 
-  // Frame rates (fps)
-  const fps = isHeavy ? currentTotalFrames : (isNormalAttack && hasProjectile) ? 8 : isAttacking ? 14 : 8;
-  const animDuration = (isNormalAttack && hasProjectile) ? 0.8 : currentTotalFrames / fps;
+  // Frame rates (fps) - Tuned for fast, immediate and punchy combat animations
+  const fps = isHeavy
+    ? (currentTotalFrames <= 6 ? 9 : Math.max(18, currentTotalFrames))
+    : (isNormalAttack && hasProjectile)
+    ? 8
+    : isAttacking
+    ? Math.max(16, currentTotalFrames)
+    : 8;
+  const spriteDuration = (isNormalAttack && hasProjectile)
+    ? 0.38
+    : Math.max(0.48, Math.min(0.62, currentTotalFrames / fps));
+  const lungeDuration = isAttacking ? (hasProjectile ? 0.45 : spriteDuration + 0.35) : spriteDuration;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
   const onCompleteRef = useRef(onAttackComplete);
@@ -111,10 +120,10 @@ export function BossSpriteAnimator({
         if (onCompleteRef.current) {
           onCompleteRef.current();
         }
-      }, animDuration * 1000);
+      }, lungeDuration * 1000);
       return () => clearTimeout(timer);
     }
-  }, [animState, isAttacking, animDuration]);
+  }, [animState, isAttacking, lungeDuration]);
 
   const sheetWidth = currentFrameWidth * currentTotalFrames;
 
@@ -145,8 +154,8 @@ export function BossSpriteAnimator({
           style={{
             width: `${128 * scale}px`,
             height: `${128 * scale}px`,
-            animationDuration: `${animDuration}s`,
-            animationTimingFunction: "cubic-bezier(0.25, 1, 0.5, 1)",
+            animationDuration: `${spriteDuration}s`,
+            animationTimingFunction: "ease-in",
             animationIterationCount: "1",
             animationFillMode: "forwards",
           }}
@@ -160,7 +169,7 @@ export function BossSpriteAnimator({
               backgroundRepeat: "no-repeat",
               backgroundSize: `${128 * (attackProjectileFrames || 5) * scale}px ${128 * scale}px`,
               imageRendering: "pixelated",
-              animation: `bossSpriteAnim ${(attackProjectileFrames || 5) / 12}s steps(${attackProjectileFrames || 5}) infinite`,
+              animation: `bossSpriteAnim ${(attackProjectileFrames || 5) / 16}s steps(${attackProjectileFrames || 5}) infinite`,
             }}
           />
         </div>
@@ -181,7 +190,7 @@ export function BossSpriteAnimator({
           height: `${currentFrameHeight * scale}px`,
           ...(isAttacking
             ? {
-                animationDuration: `${animDuration}s`,
+                animationDuration: `${lungeDuration}s`,
                 animationTimingFunction: "cubic-bezier(0.25, 1, 0.5, 1)",
                 animationIterationCount: "1",
                 animationFillMode: "forwards",
@@ -200,8 +209,8 @@ export function BossSpriteAnimator({
             backgroundRepeat: "no-repeat",
             backgroundSize: `${sheetWidth * scale}px ${currentFrameHeight * scale}px`,
             imageRendering: "pixelated",
-            animation: `bossSpriteAnim ${animDuration}s steps(${currentTotalFrames}) ${isAttacking ? "1" : "infinite"}`,
-            animationFillMode: isAttacking ? "forwards" : "none",
+            animation: `bossSpriteAnim ${spriteDuration}s steps(${currentTotalFrames}) ${isAttacking ? "1" : "infinite"}`,
+            animationFillMode: "none",
           }}
         />
       </div>
@@ -222,20 +231,16 @@ export function BossSpriteAnimator({
           0% {
             transform: translate(0px, 0px) scale(1);
           }
-          15% {
-            /* Wind-up back to the top-right */
-            transform: translate(30px, -15px) scale(0.9);
+          12% {
+            /* Dash close in front of the player (to the right of the player sprite, facing left) */
+            transform: translate(min(-60px, calc(-100cqw + 260px)), 15px) scale(1.35);
           }
-          38% {
-            /* Charge right in front of player sprite (to the right side) */
-            transform: translate(min(-120px, calc(-100cqw + 320px)), 20px) scale(1.5);
-          }
-          72% {
-            /* Hold strike position in front of player */
-            transform: translate(min(-120px, calc(-100cqw + 320px)), 20px) scale(1.5);
+          78% {
+            /* Execute strike while staying in front of the player and pause cleanly */
+            transform: translate(min(-60px, calc(-100cqw + 260px)), 15px) scale(1.35);
           }
           100% {
-            /* Slide smoothly back to top-right home position */
+            /* Return smoothly to home position */
             transform: translate(0px, 0px) scale(1);
           }
         }
@@ -244,20 +249,16 @@ export function BossSpriteAnimator({
           0% {
             transform: translate(0px, 0px) scale(1);
           }
-          35% {
-            /* Wind up & gather power at home position during Frames 1-5 */
-            transform: translate(40px, -15px) scale(0.9);
+          12% {
+            /* Dash close in front of the player (to the right of the player sprite, facing left) */
+            transform: translate(min(-60px, calc(-100cqw + 260px)), 18px) scale(1.35);
           }
-          58% {
-            /* Charge forward to land right in front of player on Frame 7 (Strike Impact!) */
-            transform: translate(min(-120px, calc(-100cqw + 320px)), 20px) scale(1.6);
-          }
-          75% {
-            /* Hold strike impact position through Frame 8 */
-            transform: translate(min(-120px, calc(-100cqw + 320px)), 20px) scale(1.6);
+          78% {
+            /* Execute heavy attack / mouth blast while staying close to the player, then pause cleanly */
+            transform: translate(min(-60px, calc(-100cqw + 260px)), 18px) scale(1.35);
           }
           100% {
-            /* Slide smoothly back to home position (Frames 9-11) */
+            /* Slide smoothly back to home position on the right after pause */
             transform: translate(0px, 0px) scale(1);
           }
         }
@@ -267,17 +268,16 @@ export function BossSpriteAnimator({
             0% {
               transform: translate(0px, 0px) scale(1);
             }
-            15% {
-              transform: translate(45px, -20px) scale(0.9);
+            12% {
+              /* Lands close directly in front of the player on the left */
+              transform: translate(calc(-100cqw + 370px), 20px) scale(1.45);
             }
-            38% {
-              /* Lands right in front of the player sprite (to the right side of the player) */
-              transform: translate(calc(-100cqw + 420px), 25px) scale(1.65);
-            }
-            72% {
-              transform: translate(calc(-100cqw + 420px), 25px) scale(1.65);
+            78% {
+              /* Execute strike while staying close to the player and pause cleanly */
+              transform: translate(calc(-100cqw + 370px), 20px) scale(1.45);
             }
             100% {
+              /* Slides back smoothly to home position */
               transform: translate(0px, 0px) scale(1);
             }
           }
@@ -286,44 +286,73 @@ export function BossSpriteAnimator({
             0% {
               transform: translate(0px, 0px) scale(1);
             }
-            35% {
-              /* Wind up & gather power at home position during Frames 1-5 */
-              transform: translate(55px, -20px) scale(0.85);
+            12% {
+              /* Lands close in front of the player so the blast connects directly with the player */
+              transform: translate(calc(-100cqw + 370px), 25px) scale(1.45);
             }
-            58% {
-              /* Lands right in front of player on Frame 7 (Strike Impact!) */
-              transform: translate(calc(-100cqw + 420px), 25px) scale(1.75);
-            }
-            75% {
-              /* Hold strike impact position through Frame 8 */
-              transform: translate(calc(-100cqw + 420px), 25px) scale(1.75);
+            78% {
+              /* Execute mouth blast / heavy strike directly into the player, then pause cleanly */
+              transform: translate(calc(-100cqw + 370px), 25px) scale(1.45);
             }
             100% {
-              /* Slide smoothly back to home position */
+              /* Slides back smoothly to home position on the right after pause */
               transform: translate(0px, 0px) scale(1);
             }
+          }
+
           @keyframes bossBeamRecoil {
             0% {
               transform: translate(0px, 0px) scale(1);
             }
-            42% {
-              /* Frames 0-5: Wind up & gather power at home position */
-              transform: translate(45px, -15px) scale(0.95);
+            12% {
+              /* Dash in front of the player (standing to the right side of the player sprite) */
+              transform: translate(calc(-100cqw + 640px), 20px) scale(1.15);
             }
-            46% {
-              /* Frames 6-11: Beam launches and reaches ALL THE WAY across to engulf the player on the left! */
-              transform: translate(calc(-100cqw + 560px), 20px) scale(1.2);
-            }
-            90% {
-              /* Hold beam blast on player through Frame 11 */
-              transform: translate(calc(-100cqw + 560px), 20px) scale(1.2);
-            }
-            95% {
-              /* Frame 12: Final boss stops/snuffs out the blast in its mouth */
-              transform: translate(15px, 0px) scale(1.02);
+            78% {
+              /* Fire beam directly into the player from the front, clear beam and pause cleanly */
+              transform: translate(calc(-100cqw + 640px), 20px) scale(1.15);
             }
             100% {
               /* Slide smoothly back to home position */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          @keyframes bossProjectileFly {
+            0% {
+              transform: translate(0px, 0px) scale(0.8);
+              opacity: 0;
+            }
+            10% {
+              transform: translate(-50px, 12px) scale(1);
+              opacity: 1;
+            }
+            85% {
+              /* Impacts directly onto the front of the player's chest / sword */
+              transform: translate(calc(-100cqw + 390px), 54px) scale(1.35);
+              opacity: 1;
+            }
+            100% {
+              /* Detonates on the front surface without passing behind */
+              transform: translate(calc(-100cqw + 375px), 56px) scale(1.45);
+              opacity: 0;
+            }
+          }
+
+          @keyframes playerLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            12% {
+              /* Lands just to the left side of the boss sprite on desktop */
+              transform: translate(calc(100cqw - 410px), -30px) scale(1.2);
+            }
+            78% {
+              /* Slashes boss, then pauses cleanly in front of boss */
+              transform: translate(calc(100cqw - 410px), -30px) scale(1.2);
+            }
+            100% {
+              /* Glides back smoothly to home spot */
               transform: translate(0px, 0px) scale(1);
             }
           }
@@ -333,19 +362,16 @@ export function BossSpriteAnimator({
           0% {
             transform: translate(0px, 0px) scale(1);
           }
-          42% {
-            transform: translate(25px, -10px) scale(0.95);
+          12% {
+            /* Dash in front of the player */
+            transform: translate(min(-60px, calc(-100cqw + 500px)), 15px) scale(1.1);
           }
-          46% {
-            transform: translate(min(-120px, calc(-100cqw + 480px)), 15px) scale(1.1);
-          }
-          90% {
-            transform: translate(min(-120px, calc(-100cqw + 480px)), 15px) scale(1.1);
-          }
-          95% {
-            transform: translate(10px, 0px) scale(1.02);
+          78% {
+            /* Fire beam directly into the player from the front, clear beam and pause cleanly */
+            transform: translate(min(-60px, calc(-100cqw + 500px)), 15px) scale(1.1);
           }
           100% {
+            /* Slide smoothly back to home position */
             transform: translate(0px, 0px) scale(1);
           }
         }
@@ -364,51 +390,22 @@ export function BossSpriteAnimator({
 
         @keyframes bossProjectileFly {
           0% {
+            transform: translate(0px, 0px) scale(0.8);
             opacity: 0;
-            transform: translate(0px, 0px) scale(0.5);
           }
-          15% {
+          10% {
+            transform: translate(-35px, 10px) scale(1);
             opacity: 1;
-            transform: translate(-30px, 5px) scale(0.85);
           }
-          55% {
+          85% {
+            /* Impacts directly onto the front of the player */
+            transform: translate(min(-80px, calc(-100cqw + 280px)), 48px) scale(1.3);
             opacity: 1;
-            /* Travels downwards to impact the player's torso/body */
-            transform: translate(min(-120px, calc(-100cqw + 220px)), 45px) scale(1.3);
-          }
-          75% {
-            opacity: 1;
-            transform: translate(min(-120px, calc(-100cqw + 200px)), 52px) scale(1.4);
           }
           100% {
+            /* Detonates on the front surface without passing behind */
+            transform: translate(min(-80px, calc(-100cqw + 265px)), 50px) scale(1.4);
             opacity: 0;
-            transform: translate(min(-120px, calc(-100cqw + 180px)), 55px) scale(1.5);
-          }
-        }
-
-        @media (min-width: 768px) {
-          @keyframes bossProjectileFly {
-            0% {
-              opacity: 0;
-              transform: translate(0px, 0px) scale(0.5);
-            }
-            15% {
-              opacity: 1;
-              transform: translate(-45px, 5px) scale(0.85);
-            }
-            55% {
-              opacity: 1;
-              /* Arcs downwards to impact the player's chest/torso */
-              transform: translate(calc(-100cqw + 340px), 52px) scale(1.35);
-            }
-            75% {
-              opacity: 1;
-              transform: translate(calc(-100cqw + 320px), 60px) scale(1.45);
-            }
-            100% {
-              opacity: 0;
-              transform: translate(calc(-100cqw + 300px), 65px) scale(1.5);
-            }
           }
         }
 
@@ -421,42 +418,17 @@ export function BossSpriteAnimator({
           0% {
             transform: translate(0px, 0px) scale(1);
           }
-          15% {
-            /* Wind up back to bottom-left */
-            transform: translate(-30px, 15px) scale(0.95);
-          }
-          38% {
+          12% {
             /* Charge across arena to land directly to the left side of the boss sprite */
             transform: translate(calc(100cqw - 340px), -20px) scale(1.15);
           }
-          72% {
-            /* Hold impact position in front of boss */
+          78% {
+            /* Slash boss, then pause cleanly in front of boss */
             transform: translate(calc(100cqw - 340px), -20px) scale(1.15);
           }
           100% {
             /* Return to bottom-left home spot */
             transform: translate(0px, 0px) scale(1);
-          }
-        }
-
-        @media (min-width: 768px) {
-          @keyframes playerLunge {
-            0% {
-              transform: translate(0px, 0px) scale(1);
-            }
-            15% {
-              transform: translate(-40px, 20px) scale(0.95);
-            }
-            38% {
-              /* Lands just to the left side of the boss sprite on desktop */
-              transform: translate(calc(100cqw - 410px), -30px) scale(1.2);
-            }
-            72% {
-              transform: translate(calc(100cqw - 410px), -30px) scale(1.2);
-            }
-            100% {
-              transform: translate(0px, 0px) scale(1);
-            }
           }
         }
 

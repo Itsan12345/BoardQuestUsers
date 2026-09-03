@@ -104,7 +104,19 @@ const SUBJECT_METADATA: Record<string, {
     backgroundUrl: "/images/Hema256_bg.png",
     difficulty: 3,
     biome: "The Sanguine Marshes",
-    description: "Crimson rivers flow through iron-rich soil. Study the life force within."
+    description: "Crimson rivers flow through iron-rich soil. Study the life force within.",
+    idleSpriteUrl: "/images/bosses/hematology_finalboss_idleAnimation.png",
+    attackSpriteUrl: "/images/bosses/hematology_finalboss_heavyAttackAnimation.png",
+    heavyAttackSpriteUrl: "/images/bosses/hematology_finalboss_heavyAttackAnimation.png",
+    idleFrames: 6,
+    attackFrames: 8,
+    heavyAttackFrames: 8,
+    idleFrameWidth: 128,
+    idleFrameHeight: 128,
+    attackFrameWidth: 192,
+    attackFrameHeight: 160,
+    heavyFrameWidth: 192,
+    heavyFrameHeight: 160,
   },
   "Microbiology": {
     name: "Microbiology",
@@ -396,6 +408,18 @@ export default function LearningQuest() {
     idleFrameHeight?: number;
     attackFrameHeight?: number;
     heavyFrameHeight?: number;
+    minionIdleSpriteUrl?: string;
+    minionAttackSpriteUrl?: string;
+    minionHeavyAttackSpriteUrl?: string;
+    minionIdleFrames?: number;
+    minionAttackFrames?: number;
+    minionHeavyAttackFrames?: number;
+    minionIdleFrameWidth?: number;
+    minionAttackFrameWidth?: number;
+    minionHeavyFrameWidth?: number;
+    minionIdleFrameHeight?: number;
+    minionAttackFrameHeight?: number;
+    minionHeavyFrameHeight?: number;
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
@@ -441,14 +465,60 @@ export default function LearningQuest() {
       },
     ],
     "Microbiology": [
-      { id: 'mb-1', nodeNumber: 1, title: 'Bacteriology & Gram Staining', subtopic: 'Gram Positive & Negative Cocci & Bacilli', minionName: 'Microbe Swarm', minionIcon: '🦠', miniBossName: 'Staph Sentinel', miniBossIcon: '🧬', bossName: 'Gram Positive Overlord', bossIcon: '👾' },
+      {
+        id: 'mb-1',
+        nodeNumber: 1,
+        title: 'Bacteriology & Gram Staining',
+        subtopic: 'Gram Positive & Negative Cocci & Bacilli',
+        minionName: 'Microbe Swarm',
+        minionIcon: '🦠',
+        miniBossName: 'Staph Sentinel',
+        miniBossIcon: '🧬',
+        bossName: 'Gram Positive Overlord',
+        bossIcon: '👾',
+        minionIdleSpriteUrl: '/images/bosses/microbio_chapterOneMinion_IdleAnimation.png',
+        minionAttackSpriteUrl: '/images/bosses/microbio_chapterOneMinion_normalAttackAnimation.png',
+        minionHeavyAttackSpriteUrl: '/images/bosses/microbio_chapterOneMinion_heavyAttackAnimation.png',
+        minionIdleFrames: 8,
+        minionAttackFrames: 14,
+        minionHeavyAttackFrames: 10,
+        minionIdleFrameWidth: 128,
+        minionIdleFrameHeight: 128,
+        minionAttackFrameWidth: 257,
+        minionAttackFrameHeight: 218,
+        minionHeavyFrameWidth: 257,
+        minionHeavyFrameHeight: 218,
+      },
       { id: 'mb-2', nodeNumber: 2, title: 'Mycology, Virology & Parasitology', subtopic: 'Fungi, Viral Replication, Antigens & Protozoa', minionName: 'Spore Cloud', minionIcon: '🍄', miniBossName: 'Retrovirus Fiend', miniBossIcon: '💥', bossName: 'Viral Apex Lord', bossIcon: '🐉' },
       { id: 'mb-3', nodeNumber: 3, title: '👑 Biohazard Overlord (FINAL BOSS)', subtopic: 'Antimicrobial Resistance & Comprehensive Microbiology', minionName: 'Resistant Strain', minionIcon: '💊', miniBossName: 'Lab Director Phantom', miniBossIcon: '📜', bossName: 'Biohazard Overlord', bossIcon: '👑' },
     ],
     "Hematology": [
       { id: 'hem-1', nodeNumber: 1, title: 'RBC Anomalies & Anemias', subtopic: 'Hemoglobin Synthesis & Microcytic Anemias', minionName: 'Sickle Cell', minionIcon: '🩸', miniBossName: 'Anemia Shade', miniBossIcon: '👻', bossName: 'Erythrocyte Colossus', bossIcon: '👑' },
       { id: 'hem-2', nodeNumber: 2, title: 'WBC Disorders & Leukemias', subtopic: 'Neutrophils, Acute/Chronic Leukemias & Bone Marrow', minionName: 'Blast Cell', minionIcon: '💥', miniBossName: 'Leukemic Fiend', miniBossIcon: '⚡', bossName: 'White Cell Warlord', bossIcon: '🗡️' },
-      { id: 'hem-3', nodeNumber: 3, title: '👑 Sickle-Cell Reaper (FINAL BOSS)', subtopic: 'Hemostasis, Coagulation Cascades & Comprehensive Exam', minionName: 'Clot Particle', minionIcon: '🧱', miniBossName: 'Hematopathologist Ghost', miniBossIcon: '📜', bossName: 'Sickle-Cell Reaper', bossIcon: '👑' },
+      {
+        id: 'hem-3',
+        nodeNumber: 3,
+        title: '👑 Sickle-Cell Reaper (FINAL BOSS)',
+        subtopic: 'Hemostasis, Coagulation Cascades & Comprehensive Exam',
+        minionName: 'Clot Particle',
+        minionIcon: '🧱',
+        miniBossName: 'Hematopathologist Ghost',
+        miniBossIcon: '📜',
+        bossName: 'Sickle-Cell Reaper',
+        bossIcon: '👑',
+        idleSpriteUrl: '/images/bosses/hematology_finalboss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/hematology_finalboss_heavyAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/hematology_finalboss_heavyAttackAnimation.png',
+        idleFrames: 6,
+        attackFrames: 8,
+        heavyAttackFrames: 8,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 192,
+        attackFrameHeight: 160,
+        heavyFrameWidth: 192,
+        heavyFrameHeight: 160,
+      },
     ],
     "Immunology & Serology and Immunohematology": [
       { id: 'is-1', nodeNumber: 1, title: 'Immunity & Serological Testing', subtopic: 'Innate/Adaptive Immunity, ELISA & Agglutination', minionName: 'Lymphocyte Swarm', minionIcon: '🛡️', miniBossName: 'Antigen Titan', miniBossIcon: '🧬', bossName: 'Immune Archon', bossIcon: '👑' },
@@ -1627,7 +1697,7 @@ export default function LearningQuest() {
           } else {
             // Boss-Battle & Test Mode: Strict Game Over Defeat
             addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-600 font-black');
-            setJudgementText('DEFEAT');
+            setJudgementText('GAME OVER');
             playSfx('wrong');
             toast({
               variant: "destructive",
@@ -1650,14 +1720,14 @@ export default function LearningQuest() {
           // In Learning Mode (no action cards), randomize 50/50 between Normal Attack and Heavy Attack on wrong answer!
           const attackType = Math.random() < 0.5 ? 'normal_attack' : 'heavy_attack';
           setBossAnimState(attackType);
-          const impactDelay = attackType === 'heavy_attack' ? 580 : 450;
+          const impactDelay = attackType === 'heavy_attack' ? 320 : 300;
           setTimeout(applyPlayerDamage, impactDelay);
-          setTimeout(() => setBossAnimState('idle'), 1200);
+          setTimeout(() => setBossAnimState('idle'), 950);
         } else {
           setBossAnimState(action === 'heavy' ? 'heavy_attack' : 'normal_attack');
-          const impactDelay = action === 'heavy' ? 580 : 450;
+          const impactDelay = action === 'heavy' ? 320 : 300;
           setTimeout(applyPlayerDamage, impactDelay);
-          setTimeout(() => setBossAnimState('idle'), 1200);
+          setTimeout(() => setBossAnimState('idle'), 950);
         }
       } else {
         setBossAnimState('idle');
@@ -1681,6 +1751,7 @@ export default function LearningQuest() {
       const currentTotalCorrect = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
       const isOverallPassing = (currentTotalCorrect / questions.length) >= 0.75;
 
+      // Step 1: Immediately drain losing entity's HP to 0 HP with impact animation
       setTimeout(() => {
         if (isOverallPassing) {
           setEnemyHealth(0);
@@ -1688,17 +1759,24 @@ export default function LearningQuest() {
           setHitEffectKey(k => k + 1);
           setPlayerAnimState('attack');
           addFloatingText('enemy', '💥 FINISHING STRIKE! 👑 BOSS DEFEATED!', 'text-amber-300 font-black');
-          setJudgementText('YOU WON');
-          playSfx('victory');
         } else {
           setPlayerHealth(0);
           setHitEffectTarget('player');
           setHitEffectKey(k => k + 1);
           addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-500 font-black');
+        }
+      }, 400);
+
+      // Step 2: Once HP has visibly drained to 0, display the floating verdict and fanfare
+      setTimeout(() => {
+        if (isOverallPassing) {
+          setJudgementText('YOU WON');
+          playSfx('victory');
+        } else {
           setJudgementText('YOU FAILED');
           playSfx('defeat');
         }
-      }, 750);
+      }, 1100);
     }
 
     setPlayerPoisoned(newPoisonedState);
@@ -1783,10 +1861,12 @@ export default function LearningQuest() {
     }
     setBattleOutcome(finalOutcome!);
 
-    if (finalOutcome === 'victory') {
-      playSfx('victory');
-    } else {
-      playSfx('defeat');
+    if (quizMode !== 'learning') {
+      if (finalOutcome === 'victory') {
+        playSfx('victory');
+      } else {
+        playSfx('defeat');
+      }
     }
 
     if (questStartTime) {
@@ -1805,7 +1885,11 @@ export default function LearningQuest() {
     }
 
     // Show Judgement Text
-    setJudgementText(finalOutcome === 'victory' ? 'VICTORY' : 'GAME OVER');
+    if (quizMode === 'learning') {
+      setJudgementText(finalOutcome === 'victory' ? 'YOU WON' : 'YOU FAILED');
+    } else {
+      setJudgementText(finalOutcome === 'victory' ? 'VICTORY' : 'GAME OVER');
+    }
 
     // Wait 2 seconds for animation, then show finished screen
     setTimeout(() => {
@@ -2437,20 +2521,40 @@ export default function LearningQuest() {
 
                 {/* Header Subtitle Tag */}
                 <div className="flex items-center gap-2 z-10 mb-1 animate-in slide-in-from-top-3 duration-500">
-                  {(judgementText === 'VICTORY' || judgementText === 'YOU WON') ? (
-                    <>
-                      <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
-                      <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-emerald-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                        QUEST CLEARED • 75%+ LICENSURE BENCHMARK MET
-                      </span>
-                      <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
-                    </>
+                  {quizMode === 'boss-battle' ? (
+                    (judgementText === 'VICTORY' || judgementText === 'YOU WON') ? (
+                      <>
+                        <Swords className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
+                        <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-emerald-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                          CHAPTER BOSS CONQUERED • VICTORY ACHIEVED
+                        </span>
+                        <Swords className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
+                      </>
+                    ) : (
+                      <>
+                        <Skull className="w-4 h-4 md:w-5 md:h-5 text-red-400 animate-bounce" />
+                        <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-red-400 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                          ASPIRANT DEFEATED • HEALTH REACHED 0 HP
+                        </span>
+                        <Skull className="w-4 h-4 md:w-5 md:h-5 text-red-400 animate-bounce" />
+                      </>
+                    )
                   ) : (
-                    <>
-                      <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-red-400 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                        QUEST FAILED • BELOW 75% PASSING GRADE
-                      </span>
-                    </>
+                    (judgementText === 'VICTORY' || judgementText === 'YOU WON') ? (
+                      <>
+                        <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
+                        <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-emerald-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                          QUEST CLEARED • 75%+ LICENSURE BENCHMARK MET
+                        </span>
+                        <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-red-400 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                          QUEST FAILED • BELOW 75% PASSING GRADE
+                        </span>
+                      </>
+                    )
                   )}
                 </div>
 
@@ -2461,14 +2565,22 @@ export default function LearningQuest() {
                     ? "text-emerald-300 drop-shadow-[0_0_35px_rgba(16,185,129,0.95)]"
                     : "text-red-500 drop-shadow-[0_0_35px_rgba(239,68,68,0.95)]"
                 )}>
-                  {judgementText}
+                  {quizMode === 'boss-battle'
+                    ? (judgementText === 'VICTORY' || judgementText === 'YOU WON' ? 'VICTORY' : 'GAME OVER')
+                    : (judgementText === 'VICTORY' || judgementText === 'YOU WON' ? 'YOU WON' : 'YOU FAILED')}
                 </h2>
 
                 {/* Floating Instruction Subtitle */}
                 <p className="text-[10px] sm:text-xs md:text-sm font-medium text-white/90 font-mono tracking-tight max-w-md text-center z-10 drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] mt-1">
-                  {(judgementText === 'VICTORY' || judgementText === 'YOU WON')
-                    ? "Outstanding performance! Click Finish Quest below to view your full scorecard & claim rewards."
-                    : "Passing standard not reached. Review the AI Tutor Logic Analysis below to master these concepts!"}
+                  {quizMode === 'boss-battle' ? (
+                    (judgementText === 'VICTORY' || judgementText === 'YOU WON')
+                      ? "You vanquished the Chapter Boss and conquered the arena!"
+                      : "Your health dropped to 0 HP. Review your battle log and try again!"
+                  ) : (
+                    (judgementText === 'VICTORY' || judgementText === 'YOU WON')
+                      ? "Outstanding performance! Click Finish Quest below to view your full scorecard & claim rewards."
+                      : "Passing standard not reached. Review the AI Tutor Logic Analysis below to master these concepts!"
+                  )}
                 </p>
               </div>
             )}
@@ -2545,9 +2657,16 @@ export default function LearningQuest() {
                 activeEnemyBadge = battleStage === 1 ? 'MINION 👾' : battleStage === 2 ? 'MINI-BOSS 👹' : 'BOSS 👑';
                 const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
                 const isBossStageOrCh3 = battleStage === 3 || isChapter3FinalBoss;
-                idleSprite = isBossStageOrCh3 ? (currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null) : null;
-                attackSprite = isBossStageOrCh3 ? (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null) : null;
-                heavyAttackSprite = isBossStageOrCh3 ? (currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null) : null;
+
+                if (battleStage === 1 && currentActiveNode?.minionIdleSpriteUrl) {
+                  idleSprite = currentActiveNode.minionIdleSpriteUrl || null;
+                  attackSprite = currentActiveNode.minionAttackSpriteUrl || currentActiveNode.minionIdleSpriteUrl || null;
+                  heavyAttackSprite = currentActiveNode.minionHeavyAttackSpriteUrl || currentActiveNode.minionAttackSpriteUrl || null;
+                } else if (isBossStageOrCh3) {
+                  idleSprite = currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null;
+                  attackSprite = currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null;
+                  heavyAttackSprite = currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null;
+                }
                 displayEnemyHp = enemyHealth;
               } else if (quizMode === 'learning') {
                 waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
@@ -2556,7 +2675,7 @@ export default function LearningQuest() {
                 idleSprite = waveState.idleSprite;
                 attackSprite = waveState.attackSprite;
                 heavyAttackSprite = waveState.heavyAttackSprite;
-                displayEnemyHp = waveState.hp;
+                displayEnemyHp = enemyHealth <= 0 ? 0 : waveState.hp;
               } else {
                 activeEnemyName = subjectMeta.enemy;
                 activeEnemyBadge = 'BOSS 👑';
@@ -2565,6 +2684,44 @@ export default function LearningQuest() {
                 heavyAttackSprite = currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null;
                 displayEnemyHp = enemyHealth;
               }
+
+              const isMinionStageWithSprite = quizMode === 'boss-battle' && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl;
+
+              const effectiveIdleFrames = isMinionStageWithSprite
+                ? (currentActiveNode.minionIdleFrames || 8)
+                : (waveState?.idleFrames || currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7);
+
+              const effectiveAttackFrames = isMinionStageWithSprite
+                ? (currentActiveNode.minionAttackFrames || 14)
+                : (waveState?.attackFrames || currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17);
+
+              const effectiveHeavyAttackFrames = isMinionStageWithSprite
+                ? (currentActiveNode.minionHeavyAttackFrames || 10)
+                : (waveState?.heavyAttackFrames || currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11);
+
+              const effectiveIdleFrameWidth = isMinionStageWithSprite
+                ? (currentActiveNode.minionIdleFrameWidth || 128)
+                : (waveState?.idleFrameWidth || currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128);
+
+              const effectiveAttackFrameWidth = isMinionStageWithSprite
+                ? (currentActiveNode.minionAttackFrameWidth || 257)
+                : (waveState?.attackFrameWidth || currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128);
+
+              const effectiveHeavyFrameWidth = isMinionStageWithSprite
+                ? (currentActiveNode.minionHeavyFrameWidth || 257)
+                : (waveState?.heavyFrameWidth || currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176);
+
+              const effectiveIdleFrameHeight = isMinionStageWithSprite
+                ? (currentActiveNode.minionIdleFrameHeight || 128)
+                : (waveState?.idleFrameHeight || currentActiveNode?.idleFrameHeight || subjectMeta?.idleFrameHeight || 128);
+
+              const effectiveAttackFrameHeight = isMinionStageWithSprite
+                ? (currentActiveNode.minionAttackFrameHeight || 218)
+                : (waveState?.attackFrameHeight || currentActiveNode?.attackFrameHeight || subjectMeta?.attackFrameHeight || 128);
+
+              const effectiveHeavyFrameHeight = isMinionStageWithSprite
+                ? (currentActiveNode.minionHeavyFrameHeight || 218)
+                : (waveState?.heavyFrameHeight || currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128);
 
               const stageMaxHp = quizMode === 'boss-battle'
                 ? calculateEnemyStageHp(battleStage, userLevel, bossDifficulty || 'MEDIUM')
@@ -2606,13 +2763,15 @@ export default function LearningQuest() {
                           heavyAttackSpriteUrl={heavyAttackSprite || undefined}
                           attackProjectileUrl={waveState?.attackProjectileUrl || currentActiveNode?.attackProjectileUrl || subjectMeta?.attackProjectileUrl || undefined}
                           attackProjectileFrames={waveState?.attackProjectileFrames || currentActiveNode?.attackProjectileFrames || subjectMeta?.attackProjectileFrames || 5}
-                          idleFrames={waveState?.idleFrames || currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7}
-                          attackFrames={waveState?.attackFrames || currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17}
-                          heavyAttackFrames={waveState?.heavyAttackFrames || currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11}
-                          idleFrameWidth={waveState?.idleFrameWidth || currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128}
-                          attackFrameWidth={waveState?.attackFrameWidth || currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128}
-                          heavyFrameWidth={waveState?.heavyFrameWidth || currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176}
-                          heavyFrameHeight={waveState?.heavyFrameHeight || currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128}
+                          idleFrames={effectiveIdleFrames}
+                          attackFrames={effectiveAttackFrames}
+                          heavyAttackFrames={effectiveHeavyAttackFrames}
+                          idleFrameWidth={effectiveIdleFrameWidth}
+                          attackFrameWidth={effectiveAttackFrameWidth}
+                          heavyFrameWidth={effectiveHeavyFrameWidth}
+                          idleFrameHeight={effectiveIdleFrameHeight}
+                          attackFrameHeight={effectiveAttackFrameHeight}
+                          heavyFrameHeight={effectiveHeavyFrameHeight}
                           animState={introPhase === 'active' ? bossAnimState : 'idle'}
                           onAttackComplete={() => setBossAnimState('idle')}
                           scale={1.35}
