@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, ChevronRight, Rocket, Loader2, Flame, Trophy, Target, Calendar as CalendarIcon, Pencil, PlayCircle, BookOpen, GraduationCap, Sparkles, CheckCircle2, Clock, FolderKanban } from 'lucide-react';
+import { Zap, ChevronRight, Loader2, Trophy, Target, Calendar as CalendarIcon, Pencil, PlayCircle, BookOpen, GraduationCap, Sparkles, CheckCircle2, Clock, FolderKanban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -27,14 +27,14 @@ function DashboardContent() {
   const [user, setUser] = useState<any>(null);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
-  const [dailyMissions, setDailyMissions] = useState<any[]>([]);
+  const [_dailyMissions, setDailyMissions] = useState<any[]>([]);
   const [guidanceList, setGuidanceList] = useState<GuidanceAssignmentRecord[]>([]);
   const [dailyLoginStatus, setDailyLoginStatus] = useState<DailyLoginStatusData | null>(null);
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
   const [nextMilestone, setNextMilestone] = useState<{ subject: string; date: Date } | null>(null);
   const [targetExamDate, setTargetExamDate] = useState<Date | null>(null);
   const [dailyQuota, setDailyQuota] = useState<number>(50);
-  const [focusSubject, setFocusSubject] = useState<string | null>(null);
+  const [_focusSubject, setFocusSubject] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeCourseInfo, setActiveCourseInfo] = useState<{
     status: 'not_started' | 'in_progress' | 'completed' | 'no_modules';
@@ -103,7 +103,7 @@ function DashboardContent() {
         } catch (e) { }
       }
 
-      let effectiveFocus = settings?.focusSubject && settings.focusSubject !== 'none' ? settings.focusSubject : null;
+      const effectiveFocus = settings?.focusSubject && settings.focusSubject !== 'none' ? settings.focusSubject : null;
       if (settings) {
         setTargetExamDate(settings.targetExamDate ? new Date(settings.targetExamDate) : null);
         setFocusSubject(effectiveFocus);
@@ -154,7 +154,7 @@ function DashboardContent() {
         if (raw) lastStudied = JSON.parse(raw);
       } catch (e) { }
 
-      let targetSubName = lastStudied?.subject || effectiveFocus || 'Clinical Chemistry';
+      const targetSubName = lastStudied?.subject || effectiveFocus || 'Clinical Chemistry';
 
       let matchedCat = dynamicCurriculum.find(
         c => c.title.toLowerCase() === targetSubName.toLowerCase() || c.id === targetSubName
@@ -293,13 +293,13 @@ function DashboardContent() {
     };
   }, [loadData]);
 
-  const totalMastery = user?.mastery?.length > 0
+  const _totalMastery = user?.mastery?.length > 0
     ? Math.round(user.mastery.reduce((acc: number, m: any) => acc + m.proficiency, 0) / user.mastery.length)
     : 0;
 
   const completedModules = user?._count?.lessonCompletions || 0;
   const totalModules = 13;
-  const courseProgressPercent = totalModules > 0
+  const _courseProgressPercent = totalModules > 0
     ? Math.min(100, Math.round((completedModules / totalModules) * 100))
     : 0;
 

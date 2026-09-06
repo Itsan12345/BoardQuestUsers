@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Settings, LogOut, MapPin, Mail, Calendar as CalendarIcon, Zap, Trophy, Clock, Award, Shield, Swords, Heart, Crosshair, Sparkles, FlaskConical, Target, Lock, CheckCircle2, GraduationCap, UserCheck, ChevronRight } from 'lucide-react';
+import { Settings, LogOut, MapPin, Mail, Calendar as CalendarIcon, Zap, Clock, Award, Shield, Swords, Heart, Crosshair, Lock, CheckCircle2, GraduationCap, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,7 +13,7 @@ import { getUserProfile } from '@/app/actions/user';
 import { getStudentGuidanceAssignmentsAction, type GuidanceAssignmentRecord } from '@/app/actions/guidance';
 import { GuidanceCounselingDialog } from '@/components/guidance/GuidanceCounselingDialog';
 import { useToast } from '@/hooks/use-toast';
-import { BADGES, BadgeId, getLevelProgress, getRankTitle } from '@/lib/badge-system';
+import { getLevelProgress, getRankTitle } from '@/lib/badge-system';
 import { calculatePlayerStats } from '@/lib/game-logic';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AccountSettingsDialog } from '@/components/profile/AccountSettingsDialog';
@@ -89,7 +89,7 @@ const BADGE_SPRITE_DEFINITIONS: Record<string, {
   },
 };
 
-const DEFAULT_SHOWCASE_BADGES = [
+const _DEFAULT_SHOWCASE_BADGES = [
   BADGE_SPRITE_DEFINITIONS.speed,
   BADGE_SPRITE_DEFINITIONS.master,
   BADGE_SPRITE_DEFINITIONS.adept,
@@ -295,7 +295,7 @@ function ProfileContent() {
     return () => {
       window.removeEventListener('bq_settings_updated', handleSync);
     };
-  }, [router]);
+  }, [router, toast]);
 
   async function handleLogout() {
     try {
@@ -620,6 +620,7 @@ function ProfileContent() {
                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/20 pointer-events-none" />
 
                             <div className="flex-1 flex items-center justify-center w-full pt-1">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={badge.sprite}
                                 alt={badge.title}
@@ -888,6 +889,7 @@ function ProfileContent() {
                             isEarned ? `${badge.bgGradient} ${badge.borderColor}` : "from-slate-200 to-slate-300 border-slate-300 dark:from-slate-800 dark:to-slate-900 dark:border-slate-700"
                           )}>
                             {isEarned ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
                               <img
                                 src={badge.sprite}
                                 alt={badge.title}

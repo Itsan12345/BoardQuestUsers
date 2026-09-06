@@ -13,7 +13,6 @@ import {
   ChevronRight,
   X,
   GraduationCap,
-  ShieldAlert,
   UserCheck,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

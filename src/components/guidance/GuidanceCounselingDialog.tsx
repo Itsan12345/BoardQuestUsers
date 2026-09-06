@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
@@ -19,12 +18,8 @@ import {
   BookOpen,
   CheckCircle2,
   AlertTriangle,
-  Clock,
   ShieldCheck,
   Sparkles,
-  ExternalLink,
-  ChevronRight,
-  UserCheck,
   Calendar,
 } from 'lucide-react';
 import { format } from 'date-fns';

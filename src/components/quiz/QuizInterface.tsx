@@ -76,7 +76,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       }
       setTurnMap(newTurnMap);
     }
-  }, [questions, mode]);
+  }, [questions, mode, turnMap.length]);
 
   useEffect(() => {
     setIsFetchingExplanation(false);

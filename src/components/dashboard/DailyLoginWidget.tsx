@@ -9,8 +9,6 @@ import {
   CheckCircle2,
   Lock,
   ChevronRight,
-  Sparkles,
-  Gift,
   Check
 } from 'lucide-react';
 import {

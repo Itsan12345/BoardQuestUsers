@@ -7,10 +7,8 @@ import {
   Dna, 
   Eye, 
   FileText, 
-  CheckCircle2, 
   Zap, 
   BookOpen, 
-  Award,
   ChevronRight
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';

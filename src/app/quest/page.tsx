@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Shield,
   Skull,
-  Zap,
   FlaskConical,
   Microscope,
   Database,
@@ -23,16 +21,10 @@ import {
   BrainCircuit,
   Award,
   Trophy,
-  BookOpen,
   Swords,
   Maximize,
   Minimize,
-  Clock,
-  Activity,
-  Biohazard,
   Flame,
-  Package,
-  ShoppingBag,
   Compass,
   RotateCw,
   X
@@ -44,10 +36,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { QuizInterface, Question } from '@/components/quiz/QuizInterface';
 import { ChapterWorldMap } from '@/components/quiz/ChapterWorldMap';
-import { SUBJECT_AREAS, XP_PER_QUESTION, calculatePlayerStats } from '@/lib/game-logic';
+import { XP_PER_QUESTION, calculatePlayerStats } from '@/lib/game-logic';
 import { provideExamFeedback } from '@/ai/flows/provide-exam-feedback';
 import { getQuestQuestions } from '@/app/actions/arena';
-import { completeQuest, getNodeStarsAction, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
+import { completeQuest, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
 import { getCategories } from '@/app/actions/study';
 import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction } from '@/app/actions/user';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
@@ -657,12 +649,6 @@ export default function LearningQuest() {
     return hasShield ? base + 20 : base;
   };
 
-  const getPlayerMaxHp = () => {
-    if (quizMode !== 'boss-battle') return 100;
-    const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (inventory.erlenmeyer_shield || 0) > 0;
-    return calculatePlayerMaxHp(userLevel, hasShieldEffect);
-  };
-
   const calculateEnemyStageHp = (stage: 1 | 2 | 3, level: number, difficulty: string) => {
     const safeLevel = Math.max(1, level);
     const playerStats = calculatePlayerStats(safeLevel, 0, null);
@@ -711,11 +697,17 @@ export default function LearningQuest() {
   });
   const [equippedItem, setEquippedItem] = useState<string | null>('erlenmeyer_shield');
 
+  const getPlayerMaxHp = useCallback(() => {
+    if (quizMode !== 'boss-battle') return 100;
+    const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (inventory.erlenmeyer_shield || 0) > 0;
+    return calculatePlayerMaxHp(userLevel, hasShieldEffect);
+  }, [quizMode, equippedItem, inventory.erlenmeyer_shield, userLevel]);
+
   // Ensure playerHealth never exceeds max HP when unequipping items or changing stats
   useEffect(() => {
     const currentMax = getPlayerMaxHp();
     setPlayerHealth(prev => Math.min(prev, currentMax));
-  }, [equippedItem, inventory, userLevel, quizMode]);
+  }, [getPlayerMaxHp]);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [selectedItemSlot, setSelectedItemSlot] = useState<string>('erlenmeyer_shield');
   const [salineUsedThisBattle, setSalineUsedThisBattle] = useState(false);
@@ -742,7 +734,7 @@ export default function LearningQuest() {
     }
   }, []);
 
-  // Preload Inventory Assets on Mount for Instant Dialog Rendering
+  // Preload Battle & Inventory Assets on Mount for Instant Rendering
   useEffect(() => {
     const assetsToPreload = [
       '/ui/Inventory_bg.png',
@@ -751,6 +743,9 @@ export default function LearningQuest() {
       '/ui/Inventory_weekly_bg.png',
       '/ui/Inventory_slot.png',
       '/ui/Inventory_shop_bg.png',
+      '/images/player/userPlayer_placeholder.png',
+      '/images/player/hitAnimation.png',
+      '/ui/background_clinicalchem.png',
     ];
     assetsToPreload.forEach(src => {
       const img = new window.Image();
@@ -924,7 +919,7 @@ export default function LearningQuest() {
         description: "+1 free charge added to all consumable reagents!",
       });
     }
-  }, []);
+  }, [toast]);
 
   const inventoryDialogJSX = (
     <Dialog open={inventoryDialogOpen} onOpenChange={setInventoryDialogOpen}>
@@ -1244,6 +1239,7 @@ export default function LearningQuest() {
         handleFinish(currentScore, 'defeat');
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enemyHealth, playerHealth, isStarted, isFinished, quizMode, userAnswers]);
 
   // Cutscene Timers
@@ -2422,17 +2418,17 @@ export default function LearningQuest() {
   }
 
   if (isStarted) {
-    const maxPlayerHp = getPlayerMaxHp();
+    const _maxPlayerHp = getPlayerMaxHp();
     const diffBase = bossDifficulty === 'EASY' ? 400 : bossDifficulty === 'HARD' ? 800 : 600;
     const levelScaling = bossDifficulty === 'EASY' ? 5 : bossDifficulty === 'HARD' ? 12 : 8;
 
-    let maxEnemyHp = 100;
+    let _maxEnemyHp = 100;
     if (quizMode === 'boss-battle') {
       const calculatedHp = Math.floor(diffBase + (userLevel * levelScaling));
       const playerMul = bossDifficulty === 'EASY' ? 1.5 : bossDifficulty === 'HARD' ? 0.7 : 1;
       const maxPossibleDamage = questions.length * 25 * playerMul;
       const safeHpCap = Math.max(100, Math.floor(maxPossibleDamage * 0.8));
-      maxEnemyHp = Math.min(calculatedHp, safeHpCap);
+      _maxEnemyHp = Math.min(calculatedHp, safeHpCap);
     }
 
     return (
@@ -2489,18 +2485,24 @@ export default function LearningQuest() {
               introPhase === 'cutscene' ? "h-[85vh] md:h-[100vh]" : "h-[35vh] md:h-[45vh]",
               !(SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl) && "bg-gradient-to-b from-primary to-black"
             )}
-            style={{
-              containerType: 'inline-size',
-              ...((SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl) ? {
-                backgroundImage: `url('${SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl}')`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              } : {})
-            }}
+            style={{ containerType: 'inline-size' }}
           >
+            {/* High-Performance Next.js Optimized Arena Background */}
+            {(SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl) && (
+              <Image
+                src={(SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl) as string}
+                alt="Arena Battleground"
+                fill
+                priority
+                sizes="100vw"
+                quality={80}
+                className="object-cover object-center pointer-events-none z-0"
+              />
+            )}
+
             {/* Dark Overlay that fades in after cutscene intro */}
             <div className={cn(
-              "absolute inset-0 transition-all duration-1000",
+              "absolute inset-0 transition-all duration-1000 z-[1] pointer-events-none",
               introPhase === 'cutscene' ? "bg-black/0 backdrop-blur-none" : "bg-black/60 backdrop-blur-sm"
             )} />
 
@@ -2641,7 +2643,7 @@ export default function LearningQuest() {
               const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
 
               const currentQ = questions[Math.min(questions.length - 1, userAnswers.length)] || questions[0];
-              const currentDiff = String(currentQ?.difficulty || 'EASY').toUpperCase();
+              const _currentDiff = String(currentQ?.difficulty || 'EASY').toUpperCase();
 
               let activeEnemyName = subjectMeta.enemy;
               let activeEnemyBadge = 'BOSS 👑';
@@ -2821,6 +2823,7 @@ export default function LearningQuest() {
                     alt="Aspirant Character Sprite"
                     width={300}
                     height={300}
+                    priority
                     className="w-full h-full object-contain object-bottom filter drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]"
                     style={{ imageRendering: 'pixelated' }}
                     unoptimized

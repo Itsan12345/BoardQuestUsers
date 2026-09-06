@@ -38,7 +38,7 @@ export function AiDiagnosticPrescription({
   avgMastery,
   avgCompletion,
   fullMastery,
-  nextObjective,
+  nextObjective: _nextObjective,
   userSettings,
   onNavigateToStudy,
   onNavigateToQuest,
@@ -54,7 +54,6 @@ export function AiDiagnosticPrescription({
   // Sort subjects by mastery score to determine weakest and strongest dynamically
   const sortedSubjects = [...fullMastery].sort((a, b) => a.mastery - b.mastery);
   
-  const weakest = sortedSubjects[0] || { subject: "Clinical Chemistry", mastery: 0 };
   const strongest = sortedSubjects[sortedSubjects.length - 1] || { subject: "Clinical Chemistry", mastery: 0 };
 
   const prioritySubjectItem = accountFocusSubject

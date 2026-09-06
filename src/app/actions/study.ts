@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma';
 import clientPromise from '@/lib/mongodb-client';
 import { cookies } from 'next/headers';
 import { unstable_cache } from 'next/cache';
-import { SUBJECT_AREAS } from '@/lib/game-logic';
 
 export interface LearningModuleData {
   id: string;
@@ -498,8 +497,8 @@ export async function getSubjectPerformanceHistoryAction(): Promise<SubjectAccur
 
       let avgAccuracy = 0;
       let attemptCount = relevantExams.length;
-      let totalScore = relevantExams.reduce((sum, r) => sum + (r.score || 0), 0);
-      let totalQuestions = relevantExams.reduce((sum, r) => sum + (r.total || 0), 0);
+      const totalScore = relevantExams.reduce((sum, r) => sum + (r.score || 0), 0);
+      const totalQuestions = relevantExams.reduce((sum, r) => sum + (r.total || 0), 0);
 
       if (relevantExams.length > 0) {
         const sumAcc = relevantExams.reduce((sum, r) => sum + (r.accuracy || 0), 0);

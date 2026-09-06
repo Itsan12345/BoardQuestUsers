@@ -27,14 +27,12 @@ import {
   Target,
   Volume2,
   Bell,
-  Shield,
   FileSpreadsheet,
   CheckCircle2,
   Loader2,
   Lock,
   School,
   MapPin,
-  Sparkles,
   Download,
   AlertCircle,
   Eye,
@@ -66,7 +64,6 @@ import {
   checkUserReviewCenterEnrollmentAction,
   type ReviewCenterEnrollmentInfo,
 } from '@/app/actions/user';
-import { SUBJECT_AREAS } from '@/lib/game-logic';
 import { getSubjects } from '@/app/actions/study';
 import { startTourByKey, isTourCompleted } from '@/lib/tour-config';
 import { TargetExamCalendar } from '@/components/profile/TargetExamCalendar';
@@ -316,13 +313,14 @@ export function AccountSettingsDialog({
   // Auto-start tour on first time opening Account Settings (default 'profile' tab)
   useEffect(() => {
     if (open) {
+      const targetTab = initialTab || 'profile';
       if (initialTab) {
         setActiveTab(initialTab);
       }
       if (autoOpenTargetExamCalendar) {
         setCalendarOpen(true);
       }
-      const tourKey = `settings_${initialTab || activeTab}`;
+      const tourKey = `settings_${targetTab}`;
       if (!isTourCompleted(tourKey)) {
         const timer = setTimeout(() => {
           startTourByKey(tourKey, false);
@@ -796,7 +794,12 @@ export function AccountSettingsDialog({
 
                 <div id="tour-profile-academic" className="space-y-3 w-full max-w-full min-w-0">
                 {/* Candidate Official Status Banner */}
-                {reviewCenterEnrollment.isEnrolled ? (
+                {isCheckingEnrollment ? (
+                  <div className="p-2.5 sm:p-3 bg-muted/40 border border-border/60 rounded-xl sm:rounded-2xl flex items-center gap-2.5 min-w-0 animate-pulse">
+                    <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
+                    <span className="text-xs text-muted-foreground font-medium">Verifying review center affiliation...</span>
+                  </div>
+                ) : reviewCenterEnrollment.isEnrolled ? (
                   <div className="p-2.5 sm:p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl sm:rounded-2xl flex items-center justify-between gap-2.5 min-w-0 animate-in fade-in duration-300">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">

@@ -6,7 +6,6 @@ import {
   Medal,
   Star,
   TrendingUp,
-  Loader2,
   Sparkles,
   ArrowRight,
   ShieldAlert,
@@ -70,7 +69,7 @@ function LeaderboardContent() {
     );
   }
 
-  const isUserOnCurrentPage = user && topUsers.some(u => u.id === user.id);
+  const _isUserOnCurrentPage = user && topUsers.some(u => u.id === user.id);
   const totalPages = Math.ceil(totalUsers / limit) || 1;
   const userRankTitle = user ? getRankTitle(user.level || 1) : 'Apprentice Technician';
   const fullLevelTitle = `Level ${user?.level || 1} ${userRankTitle}`;

@@ -112,7 +112,6 @@ export async function getUserStats(): Promise<any> {
       }
     });
 
-    const today = startOfWeek(new Date());
     const todayExamResults = await prisma.examResult.findMany({
       where: {
         userId,

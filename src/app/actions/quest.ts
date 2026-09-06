@@ -9,7 +9,6 @@ import {
   getLevelFromXp,
   type ConfidenceLevel,
   type Badge,
-  type BadgeId,
 } from '@/lib/badge-system';
 import { syncSubjectMastery } from '@/app/actions/study';
 import { differenceInCalendarDays } from 'date-fns';

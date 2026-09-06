@@ -3,8 +3,7 @@
 import { useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Printer, CheckCircle2, AlertTriangle, Sparkles, GraduationCap, ShieldCheck } from 'lucide-react';
+import { Printer, GraduationCap } from 'lucide-react';
 import { format } from 'date-fns';
 import { SubjectMasteryItem } from './SubjectTechnicalBreakdown';
 
@@ -253,7 +252,6 @@ export function PointScorecardModal({
                 </thead>
                 <tbody className="divide-y divide-border/50 text-[10.5px]">
                   {subjects.map((s) => {
-                    const isMastered = s.status === "Mastered";
                     const pts = s.points ?? Math.round(s.mastery * 10 + s.completion * 5);
 
                     return (

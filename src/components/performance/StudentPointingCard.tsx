@@ -4,17 +4,10 @@ import { useState } from 'react';
 import { 
   Trophy, 
   Award, 
-  Zap, 
-  Target, 
   BookOpen, 
-  HelpCircle, 
   FileText, 
-  Sparkles, 
   TrendingUp,
-  Calculator,
-  CheckCircle2,
-  SlidersHorizontal,
-  PieChart
+  Calculator
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +32,7 @@ export function StudentPointingCard({
   masteredCount,
   totalSubjects,
   subjects = [],
-  userName = "MedTech Candidate",
+  userName: _userName = "MedTech Candidate",
   onOpenScorecard
 }: StudentPointingCardProps) {
   const [guideOpen, setGuideOpen] = useState(false);

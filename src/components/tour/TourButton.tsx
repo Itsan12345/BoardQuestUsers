@@ -2,14 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Compass, Sparkles, HelpCircle, RotateCcw } from 'lucide-react';
+import { Compass, Sparkles, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,

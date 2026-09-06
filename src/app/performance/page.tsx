@@ -8,10 +8,10 @@ import {
 } from 'recharts';
 import Link from 'next/link';
 import {
-  TrendingUp, Target, Award, Sparkles, Loader2, Clock, Calendar as CalendarIcon,
-  Zap, BookOpen, GraduationCap, ShieldCheck, BarChart3, Activity, Trophy, ChevronRight
+  Target, Loader2, Clock, Calendar as CalendarIcon,
+  BarChart3, Activity, ChevronRight
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -26,7 +26,6 @@ import { SubjectTechnicalBreakdown, SubjectMasteryItem } from '@/components/perf
 import { PointScorecardModal } from '@/components/performance/PointScorecardModal';
 import { AccountSettingsDialog } from '@/components/profile/AccountSettingsDialog';
 import { SUBJECT_AREAS } from '@/lib/game-logic';
-import { cn } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
 
 const RADAR_LABELS: Record<string, string> = {
@@ -177,7 +176,7 @@ function PerformanceContent() {
     ? (fullMastery.reduce((acc: number, m: any) => acc + m.mastery, 0) / fullMastery.length)
     : 0;
 
-  const avgMastery = avgMasteryNum.toFixed(1);
+  const _avgMastery = avgMasteryNum.toFixed(1);
 
   const avgCompletion = fullMastery.length > 0
     ? (fullMastery.reduce((acc: number, m: any) => acc + m.completion, 0) / fullMastery.length).toFixed(0)

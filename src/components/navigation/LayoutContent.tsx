@@ -10,10 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { getUserProfile } from '@/app/actions/user';
-import { getLevelProgress } from '@/lib/badge-system';
 
 import { NotificationBell } from '@/components/navigation/NotificationBell';
 import { TourButton } from '@/components/tour/TourButton';
@@ -29,7 +27,6 @@ export function LayoutContent({
 }) {
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
-  const [progress, setProgress] = useState<{ currentLevelXp: number, xpForNextLevel: number, percentage: number } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -41,7 +38,6 @@ export function LayoutContent({
           const profile = await getUserProfile();
           if (profile && isSubscribed) {
             setUser(profile);
-            setProgress(getLevelProgress(profile.xp));
           }
         } catch (error) {
           console.warn('Failed to load user profile in layout:', error);

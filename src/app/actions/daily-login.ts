@@ -1,6 +1,6 @@
 'use server';
 
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { ObjectId } from 'mongodb';
 import clientPromise from '@/lib/mongodb-client';
 import { prisma } from '@/lib/prisma';
@@ -42,7 +42,7 @@ function buildDailyLoginQuery(userId: string, userEmail?: string, dateStr?: stri
  * Automatically records the student's daily login into MongoDB
  * using clean, minimal, non-duplicate fields.
  */
-export async function recordDailyLoginAction(deviceInfo?: string): Promise<{
+export async function recordDailyLoginAction(_deviceInfo?: string): Promise<{
   success: boolean;
   isLoggedIn: boolean;
   status?: DailyLoginStatusData;

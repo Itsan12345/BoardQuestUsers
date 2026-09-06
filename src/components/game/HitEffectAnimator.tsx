@@ -19,13 +19,18 @@ export function HitEffectAnimator({
   onComplete,
 }: HitEffectAnimatorProps) {
   const [playing, setPlaying] = useState(false);
+  const onCompleteRef = React.useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     if (isActive) {
       setPlaying(true);
       const timer = setTimeout(() => {
         setPlaying(false);
-        if (onComplete) onComplete();
+        if (onCompleteRef.current) onCompleteRef.current();
       }, 350);
       return () => clearTimeout(timer);
     } else {
