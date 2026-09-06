@@ -144,8 +144,9 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                 fill
                 className="object-cover sm:object-fill object-center"
                 style={{ imageRendering: 'pixelated' }}
-                unoptimized
                 priority
+                sizes="(max-width: 768px) 100vw, 1400px"
+                quality={85}
               />
             );
           }

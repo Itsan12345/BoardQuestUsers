@@ -256,7 +256,7 @@ export default function LearningQuest() {
   const [score, setScore] = useState(0);
   const [fetchingExplanations, setFetchingExplanations] = useState<Record<number, boolean>>({});
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedSubject, setSelectedSubject] = useState<string>('Clinical Chemistry');
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   // Fetch dynamic categories directly from MongoDB Category collection
@@ -2909,19 +2909,40 @@ export default function LearningQuest() {
     <div
       ref={fullscreenRef}
       className={cn(
-        "min-h-full flex flex-col pb-20 md:pb-12 overflow-hidden relative bg-black",
+        "min-h-full flex flex-col pb-20 md:pb-12 overflow-hidden relative bg-[#0a0705]",
         isFullscreen ? "h-screen w-screen" : ""
       )}
-      style={{
-        backgroundImage: `url('${(getSubjectMeta(selectedSubject)).backgroundUrl || ''}')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'local',
-        transition: 'background-image 0.6s ease-in-out',
-      }}
     >
+      {/* High-Performance Smooth Cross-Fading Backgrounds */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        {(dynamicCategories.length > 0 ? dynamicCategories : Object.keys(SUBJECT_METADATA)).map((subject) => {
+          const meta = getSubjectMeta(subject);
+          const isCurrent = selectedSubject === subject;
+          if (!meta.backgroundUrl) return null;
+          return (
+            <div
+              key={subject}
+              className={cn(
+                "absolute inset-0 transition-opacity duration-700 ease-in-out",
+                isCurrent ? "opacity-100 z-10" : "opacity-0 z-0"
+              )}
+            >
+              <Image
+                src={meta.backgroundUrl}
+                alt={`${subject} Background`}
+                fill
+                priority={isCurrent}
+                sizes="100vw"
+                quality={80}
+                className="object-cover object-center"
+              />
+            </div>
+          );
+        })}
+      </div>
+
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-[6px] transition-all duration-600" />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-[6px] transition-all duration-600 pointer-events-none z-[1]" />
 
       <header id="tour-quest-header" className="px-6 md:px-8 pt-6 md:pt-8 pb-4 space-y-1 relative z-10">
         <div className="absolute top-6 right-6 md:top-8 md:right-8 z-50">
