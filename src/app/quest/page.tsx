@@ -1826,7 +1826,6 @@ export default function LearningQuest() {
         const isStaphSentinel = quizMode === 'boss-battle'
           ? (battleStage === 2 && currentActiveNode?.id === 'mb-1')
           : false;
-        const attackResetDelay = isSpikesAttack ? 1050 : (isGramPositiveBoss ? 1080 : 950);
 
         if (quizMode === 'learning') {
           // In Learning Mode (no action cards), randomize 50/50 between Normal Attack and Heavy Attack on wrong answer!

@@ -40,7 +40,6 @@ export function BossSpriteAnimator({
   attackProjectileUrl,
   attackProjectileFrames = 5,
   undergroundSpikesUrl,
-  undergroundSpikesFrames = 8,
   idleFrames = 7,
   attackFrames = 17,
   heavyAttackFrames = 11,
