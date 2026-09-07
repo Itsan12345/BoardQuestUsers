@@ -27,7 +27,8 @@ import {
   Flame,
   Compass,
   RotateCw,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
 import { HitEffectAnimator } from '@/components/game/HitEffectAnimator';
+import { UndergroundSpikesAnimator } from '@/components/game/UndergroundSpikesAnimator';
 
 const SUBJECT_METADATA: Record<string, {
   name: string;
@@ -64,6 +66,8 @@ const SUBJECT_METADATA: Record<string, {
   attackSpriteUrl?: string;
   heavyAttackSpriteUrl?: string;
   attackProjectileUrl?: string;
+  undergroundSpikesUrl?: string;
+  undergroundSpikesFrames?: number;
   idleFrames?: number;
   attackFrames?: number;
   heavyAttackFrames?: number;
@@ -74,6 +78,8 @@ const SUBJECT_METADATA: Record<string, {
   idleFrameHeight?: number;
   attackFrameHeight?: number;
   heavyFrameHeight?: number;
+  idleDuration?: number;
+  idleFps?: number;
 }> = {
   "Clinical Chemistry": {
     name: "Clinical Chemistry",
@@ -98,15 +104,17 @@ const SUBJECT_METADATA: Record<string, {
     biome: "The Sanguine Marshes",
     description: "Crimson rivers flow through iron-rich soil. Study the life force within.",
     idleSpriteUrl: "/images/bosses/hematology_finalboss_idleAnimation.png",
-    attackSpriteUrl: "/images/bosses/hematology_finalboss_heavyAttackAnimation.png",
+    attackSpriteUrl: "/images/bosses/hematology_finalboss_normalAttackGlintAnimation.png",
     heavyAttackSpriteUrl: "/images/bosses/hematology_finalboss_heavyAttackAnimation.png",
+    undergroundSpikesUrl: "/images/bosses/hematology_finalboss_normalAttackUndergroundSpikesAnimation.png",
+    undergroundSpikesFrames: 8,
     idleFrames: 6,
-    attackFrames: 8,
+    attackFrames: 6,
     heavyAttackFrames: 8,
     idleFrameWidth: 128,
     idleFrameHeight: 128,
-    attackFrameWidth: 192,
-    attackFrameHeight: 160,
+    attackFrameWidth: 128,
+    attackFrameHeight: 128,
     heavyFrameWidth: 192,
     heavyFrameHeight: 160,
   },
@@ -142,12 +150,6 @@ const SUBJECT_METADATA: Record<string, {
     difficulty: 2,
     biome: "Amber Sediment Cliffs",
     description: "Examine the smallest details that reveal the greatest truths.",
-    idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png",
-    attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png",
-    heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png",
-    idleFrames: 7,
-    attackFrames: 17,
-    heavyAttackFrames: 11,
   },
   "Histopathology & MT Laws": {
     name: "Histopathology & MT Laws",
@@ -230,6 +232,26 @@ function getSubjectMeta(subjectName: string) {
     biome: "Laboratory Science Realm",
     description: `Master topics in ${subjectName} to prove your expertise.`
   };
+}
+
+function isMajorSubject(subjectName: string): boolean {
+  if (!subjectName) return false;
+  if (SUBJECT_METADATA[subjectName]) {
+    return true;
+  }
+  const lower = subjectName.toLowerCase();
+  return (
+    lower.includes('histopath') ||
+    lower.includes('medtech laws') ||
+    lower.includes('mt laws') ||
+    lower.includes('microscopy') ||
+    lower.includes('parasito') ||
+    lower.includes('chem') ||
+    (lower.includes('hema') && !lower.includes('immuno')) ||
+    lower.includes('microbio') ||
+    lower.includes('immuno') ||
+    lower.includes('serology')
+  );
 }
 
 type UserAnswerRecord = {
@@ -390,6 +412,8 @@ export default function LearningQuest() {
     attackSpriteUrl?: string;
     heavyAttackSpriteUrl?: string;
     attackProjectileUrl?: string;
+    undergroundSpikesUrl?: string;
+    undergroundSpikesFrames?: number;
     idleFrames?: number;
     attackFrames?: number;
     heavyAttackFrames?: number;
@@ -400,6 +424,8 @@ export default function LearningQuest() {
     idleFrameHeight?: number;
     attackFrameHeight?: number;
     heavyFrameHeight?: number;
+    idleDuration?: number;
+    idleFps?: number;
     minionIdleSpriteUrl?: string;
     minionAttackSpriteUrl?: string;
     minionHeavyAttackSpriteUrl?: string;
@@ -412,6 +438,19 @@ export default function LearningQuest() {
     minionIdleFrameHeight?: number;
     minionAttackFrameHeight?: number;
     minionHeavyFrameHeight?: number;
+    miniBossIdleSpriteUrl?: string;
+    miniBossAttackSpriteUrl?: string;
+    miniBossHeavyAttackSpriteUrl?: string;
+    miniBossIdleFrames?: number;
+    miniBossAttackFrames?: number;
+    miniBossHeavyAttackFrames?: number;
+    miniBossIdleFrameWidth?: number;
+    miniBossAttackFrameWidth?: number;
+    miniBossHeavyFrameWidth?: number;
+    miniBossIdleFrameHeight?: number;
+    miniBossAttackFrameHeight?: number;
+    miniBossHeavyFrameHeight?: number;
+    miniBossIdleDuration?: number;
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
@@ -428,7 +467,7 @@ export default function LearningQuest() {
 
   const CHAPTER_NODES_PER_SUBJECT: Record<string, SubjectNodeConfig[]> = {
     "Clinical Chemistry": [
-      { id: 'cc-1', nodeNumber: 1, title: 'Carbohydrates & Lipids', subtopic: 'Glucose Metabolism, HbA1c & Lipoproteins', minionName: 'Acid Slime', minionIcon: '🧪', miniBossName: 'Hyperglycemic Mutant', miniBossIcon: '🧬', bossName: 'Hyperglycemic Specter', bossIcon: '⚗️' },
+      { id: 'cc-1', nodeNumber: 1, title: 'Carbohydrates & Lipids', subtopic: 'Glucose Metabolism, HbA1c & Lipoproteins', minionName: 'Acid Slime', minionIcon: '🧪', miniBossName: 'Hyperglycemic Mutant', miniBossIcon: '🧬', bossName: 'Ketoacidosis Colossus', bossIcon: '⚗️' },
       { id: 'cc-2', nodeNumber: 2, title: 'Enzymology & Electrolytes', subtopic: 'Troponin, CK-MB, AST, Potassium & Blood pH', minionName: 'Kinase Swarm', minionIcon: '⚡', miniBossName: 'Ischemia Fiend', miniBossIcon: '🔥', bossName: 'Renal Behemoth', bossIcon: '💔' },
       {
         id: 'cc-3',
@@ -450,6 +489,7 @@ export default function LearningQuest() {
         heavyAttackFrames: 13,
         attackProjectileFrames: 5,
         idleFrameWidth: 128,
+        idleFrameHeight: 128,
         attackFrameWidth: 128,
         attackFrameHeight: 128,
         heavyFrameWidth: 480,
@@ -480,9 +520,59 @@ export default function LearningQuest() {
         minionAttackFrameHeight: 218,
         minionHeavyFrameWidth: 257,
         minionHeavyFrameHeight: 218,
+        miniBossIdleSpriteUrl: '/images/bosses/microbio_chapterOneMiniBoss_IdleAnimation.png',
+        miniBossAttackSpriteUrl: '/images/bosses/microbio_chapterOneMiniBoss_normalAttackAnimation.png',
+        miniBossHeavyAttackSpriteUrl: '/images/bosses/microbio_chapterOneMiniBoss_normalAttackAnimation.png',
+        miniBossIdleFrames: 7,
+        miniBossAttackFrames: 9,
+        miniBossHeavyAttackFrames: 9,
+        miniBossIdleFrameWidth: 128,
+        miniBossIdleFrameHeight: 128,
+        miniBossAttackFrameWidth: 160,
+        miniBossAttackFrameHeight: 157,
+        miniBossHeavyFrameWidth: 160,
+        miniBossHeavyFrameHeight: 157,
+        miniBossIdleDuration: 1.0,
+        idleSpriteUrl: '/images/bosses/microbio_chapterOneBoss_IdleAnimation.png',
+        attackSpriteUrl: '/images/bosses/microbio_chapterOneBoss_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/microbio_chapterOneBoss_normalAttackAnimation.png',
+        idleFrames: 7,
+        attackFrames: 13,
+        heavyAttackFrames: 13,
+        idleFrameWidth: 128,
+        idleFrameHeight: 150,
+        attackFrameWidth: 247,
+        attackFrameHeight: 189,
+        heavyFrameWidth: 247,
+        heavyFrameHeight: 189,
+        idleDuration: 1.05,
       },
       { id: 'mb-2', nodeNumber: 2, title: 'Mycology, Virology & Parasitology', subtopic: 'Fungi, Viral Replication, Antigens & Protozoa', minionName: 'Spore Cloud', minionIcon: '🍄', miniBossName: 'Retrovirus Fiend', miniBossIcon: '💥', bossName: 'Viral Apex Lord', bossIcon: '🐉' },
-      { id: 'mb-3', nodeNumber: 3, title: '👑 Biohazard Overlord (FINAL BOSS)', subtopic: 'Antimicrobial Resistance & Comprehensive Microbiology', minionName: 'Resistant Strain', minionIcon: '💊', miniBossName: 'Lab Director Phantom', miniBossIcon: '📜', bossName: 'Biohazard Overlord', bossIcon: '👑' },
+      {
+        id: 'mb-3',
+        nodeNumber: 3,
+        title: '👑 Biohazard Overlord (FINAL BOSS)',
+        subtopic: 'Antimicrobial Resistance & Comprehensive Microbiology',
+        minionName: 'Resistant Strain',
+        minionIcon: '💊',
+        miniBossName: 'Lab Director Phantom',
+        miniBossIcon: '📜',
+        bossName: 'Biohazard Overlord',
+        bossIcon: '👑',
+        idleSpriteUrl: '/images/bosses/microbio_finalboss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/microbio_finalboss_heavyAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/microbio_finalboss_heavyAttackAnimation.png',
+        idleFrames: 6,
+        attackFrames: 4,
+        heavyAttackFrames: 4,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 128,
+        attackFrameHeight: 128,
+        heavyFrameWidth: 128,
+        heavyFrameHeight: 128,
+        idleDuration: 1.05,
+      },
     ],
     "Hematology": [
       { id: 'hem-1', nodeNumber: 1, title: 'RBC Anomalies & Anemias', subtopic: 'Hemoglobin Synthesis & Microcytic Anemias', minionName: 'Sickle Cell', minionIcon: '🩸', miniBossName: 'Anemia Shade', miniBossIcon: '👻', bossName: 'Erythrocyte Colossus', bossIcon: '👑' },
@@ -499,15 +589,17 @@ export default function LearningQuest() {
         bossName: 'Sickle-Cell Reaper',
         bossIcon: '👑',
         idleSpriteUrl: '/images/bosses/hematology_finalboss_idleAnimation.png',
-        attackSpriteUrl: '/images/bosses/hematology_finalboss_heavyAttackAnimation.png',
+        attackSpriteUrl: '/images/bosses/hematology_finalboss_normalAttackGlintAnimation.png',
         heavyAttackSpriteUrl: '/images/bosses/hematology_finalboss_heavyAttackAnimation.png',
+        undergroundSpikesUrl: '/images/bosses/hematology_finalboss_normalAttackUndergroundSpikesAnimation.png',
+        undergroundSpikesFrames: 8,
         idleFrames: 6,
-        attackFrames: 8,
+        attackFrames: 6,
         heavyAttackFrames: 8,
         idleFrameWidth: 128,
         idleFrameHeight: 128,
-        attackFrameWidth: 192,
-        attackFrameHeight: 160,
+        attackFrameWidth: 128,
+        attackFrameHeight: 128,
         heavyFrameWidth: 192,
         heavyFrameHeight: 160,
       },
@@ -520,7 +612,7 @@ export default function LearningQuest() {
     "Clinical Microscopy & Parasitology": [
       { id: 'cm-1', nodeNumber: 1, title: 'Urinalysis Physical & Chemical Exam', subtopic: 'Color, Clarity, Specific Gravity & Reagents', minionName: 'Reagent Strip Slime', minionIcon: '🧪', miniBossName: 'Nitrite Spectre', miniBossIcon: '👻', bossName: 'Clinical Microscopy Overlord', bossIcon: '👑' },
       { id: 'cm-2', nodeNumber: 2, title: 'Microscopic Sediments & Body Fluids', subtopic: 'Casts, Crystals, Synovial, Serous & CSF Analysis', minionName: 'Hyaline Cast', minionIcon: '💧', miniBossName: 'Oxalate Golem', miniBossIcon: '🪨', bossName: 'Sediment Colossus', bossIcon: '🩸' },
-      { id: 'cm-3', nodeNumber: 3, title: '👑 Crystal Golem (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', minionName: 'Protozoan Cyst', minionIcon: '🦠', miniBossName: 'Pathology Director Phantom', miniBossIcon: '📜', bossName: 'Crystal Golem', bossIcon: '👑', idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png", attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png", heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png", idleFrames: 7, attackFrames: 17, heavyAttackFrames: 11 },
+      { id: 'cm-3', nodeNumber: 3, title: '👑 Crystal Golem (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', minionName: 'Protozoan Cyst', minionIcon: '🦠', miniBossName: 'Pathology Director Phantom', miniBossIcon: '📜', bossName: 'Crystal Golem', bossIcon: '👑', idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png", attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png", heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png", idleFrames: 7, attackFrames: 17, heavyAttackFrames: 11, idleFrameWidth: 128, idleFrameHeight: 128, attackFrameWidth: 128, attackFrameHeight: 128, heavyFrameWidth: 176, heavyFrameHeight: 128 },
     ],
     "Histopathology and Medtech Laws": [
       { id: 'hp-1', nodeNumber: 1, title: 'Tissue Processing, Microtomy & Staining', subtopic: 'Formalin Fixation, Sectioning & H&E Staining', minionName: 'Formalin Slime', minionIcon: '🧪', miniBossName: 'Paraffin Golem', miniBossIcon: '🪨', bossName: 'Fixation Overlord', bossIcon: '👑' },
@@ -629,16 +721,20 @@ export default function LearningQuest() {
         attackSprite: ch3Node?.attackSpriteUrl || meta?.attackSpriteUrl || null,
         heavyAttackSprite: ch3Node?.heavyAttackSpriteUrl || meta?.heavyAttackSpriteUrl || null,
         attackProjectileUrl: ch3Node?.attackProjectileUrl || meta?.attackProjectileUrl || null,
+        undergroundSpikesUrl: ch3Node?.undergroundSpikesUrl || meta?.undergroundSpikesUrl || null,
         idleFrames: ch3Node?.idleFrames || meta?.idleFrames || 6,
         attackFrames: ch3Node?.attackFrames || meta?.attackFrames || 5,
-        heavyAttackFrames: ch3Node?.heavyAttackFrames || meta?.heavyAttackFrames || 12,
+        heavyAttackFrames: ch3Node?.heavyAttackFrames || meta?.heavyAttackFrames || 13,
         attackProjectileFrames: ch3Node?.attackProjectileFrames || meta?.attackProjectileFrames || 5,
+        undergroundSpikesFrames: ch3Node?.undergroundSpikesFrames || meta?.undergroundSpikesFrames || 8,
         idleFrameWidth: ch3Node?.idleFrameWidth || meta?.idleFrameWidth || 128,
         attackFrameWidth: ch3Node?.attackFrameWidth || meta?.attackFrameWidth || 128,
         heavyFrameWidth: ch3Node?.heavyFrameWidth || meta?.heavyFrameWidth || 480,
         idleFrameHeight: ch3Node?.idleFrameHeight || meta?.idleFrameHeight || 128,
         attackFrameHeight: ch3Node?.attackFrameHeight || meta?.attackFrameHeight || 128,
         heavyFrameHeight: ch3Node?.heavyFrameHeight || meta?.heavyFrameHeight || 256,
+        idleDuration: ch3Node?.idleDuration || meta?.idleDuration || undefined,
+        idleFps: ch3Node?.idleFps || meta?.idleFps || undefined,
       };
     }
   };
@@ -1228,6 +1324,14 @@ export default function LearningQuest() {
     fetchUser();
   }, []);
 
+  // Guard against non-major subjects staying in Boss-Battle Mode
+  useEffect(() => {
+    if (!isMajorSubject(selectedSubject) && quizMode === 'boss-battle') {
+      setQuizMode('learning');
+      setShowChapterMap(false);
+    }
+  }, [selectedSubject, quizMode]);
+
   // Monitor Boss Battle Health for Early Win/Loss
   useEffect(() => {
     if (isStarted && !isFinished && quizMode === 'boss-battle') {
@@ -1712,18 +1816,77 @@ export default function LearningQuest() {
 
       // Trigger Boss Attack animation & physical lunge ONLY on player mistake (!isCorrect)
       if (!isCorrect) {
+        const activeNodes = getSubjectNodes(selectedSubject);
+        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+        const subjectMeta = getSubjectMeta(selectedSubject);
+        const isSpikesAttack = !!(currentActiveNode?.undergroundSpikesUrl || subjectMeta?.undergroundSpikesUrl);
+        const isGramPositiveBoss = quizMode === 'boss-battle'
+          ? (battleStage === 3 && currentActiveNode?.id === 'mb-1')
+          : false;
+        const isStaphSentinel = quizMode === 'boss-battle'
+          ? (battleStage === 2 && currentActiveNode?.id === 'mb-1')
+          : false;
+        const attackResetDelay = isSpikesAttack ? 1050 : (isGramPositiveBoss ? 1080 : 950);
+
         if (quizMode === 'learning') {
           // In Learning Mode (no action cards), randomize 50/50 between Normal Attack and Heavy Attack on wrong answer!
           const attackType = Math.random() < 0.5 ? 'normal_attack' : 'heavy_attack';
           setBossAnimState(attackType);
-          const impactDelay = attackType === 'heavy_attack' ? 320 : 300;
+          const isSpikes = attackType === 'normal_attack' && isSpikesAttack;
+          const isGramPositiveHeavy = isGramPositiveBoss && attackType === 'heavy_attack';
+          const isStaphSentinelHeavy = isStaphSentinel && attackType === 'heavy_attack';
+          const resetDelay = isSpikes
+            ? 1050
+            : isGramPositiveHeavy
+            ? 1650
+            : isStaphSentinelHeavy
+            ? 1420
+            : (isGramPositiveBoss ? 1080 : 950);
+          const impactDelay = isSpikes ? 650 : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (attackType === 'heavy_attack' ? 320 : 300)));
           setTimeout(applyPlayerDamage, impactDelay);
-          setTimeout(() => setBossAnimState('idle'), 950);
+          if (isGramPositiveHeavy) {
+            setTimeout(() => {
+              setIsAnimating("player");
+              setHitEffectTarget('player');
+              setHitEffectKey(k => k + 1);
+            }, 950);
+          } else if (isStaphSentinelHeavy) {
+            setTimeout(() => {
+              setIsAnimating("player");
+              setHitEffectTarget('player');
+              setHitEffectKey(k => k + 1);
+            }, 840);
+          }
+          setTimeout(() => setBossAnimState('idle'), resetDelay);
         } else {
-          setBossAnimState(action === 'heavy' ? 'heavy_attack' : 'normal_attack');
-          const impactDelay = action === 'heavy' ? 320 : 300;
+          const attackType = action === 'heavy' ? 'heavy_attack' : 'normal_attack';
+          setBossAnimState(attackType);
+          const isSpikes = attackType === 'normal_attack' && isSpikesAttack;
+          const isGramPositiveHeavy = isGramPositiveBoss && attackType === 'heavy_attack';
+          const isStaphSentinelHeavy = isStaphSentinel && attackType === 'heavy_attack';
+          const resetDelay = isSpikes
+            ? 1050
+            : isGramPositiveHeavy
+            ? 1650
+            : isStaphSentinelHeavy
+            ? 1420
+            : (isGramPositiveBoss ? 1080 : 950);
+          const impactDelay = isSpikes ? 650 : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (action === 'heavy' ? 320 : 300)));
           setTimeout(applyPlayerDamage, impactDelay);
-          setTimeout(() => setBossAnimState('idle'), 950);
+          if (isGramPositiveHeavy) {
+            setTimeout(() => {
+              setIsAnimating("player");
+              setHitEffectTarget('player');
+              setHitEffectKey(k => k + 1);
+            }, 950);
+          } else if (isStaphSentinelHeavy) {
+            setTimeout(() => {
+              setIsAnimating("player");
+              setHitEffectTarget('player');
+              setHitEffectKey(k => k + 1);
+            }, 840);
+          }
+          setTimeout(() => setBossAnimState('idle'), resetDelay);
         }
       } else {
         setBossAnimState('idle');
@@ -2483,14 +2646,14 @@ export default function LearningQuest() {
             className={cn(
               "relative overflow-hidden border-b flex flex-col transition-all duration-1000 ease-in-out shrink-0",
               introPhase === 'cutscene' ? "h-[85vh] md:h-[100vh]" : "h-[35vh] md:h-[45vh]",
-              !(SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl) && "bg-gradient-to-b from-primary to-black"
+              !(getSubjectMeta(selectedSubject)?.arenaBackgroundUrl || getSubjectMeta(selectedSubject)?.backgroundUrl) && "bg-gradient-to-b from-primary to-black"
             )}
             style={{ containerType: 'inline-size' }}
           >
             {/* High-Performance Next.js Optimized Arena Background */}
-            {(SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl) && (
+            {(getSubjectMeta(selectedSubject)?.arenaBackgroundUrl || getSubjectMeta(selectedSubject)?.backgroundUrl) && (
               <Image
-                src={(SUBJECT_METADATA[selectedSubject]?.arenaBackgroundUrl || SUBJECT_METADATA[selectedSubject]?.backgroundUrl) as string}
+                src={(getSubjectMeta(selectedSubject)?.arenaBackgroundUrl || getSubjectMeta(selectedSubject)?.backgroundUrl) as string}
                 alt="Arena Battleground"
                 fill
                 priority
@@ -2664,6 +2827,10 @@ export default function LearningQuest() {
                   idleSprite = currentActiveNode.minionIdleSpriteUrl || null;
                   attackSprite = currentActiveNode.minionAttackSpriteUrl || currentActiveNode.minionIdleSpriteUrl || null;
                   heavyAttackSprite = currentActiveNode.minionHeavyAttackSpriteUrl || currentActiveNode.minionAttackSpriteUrl || null;
+                } else if (battleStage === 2 && currentActiveNode?.miniBossIdleSpriteUrl) {
+                  idleSprite = currentActiveNode.miniBossIdleSpriteUrl || null;
+                  attackSprite = currentActiveNode.miniBossAttackSpriteUrl || currentActiveNode.miniBossIdleSpriteUrl || null;
+                  heavyAttackSprite = currentActiveNode.miniBossHeavyAttackSpriteUrl || currentActiveNode.miniBossAttackSpriteUrl || null;
                 } else if (isBossStageOrCh3) {
                   idleSprite = currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null;
                   attackSprite = currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null;
@@ -2688,42 +2855,65 @@ export default function LearningQuest() {
               }
 
               const isMinionStageWithSprite = quizMode === 'boss-battle' && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl;
+              const isMiniBossStageWithSprite = quizMode === 'boss-battle' && battleStage === 2 && !!currentActiveNode?.miniBossIdleSpriteUrl;
 
               const effectiveIdleFrames = isMinionStageWithSprite
                 ? (currentActiveNode.minionIdleFrames || 8)
+                : isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossIdleFrames || 7)
                 : (waveState?.idleFrames || currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7);
 
               const effectiveAttackFrames = isMinionStageWithSprite
                 ? (currentActiveNode.minionAttackFrames || 14)
+                : isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossAttackFrames || 9)
                 : (waveState?.attackFrames || currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17);
 
               const effectiveHeavyAttackFrames = isMinionStageWithSprite
                 ? (currentActiveNode.minionHeavyAttackFrames || 10)
+                : isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossHeavyAttackFrames || 9)
                 : (waveState?.heavyAttackFrames || currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11);
 
               const effectiveIdleFrameWidth = isMinionStageWithSprite
                 ? (currentActiveNode.minionIdleFrameWidth || 128)
+                : isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossIdleFrameWidth || 128)
                 : (waveState?.idleFrameWidth || currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128);
 
               const effectiveAttackFrameWidth = isMinionStageWithSprite
                 ? (currentActiveNode.minionAttackFrameWidth || 257)
+                : isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossAttackFrameWidth || 160)
                 : (waveState?.attackFrameWidth || currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128);
 
               const effectiveHeavyFrameWidth = isMinionStageWithSprite
                 ? (currentActiveNode.minionHeavyFrameWidth || 257)
+                : isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossHeavyFrameWidth || 160)
                 : (waveState?.heavyFrameWidth || currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176);
 
               const effectiveIdleFrameHeight = isMinionStageWithSprite
                 ? (currentActiveNode.minionIdleFrameHeight || 128)
+                : isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossIdleFrameHeight || 128)
                 : (waveState?.idleFrameHeight || currentActiveNode?.idleFrameHeight || subjectMeta?.idleFrameHeight || 128);
 
               const effectiveAttackFrameHeight = isMinionStageWithSprite
                 ? (currentActiveNode.minionAttackFrameHeight || 218)
+                : isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossAttackFrameHeight || 157)
                 : (waveState?.attackFrameHeight || currentActiveNode?.attackFrameHeight || subjectMeta?.attackFrameHeight || 128);
 
               const effectiveHeavyFrameHeight = isMinionStageWithSprite
                 ? (currentActiveNode.minionHeavyFrameHeight || 218)
+                : isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossHeavyFrameHeight || 157)
                 : (waveState?.heavyFrameHeight || currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128);
+
+              const effectiveIdleDuration = isMiniBossStageWithSprite
+                ? (currentActiveNode.miniBossIdleDuration || 1.0)
+                : (waveState?.idleDuration || currentActiveNode?.idleDuration || subjectMeta?.idleDuration || undefined);
 
               const stageMaxHp = quizMode === 'boss-battle'
                 ? calculateEnemyStageHp(battleStage, userLevel, bossDifficulty || 'MEDIUM')
@@ -2765,6 +2955,8 @@ export default function LearningQuest() {
                           heavyAttackSpriteUrl={heavyAttackSprite || undefined}
                           attackProjectileUrl={waveState?.attackProjectileUrl || currentActiveNode?.attackProjectileUrl || subjectMeta?.attackProjectileUrl || undefined}
                           attackProjectileFrames={waveState?.attackProjectileFrames || currentActiveNode?.attackProjectileFrames || subjectMeta?.attackProjectileFrames || 5}
+                          undergroundSpikesUrl={waveState?.undergroundSpikesUrl || currentActiveNode?.undergroundSpikesUrl || subjectMeta?.undergroundSpikesUrl || undefined}
+                          undergroundSpikesFrames={waveState?.undergroundSpikesFrames || currentActiveNode?.undergroundSpikesFrames || subjectMeta?.undergroundSpikesFrames || 8}
                           idleFrames={effectiveIdleFrames}
                           attackFrames={effectiveAttackFrames}
                           heavyAttackFrames={effectiveHeavyAttackFrames}
@@ -2774,6 +2966,8 @@ export default function LearningQuest() {
                           idleFrameHeight={effectiveIdleFrameHeight}
                           attackFrameHeight={effectiveAttackFrameHeight}
                           heavyFrameHeight={effectiveHeavyFrameHeight}
+                          idleDuration={effectiveIdleDuration || waveState?.idleDuration || currentActiveNode?.idleDuration || subjectMeta?.idleDuration || undefined}
+                          idleFps={waveState?.idleFps || currentActiveNode?.idleFps || subjectMeta?.idleFps || undefined}
                           animState={introPhase === 'active' ? bossAnimState : 'idle'}
                           onAttackComplete={() => setBossAnimState('idle')}
                           scale={1.35}
@@ -2816,6 +3010,28 @@ export default function LearningQuest() {
               )}>
                 {/* Ground Shadow for Player Character */}
                 <div className="absolute bottom-4 w-36 md:w-52 h-5 bg-black/70 rounded-[100%] blur-md scale-y-50 pointer-events-none" />
+
+                {/* Underground Spikes Eruption Animation directly beneath the Player */}
+                {(() => {
+                  const activeNodes = getSubjectNodes(selectedSubject);
+                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const subjectMeta = getSubjectMeta(selectedSubject);
+                  const spikesUrl = currentActiveNode?.undergroundSpikesUrl || subjectMeta?.undergroundSpikesUrl;
+                  const spikesFrames = currentActiveNode?.undergroundSpikesFrames || subjectMeta?.undergroundSpikesFrames || 8;
+                  if (!spikesUrl) return null;
+                  return (
+                    <UndergroundSpikesAnimator
+                      isActive={bossAnimState === 'normal_attack'}
+                      triggerKey={hitEffectKey}
+                      spriteUrl={spikesUrl}
+                      frames={spikesFrames}
+                      delayMs={400}
+                      durationMs={550}
+                      scale={2.2}
+                      className="bottom-1 md:bottom-2 left-1/2 -translate-x-1/2"
+                    />
+                  );
+                })()}
 
                 <div className="relative w-44 h-44 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-84 lg:h-84 shrink-0 transition-transform">
                   <Image
@@ -3170,24 +3386,57 @@ export default function LearningQuest() {
                     </button>
 
                     {/* Boss Battle Button */}
-                    <button
-                      onClick={() => {
-                        setQuizMode('boss-battle');
-                        setModeSelectDialogOpen(false);
-                        setShowChapterMap(true);
-                      }}
-                      className="relative flex-1 h-full max-h-[80%] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
-                    >
-                      <Image src="/ui/btn-boss.png" alt="Boss Battle" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
-                      <div className="absolute inset-x-0 bottom-[22%] flex items-center justify-center">
-                        <span
-                          className="font-bytebounce text-white text-2xl md:text-[2.2rem] leading-[0.75] text-center"
-                          style={{ textShadow: '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 2px 0 0 #000, 0 -2px 0 #000, -2px 0 0 #000' }}
+                    {(() => {
+                      const isMajor = isMajorSubject(selectedSubject);
+                      return (
+                        <button
+                          onClick={() => {
+                            if (!isMajor) {
+                              toast({
+                                title: "Campaign Mode Locked",
+                                description: "Boss-Battle RPG campaign is exclusive to the 6 Core MTLE Board Exam Subjects. Please select Learning Mode or Test Mode.",
+                              });
+                              return;
+                            }
+                            setQuizMode('boss-battle');
+                            setModeSelectDialogOpen(false);
+                            setShowChapterMap(true);
+                          }}
+                          className={cn(
+                            "relative flex-1 h-full max-h-[80%] transition-all",
+                            isMajor
+                              ? "group hover:scale-105 active:scale-95 hover:brightness-110 cursor-pointer"
+                              : "grayscale contrast-75 opacity-60 cursor-not-allowed"
+                          )}
+                          title={!isMajor ? "Exclusive to the 6 Core Board Exam Subjects" : "Enter Boss Battle"}
                         >
-                          BOSS<br />BATTLE
-                        </span>
-                      </div>
-                    </button>
+                          <Image src="/ui/btn-boss.png" alt="Boss Battle" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
+                          <div className="absolute inset-x-0 bottom-[22%] flex items-center justify-center">
+                            <span
+                              className="font-bytebounce text-white text-2xl md:text-[2.2rem] leading-[0.75] text-center"
+                              style={{ textShadow: '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 2px 0 0 #000, 0 -2px 0 #000, -2px 0 0 #000' }}
+                            >
+                              BOSS<br />BATTLE
+                            </span>
+                          </div>
+
+                          {/* Padlock & Exclusivity Tag for Non-Major Subjects */}
+                          {!isMajor && (
+                            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-2 text-center pointer-events-none">
+                              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/85 border border-amber-400/90 flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.5)] mb-1">
+                                <Lock className="w-4 h-4 md:w-5 md:h-5 text-amber-300" />
+                              </div>
+                              <span
+                                className="font-bytebounce text-amber-300 text-[9px] min-[375px]:text-[11px] md:text-sm tracking-wider uppercase leading-tight bg-black/85 px-2 py-0.5 rounded border border-amber-500/40 shadow-md"
+                                style={{ textShadow: '1px 1px 0 #000' }}
+                              >
+                                6 Core Subjects Only
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })()}
                   </>
                 ) : setupStep === 'details' ? (
                   <div className="flex flex-col w-full h-full p-1 min-[375px]:p-2 md:p-6 overflow-hidden no-scrollbar animate-in fade-in zoom-in-95 relative justify-between">
@@ -3419,7 +3668,7 @@ export default function LearningQuest() {
       </Dialog>
 
       {/* Chapter World Map Dialog */}
-      <Dialog open={showChapterMap && !isStarted && !isFinished} onOpenChange={setShowChapterMap}>
+      <Dialog open={showChapterMap && isMajorSubject(selectedSubject) && !isStarted && !isFinished} onOpenChange={setShowChapterMap}>
         <DialogContent container={fullscreenRef.current} className="w-screen h-screen max-w-none max-h-none border-none rounded-none p-0 bg-[#160d08] flex flex-col overflow-hidden z-[100] [&>button]:hidden">
           <DialogTitle className="sr-only">Chapter Overworld Map</DialogTitle>
           <ChapterWorldMap

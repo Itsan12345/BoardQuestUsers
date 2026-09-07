@@ -11,6 +11,8 @@ interface BossSpriteAnimatorProps {
   heavyAttackSpriteUrl?: string;
   attackProjectileUrl?: string;
   attackProjectileFrames?: number;
+  undergroundSpikesUrl?: string;
+  undergroundSpikesFrames?: number;
   idleFrames?: number;
   attackFrames?: number;
   heavyAttackFrames?: number;
@@ -20,6 +22,8 @@ interface BossSpriteAnimatorProps {
   idleFrameHeight?: number;
   attackFrameHeight?: number;
   heavyFrameHeight?: number;
+  idleFps?: number;
+  idleDuration?: number;
   animState: BossAnimState;
   onAttackComplete?: () => void;
   className?: string;
@@ -35,6 +39,8 @@ export function BossSpriteAnimator({
   heavyAttackSpriteUrl,
   attackProjectileUrl,
   attackProjectileFrames = 5,
+  undergroundSpikesUrl,
+  undergroundSpikesFrames = 8,
   idleFrames = 7,
   attackFrames = 17,
   heavyAttackFrames = 11,
@@ -44,6 +50,8 @@ export function BossSpriteAnimator({
   idleFrameHeight = 128,
   attackFrameHeight = 128,
   heavyFrameHeight = 128,
+  idleFps,
+  idleDuration,
   animState,
   onAttackComplete,
   className,
@@ -56,6 +64,7 @@ export function BossSpriteAnimator({
   const isHeavy = animState === "heavy_attack";
   const isNormalAttack = animState === "normal_attack";
   const hasProjectile = isNormalAttack && !!attackProjectileUrl;
+  const hasUndergroundSpikes = isNormalAttack && !!undergroundSpikesUrl;
 
   const currentSpriteUrl = isHeavy
     ? (heavyAttackSpriteUrl || attackSpriteUrl)
@@ -96,13 +105,56 @@ export function BossSpriteAnimator({
     ? (currentTotalFrames <= 6 ? 9 : Math.max(18, currentTotalFrames))
     : (isNormalAttack && hasProjectile)
     ? 8
+    : (isNormalAttack && hasUndergroundSpikes)
+    ? 14
     : isAttacking
     ? Math.max(16, currentTotalFrames)
     : 8;
+  const isBiohazardIdle = !isAttacking && (idleSpriteUrl?.includes('microbio_finalboss_idleAnimation') || idleFps !== undefined || idleDuration !== undefined);
+
+  const isGramPositiveAttack = isAttacking && (
+    attackSpriteUrl?.includes('microbio_chapterOneBoss_normalAttackAnimation') ||
+    heavyAttackSpriteUrl?.includes('microbio_chapterOneBoss_normalAttackAnimation')
+  );
+  const isGramPositiveHeavy = isHeavy && isGramPositiveAttack;
+  const isGramPositiveNormal = !isHeavy && isGramPositiveAttack;
+
+  const isStaphSentinelAttack = isAttacking && (
+    attackSpriteUrl?.includes('microbio_chapterOneMiniBoss_normalAttackAnimation') ||
+    heavyAttackSpriteUrl?.includes('microbio_chapterOneMiniBoss_normalAttackAnimation')
+  );
+  const isStaphSentinelHeavy = isHeavy && isStaphSentinelAttack;
+  const isStaphSentinelNormal = !isHeavy && isStaphSentinelAttack;
+
   const spriteDuration = (isNormalAttack && hasProjectile)
     ? 0.38
+    : (isNormalAttack && hasUndergroundSpikes)
+    ? 0.42
+    : isGramPositiveHeavy
+    ? 0.625
+    : isGramPositiveNormal
+    ? 0.72
+    : isStaphSentinelHeavy
+    ? 0.50
+    : isStaphSentinelNormal
+    ? 0.58
+    : isBiohazardIdle
+    ? (idleDuration || (idleFps ? currentTotalFrames / idleFps : 1.05))
     : Math.max(0.48, Math.min(0.62, currentTotalFrames / fps));
-  const lungeDuration = isAttacking ? (hasProjectile ? 0.45 : spriteDuration + 0.35) : spriteDuration;
+
+  const totalAttackDuration = isGramPositiveHeavy
+    ? spriteDuration * 2
+    : isGramPositiveNormal
+    ? 0.72
+    : isStaphSentinelHeavy
+    ? spriteDuration * 2
+    : isStaphSentinelNormal
+    ? 0.58
+    : spriteDuration;
+
+  const lungeDuration = isAttacking
+    ? (hasProjectile ? 0.45 : hasUndergroundSpikes ? 1.05 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : 0.35))
+    : spriteDuration;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
   const onCompleteRef = useRef(onAttackComplete);
@@ -136,6 +188,7 @@ export function BossSpriteAnimator({
         {attackSpriteUrl && <img src={attackSpriteUrl} alt="" />}
         {heavyAttackSpriteUrl && <img src={heavyAttackSpriteUrl} alt="" />}
         {attackProjectileUrl && <img src={attackProjectileUrl} alt="" />}
+        {undergroundSpikesUrl && <img src={undergroundSpikesUrl} alt="" />}
       </div>
       {/* eslint-enable @next/next/no-img-element */}
 
@@ -183,8 +236,11 @@ export function BossSpriteAnimator({
         className={cn(
           "relative overflow-hidden transition-all transform-gpu z-20",
           isWideBeam && "animate-boss-beam-recoil",
-          isHeavy && !isWideBeam && "animate-boss-heavy-lunge",
-          isAttacking && !isHeavy && !isWideBeam && !hasProjectile && "animate-boss-lunge",
+          isGramPositiveHeavy && "animate-boss-gram-positive-heavy-lunge",
+          isGramPositiveNormal && "animate-boss-gram-positive-lunge",
+          isStaphSentinelHeavy && "animate-boss-staph-sentinel-heavy-lunge",
+          isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && "animate-boss-heavy-lunge",
+          isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isGramPositiveAttack && "animate-boss-lunge",
           isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
         )}
         style={{
@@ -211,7 +267,10 @@ export function BossSpriteAnimator({
             backgroundRepeat: "no-repeat",
             backgroundSize: `${sheetWidth * scale}px ${currentFrameHeight * scale}px`,
             imageRendering: "pixelated",
-            animation: `bossSpriteAnim ${spriteDuration}s steps(${currentTotalFrames}) ${isAttacking ? "1" : "infinite"}`,
+            animationName: "bossSpriteAnim",
+            animationDuration: `${spriteDuration}s`,
+            animationTimingFunction: `steps(${currentTotalFrames})`,
+            animationIterationCount: (isGramPositiveHeavy || isStaphSentinelHeavy) ? 2 : (isAttacking ? 1 : "infinite"),
             animationFillMode: "none",
           }}
         />
@@ -261,6 +320,60 @@ export function BossSpriteAnimator({
           }
           100% {
             /* Slide smoothly back to home position on the right after pause */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossGramPositiveLunge {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          12% {
+            /* Dash right in front of the player (standing to the right side of the player sprite, facing left) */
+            transform: translate(min(-60px, calc(-100cqw + 365px)), 15px) scale(1.15);
+          }
+          78% {
+            /* Execute claw strikes directly into the front of the player, then pause cleanly */
+            transform: translate(min(-60px, calc(-100cqw + 365px)), 15px) scale(1.15);
+          }
+          100% {
+            /* Return smoothly to home position on the right */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossGramPositiveHeavyLunge {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          8% {
+            /* Dash right in front of the player (standing to the right side of the player sprite, facing left) */
+            transform: translate(min(-60px, calc(-100cqw + 365px)), 15px) scale(1.15);
+          }
+          80% {
+            /* Execute 2 full cycles of claw strikes directly into the front of the player, then pause cleanly */
+            transform: translate(min(-60px, calc(-100cqw + 365px)), 15px) scale(1.15);
+          }
+          100% {
+            /* Return smoothly to home position on the right */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossStaphSentinelHeavyLunge {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          10% {
+            /* Dash close in front of the player */
+            transform: translate(min(-60px, calc(-100cqw + 260px)), 18px) scale(1.35);
+          }
+          80% {
+            /* Execute 2 full cycles of arm strikes directly into the player, then pause cleanly */
+            transform: translate(min(-60px, calc(-100cqw + 260px)), 18px) scale(1.35);
+          }
+          100% {
+            /* Slide smoothly back to home position on the right */
             transform: translate(0px, 0px) scale(1);
           }
         }
@@ -316,6 +429,60 @@ export function BossSpriteAnimator({
             }
             100% {
               /* Slide smoothly back to home position */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          @keyframes bossGramPositiveLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            12% {
+              /* Lands directly in front of the player on the left connecting cleanly with the sword/chest */
+              transform: translate(calc(-100cqw + 480px), 20px) scale(1.2);
+            }
+            78% {
+              /* Execute claw strikes directly into the front of the player, then pause cleanly */
+              transform: translate(calc(-100cqw + 480px), 20px) scale(1.2);
+            }
+            100% {
+              /* Slides back smoothly to home position on the right */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          @keyframes bossGramPositiveHeavyLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            8% {
+              /* Lands directly in front of the player on the left connecting cleanly with the sword/chest */
+              transform: translate(calc(-100cqw + 480px), 20px) scale(1.2);
+            }
+            80% {
+              /* Execute 2 full cycles of claw strikes directly into the front of the player, then pause cleanly */
+              transform: translate(calc(-100cqw + 480px), 20px) scale(1.2);
+            }
+            100% {
+              /* Slides back smoothly to home position on the right */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          @keyframes bossStaphSentinelHeavyLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            10% {
+              /* Lands close in front of the player */
+              transform: translate(calc(-100cqw + 370px), 25px) scale(1.45);
+            }
+            80% {
+              /* Execute 2 full cycles of arm strikes directly into the player, then pause cleanly */
+              transform: translate(calc(-100cqw + 370px), 25px) scale(1.45);
+            }
+            100% {
+              /* Slides back smoothly to home position on the right */
               transform: translate(0px, 0px) scale(1);
             }
           }
@@ -388,6 +555,18 @@ export function BossSpriteAnimator({
 
         .animate-boss-beam-recoil {
           animation-name: bossBeamRecoil;
+        }
+
+        .animate-boss-gram-positive-lunge {
+          animation-name: bossGramPositiveLunge;
+        }
+
+        .animate-boss-gram-positive-heavy-lunge {
+          animation-name: bossGramPositiveHeavyLunge;
+        }
+
+        .animate-boss-staph-sentinel-heavy-lunge {
+          animation-name: bossStaphSentinelHeavyLunge;
         }
 
         @keyframes bossProjectileFly {
