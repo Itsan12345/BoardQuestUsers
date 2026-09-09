@@ -42,7 +42,7 @@ import {
   type SubjectMetrics,
   type LearningModuleData
 } from '@/app/actions/study';
-import { getUserProfile, getUserSettingsAction } from '@/app/actions/user';
+import { getUserSettingsAction } from '@/app/actions/user';
 import { format, startOfDay, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ModuleViewerDialog, type LearningModule as DialogLearningModule } from '@/components/study/ModuleViewerDialog';
@@ -73,7 +73,6 @@ export default function StudyPage() {
   const [subjectPlans, setSubjectPlans] = useState<Record<string, { startDate: Date; endDate: Date }>>({});
   const [subjectMetrics, setSubjectMetrics] = useState<Record<string, SubjectMetrics>>({});
   const [program, setProgram] = useState<ReviewCenterProgramData | null>(null);
-  const [userLastName, setUserLastName] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(true);
@@ -88,13 +87,12 @@ export default function StudyPage() {
     setMounted(true);
     async function loadData() {
       try {
-        const [dbCategories, dbModules, plans, metrics, programData, userProfile, lessonCompletionsMap, userSettings] = await Promise.all([
+        const [dbCategories, dbModules, plans, metrics, programData, lessonCompletionsMap, userSettings] = await Promise.all([
           getCategories().catch(() => []),
           getLearningModules().catch(() => []),
           getStudyPlans().catch(() => []),
           getSubjectMetrics().catch(() => []),
           getReviewCenterProgram().catch(() => null),
-          getUserProfile().catch(() => null),
           getUserLessonCompletions().catch(() => ({} as Record<string, string>)),
           getUserSettingsAction().catch(() => null),
         ]);
@@ -103,10 +101,6 @@ export default function StudyPage() {
         const modulesList: LearningModuleData[] = dbModules || [];
 
         setProgram(programData);
-        if (userProfile?.name) {
-          const parts = userProfile.name.trim().split(/\s+/);
-          setUserLastName(parts[parts.length - 1]);
-        }
 
         const baseList = (dbCategories && Array.isArray(dbCategories)) ? dbCategories : [];
 
@@ -445,7 +439,7 @@ export default function StudyPage() {
                 Study <span className="text-primary">Subjects</span>
               </h1>
               <p className="text-[10px] lg:text-xs font-semibold text-muted-foreground uppercase tracking-[0.2em]">
-                Intel Gathering & Concept Mastery {userLastName && `• Aspirant ${userLastName}`}
+                Intel Gathering & Concept Mastery
               </p>
             </div>
 

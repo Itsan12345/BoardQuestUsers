@@ -1,16 +1,19 @@
 "use client";
 
+import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, XCircle, Loader2, Sparkles, BrainCircuit, Shield, Flame, Sword, ShieldPlus, Swords, ArrowRight, CornerDownLeft } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Sparkles, BrainCircuit, Shield, Flame, Sword, ShieldPlus, Swords, ArrowRight, CornerDownLeft, ZoomIn, Maximize2, X, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type Question = {
   id?: string;
   question: string;
   options: string[];
+  choiceImages?: (string | null)[];
+  imageUrl?: string | null;
   correctAnswer: string;
   explanation?: string;
   difficulty?: string;
@@ -44,13 +47,25 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
   const [activeMove, setActiveMove] = useState<'heavy' | 'normal' | 'defend' | null>(null);
   const [turnMap, setTurnMap] = useState<number[]>([]);
   const [eliminatedOptionLetters, setEliminatedOptionLetters] = useState<string[]>([]);
+  const [zoomedImage, setZoomedImage] = useState<{ url: string; title: string } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const nextActionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEliminatedOptionLetters([]);
+    setZoomedImage(null);
   }, [currentIndex]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && zoomedImage) {
+        setZoomedImage(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoomedImage]);
 
   const handleUsePipetteOfClarity = () => {
     if (clarityUsedThisBattle || !onUseClarity || !currentQuestion?.options) return;
@@ -103,7 +118,19 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
 
   const currentQuestionIndex = turnMap[currentIndex] ?? currentIndex;
   const currentQuestion = questions[currentQuestionIndex];
-  const optionLetters = Array.from({ length: currentQuestion.options.length }, (_, i) => String.fromCharCode(65 + i));
+  const optionLetters = Array.from({ length: currentQuestion?.options?.length || 0 }, (_, i) => String.fromCharCode(65 + i));
+
+  const isValidImageUrl = (url: any): boolean => {
+    return typeof url === 'string' && url.trim().length > 0 && url.trim() !== 'null' && url.trim() !== 'undefined';
+  };
+
+  const hasQuestionImage = isValidImageUrl(currentQuestion?.imageUrl);
+
+  const hasChoiceImages = Boolean(
+    currentQuestion?.choiceImages &&
+    Array.isArray(currentQuestion.choiceImages) &&
+    currentQuestion.choiceImages.some(img => isValidImageUrl(img))
+  );
 
   const handleSelectMove = (move: 'heavy' | 'normal' | 'defend') => {
     setActiveMove(move);
@@ -366,13 +393,50 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
         </div>
       ) : (
         <>
-          <div className="px-6 mb-8">
-            <h2 className="text-xl font-bold leading-snug font-headline text-foreground">
+          <div className="px-6 mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold leading-snug font-headline text-foreground">
               {currentQuestion.question}
             </h2>
           </div>
 
-          <div className="px-6 space-y-3">
+          {/* Question Specimen Image with Zoom/Lightbox feature */}
+          {hasQuestionImage && (
+            <div className="px-4 sm:px-6 mb-6">
+              <div 
+                onClick={() => setZoomedImage({ url: currentQuestion.imageUrl!, title: "Clinical Specimen / Reference Slide" })}
+                className="group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-border/80 bg-muted/20 hover:border-primary/60 transition-all duration-300 shadow-sm hover:shadow-xl max-w-xl mx-auto flex flex-col p-2.5 sm:p-3 bg-gradient-to-b from-card to-muted/20 backdrop-blur-sm"
+              >
+                <div className="w-full flex items-center justify-between pb-2 px-1 text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  <span className="flex items-center gap-1.5 text-primary">
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    Clinical Specimen / Reference Image
+                  </span>
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground group-hover:text-primary transition-colors font-mono">
+                    <ZoomIn className="w-3 h-3" />
+                    Tap to Enlarge
+                  </span>
+                </div>
+
+                <div className="relative w-full h-[220px] sm:h-[280px] md:h-[320px] flex items-center justify-center overflow-hidden rounded-xl bg-black/10 dark:bg-black/50 border border-border/40">
+                  <Image
+                    src={currentQuestion.imageUrl!}
+                    alt="Question Specimen Reference"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 600px"
+                    className="object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                    priority
+                    unoptimized={!currentQuestion.imageUrl?.includes('supabase.co')}
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-bold text-xs uppercase tracking-wider backdrop-blur-[1.5px]">
+                    <Maximize2 className="w-4 h-4" />
+                    <span>Enlarge Full Screen</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="px-4 sm:px-6 space-y-3">
             {currentQuestion.type === 'SHORT_ANSWER' ? (
               <div className="space-y-4">
                 <Input
@@ -413,6 +477,120 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                     Submit Answer <CornerDownLeft className="w-4 h-4" />
                   </Button>
                 )}
+              </div>
+            ) : hasChoiceImages ? (
+              /* Responsive Choice Images Grid (1 col on mobile, 2 cols on tablet/desktop) */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                {currentQuestion.options.map((option, idx) => {
+                  const letter = optionLetters[idx];
+                  const isSelected = selectedAnswer === letter;
+                  const isEliminated = eliminatedOptionLetters.includes(letter);
+                  const choiceImg = currentQuestion.choiceImages?.[idx];
+                  const hasThisImg = isValidImageUrl(choiceImg);
+
+                  const isCorrect = isAnswered && letter === currentQuestion.correctAnswer;
+                  const isWrong = isAnswered && isSelected && !isCorrect;
+
+                  return (
+                    <div
+                      key={letter}
+                      onClick={() => {
+                        if (!isAnswered && !isTransitioning && !isEliminated) {
+                          handleSubmit(letter);
+                        }
+                      }}
+                      className={cn(
+                        "flex flex-col p-3 sm:p-4 rounded-2xl border-2 transition-all text-left shadow-xs relative overflow-hidden cursor-pointer group select-none",
+                        !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border hover:border-primary/60 hover:bg-primary/5 hover:shadow-md dark:hover:bg-primary/10",
+                        isCorrect && "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 shadow-emerald-500/20 text-emerald-950 dark:text-emerald-200 ring-2 ring-emerald-500/30",
+                        isWrong && "bg-red-50 dark:bg-red-950/40 border-red-500 shadow-red-500/20 text-red-950 dark:text-red-200 ring-2 ring-red-500/30",
+                        isAnswered && !isSelected && !isCorrect && "opacity-50 grayscale",
+                        isEliminated && "opacity-40 grayscale bg-muted border-border cursor-not-allowed line-through"
+                      )}
+                    >
+                      {/* Header row: Letter badge + Option text + Zoom action */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={cn(
+                            "flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs sm:text-sm transition-all",
+                            isCorrect ? "bg-green-500 text-white shadow-xs" : 
+                            isWrong ? "bg-red-500 text-white shadow-xs" : 
+                            isEliminated ? "bg-slate-300 text-slate-500" :
+                            isSelected ? "bg-primary text-white" : "bg-muted text-primary border border-border"
+                          )}>
+                            {isCorrect ? (
+                              <CheckCircle2 className="w-4 h-4" />
+                            ) : isWrong ? (
+                              <XCircle className="w-4 h-4" />
+                            ) : (
+                              letter
+                            )}
+                          </div>
+                          {option && option.trim().length > 0 && (
+                            <span className={cn(
+                              "text-xs sm:text-sm font-bold truncate",
+                              isEliminated && "line-through text-slate-400",
+                              isCorrect ? "text-green-700 dark:text-green-300" : isWrong ? "text-red-700 dark:text-red-300" : "text-foreground"
+                            )}>
+                              {option}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isEliminated && (
+                            <span className="text-[7.5px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1.5 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                              Filtered Out 🧪
+                            </span>
+                          )}
+                          {hasThisImg && (
+                            <button
+                              type="button"
+                              title="Enlarge option image"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setZoomedImage({ url: choiceImg!, title: `Choice ${letter}: ${option || 'Clinical Specimen'}` });
+                              }}
+                              className="p-1 sm:p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/40 hover:border-primary/40 bg-card/60"
+                            >
+                              <ZoomIn className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Choice Image thumbnail container */}
+                      {hasThisImg ? (
+                        <div 
+                          className="relative w-full h-36 sm:h-44 md:h-48 rounded-xl overflow-hidden bg-black/5 dark:bg-black/40 border border-border/50 flex items-center justify-center group/img"
+                        >
+                          <Image
+                            src={choiceImg!}
+                            alt={`Option ${letter}`}
+                            fill
+                            sizes="(max-width: 640px) 100vw, 350px"
+                            className="object-contain p-1.5 transition-transform duration-300 group-hover/img:scale-105"
+                            unoptimized={!choiceImg?.includes('supabase.co')}
+                          />
+                          {/* Quick zoom icon overlay */}
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setZoomedImage({ url: choiceImg!, title: `Choice ${letter}: ${option || 'Clinical Specimen'}` });
+                            }}
+                            className="absolute top-2 right-2 p-1.5 rounded-md bg-black/60 text-white opacity-0 group-hover/img:opacity-100 transition-opacity backdrop-blur-xs hover:scale-110 z-10"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full h-24 rounded-xl border border-dashed border-border/50 flex items-center justify-center text-xs text-muted-foreground font-semibold">
+                          <span>{option}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               currentQuestion.options.map((option, idx) => {
@@ -522,6 +700,72 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
             </div>
           )}
         </>
+      )}
+
+      {/* High-Resolution Specimen Lightbox Modal */}
+      {zoomedImage && (
+        <div 
+          className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setZoomedImage(null)}
+        >
+          <div 
+            className="relative max-w-4xl w-full max-h-[92vh] flex flex-col bg-background/95 border border-border/80 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border/50 bg-muted/30">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-xs sm:text-sm text-foreground truncate">
+                    {zoomedImage.title}
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono">
+                    High-Resolution Clinical Asset
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setZoomedImage(null)}
+                className="h-8 w-8 p-0 rounded-full hover:bg-muted"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Specimen image display */}
+            <div className="relative flex-1 min-h-[300px] h-[65vh] sm:h-[70vh] w-full flex items-center justify-center p-3 sm:p-6 bg-black/95 overflow-hidden">
+              <Image
+                src={zoomedImage.url}
+                alt={zoomedImage.title}
+                fill
+                sizes="95vw"
+                className="object-contain p-2 rounded-lg select-none"
+                unoptimized={!zoomedImage.url?.includes('supabase.co')}
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 border-t border-border/50 bg-muted/20 text-[10px] sm:text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Interactive Diagnostic Viewer
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setZoomedImage(null)}
+                className="h-7 text-xs font-bold rounded-lg px-3"
+              >
+                Close Preview
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

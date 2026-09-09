@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { logout } from '@/app/actions/auth';
 import { getUserProfile } from '@/app/actions/user';
+import { getDailyLoginStatusAction } from '@/app/actions/daily-login';
 import { getStudentGuidanceAssignmentsAction, type GuidanceAssignmentRecord } from '@/app/actions/guidance';
 import { GuidanceCounselingDialog } from '@/components/guidance/GuidanceCounselingDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -178,6 +179,7 @@ interface UserProfile {
   level: number;
   xp: number;
   streak: number;
+  loginStreak?: number;
   equippedItem?: string | null;
   inventory?: string | Record<string, number>;
   location: string;
@@ -248,16 +250,22 @@ function ProfileContent() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const [profile, guidanceRes, userBadgesRes, masterBadgesRes] = await Promise.all([
+        const [profile, guidanceRes, userBadgesRes, masterBadgesRes, dailyStatusRes] = await Promise.all([
           getUserProfile() as Promise<UserProfile | null>,
           getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] })),
           getUserBadgesAction().catch(() => ({ success: false, data: [] })),
-          getAllMasterBadgesAction().catch(() => ({ success: false, data: [] }))
+          getAllMasterBadgesAction().catch(() => ({ success: false, data: [] })),
+          getDailyLoginStatusAction().catch(() => null)
         ]);
 
         if (!profile) {
           router.replace('/login');
           return;
+        }
+
+        if (dailyStatusRes && typeof dailyStatusRes.currentStreak === 'number') {
+          profile.streak = Math.max(profile.streak ?? 0, dailyStatusRes.currentStreak);
+          profile.loginStreak = dailyStatusRes.currentStreak;
         }
 
         setUserProfile(profile);
@@ -406,7 +414,7 @@ function ProfileContent() {
                       </span>
                     </div>
                     <div className="h-2.5 w-full bg-muted rounded-full overflow-hidden border border-border/60 shadow-inner">
-                      <div 
+                      <div
                         className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-1000 ease-out"
                         style={{ width: `${progress.percentage}%` }}
                       />
@@ -511,16 +519,18 @@ function ProfileContent() {
             <Card className="border border-border shadow-lg rounded-2xl">
               <CardHeader className="pb-3 p-4 sm:p-6 sm:pb-3">
                 <CardTitle className="text-base sm:text-lg font-semibold text-foreground">
-                  Aspirants Stats
+                  Aspirant Stats
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
                 <div className="flex items-center justify-between p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span className="font-semibold text-xs sm:text-sm text-foreground">{userProfile.streak} Days Streak</span>
+                    <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                      {userProfile.streak} {userProfile.streak === 1 ? 'Day' : 'Days'} Streak
+                    </span>
                   </div>
-                  <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-400 font-semibold text-[10px]">+20% XP</Badge>
+                  <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-400 font-semibold text-[10px] shrink-0">+20% XP</Badge>
                 </div>
 
                 <div className="space-y-2">
@@ -969,7 +979,7 @@ function ProfileContent() {
             .then(res => {
               if (res.success && res.data) setGuidanceList(res.data);
             })
-            .catch(() => {});
+            .catch(() => { });
         }}
       />
     </div>

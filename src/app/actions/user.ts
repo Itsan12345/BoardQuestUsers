@@ -4,7 +4,7 @@
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { startOfWeek, differenceInCalendarDays } from 'date-fns';
+import { startOfWeek, differenceInCalendarDays, startOfDay, parseISO } from 'date-fns';
 import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
 import clientPromise from '@/lib/mongodb-client';
@@ -16,15 +16,19 @@ export interface StreakValidationResult {
 }
 
 /**
- * Validates and dynamically syncs the user's daily study streak.
- * If the user has not completed a quest or exam within the 24-hour/daily cycle (daysDiff >= 2),
- * the streak automatically resets to 0 in MongoDB and the returned state.
+ * Validates and dynamically syncs the user's streak based on daily login, quests, and exams.
+ * Keeps MongoDB loginStreak, DailyLogin, and Prisma user.streak in sync.
  */
 export async function syncAndValidateUserStreak(userId: string, currentStreak: number): Promise<StreakValidationResult> {
   try {
     if (!userId) return { streak: 0, streakBroken: false };
 
-    const [lastAchievement, lastExam] = await Promise.all([
+    let userObjId: ObjectId | null = null;
+    try {
+      userObjId = new ObjectId(userId);
+    } catch {}
+
+    const [lastAchievement, lastExam, mongoData] = await Promise.all([
       prisma.achievement.findFirst({
         where: { userId, type: 'quest' },
         orderBy: { timestamp: 'desc' },
@@ -34,40 +38,107 @@ export async function syncAndValidateUserStreak(userId: string, currentStreak: n
         where: { userId },
         orderBy: { timestamp: 'desc' },
         select: { timestamp: true }
-      })
+      }),
+      (async () => {
+        try {
+          const client = await clientPromise;
+          const db = client.db();
+          const userConditions: any[] = [{ userId }, { studentId: userId }];
+          if (userObjId) {
+            userConditions.push({ userId: userObjId }, { studentId: userObjId });
+          }
+
+          const userQuery: any = userObjId ? { $or: [{ _id: userObjId }, { _id: userId }] } : { _id: userId };
+          const [mongoUser, latestDailyLogin] = await Promise.all([
+            db.collection('User').findOne(userQuery),
+            db.collection('DailyLogin').findOne({ $or: userConditions }, { sort: { createdAt: -1 } })
+          ]);
+
+          return { mongoUser, latestDailyLogin };
+        } catch (e) {
+          return { mongoUser: null, latestDailyLogin: null };
+        }
+      })()
     ]);
 
-    const lastTime = lastAchievement?.timestamp && lastExam?.timestamp
-      ? (new Date(lastAchievement.timestamp).getTime() > new Date(lastExam.timestamp).getTime() ? lastAchievement.timestamp : lastExam.timestamp)
-      : (lastAchievement?.timestamp || lastExam?.timestamp);
+    const { mongoUser, latestDailyLogin } = mongoData;
 
-    if (!lastTime) {
+    // Determine the highest known streak from daily logins and user records
+    const loginStreak = Math.max(
+      0,
+      latestDailyLogin?.consecutiveStreak ?? 0,
+      latestDailyLogin?.loginStreak ?? 0,
+      mongoUser?.loginStreak ?? 0,
+      mongoUser?.streak ?? 0,
+      currentStreak ?? 0
+    );
+
+    // Identify last active times
+    const activityDates: Date[] = [];
+    if (lastAchievement?.timestamp) activityDates.push(new Date(lastAchievement.timestamp));
+    if (lastExam?.timestamp) activityDates.push(new Date(lastExam.timestamp));
+    if (latestDailyLogin?.createdAt) activityDates.push(new Date(latestDailyLogin.createdAt));
+    if (latestDailyLogin?.dateKey) {
+      try {
+        activityDates.push(parseISO(latestDailyLogin.dateKey));
+      } catch {}
+    }
+    if (mongoUser?.lastLoginDate) {
+      try {
+        activityDates.push(parseISO(mongoUser.lastLoginDate));
+      } catch {}
+    }
+    if (mongoUser?.lastLoginAt) activityDates.push(new Date(mongoUser.lastLoginAt));
+
+    if (activityDates.length === 0) {
       if (currentStreak > 0) {
         await prisma.user.update({
           where: { id: userId },
           data: { streak: 0 }
-        });
+        }).catch(() => {});
       }
       return { streak: 0, streakBroken: false };
     }
 
-    const now = new Date();
-    const daysDiff = differenceInCalendarDays(now, new Date(lastTime));
+    // Most recent activity across all mechanisms
+    activityDates.sort((a, b) => b.getTime() - a.getTime());
+    const mostRecentActivity = activityDates[0];
 
-    // If 2 or more calendar days have passed, the streak protection window expired
+    const now = new Date();
+    const daysDiff = differenceInCalendarDays(startOfDay(now), startOfDay(mostRecentActivity));
+
+    // If 2 or more calendar days have elapsed without login or activity, streak resets
     if (daysDiff >= 2) {
-      if (currentStreak > 0) {
+      if (loginStreak > 0 || currentStreak > 0) {
         await prisma.user.update({
           where: { id: userId },
           data: { streak: 0 }
-        });
-        return { streak: 0, streakBroken: true, previousStreak: currentStreak };
+        }).catch(() => {});
+        try {
+          const client = await clientPromise;
+          const db = client.db();
+          const updateQuery: any = userObjId ? { $or: [{ _id: userObjId }, { _id: userId }] } : { _id: userId };
+          await db.collection('User').updateOne(
+            updateQuery,
+            { $set: { loginStreak: 0 } }
+          );
+        } catch {}
+        return { streak: 0, streakBroken: true, previousStreak: Math.max(currentStreak, loginStreak) };
       }
-      // Streak is 0 and previous quest was >= 2 days ago
       return { streak: 0, streakBroken: true };
     }
 
-    return { streak: currentStreak, streakBroken: false };
+    // Active streak: sync back to Prisma so all callers get the updated daily streak
+    const finalStreak = loginStreak > 0 ? loginStreak : (daysDiff <= 1 ? Math.max(1, currentStreak) : 0);
+
+    if (finalStreak !== currentStreak) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { streak: finalStreak }
+      }).catch(() => {});
+    }
+
+    return { streak: finalStreak, streakBroken: false };
   } catch (err) {
     console.error('Error in syncAndValidateUserStreak:', err);
     return { streak: currentStreak, streakBroken: false };
@@ -250,6 +321,8 @@ export async function getUserProfile() {
 
     const result = {
       ...user,
+      streak: streakResult.streak,
+      loginStreak: streakResult.streak,
       todayQuestions,
       classString,
       userRank,

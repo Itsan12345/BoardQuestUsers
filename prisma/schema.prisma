@@ -83,9 +83,13 @@ model Question {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   question      String
   choices       String[]
+  choiceImages  String[] @default([])
+  imageUrl      String?
   correctAnswer String
   status        QuestionStatus
   isPublished   Boolean  @default(false)
+
+  categoryId    String?  @db.ObjectId
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

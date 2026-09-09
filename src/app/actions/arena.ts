@@ -131,6 +131,8 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
             id: true,
             question: true,
             choices: true,
+            choiceImages: true,
+            imageUrl: true,
             correctAnswer: true,
             difficulty: true,
             type: true,
@@ -151,6 +153,12 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
       id: q._id ? q._id.toString() : q.id,
       question: q.question || 'Untitled Question',
       choices: q.choices || q.options || [],
+      choiceImages: Array.isArray(q.choiceImages)
+        ? q.choiceImages.map((img: any) => (typeof img === 'string' && img.trim().length > 0 && img !== 'null' && img !== 'undefined') ? img.trim() : null)
+        : [],
+      imageUrl: (typeof q.imageUrl === 'string' && q.imageUrl.trim().length > 0 && q.imageUrl !== 'null' && q.imageUrl !== 'undefined')
+        ? q.imageUrl.trim()
+        : null,
       correctAnswer: q.correctAnswer || '',
       difficulty: String(q.difficulty || 'EASY').toUpperCase(),
       type: q.type || 'MCQ'
@@ -277,14 +285,21 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
       let correctAnswerLetter = q.correctAnswer;
       if (correctIndex !== -1) {
         correctAnswerLetter = String.fromCharCode(65 + correctIndex);
-      } else if (["A", "B", "C", "D"].includes(q.correctAnswer)) {
-        correctAnswerLetter = q.correctAnswer;
+      } else if (["A", "B", "C", "D"].includes(String(q.correctAnswer).trim().toUpperCase())) {
+        correctAnswerLetter = String(q.correctAnswer).trim().toUpperCase();
+      } else if (typeof q.correctAnswer === 'string') {
+        const match = q.correctAnswer.trim().match(/^option\s*([A-D])$/i);
+        if (match) {
+          correctAnswerLetter = match[1].toUpperCase();
+        }
       }
 
       return {
         id: q.id,
         question: q.question,
         options: options,
+        choiceImages: Array.isArray(q.choiceImages) ? q.choiceImages : [],
+        imageUrl: q.imageUrl || null,
         correctAnswer: correctAnswerLetter,
         explanation: undefined,
         difficulty: String(q.difficulty || 'EASY').toUpperCase(),
