@@ -44,7 +44,7 @@ import { completeQuest, getNodeClearsAction, saveNodeClearAction } from '@/app/a
 import { getCategories } from '@/app/actions/study';
 import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction } from '@/app/actions/user';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
-import { playSfx } from '@/lib/audio-manager';
+import { playSfx, preloadSpecterSounds, preloadFinalBossMusic, playFinalBossMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
@@ -87,7 +87,7 @@ const SUBJECT_METADATA: Record<string, {
     color: "bg-primary",
     enemy: "Hyperglycemic Specter",
     imageUrl: "/images/ClinChem256.png",
-    backgroundUrl: "/images/ClinChem256_bg.png",
+    backgroundUrl: "/images/ClinChem256_bg1.webp",
     arenaBackgroundUrl: "/ui/background_clinicalchem.png",
     difficulty: 4,
     biome: "Crystal Peak Archipelago",
@@ -99,7 +99,7 @@ const SUBJECT_METADATA: Record<string, {
     color: "bg-accent",
     enemy: "Sickle-Cell Reaper",
     imageUrl: "/images/Hema256.png",
-    backgroundUrl: "/images/Hema256_bg.png",
+    backgroundUrl: "/images/Hema256_bg.webp",
     difficulty: 3,
     biome: "The Sanguine Marshes",
     description: "Crimson rivers flow through iron-rich soil. Study the life force within.",
@@ -124,7 +124,7 @@ const SUBJECT_METADATA: Record<string, {
     color: "bg-primary",
     enemy: "Biohazard Overlord",
     imageUrl: "/images/MicroBio256.png",
-    backgroundUrl: "/images/MicroBio256_bg.png",
+    backgroundUrl: "/images/MicroBio256_bg.webp",
     difficulty: 5,
     biome: "Toxic Spore Jungles",
     description: "Invisible dangers lurk in every shadow. Identification is survival."
@@ -135,7 +135,7 @@ const SUBJECT_METADATA: Record<string, {
     color: "bg-accent",
     enemy: "Anti-Serum Hydra",
     imageUrl: "/images/ImmunoHema256.png",
-    backgroundUrl: "/images/ImmunoHema256_bg.png",
+    backgroundUrl: "/images/ImmunoHema256_bg.webp",
     difficulty: 5,
     biome: "The Serum Sea",
     description: "Navigate the complex tides of antigens and antibodies."
@@ -146,7 +146,7 @@ const SUBJECT_METADATA: Record<string, {
     color: "bg-primary",
     enemy: "Crystal Golem",
     imageUrl: "/images/ClinMicro256.png",
-    backgroundUrl: "/images/ClinMicro256_bg.png",
+    backgroundUrl: "/images/ClinMicro256_bg.webp",
     difficulty: 2,
     biome: "Amber Sediment Cliffs",
     description: "Examine the smallest details that reveal the greatest truths.",
@@ -157,7 +157,7 @@ const SUBJECT_METADATA: Record<string, {
     color: "bg-accent",
     enemy: "Legal Beholder",
     imageUrl: "/images/Hispatho256.png",
-    backgroundUrl: "/images/Hispatho256_bg.png",
+    backgroundUrl: "/images/Hispatho256_bg.webp",
     difficulty: 3,
     biome: "The Citadel of Codes",
     description: "Where science meets the letter of the law. Preserve the ethics."
@@ -168,7 +168,7 @@ const SUBJECT_METADATA: Record<string, {
     color: "bg-accent",
     enemy: "Legal Beholder",
     imageUrl: "/images/Hispatho256.png",
-    backgroundUrl: "/images/Hispatho256_bg.png",
+    backgroundUrl: "/images/Hispatho256_bg.webp",
     difficulty: 3,
     biome: "The Citadel of Codes",
     description: "Where science meets the letter of the law. Preserve the ethics."
@@ -179,7 +179,7 @@ const SUBJECT_METADATA: Record<string, {
     color: "bg-accent",
     enemy: "Legal Beholder",
     imageUrl: "/images/Hispatho256.png",
-    backgroundUrl: "/images/Hispatho256_bg.png",
+    backgroundUrl: "/images/Hispatho256_bg.webp",
     difficulty: 3,
     biome: "The Citadel of Codes",
     description: "Where science meets the letter of the law. Preserve the ethics."
@@ -198,7 +198,7 @@ function getSubjectMeta(subjectName: string) {
       color: "bg-accent",
       enemy: "Legal Beholder",
       imageUrl: "/images/Hispatho256.png",
-      backgroundUrl: "/images/Hispatho256_bg.png",
+      backgroundUrl: "/images/Hispatho256_bg.webp",
       difficulty: 3,
       biome: "The Citadel of Codes",
       description: "Where science meets the letter of the law. Preserve the ethics."
@@ -226,7 +226,7 @@ function getSubjectMeta(subjectName: string) {
     color: "bg-primary",
     enemy: "Exam Guardian",
     imageUrl: "/images/Hispatho256.png",
-    backgroundUrl: "/images/Hispatho256_bg.png",
+    backgroundUrl: "/images/Hispatho256_bg.webp",
     arenaBackgroundUrl: "/ui/background_clinicalchem.png",
     difficulty: 3,
     biome: "Laboratory Science Realm",
@@ -273,6 +273,8 @@ export default function LearningQuest() {
   const [quizMode, setQuizMode] = useState<'learning' | 'test' | 'boss-battle'>('learning');
   const [modeSelectDialogOpen, setModeSelectDialogOpen] = useState(false);
   const [leaveConfirmDialogOpen, setLeaveConfirmDialogOpen] = useState(false);
+  const [isFleeing, setIsFleeing] = useState(false);
+  const [fleeProgress, setFleeProgress] = useState(false);
   const [setupStep, setSetupStep] = useState<'mode' | 'details' | 'limit'>('mode');
   const [mobileModalStep, setMobileModalStep] = useState<'info' | 'action'>('info');
   const [score, setScore] = useState(0);
@@ -347,7 +349,12 @@ export default function LearningQuest() {
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      stopFinalBossMusic();
+      stopLearningModeMusic();
+      stopTestModeMusic();
+    };
   }, []);
 
   const toggleFullscreen = async () => {
@@ -832,6 +839,10 @@ export default function LearningQuest() {
 
   // Preload Battle & Inventory Assets on Mount for Instant Rendering
   useEffect(() => {
+    preloadSpecterSounds();
+    preloadFinalBossMusic();
+    preloadLearningModeMusic();
+    preloadTestModeMusic();
     const assetsToPreload = [
       '/ui/Inventory_bg.png',
       '/ui/Inventory_icon.png',
@@ -1396,6 +1407,9 @@ export default function LearningQuest() {
   }, [selectedSubject, dynamicCategories]);
 
   const startQuest = async (limit: number = 50, specificDifficulty?: string) => {
+    stopFinalBossMusic();
+    stopLearningModeMusic();
+    stopTestModeMusic();
     setIsLoading(true);
     setUserAnswers([]);
     setScore(0);
@@ -1695,6 +1709,11 @@ export default function LearningQuest() {
             setEnemyHealth(0);
             setBossShieldActive(false);
             setPlayerPoisoned(false);
+            if (isChapter3FinalBoss) {
+              playFinalBossMusic('victory');
+              const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+              handleFinish(currentScore, 'victory');
+            }
           } else if (battleStage === 1) {
             setBattleStage(2);
             setBossShieldActive(false);
@@ -1796,20 +1815,40 @@ export default function LearningQuest() {
             });
           } else {
             // Boss-Battle & Test Mode: Strict Game Over Defeat
+            const activeNodes = getSubjectNodes(selectedSubject);
+            const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+            const isChapter3FinalBoss = quizMode === 'boss-battle' && currentActiveNode?.nodeNumber === 3;
+
             addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-600 font-black');
             setJudgementText('GAME OVER');
-            playSfx('wrong');
+            if (isChapter3FinalBoss) {
+              playFinalBossMusic('defeat');
+            } else if (quizMode === 'test') {
+              playTestModeMusic('defeat');
+            } else {
+              playSfx('wrong');
+            }
             toast({
               variant: "destructive",
               title: "💀 Defeated in Arena!",
               description: "Your health dropped to 0. Review your answer performance to strengthen your weak areas!",
             });
 
-            setTimeout(() => {
-              setJudgementText(null);
+            if (isChapter3FinalBoss) {
+              // For Chapter 3 Final Boss, handleFinish will transition ONLY after MusicWhenDefeatedByFinalBoss has played!
               const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
               handleFinish(currentScore, 'defeat');
-            }, 1800);
+            } else if (quizMode === 'test') {
+              // For Test Mode, handleFinish will transition ONLY after MusicWhenLostInTestMode has played!
+              const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+              handleFinish(currentScore, 'defeat');
+            } else {
+              setTimeout(() => {
+                setJudgementText(null);
+                const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+                handleFinish(currentScore, 'defeat');
+              }, 1800);
+            }
           }
         }
       };
@@ -1837,10 +1876,10 @@ export default function LearningQuest() {
           const resetDelay = isSpikes
             ? 1050
             : isGramPositiveHeavy
-            ? 1650
-            : isStaphSentinelHeavy
-            ? 1420
-            : (isGramPositiveBoss ? 1080 : 950);
+              ? 1650
+              : isStaphSentinelHeavy
+                ? 1420
+                : (isGramPositiveBoss ? 1080 : 950);
           const impactDelay = isSpikes ? 650 : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (attackType === 'heavy_attack' ? 320 : 300)));
           setTimeout(applyPlayerDamage, impactDelay);
           if (isGramPositiveHeavy) {
@@ -1866,10 +1905,10 @@ export default function LearningQuest() {
           const resetDelay = isSpikes
             ? 1050
             : isGramPositiveHeavy
-            ? 1650
-            : isStaphSentinelHeavy
-            ? 1420
-            : (isGramPositiveBoss ? 1080 : 950);
+              ? 1650
+              : isStaphSentinelHeavy
+                ? 1420
+                : (isGramPositiveBoss ? 1080 : 950);
           const impactDelay = isSpikes ? 650 : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (action === 'heavy' ? 320 : 300)));
           setTimeout(applyPlayerDamage, impactDelay);
           if (isGramPositiveHeavy) {
@@ -1925,14 +1964,12 @@ export default function LearningQuest() {
         }
       }, 400);
 
-      // Step 2: Once HP has visibly drained to 0, display the floating verdict and fanfare
+      // Step 2: Once HP has visibly drained to 0, display the floating verdict
       setTimeout(() => {
         if (isOverallPassing) {
           setJudgementText('YOU WON');
-          playSfx('victory');
         } else {
           setJudgementText('YOU FAILED');
-          playSfx('defeat');
         }
       }, 1100);
     }
@@ -2019,14 +2056,6 @@ export default function LearningQuest() {
     }
     setBattleOutcome(finalOutcome!);
 
-    if (quizMode !== 'learning') {
-      if (finalOutcome === 'victory') {
-        playSfx('victory');
-      } else {
-        playSfx('defeat');
-      }
-    }
-
     if (questStartTime) {
       const completionTime = Math.floor((Date.now() - questStartTime) / 1000);
       setQuestCompletionTime(completionTime);
@@ -2049,8 +2078,11 @@ export default function LearningQuest() {
       setJudgementText(finalOutcome === 'victory' ? 'VICTORY' : 'GAME OVER');
     }
 
-    // Wait 2 seconds for animation, then show finished screen
-    setTimeout(() => {
+    const activeNodes = getSubjectNodes(selectedSubject);
+    const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+    const isChapter3FinalBoss = quizMode === 'boss-battle' && currentActiveNode?.nodeNumber === 3;
+
+    const transitionToPostBattle = () => {
       setJudgementText(null);
       setIsFinished(true);
 
@@ -2060,7 +2092,35 @@ export default function LearningQuest() {
       } else {
         handleConfidenceSubmit('Steady');
       }
-    }, 2000);
+    };
+
+    if (isChapter3FinalBoss) {
+      // Transition to post-battle STRICTLY after MusicWhenFinalBossIsDefeated / MusicWhenDefeatedByFinalBoss finishes playing!
+      const outcomeType = finalOutcome === 'victory' ? 'victory' : 'defeat';
+      playFinalBossMusic(outcomeType, () => {
+        transitionToPostBattle();
+      });
+    } else if (quizMode === 'learning') {
+      // Transition to post-battle STRICTLY after MusicWhenWinInLearningMode / MusicWhenLostInLearningMode finishes playing!
+      const outcomeType = finalOutcome === 'victory' ? 'victory' : 'defeat';
+      playLearningModeMusic(outcomeType, () => {
+        transitionToPostBattle();
+      });
+    } else if (quizMode === 'test') {
+      // Transition to post-battle STRICTLY after MusicWhenWinInTestMode / MusicWhenLostInTestMode finishes playing!
+      const outcomeType = finalOutcome === 'victory' ? 'victory' : 'defeat';
+      playTestModeMusic(outcomeType, () => {
+        transitionToPostBattle();
+      });
+    } else {
+      if (finalOutcome === 'victory') {
+        playSfx('victory');
+      } else {
+        playSfx('defeat');
+      }
+      // Standard encounters: wait 2 seconds for animation, then show finished screen
+      setTimeout(transitionToPostBattle, 2000);
+    }
   };
 
   const handleConfidenceSubmit = async (selectedLevel: string) => {
@@ -2560,6 +2620,9 @@ export default function LearningQuest() {
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pb-12 w-full max-w-xl mx-auto px-2 sm:px-0 mt-6 sm:mt-8">
             <Button
               onClick={() => {
+                stopFinalBossMusic();
+                stopLearningModeMusic();
+                stopTestModeMusic();
                 setIsStarted(false);
                 setIsFinished(false);
                 setShowBattleLog(false);
@@ -2568,7 +2631,7 @@ export default function LearningQuest() {
             >
               Re-Enter Arena
             </Button>
-            <Link href="/" className="flex-1 flex">
+            <Link href="/" className="flex-1 flex" onClick={() => { stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); }}>
               <Button className="w-full h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap">
                 Back to Dashboard
               </Button>
@@ -2578,6 +2641,35 @@ export default function LearningQuest() {
       </div>
     );
   }
+
+  const handleFleeArena = () => {
+    stopFinalBossMusic();
+    stopLearningModeMusic();
+    stopTestModeMusic();
+    setLeaveConfirmDialogOpen(false);
+    setIsFleeing(true);
+    setFleeProgress(false);
+    playSfx('flee');
+    setHitFlash(true);
+    addFloatingText('player', 'ARENA WITHDRAWAL', 'text-red-400 font-bytebounce text-2xl font-black tracking-widest');
+
+    setTimeout(() => {
+      setFleeProgress(true);
+    }, 60);
+
+    setTimeout(() => {
+      setHitFlash(false);
+    }, 500);
+
+    setTimeout(() => {
+      setIsFleeing(false);
+      setIsStarted(false);
+      toast({
+        title: "Tactical Retreat",
+        description: "You safely withdrew from the arena. XP and session rewards were forfeited.",
+      });
+    }, 2800);
+  };
 
   if (isStarted) {
     const _maxPlayerHp = getPlayerMaxHp();
@@ -2603,6 +2695,84 @@ export default function LearningQuest() {
           hitFlash && "animate-shake"
         )}
       >
+        {/* Gamified Pixelated Flee Arena Overlay */}
+        {isFleeing && (
+          <div className="fixed inset-0 z-[150] flex flex-col items-center justify-between bg-black/95 backdrop-blur-md animate-in fade-in duration-300 pointer-events-auto select-none overflow-hidden py-6 px-4">
+            {/* Ambient Retro Crimson Glow & CRT Scanlines */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(220,38,38,0.35)_0%,_rgba(0,0,0,0.98)_80%)] animate-pulse pointer-events-none" />
+            <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(0,0,0,0.4)_0px,rgba(0,0,0,0.4)_2px,transparent_2px,transparent_4px)] pointer-events-none opacity-60" />
+
+            {/* Retro Cinema Top Strip */}
+            <div className="relative z-10 w-full flex items-center justify-between border-y-2 border-black/80 dark:border-red-900/60 bg-black/85 px-4 py-2 font-bytebounce text-xs sm:text-sm uppercase tracking-widest text-amber-400 shadow-[0_2px_0_0_rgba(0,0,0,1)]">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 animate-ping" />
+                <span className="font-black text-red-400">EMERGENCY PROTOCOL</span>
+                <span className="text-zinc-600">::</span>
+                <span className="text-zinc-300">SECTOR WITHDRAWAL</span>
+              </div>
+              <div className="hidden sm:block text-zinc-400 font-black tracking-widest">
+                SYS.EVAC // ACTIVE
+              </div>
+            </div>
+
+            {/* Main Center Content: Authentic Pixel RPG Battle Verdict */}
+            <div className="relative z-10 flex flex-col items-center text-center space-y-4 sm:space-y-5 max-w-xl mx-auto my-auto animate-in zoom-in-90 duration-300">
+              {/* Gamified Header Subtitle Tag */}
+              <div className="font-bytebounce uppercase tracking-widest font-black text-sm sm:text-base md:text-lg text-amber-400 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] border border-amber-500/40 bg-black/80 px-4 py-1 shadow-[2px_2px_0_0_rgba(0,0,0,1)]">
+                TACTICAL RETREAT • BATTLE ABANDONED
+              </div>
+
+              {/* Giant Pixelated Title */}
+              <h1 className="font-bytebounce font-black text-6xl sm:text-8xl md:text-9xl tracking-wider uppercase text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,0.95)] [text-shadow:3px_3px_0_#000,5px_5px_0_rgba(0,0,0,0.9)] leading-none select-none my-0.5">
+                FLED THE ARENA
+              </h1>
+
+              {/* Pixelated RPG Dialogue Box */}
+              <div className="border-4 border-black dark:border-red-950/80 bg-neutral-950/95 p-4 sm:p-5 shadow-[5px_5px_0_0_rgba(0,0,0,1)] dark:shadow-[5px_5px_0_0_rgba(239,68,68,0.4)] max-w-md w-full relative">
+                {/* 4 Corner Pixel Accents */}
+                <div className="absolute top-1 left-1 w-1.5 h-1.5 bg-amber-400" />
+                <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400" />
+                <div className="absolute bottom-1 left-1 w-1.5 h-1.5 bg-amber-400" />
+                <div className="absolute bottom-1 right-1 w-1.5 h-1.5 bg-amber-400" />
+
+                <div className="space-y-2 text-center">
+                  <p className="font-bytebounce text-base sm:text-lg text-red-400 tracking-wider uppercase font-black">
+                    STATUS: RETREAT CONFIRMED
+                  </p>
+                  <div className="h-0.5 w-full bg-red-900/60" />
+                  <p className="font-bytebounce text-xs sm:text-sm text-zinc-300 tracking-wide uppercase leading-relaxed font-bold">
+                    ALL SESSION XP, NODAL STARS, AND ENCOUNTER REWARDS HAVE BEEN FORFEITED!
+                  </p>
+                </div>
+              </div>
+
+              {/* Retro Pixel Evacuation Gauge */}
+              <div className="w-64 sm:w-80 space-y-1.5 pt-1">
+                <div className="flex justify-between font-bytebounce text-xs sm:text-sm tracking-widest text-zinc-400 uppercase font-black">
+                  <span>DISENGAGING...</span>
+                  <span className="text-amber-400">{fleeProgress ? '100% ESCAPED' : 'IN PROGRESS'}</span>
+                </div>
+                {/* Pixel bar frame */}
+                <div className="h-4 w-full bg-black border-2 border-black dark:border-zinc-700 p-0.5 shadow-[2px_2px_0_0_rgba(0,0,0,1)] flex">
+                  <div
+                    className="h-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 transition-all ease-linear"
+                    style={{
+                      width: fleeProgress ? '100%' : '0%',
+                      transitionDuration: '2400ms',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Retro Cinema Bottom Strip */}
+            <div className="relative z-10 w-full flex items-center justify-between border-y-2 border-black/80 dark:border-red-900/60 bg-black/85 px-4 py-2 font-bytebounce text-xs sm:text-sm uppercase tracking-widest text-zinc-400 shadow-[0_2px_0_0_rgba(0,0,0,1)]">
+              <span>SECURITY: DISENGAGED</span>
+              <span className="font-black text-red-400 tracking-widest">RETURNING TO MAP</span>
+            </div>
+          </div>
+        )}
+
         {/* Exit Confirmation Dialog */}
         <Dialog open={leaveConfirmDialogOpen} onOpenChange={setLeaveConfirmDialogOpen}>
           <DialogContent
@@ -2629,10 +2799,7 @@ export default function LearningQuest() {
               <Button
                 variant="destructive"
                 className="flex-1 font-bold shadow-lg shadow-destructive/20"
-                onClick={() => {
-                  setLeaveConfirmDialogOpen(false);
-                  setIsStarted(false);
-                }}
+                onClick={handleFleeArena}
               >
                 Flee Arena
               </Button>
@@ -2657,7 +2824,6 @@ export default function LearningQuest() {
                 fill
                 priority
                 sizes="100vw"
-                quality={80}
                 className="object-cover object-center pointer-events-none z-0"
               />
             )}
@@ -2859,56 +3025,56 @@ export default function LearningQuest() {
               const effectiveIdleFrames = isMinionStageWithSprite
                 ? (currentActiveNode.minionIdleFrames || 8)
                 : isMiniBossStageWithSprite
-                ? (currentActiveNode.miniBossIdleFrames || 7)
-                : (waveState?.idleFrames || currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7);
+                  ? (currentActiveNode.miniBossIdleFrames || 7)
+                  : (waveState?.idleFrames || currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7);
 
               const effectiveAttackFrames = isMinionStageWithSprite
                 ? (currentActiveNode.minionAttackFrames || 14)
                 : isMiniBossStageWithSprite
-                ? (currentActiveNode.miniBossAttackFrames || 9)
-                : (waveState?.attackFrames || currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17);
+                  ? (currentActiveNode.miniBossAttackFrames || 9)
+                  : (waveState?.attackFrames || currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17);
 
               const effectiveHeavyAttackFrames = isMinionStageWithSprite
                 ? (currentActiveNode.minionHeavyAttackFrames || 10)
                 : isMiniBossStageWithSprite
-                ? (currentActiveNode.miniBossHeavyAttackFrames || 9)
-                : (waveState?.heavyAttackFrames || currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11);
+                  ? (currentActiveNode.miniBossHeavyAttackFrames || 9)
+                  : (waveState?.heavyAttackFrames || currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11);
 
               const effectiveIdleFrameWidth = isMinionStageWithSprite
                 ? (currentActiveNode.minionIdleFrameWidth || 128)
                 : isMiniBossStageWithSprite
-                ? (currentActiveNode.miniBossIdleFrameWidth || 128)
-                : (waveState?.idleFrameWidth || currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128);
+                  ? (currentActiveNode.miniBossIdleFrameWidth || 128)
+                  : (waveState?.idleFrameWidth || currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128);
 
               const effectiveAttackFrameWidth = isMinionStageWithSprite
                 ? (currentActiveNode.minionAttackFrameWidth || 257)
                 : isMiniBossStageWithSprite
-                ? (currentActiveNode.miniBossAttackFrameWidth || 160)
-                : (waveState?.attackFrameWidth || currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128);
+                  ? (currentActiveNode.miniBossAttackFrameWidth || 160)
+                  : (waveState?.attackFrameWidth || currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128);
 
               const effectiveHeavyFrameWidth = isMinionStageWithSprite
                 ? (currentActiveNode.minionHeavyFrameWidth || 257)
                 : isMiniBossStageWithSprite
-                ? (currentActiveNode.miniBossHeavyFrameWidth || 160)
-                : (waveState?.heavyFrameWidth || currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176);
+                  ? (currentActiveNode.miniBossHeavyFrameWidth || 160)
+                  : (waveState?.heavyFrameWidth || currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176);
 
               const effectiveIdleFrameHeight = isMinionStageWithSprite
                 ? (currentActiveNode.minionIdleFrameHeight || 128)
                 : isMiniBossStageWithSprite
-                ? (currentActiveNode.miniBossIdleFrameHeight || 128)
-                : (waveState?.idleFrameHeight || currentActiveNode?.idleFrameHeight || subjectMeta?.idleFrameHeight || 128);
+                  ? (currentActiveNode.miniBossIdleFrameHeight || 128)
+                  : (waveState?.idleFrameHeight || currentActiveNode?.idleFrameHeight || subjectMeta?.idleFrameHeight || 128);
 
               const effectiveAttackFrameHeight = isMinionStageWithSprite
                 ? (currentActiveNode.minionAttackFrameHeight || 218)
                 : isMiniBossStageWithSprite
-                ? (currentActiveNode.miniBossAttackFrameHeight || 157)
-                : (waveState?.attackFrameHeight || currentActiveNode?.attackFrameHeight || subjectMeta?.attackFrameHeight || 128);
+                  ? (currentActiveNode.miniBossAttackFrameHeight || 157)
+                  : (waveState?.attackFrameHeight || currentActiveNode?.attackFrameHeight || subjectMeta?.attackFrameHeight || 128);
 
               const effectiveHeavyFrameHeight = isMinionStageWithSprite
                 ? (currentActiveNode.minionHeavyFrameHeight || 218)
                 : isMiniBossStageWithSprite
-                ? (currentActiveNode.miniBossHeavyFrameHeight || 157)
-                : (waveState?.heavyFrameHeight || currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128);
+                  ? (currentActiveNode.miniBossHeavyFrameHeight || 157)
+                  : (waveState?.heavyFrameHeight || currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128);
 
               const effectiveIdleDuration = isMiniBossStageWithSprite
                 ? (currentActiveNode.miniBossIdleDuration || 1.0)
@@ -2949,6 +3115,9 @@ export default function LearningQuest() {
                     <div className="relative inline-flex items-center justify-center">
                       {idleSprite && attackSprite ? (
                         <BossSpriteAnimator
+                          bossName={activeEnemyName || currentActiveNode?.bossName}
+                          normalAttackSfxUrl={activeEnemyName?.toLowerCase().includes('specter') ? '/SoundEffects/HyperglemicSpecterNormalAttack.mp3' : undefined}
+                          heavyAttackSfxUrl={activeEnemyName?.toLowerCase().includes('specter') ? '/SoundEffects/HyperglemicSpecterHeavyAttack.mp3' : undefined}
                           idleSpriteUrl={idleSprite}
                           attackSpriteUrl={attackSprite}
                           heavyAttackSpriteUrl={heavyAttackSprite || undefined}
@@ -3000,7 +3169,8 @@ export default function LearningQuest() {
             <div className={cn(
               "absolute bottom-0 left-0 transition-all duration-1000 ease-out z-10 flex items-end gap-2 md:gap-3",
               (introPhase === 'cutscene' || introPhase === 'hidden') ? '-translate-x-[150%]' : 'translate-x-0',
-              isAnimating === "player" && "animate-shake scale-105"
+              isAnimating === "player" && "animate-shake scale-105",
+              isFleeing && "-translate-x-full opacity-0 duration-700 pointer-events-none"
             )}>
               {/* Standalone Foreground Player Character Sprite - Completely flush to bottom-left */}
               <div className={cn(
@@ -3148,7 +3318,6 @@ export default function LearningQuest() {
                 fill
                 priority={isCurrent}
                 sizes="100vw"
-                quality={80}
                 className="object-cover object-center"
               />
             </div>

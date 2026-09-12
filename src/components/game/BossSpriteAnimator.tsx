@@ -2,10 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { preloadSpecterSounds, playSpecterAttack, playAudioFile } from "@/lib/audio-manager";
 
 export type BossAnimState = "idle" | "normal_attack" | "heavy_attack";
 
 interface BossSpriteAnimatorProps {
+  bossName?: string;
+  normalAttackSfxUrl?: string;
+  heavyAttackSfxUrl?: string;
   idleSpriteUrl: string;
   attackSpriteUrl: string;
   heavyAttackSpriteUrl?: string;
@@ -34,6 +38,9 @@ interface BossSpriteAnimatorProps {
 }
 
 export function BossSpriteAnimator({
+  bossName,
+  normalAttackSfxUrl,
+  heavyAttackSfxUrl,
   idleSpriteUrl,
   attackSpriteUrl,
   heavyAttackSpriteUrl,
@@ -161,11 +168,47 @@ export function BossSpriteAnimator({
     onCompleteRef.current = onAttackComplete;
   }, [onAttackComplete]);
 
+  const isSpecter = (
+    bossName?.toLowerCase().includes('specter') ||
+    idleSpriteUrl?.includes('clinchem_finalboss') ||
+    heavyAttackSpriteUrl?.includes('clinchem_finalboss') ||
+    attackSpriteUrl?.includes('clinchem_finalboss') ||
+    attackProjectileUrl?.includes('clinchem_finalboss') ||
+    (isWideBeam && currentFrameWidth === 480)
+  );
+
+  // Preload Specter audio files immediately so playback starts with 0ms latency
+  useEffect(() => {
+    if (isSpecter || heavyAttackSfxUrl || normalAttackSfxUrl) {
+      preloadSpecterSounds();
+    }
+  }, [isSpecter, heavyAttackSfxUrl, normalAttackSfxUrl]);
+
   // Key to force reset DOM animation state whenever animState changes
   const [animKey, setAnimKey] = useState(0);
+  const lastPlayedAnimRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (isAttacking) {
+      if (lastPlayedAnimRef.current !== animState) {
+        lastPlayedAnimRef.current = animState;
+        if (isSpecter || heavyAttackSfxUrl || normalAttackSfxUrl) {
+          if (isHeavy) {
+            if (heavyAttackSfxUrl) {
+              playAudioFile(heavyAttackSfxUrl);
+            } else {
+              playSpecterAttack('heavy');
+            }
+          } else if (isNormalAttack) {
+            if (normalAttackSfxUrl) {
+              playAudioFile(normalAttackSfxUrl);
+            } else {
+              playSpecterAttack('normal');
+            }
+          }
+        }
+      }
+
       setAnimKey((prev) => prev + 1);
       const timer = setTimeout(() => {
         if (onCompleteRef.current) {
@@ -173,8 +216,10 @@ export function BossSpriteAnimator({
         }
       }, lungeDuration * 1000);
       return () => clearTimeout(timer);
+    } else {
+      lastPlayedAnimRef.current = null;
     }
-  }, [animState, isAttacking, lungeDuration]);
+  }, [animState, isAttacking, lungeDuration, isSpecter, isHeavy, isNormalAttack, heavyAttackSfxUrl, normalAttackSfxUrl]);
 
   const sheetWidth = currentFrameWidth * currentTotalFrames;
 
