@@ -3,7 +3,7 @@
 // Web Audio API Synthesizer for Retro RPG Sound Effects
 // Zero external assets required - lightweight, crisp, and performant.
 
-type SfxType = 'click' | 'correct' | 'wrong' | 'attack' | 'heal' | 'victory' | 'defeat' | 'flee' | 'specter_normal' | 'specter_heavy' | 'final_boss_victory' | 'final_boss_defeat' | 'learning_win' | 'learning_lost' | 'test_win' | 'test_lost';
+type SfxType = 'click' | 'correct' | 'wrong' | 'attack' | 'heal' | 'victory' | 'defeat' | 'flee' | 'debuff' | 'poison' | 'specter_normal' | 'specter_heavy' | 'biohazard_normal' | 'biohazard_heavy' | 'crystal_golem_normal' | 'crystal_golem_heavy' | 'microbe_swarm_normal' | 'microbe_swarm_heavy' | 'sickle_reaper_normal' | 'sickle_reaper_heavy' | 'final_boss_victory' | 'final_boss_defeat' | 'boss_battle_win' | 'boss_battle_lost' | 'learning_win' | 'learning_lost' | 'test_win' | 'test_lost';
 
 let audioCtx: AudioContext | null = null;
 
@@ -219,13 +219,35 @@ export function playSfx(type: SfxType) {
         break;
       }
 
-      case 'final_boss_victory': {
-        playFinalBossMusic('victory');
+      case 'biohazard_normal': {
+        playBiohazardAttack('normal');
         break;
       }
 
+      case 'biohazard_heavy': {
+        playBiohazardAttack('heavy');
+        break;
+      }
+
+      case 'crystal_golem_normal': {
+        playCrystalGolemAttack('normal');
+        break;
+      }
+
+      case 'crystal_golem_heavy': {
+        playCrystalGolemAttack('heavy');
+        break;
+      }
+
+      case 'boss_battle_win':
+      case 'final_boss_victory': {
+        playBossBattleMusic('victory');
+        break;
+      }
+
+      case 'boss_battle_lost':
       case 'final_boss_defeat': {
-        playFinalBossMusic('defeat');
+        playBossBattleMusic('defeat');
         break;
       }
 
@@ -248,63 +270,89 @@ export function playSfx(type: SfxType) {
         playTestModeMusic('defeat');
         break;
       }
+
+      case 'debuff':
+      case 'poison': {
+        playDebuffSound();
+        break;
+      }
+
+      case 'microbe_swarm_normal': {
+        playMicrobeSwarmAttack('normal');
+        break;
+      }
+
+      case 'microbe_swarm_heavy': {
+        playMicrobeSwarmAttack('heavy');
+        break;
+      }
+
+      case 'sickle_reaper_normal': {
+        playSickleCellReaperAttack('normal');
+        break;
+      }
+
+      case 'sickle_reaper_heavy': {
+        playSickleCellReaperAttack('heavy');
+        break;
+      }
     }
   } catch (err) {
     console.warn('Audio playback error:', err);
   }
 }
 
-// Preloaded Audio instances for Final Boss Battle Victory & Defeat
-let finalBossVictoryAudio: HTMLAudioElement | null = null;
-let finalBossDefeatAudio: HTMLAudioElement | null = null;
-let currentFinalBossMusic: HTMLAudioElement | null = null;
-let finalBossTimeoutId: NodeJS.Timeout | null = null;
-let finalBossActiveCallback: (() => void) | null = null;
+// Preloaded Audio instances for Boss-Battle Mode Victory & Defeat
+let bossBattleWonAudio: HTMLAudioElement | null = null;
+let bossBattleLostAudio: HTMLAudioElement | null = null;
+let currentBossBattleMusic: HTMLAudioElement | null = null;
+let bossBattleTimeoutId: NodeJS.Timeout | null = null;
+let bossBattleActiveCallback: (() => void) | null = null;
 
-export function preloadFinalBossMusic() {
+export function preloadBossBattleMusic() {
   if (typeof window === 'undefined') return;
   try {
-    if (!finalBossVictoryAudio) {
-      finalBossVictoryAudio = new Audio('/SoundEffects/MusicWhenFinalBossIsDefeated.mp3');
-      finalBossVictoryAudio.preload = 'auto';
-      finalBossVictoryAudio.load();
+    if (!bossBattleWonAudio) {
+      bossBattleWonAudio = new Audio('/SoundEffects/MusicWhenWonInBossBattleMode.mp3');
+      bossBattleWonAudio.preload = 'auto';
+      bossBattleWonAudio.load();
     }
-    if (!finalBossDefeatAudio) {
-      finalBossDefeatAudio = new Audio('/SoundEffects/MusicWhenDefeatedByFinalBoss.mp3');
-      finalBossDefeatAudio.preload = 'auto';
-      finalBossDefeatAudio.load();
+    if (!bossBattleLostAudio) {
+      bossBattleLostAudio = new Audio('/SoundEffects/MusicWhenLostInBossBattleMode.mp3');
+      bossBattleLostAudio.preload = 'auto';
+      bossBattleLostAudio.load();
     }
   } catch (e) { }
 }
 
-export function stopFinalBossMusic() {
+export function stopBossBattleMusic() {
   try {
-    if (finalBossTimeoutId) {
-      clearTimeout(finalBossTimeoutId);
-      finalBossTimeoutId = null;
+    if (bossBattleTimeoutId) {
+      clearTimeout(bossBattleTimeoutId);
+      bossBattleTimeoutId = null;
     }
-    finalBossActiveCallback = null;
+    bossBattleActiveCallback = null;
 
-    if (currentFinalBossMusic) {
-      currentFinalBossMusic.onended = null;
-      currentFinalBossMusic.pause();
-      currentFinalBossMusic.currentTime = 0;
-      currentFinalBossMusic = null;
+    if (currentBossBattleMusic) {
+      currentBossBattleMusic.onended = null;
+      currentBossBattleMusic.pause();
+      currentBossBattleMusic.currentTime = 0;
+      currentBossBattleMusic = null;
     }
-    if (finalBossVictoryAudio) {
-      finalBossVictoryAudio.onended = null;
-      finalBossVictoryAudio.pause();
-      finalBossVictoryAudio.currentTime = 0;
+    if (bossBattleWonAudio) {
+      bossBattleWonAudio.onended = null;
+      bossBattleWonAudio.pause();
+      bossBattleWonAudio.currentTime = 0;
     }
-    if (finalBossDefeatAudio) {
-      finalBossDefeatAudio.onended = null;
-      finalBossDefeatAudio.pause();
-      finalBossDefeatAudio.currentTime = 0;
+    if (bossBattleLostAudio) {
+      bossBattleLostAudio.onended = null;
+      bossBattleLostAudio.pause();
+      bossBattleLostAudio.currentTime = 0;
     }
   } catch (e) { }
 }
 
-export function playFinalBossMusic(outcome: 'victory' | 'defeat', onEnded?: () => void) {
+export function playBossBattleMusic(outcome: 'victory' | 'defeat', onEnded?: () => void) {
   if (typeof window === 'undefined') {
     if (onEnded) onEnded();
     return;
@@ -312,55 +360,55 @@ export function playFinalBossMusic(outcome: 'victory' | 'defeat', onEnded?: () =
 
   try {
     const targetSrc = outcome === 'victory'
-      ? '/SoundEffects/MusicWhenFinalBossIsDefeated.mp3'
-      : '/SoundEffects/MusicWhenDefeatedByFinalBoss.mp3';
+      ? '/SoundEffects/MusicWhenWonInBossBattleMode.mp3'
+      : '/SoundEffects/MusicWhenLostInBossBattleMode.mp3';
 
     const triggerCompletion = () => {
-      if (finalBossTimeoutId) {
-        clearTimeout(finalBossTimeoutId);
-        finalBossTimeoutId = null;
+      if (bossBattleTimeoutId) {
+        clearTimeout(bossBattleTimeoutId);
+        bossBattleTimeoutId = null;
       }
-      if (finalBossActiveCallback) {
-        const cb = finalBossActiveCallback;
-        finalBossActiveCallback = null;
+      if (bossBattleActiveCallback) {
+        const cb = bossBattleActiveCallback;
+        bossBattleActiveCallback = null;
         try {
           cb();
         } catch (e) {
-          console.error('Error executing final boss onEnded callback:', e);
+          console.error('Error executing boss battle onEnded callback:', e);
         }
       }
     };
 
     // If this exact music is already actively playing, let it continue smoothly and attach callback!
-    if (currentFinalBossMusic && !currentFinalBossMusic.paused && currentFinalBossMusic.src.includes(targetSrc)) {
+    if (currentBossBattleMusic && !currentBossBattleMusic.paused && currentBossBattleMusic.src.includes(targetSrc)) {
       if (onEnded) {
-        finalBossActiveCallback = onEnded;
+        bossBattleActiveCallback = onEnded;
 
         // If it already finished or reached the end:
-        if (currentFinalBossMusic.ended || (currentFinalBossMusic.duration && currentFinalBossMusic.currentTime >= currentFinalBossMusic.duration)) {
+        if (currentBossBattleMusic.ended || (currentBossBattleMusic.duration && currentBossBattleMusic.currentTime >= currentBossBattleMusic.duration)) {
           triggerCompletion();
           return;
         }
 
-        currentFinalBossMusic.onended = triggerCompletion;
+        currentBossBattleMusic.onended = triggerCompletion;
 
         // Safety fallback timer based on remaining audio duration
-        if (finalBossTimeoutId) clearTimeout(finalBossTimeoutId);
-        const durationSec = (currentFinalBossMusic.duration && !isNaN(currentFinalBossMusic.duration) && currentFinalBossMusic.duration > 0)
-          ? currentFinalBossMusic.duration
+        if (bossBattleTimeoutId) clearTimeout(bossBattleTimeoutId);
+        const durationSec = (currentBossBattleMusic.duration && !isNaN(currentBossBattleMusic.duration) && currentBossBattleMusic.duration > 0)
+          ? currentBossBattleMusic.duration
           : (outcome === 'victory' ? 10.6 : 11.1);
-        const remainingMs = Math.max(500, ((durationSec - currentFinalBossMusic.currentTime) * 1000) + 500);
-        finalBossTimeoutId = setTimeout(triggerCompletion, remainingMs);
+        const remainingMs = Math.max(500, ((durationSec - currentBossBattleMusic.currentTime) * 1000) + 500);
+        bossBattleTimeoutId = setTimeout(triggerCompletion, remainingMs);
       }
       return;
     }
 
-    stopFinalBossMusic();
+    stopBossBattleMusic();
 
-    finalBossActiveCallback = onEnded || null;
+    bossBattleActiveCallback = onEnded || null;
 
     const masterVolume = getSfxVolume();
-    const baseAudio = outcome === 'victory' ? finalBossVictoryAudio : finalBossDefeatAudio;
+    const baseAudio = outcome === 'victory' ? bossBattleWonAudio : bossBattleLostAudio;
     let audio: HTMLAudioElement;
 
     if (baseAudio) {
@@ -371,7 +419,7 @@ export function playFinalBossMusic(outcome: 'victory' | 'defeat', onEnded?: () =
     }
 
     audio.volume = Math.max(0, Math.min(1, masterVolume));
-    currentFinalBossMusic = audio;
+    currentBossBattleMusic = audio;
 
     if (onEnded) {
       audio.onended = triggerCompletion;
@@ -379,26 +427,31 @@ export function playFinalBossMusic(outcome: 'victory' | 'defeat', onEnded?: () =
       // Safety fallback timer: fires after full duration + small buffer in case ended event drops
       const expectedSec = outcome === 'victory' ? 10.6 : 11.1;
       const totalSec = (audio.duration && !isNaN(audio.duration) && audio.duration > 0) ? audio.duration : expectedSec;
-      finalBossTimeoutId = setTimeout(triggerCompletion, (totalSec * 1000) + 500);
+      bossBattleTimeoutId = setTimeout(triggerCompletion, (totalSec * 1000) + 500);
     }
 
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       playPromise.catch(err => {
-        console.warn('Playback error for final boss ' + outcome + ' music:', err);
+        console.warn('Playback error for boss battle ' + outcome + ' music:', err);
         // Autoplay blocked or error: ensure game does not hang
-        if (finalBossActiveCallback) {
+        if (bossBattleActiveCallback) {
           setTimeout(triggerCompletion, 2000);
         }
       });
     }
   } catch (err) {
-    console.warn('Failed to play final boss music:', err);
+    console.warn('Failed to play boss battle music:', err);
     if (onEnded) {
       onEnded();
     }
   }
 }
+
+// Aliases for backwards compatibility with previous final boss naming
+export const preloadFinalBossMusic = preloadBossBattleMusic;
+export const stopFinalBossMusic = stopBossBattleMusic;
+export const playFinalBossMusic = playBossBattleMusic;
 
 // Preloaded Audio instances for Learning Mode Win & Lost
 let learningModeWinAudio: HTMLAudioElement | null = null;
@@ -720,14 +773,12 @@ export function playSpecterAttack(type: 'normal' | 'heavy') {
       ? '/SoundEffects/HyperglemicSpecterHeavyAttack.mp3'
       : '/SoundEffects/HyperglemicSpecterNormalAttack.mp3';
 
-    // Reuse existing audio if paused or clone for smooth polyphonic overlap
     const baseAudio = type === 'heavy' ? specterHeavyAudio : specterNormalAudio;
     let audio: HTMLAudioElement;
 
-    if (baseAudio && baseAudio.paused && baseAudio.currentTime === 0) {
+    if (baseAudio) {
+      baseAudio.currentTime = 0;
       audio = baseAudio;
-    } else if (baseAudio) {
-      audio = baseAudio.cloneNode() as HTMLAudioElement;
     } else {
       audio = new Audio(src);
     }
@@ -758,3 +809,270 @@ export function playAudioFile(src: string, customVolume?: number) {
     console.warn('Failed to play audio file:', err);
   }
 }
+
+// Preloaded Audio instances for Biohazard Overlord attacks
+let biohazardHeavyAudio: HTMLAudioElement | null = null;
+let biohazardNormalAudio: HTMLAudioElement | null = null;
+
+export function preloadBiohazardSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!biohazardHeavyAudio) {
+      biohazardHeavyAudio = new Audio('/SoundEffects/BiohazardOverlordHeavyAttack.mp3');
+      biohazardHeavyAudio.preload = 'auto';
+      biohazardHeavyAudio.load();
+    }
+    if (!biohazardNormalAudio) {
+      biohazardNormalAudio = new Audio('/SoundEffects/BiohazardOverlordNormalAttack.mp3');
+      biohazardNormalAudio.preload = 'auto';
+      biohazardNormalAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playBiohazardAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    const src = type === 'heavy'
+      ? '/SoundEffects/BiohazardOverlordHeavyAttack.mp3'
+      : '/SoundEffects/BiohazardOverlordNormalAttack.mp3';
+
+    const baseAudio = type === 'heavy' ? biohazardHeavyAudio : biohazardNormalAudio;
+    let audio: HTMLAudioElement;
+
+    if (baseAudio) {
+      baseAudio.currentTime = 0;
+      audio = baseAudio;
+    } else {
+      audio = new Audio(src);
+    }
+
+    audio.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Playback error for biohazard ' + type + ' attack:', err);
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to play biohazard attack sound:', err);
+  }
+}
+
+// Preloaded Audio instances for Crystal Golem attacks
+let crystalGolemHeavyAudio: HTMLAudioElement | null = null;
+let crystalGolemNormalAudio: HTMLAudioElement | null = null;
+
+export function preloadCrystalGolemSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!crystalGolemHeavyAudio) {
+      crystalGolemHeavyAudio = new Audio('/SoundEffects/CrystalGolemHeavyAttack.mp3');
+      crystalGolemHeavyAudio.preload = 'auto';
+      crystalGolemHeavyAudio.load();
+    }
+    if (!crystalGolemNormalAudio) {
+      crystalGolemNormalAudio = new Audio('/SoundEffects/CrystalGolemNormalAttack.mp3');
+      crystalGolemNormalAudio.preload = 'auto';
+      crystalGolemNormalAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playCrystalGolemAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    const src = type === 'heavy'
+      ? '/SoundEffects/CrystalGolemHeavyAttack.mp3'
+      : '/SoundEffects/CrystalGolemNormalAttack.mp3';
+
+    const baseAudio = type === 'heavy' ? crystalGolemHeavyAudio : crystalGolemNormalAudio;
+    let audio: HTMLAudioElement;
+
+    if (baseAudio) {
+      baseAudio.currentTime = 0;
+      audio = baseAudio;
+    } else {
+      audio = new Audio(src);
+    }
+
+    audio.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Playback error for crystal golem ' + type + ' attack:', err);
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to play crystal golem attack sound:', err);
+  }
+}
+
+// Preloaded Audio instance for Debuff / Poison
+let debuffAudio: HTMLAudioElement | null = null;
+
+export function preloadDebuffSound() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!debuffAudio) {
+      debuffAudio = new Audio('/SoundEffects/debuff.wav');
+      debuffAudio.preload = 'auto';
+      debuffAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playDebuffSound() {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    let audio: HTMLAudioElement;
+    if (debuffAudio) {
+      if (debuffAudio.paused) {
+        debuffAudio.currentTime = 0;
+        audio = debuffAudio;
+      } else {
+        audio = debuffAudio.cloneNode(true) as HTMLAudioElement;
+      }
+    } else {
+      audio = new Audio('/SoundEffects/debuff.wav');
+    }
+
+    audio.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Playback error for debuff sound:', err);
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to play debuff sound:', err);
+  }
+}
+
+// Preloaded Audio instances for Microbe Swarm attacks
+let microbeSwarmHeavyAudio: HTMLAudioElement | null = null;
+let microbeSwarmNormalAudio: HTMLAudioElement | null = null;
+
+export function preloadMicrobeSwarmSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!microbeSwarmHeavyAudio) {
+      microbeSwarmHeavyAudio = new Audio('/SoundEffects/MicrobeSwarmHeavyAttack.wav');
+      microbeSwarmHeavyAudio.preload = 'auto';
+      microbeSwarmHeavyAudio.playbackRate = 0.5;
+      microbeSwarmHeavyAudio.load();
+    }
+    if (!microbeSwarmNormalAudio) {
+      microbeSwarmNormalAudio = new Audio('/SoundEffects/MicrobeSwarmNormalAttack.mp3');
+      microbeSwarmNormalAudio.preload = 'auto';
+      microbeSwarmNormalAudio.playbackRate = 2.0;
+      microbeSwarmNormalAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playMicrobeSwarmAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    const src = type === 'heavy'
+      ? '/SoundEffects/MicrobeSwarmHeavyAttack.wav'
+      : '/SoundEffects/MicrobeSwarmNormalAttack.mp3';
+
+    const baseAudio = type === 'heavy' ? microbeSwarmHeavyAudio : microbeSwarmNormalAudio;
+    let audio: HTMLAudioElement;
+
+    if (baseAudio) {
+      baseAudio.currentTime = 0;
+      audio = baseAudio;
+    } else {
+      audio = new Audio(src);
+    }
+
+    // Set designated playback speed: fast 2x for Normal Attack, 0.5 for Heavy Attack
+    const targetRate = type === 'normal' ? 2.0 : 0.5;
+    audio.playbackRate = targetRate;
+    audio.defaultPlaybackRate = targetRate;
+
+    audio.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Playback error for microbe swarm ' + type + ' attack:', err);
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to play microbe swarm attack sound:', err);
+  }
+}
+
+// Preloaded Audio instances for Sickle-Cell Reaper attacks
+let sickleReaperHeavyAudio: HTMLAudioElement | null = null;
+let sickleReaperNormalAudio: HTMLAudioElement | null = null;
+
+export function preloadSickleCellReaperSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!sickleReaperHeavyAudio) {
+      sickleReaperHeavyAudio = new Audio('/SoundEffects/SickleCellReaperHeavyAttack.mp3');
+      sickleReaperHeavyAudio.preload = 'auto';
+      sickleReaperHeavyAudio.playbackRate = 1.0;
+      sickleReaperHeavyAudio.load();
+    }
+    if (!sickleReaperNormalAudio) {
+      sickleReaperNormalAudio = new Audio('/SoundEffects/SickleCellReaperNormalAttack.mp3');
+      sickleReaperNormalAudio.preload = 'auto';
+      sickleReaperNormalAudio.playbackRate = 2.0;
+      sickleReaperNormalAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playSickleCellReaperAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    const src = type === 'heavy'
+      ? '/SoundEffects/SickleCellReaperHeavyAttack.mp3'
+      : '/SoundEffects/SickleCellReaperNormalAttack.mp3';
+
+    const baseAudio = type === 'heavy' ? sickleReaperHeavyAudio : sickleReaperNormalAudio;
+    let audio: HTMLAudioElement;
+
+    if (baseAudio) {
+      baseAudio.currentTime = 0;
+      audio = baseAudio;
+    } else {
+      audio = new Audio(src);
+    }
+
+    // Set designated playback speed: 2x for Normal Attack, normal 1.0x for Heavy Attack
+    const targetRate = type === 'normal' ? 2.0 : 1.0;
+    audio.playbackRate = targetRate;
+    audio.defaultPlaybackRate = targetRate;
+
+    audio.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Playback error for sickle reaper ' + type + ' attack:', err);
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to play sickle reaper attack sound:', err);
+  }
+}
+

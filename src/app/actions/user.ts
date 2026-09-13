@@ -8,6 +8,7 @@ import { startOfWeek, differenceInCalendarDays, startOfDay, parseISO } from 'dat
 import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
 import clientPromise from '@/lib/mongodb-client';
+import { getLevelFromXp } from '@/lib/badge-system';
 
 export interface StreakValidationResult {
   streak: number;
@@ -173,6 +174,24 @@ export async function getUserStats(): Promise<any> {
     (user as any).streakBroken = streakResult.streakBroken;
     (user as any).previousStreak = streakResult.previousStreak;
 
+    // Dynamically validate and heal level based on progressive XP curve
+    const expectedLevel = getLevelFromXp(user.xp || 0);
+    if (user.level !== expectedLevel) {
+      user.level = expectedLevel;
+      Promise.all([
+        prisma.user.update({ where: { id: user.id }, data: { level: expectedLevel } }).catch(() => {}),
+        (async () => {
+          try {
+            const client = await clientPromise;
+            const db = client.db();
+            const userObjId = ObjectId.isValid(user.id) ? new ObjectId(user.id) : null;
+            const uQuery: any = userObjId ? { $or: [{ _id: userObjId }, { _id: user.id }] } : { _id: user.id };
+            await db.collection('User').updateOne(uQuery, { $set: { level: expectedLevel } });
+          } catch {}
+        })()
+      ]).catch(() => {});
+    }
+
     const curriculumCount = await prisma.lessonCompletion.count({
       where: {
         userId,
@@ -251,6 +270,24 @@ export async function getUserProfile() {
     user.streak = streakResult.streak;
     (user as any).streakBroken = streakResult.streakBroken;
     (user as any).previousStreak = streakResult.previousStreak;
+
+    // Dynamically validate and heal level based on progressive XP curve
+    const expectedProfileLevel = getLevelFromXp(user.xp || 0);
+    if (user.level !== expectedProfileLevel) {
+      user.level = expectedProfileLevel;
+      Promise.all([
+        prisma.user.update({ where: { id: user.id }, data: { level: expectedProfileLevel } }).catch(() => {}),
+        (async () => {
+          try {
+            const client = await clientPromise;
+            const db = client.db();
+            const userObjId = ObjectId.isValid(user.id) ? new ObjectId(user.id) : null;
+            const uQuery: any = userObjId ? { $or: [{ _id: userObjId }, { _id: user.id }] } : { _id: user.id };
+            await db.collection('User').updateOne(uQuery, { $set: { level: expectedProfileLevel } });
+          } catch {}
+        })()
+      ]).catch(() => {});
+    }
 
     // Calculate global ranking
     const totalUsers = await prisma.user.count();

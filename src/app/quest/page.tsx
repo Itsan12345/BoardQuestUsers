@@ -44,7 +44,7 @@ import { completeQuest, getNodeClearsAction, saveNodeClearAction } from '@/app/a
 import { getCategories } from '@/app/actions/study';
 import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction } from '@/app/actions/user';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
-import { playSfx, preloadSpecterSounds, preloadFinalBossMusic, playFinalBossMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic } from '@/lib/audio-manager';
+import { playSfx, preloadSpecterSounds, preloadBiohazardSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
@@ -65,6 +65,8 @@ const SUBJECT_METADATA: Record<string, {
   idleSpriteUrl?: string;
   attackSpriteUrl?: string;
   heavyAttackSpriteUrl?: string;
+  normalAttackSfxUrl?: string;
+  heavyAttackSfxUrl?: string;
   attackProjectileUrl?: string;
   undergroundSpikesUrl?: string;
   undergroundSpikesFrames?: number;
@@ -125,6 +127,8 @@ const SUBJECT_METADATA: Record<string, {
     enemy: "Biohazard Overlord",
     imageUrl: "/images/MicroBio256.png",
     backgroundUrl: "/images/MicroBio256_bg.webp",
+    normalAttackSfxUrl: "/SoundEffects/BiohazardOverlordNormalAttack.mp3",
+    heavyAttackSfxUrl: "/SoundEffects/BiohazardOverlordHeavyAttack.mp3",
     difficulty: 5,
     biome: "Toxic Spore Jungles",
     description: "Invisible dangers lurk in every shadow. Identification is survival."
@@ -147,6 +151,8 @@ const SUBJECT_METADATA: Record<string, {
     enemy: "Crystal Golem",
     imageUrl: "/images/ClinMicro256.png",
     backgroundUrl: "/images/ClinMicro256_bg.webp",
+    normalAttackSfxUrl: "/SoundEffects/CrystalGolemNormalAttack.mp3",
+    heavyAttackSfxUrl: "/SoundEffects/CrystalGolemHeavyAttack.mp3",
     difficulty: 2,
     biome: "Amber Sediment Cliffs",
     description: "Examine the smallest details that reveal the greatest truths.",
@@ -351,6 +357,7 @@ export default function LearningQuest() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      stopBossBattleMusic();
       stopFinalBossMusic();
       stopLearningModeMusic();
       stopTestModeMusic();
@@ -409,12 +416,16 @@ export default function LearningQuest() {
     nodeNumber: number;
     title: string;
     subtopic: string;
-    minionName: string;
-    minionIcon: string;
-    miniBossName: string;
-    miniBossIcon: string;
+    minionName?: string;
+    minionIcon?: string;
+    miniBossName?: string;
+    miniBossIcon?: string;
     bossName: string;
     bossIcon: string;
+    normalAttackSfxUrl?: string;
+    heavyAttackSfxUrl?: string;
+    minionNormalAttackSfxUrl?: string;
+    minionHeavyAttackSfxUrl?: string;
     idleSpriteUrl?: string;
     attackSpriteUrl?: string;
     heavyAttackSpriteUrl?: string;
@@ -472,6 +483,17 @@ export default function LearningQuest() {
   const [nodeStars, setNodeStars] = useState<Record<string, number>>({});
   const [nodeClears, setNodeClears] = useState<Record<string, { EASY?: boolean; MEDIUM?: boolean; HARD?: boolean }>>({});
 
+  // Synchronize selectedNodeId whenever selectedSubject changes so nodes don't cross-contaminate subjects
+  useEffect(() => {
+    const nodes = getSubjectNodes(selectedSubject);
+    if (nodes && nodes.length > 0) {
+      if (!nodes.some(n => n.id === selectedNodeId)) {
+        setSelectedNodeId(nodes[0].id);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubject, selectedNodeId]);
+
   const CHAPTER_NODES_PER_SUBJECT: Record<string, SubjectNodeConfig[]> = {
     "Clinical Chemistry": [
       { id: 'cc-1', nodeNumber: 1, title: 'Carbohydrates & Lipids', subtopic: 'Glucose Metabolism, HbA1c & Lipoproteins', minionName: 'Acid Slime', minionIcon: '🧪', miniBossName: 'Hyperglycemic Mutant', miniBossIcon: '🧬', bossName: 'Ketoacidosis Colossus', bossIcon: '⚗️' },
@@ -481,10 +503,6 @@ export default function LearningQuest() {
         nodeNumber: 3,
         title: '👑 Hyperglycemic Specter (FINAL BOSS)',
         subtopic: 'Comprehensive Clinical Chemistry Licensure Challenge',
-        minionName: 'Lab Sentinel',
-        minionIcon: '🛡️',
-        miniBossName: 'Board Examiner Specter',
-        miniBossIcon: '📜',
         bossName: 'Hyperglycemic Specter',
         bossIcon: '👑',
         idleSpriteUrl: '/images/bosses/clinchem_finalboss_IdleAnimation.png',
@@ -515,6 +533,8 @@ export default function LearningQuest() {
         miniBossIcon: '🧬',
         bossName: 'Gram Positive Overlord',
         bossIcon: '👾',
+        minionNormalAttackSfxUrl: '/SoundEffects/MicrobeSwarmNormalAttack.mp3',
+        minionHeavyAttackSfxUrl: '/SoundEffects/MicrobeSwarmHeavyAttack.wav',
         minionIdleSpriteUrl: '/images/bosses/microbio_chapterOneMinion_IdleAnimation.png',
         minionAttackSpriteUrl: '/images/bosses/microbio_chapterOneMinion_normalAttackAnimation.png',
         minionHeavyAttackSpriteUrl: '/images/bosses/microbio_chapterOneMinion_heavyAttackAnimation.png',
@@ -560,24 +580,22 @@ export default function LearningQuest() {
         nodeNumber: 3,
         title: '👑 Biohazard Overlord (FINAL BOSS)',
         subtopic: 'Antimicrobial Resistance & Comprehensive Microbiology',
-        minionName: 'Resistant Strain',
-        minionIcon: '💊',
-        miniBossName: 'Lab Director Phantom',
-        miniBossIcon: '📜',
         bossName: 'Biohazard Overlord',
         bossIcon: '👑',
         idleSpriteUrl: '/images/bosses/microbio_finalboss_idleAnimation.png',
-        attackSpriteUrl: '/images/bosses/microbio_finalboss_heavyAttackAnimation.png',
+        attackSpriteUrl: '/images/bosses/microbio_finalboss_normalAttackAnimation.png',
         heavyAttackSpriteUrl: '/images/bosses/microbio_finalboss_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/BiohazardOverlordHeavyAttack.mp3',
         idleFrames: 6,
         attackFrames: 4,
-        heavyAttackFrames: 4,
+        heavyAttackFrames: 10,
         idleFrameWidth: 128,
         idleFrameHeight: 128,
         attackFrameWidth: 128,
         attackFrameHeight: 128,
-        heavyFrameWidth: 128,
-        heavyFrameHeight: 128,
+        heavyFrameWidth: 249,
+        heavyFrameHeight: 192,
         idleDuration: 1.05,
       },
     ],
@@ -589,12 +607,10 @@ export default function LearningQuest() {
         nodeNumber: 3,
         title: '👑 Sickle-Cell Reaper (FINAL BOSS)',
         subtopic: 'Hemostasis, Coagulation Cascades & Comprehensive Exam',
-        minionName: 'Clot Particle',
-        minionIcon: '🧱',
-        miniBossName: 'Hematopathologist Ghost',
-        miniBossIcon: '📜',
         bossName: 'Sickle-Cell Reaper',
         bossIcon: '👑',
+        normalAttackSfxUrl: '/SoundEffects/SickleCellReaperNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/SickleCellReaperHeavyAttack.mp3',
         idleSpriteUrl: '/images/bosses/hematology_finalboss_idleAnimation.png',
         attackSpriteUrl: '/images/bosses/hematology_finalboss_normalAttackGlintAnimation.png',
         heavyAttackSpriteUrl: '/images/bosses/hematology_finalboss_heavyAttackAnimation.png',
@@ -614,25 +630,29 @@ export default function LearningQuest() {
     "Immunology & Serology and Immunohematology": [
       { id: 'is-1', nodeNumber: 1, title: 'Immunity & Serological Testing', subtopic: 'Innate/Adaptive Immunity, ELISA & Agglutination', minionName: 'Lymphocyte Swarm', minionIcon: '🛡️', miniBossName: 'Antigen Titan', miniBossIcon: '🧬', bossName: 'Immune Archon', bossIcon: '👑' },
       { id: 'is-2', nodeNumber: 2, title: 'ABO & Rh Blood Group System', subtopic: 'Blood Group Antigens, Antibodies & Rh Discrepancies', minionName: 'ABO Antigen', minionIcon: '🩸', miniBossName: 'Rh Aggressive Golem', miniBossIcon: '🪨', bossName: 'Immunohematology Colossus', bossIcon: '👑' },
-      { id: 'is-3', nodeNumber: 3, title: '👑 Anti-Serum Hydra (FINAL BOSS)', subtopic: 'Transfusion Reactions, Crossmatching & Blood Bank', minionName: 'Hemolytic Cell', minionIcon: '💥', miniBossName: 'Serology Examiner Phantom', miniBossIcon: '📜', bossName: 'Anti-Serum Hydra', bossIcon: '👑' },
+      { id: 'is-3', nodeNumber: 3, title: '👑 Anti-Serum Hydra (FINAL BOSS)', subtopic: 'Transfusion Reactions, Crossmatching & Blood Bank', bossName: 'Anti-Serum Hydra', bossIcon: '👑' },
     ],
     "Clinical Microscopy & Parasitology": [
       { id: 'cm-1', nodeNumber: 1, title: 'Urinalysis Physical & Chemical Exam', subtopic: 'Color, Clarity, Specific Gravity & Reagents', minionName: 'Reagent Strip Slime', minionIcon: '🧪', miniBossName: 'Nitrite Spectre', miniBossIcon: '👻', bossName: 'Clinical Microscopy Overlord', bossIcon: '👑' },
       { id: 'cm-2', nodeNumber: 2, title: 'Microscopic Sediments & Body Fluids', subtopic: 'Casts, Crystals, Synovial, Serous & CSF Analysis', minionName: 'Hyaline Cast', minionIcon: '💧', miniBossName: 'Oxalate Golem', miniBossIcon: '🪨', bossName: 'Sediment Colossus', bossIcon: '🩸' },
-      { id: 'cm-3', nodeNumber: 3, title: '👑 Crystal Golem (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', minionName: 'Protozoan Cyst', minionIcon: '🦠', miniBossName: 'Pathology Director Phantom', miniBossIcon: '📜', bossName: 'Crystal Golem', bossIcon: '👑', idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png", attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png", heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png", idleFrames: 7, attackFrames: 17, heavyAttackFrames: 11, idleFrameWidth: 128, idleFrameHeight: 128, attackFrameWidth: 128, attackFrameHeight: 128, heavyFrameWidth: 176, heavyFrameHeight: 128 },
+      { id: 'cm-3', nodeNumber: 3, title: '👑 Crystal Golem (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', bossName: 'Crystal Golem', bossIcon: '👑', idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png", attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png", heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png", normalAttackSfxUrl: "/SoundEffects/CrystalGolemNormalAttack.mp3", heavyAttackSfxUrl: "/SoundEffects/CrystalGolemHeavyAttack.mp3", idleFrames: 7, attackFrames: 17, heavyAttackFrames: 11, idleFrameWidth: 128, idleFrameHeight: 128, attackFrameWidth: 128, attackFrameHeight: 128, heavyFrameWidth: 176, heavyFrameHeight: 128 },
     ],
     "Histopathology and Medtech Laws": [
-      { id: 'hp-1', nodeNumber: 1, title: 'Tissue Processing, Microtomy & Staining', subtopic: 'Formalin Fixation, Sectioning & H&E Staining', minionName: 'Formalin Slime', minionIcon: '🧪', miniBossName: 'Paraffin Golem', miniBossIcon: '🪨', bossName: 'Fixation Overlord', bossIcon: '👑' },
+      { id: 'hp-1', nodeNumber: 1, title: 'Tissue Processing, Microtomy & Staining', subtopic: 'Formalin Fixation, Sectioning & Special Fungal Stains', minionName: 'GMS Fungal Spore', minionIcon: '🍄', miniBossName: 'Paraffin Golem', miniBossIcon: '🪨', bossName: 'Fixation Overlord', bossIcon: '👑' },
       { id: 'hp-2', nodeNumber: 2, title: 'RA 5527 & MedTech Ethics', subtopic: 'Philippine Medical Technology Act of 1969', minionName: 'Statute Page', minionIcon: '📜', miniBossName: 'Legal Guardian', miniBossIcon: '🛡️', bossName: 'Jurisprudence Archon', bossIcon: '⚖️' },
-      { id: 'hp-3', nodeNumber: 3, title: '👑 Legal Beholder (FINAL BOSS)', subtopic: 'Biosafety, Lab Quality Assurance & Comprehensive Challenge', minionName: 'Biohazard Swarm', minionIcon: '☣️', miniBossName: 'Board Examiner Phantom', miniBossIcon: '📜', bossName: 'Legal Beholder', bossIcon: '👑' },
+      { id: 'hp-3', nodeNumber: 3, title: '👑 Legal Beholder (FINAL BOSS)', subtopic: 'Biosafety, Lab Quality Assurance & Comprehensive Challenge', bossName: 'Legal Beholder', bossIcon: '👑' },
     ],
   };
 
   const getSubjectNodes = (subject: string): SubjectNodeConfig[] => {
+    if (CHAPTER_NODES_PER_SUBJECT[subject]) return CHAPTER_NODES_PER_SUBJECT[subject];
+    if (subject.toLowerCase().includes('histo') || subject.toLowerCase().includes('law')) {
+      return CHAPTER_NODES_PER_SUBJECT["Histopathology and Medtech Laws"];
+    }
     return CHAPTER_NODES_PER_SUBJECT[subject] || [
       { id: `${subject}-1`, nodeNumber: 1, title: `${subject} Foundations`, subtopic: 'Core Diagnostic Principles', minionName: 'Lab Minion', minionIcon: '🧪', miniBossName: 'Diagnostic Spectre', miniBossIcon: '👻', bossName: `${subject} Overlord`, bossIcon: '👑' },
       { id: `${subject}-2`, nodeNumber: 2, title: `${subject} Advanced Concepts`, subtopic: 'Pathology & Testing Methodologies', minionName: 'Reagent Swarm', minionIcon: '💧', miniBossName: 'Assay Golem', miniBossIcon: '🪨', bossName: `${subject} Titan`, bossIcon: '⚡' },
-      { id: `${subject}-3`, nodeNumber: 3, title: `👑 ${subject} Sovereign (FINAL BOSS)`, subtopic: 'Comprehensive Licensure Board Challenge', minionName: 'Board Sentinel', minionIcon: '🛡️', miniBossName: 'Senior Examiner Specter', miniBossIcon: '📜', bossName: `Master ${subject} Colossus`, bossIcon: '👑' },
+      { id: `${subject}-3`, nodeNumber: 3, title: `👑 ${subject} Sovereign (FINAL BOSS)`, subtopic: 'Comprehensive Licensure Board Challenge', bossName: `Master ${subject} Colossus`, bossIcon: '👑' },
     ];
   };
 
@@ -840,7 +860,12 @@ export default function LearningQuest() {
   // Preload Battle & Inventory Assets on Mount for Instant Rendering
   useEffect(() => {
     preloadSpecterSounds();
-    preloadFinalBossMusic();
+    preloadBiohazardSounds();
+    preloadCrystalGolemSounds();
+    preloadMicrobeSwarmSounds();
+    preloadSickleCellReaperSounds();
+    preloadDebuffSound();
+    preloadBossBattleMusic();
     preloadLearningModeMusic();
     preloadTestModeMusic();
     const assetsToPreload = [
@@ -1407,6 +1432,7 @@ export default function LearningQuest() {
   }, [selectedSubject, dynamicCategories]);
 
   const startQuest = async (limit: number = 50, specificDifficulty?: string) => {
+    stopBossBattleMusic();
     stopFinalBossMusic();
     stopLearningModeMusic();
     stopTestModeMusic();
@@ -1466,8 +1492,10 @@ export default function LearningQuest() {
       } else if (quizMode === 'learning') {
         setLearningStage(1);
         const activeNodes = getSubjectNodes(selectedSubject);
-        const randomNode1 = activeNodes[Math.floor(Math.random() * activeNodes.length)] || activeNodes[0];
-        const randomNode2 = activeNodes[Math.floor(Math.random() * activeNodes.length)] || activeNodes[0];
+        const nonFinalNodes = activeNodes.filter(n => n.nodeNumber !== 3);
+        const pool = nonFinalNodes.length > 0 ? nonFinalNodes : activeNodes;
+        const randomNode1 = pool[Math.floor(Math.random() * pool.length)] || activeNodes[0];
+        const randomNode2 = pool[Math.floor(Math.random() * pool.length)] || activeNodes[0];
         const randomNode3 = activeNodes[Math.floor(Math.random() * activeNodes.length)] || activeNodes[0];
         const subjectMeta = getSubjectMeta(selectedSubject);
 
@@ -1535,6 +1563,91 @@ export default function LearningQuest() {
       difficulty: questionData?.difficulty
     }]);
 
+    const activeNodes = getSubjectNodes(selectedSubject);
+    const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+    const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
+    const subjectMeta = getSubjectMeta(selectedSubject);
+
+    let currentEnemyName = subjectMeta.enemy;
+    if (quizMode === 'boss-battle') {
+      if (isChapter3FinalBoss) {
+        currentEnemyName = currentActiveNode.bossName;
+      } else {
+        currentEnemyName = battleStage === 1 ? (currentActiveNode.minionName || 'Minion') : battleStage === 2 ? (currentActiveNode.miniBossName || 'Mini-Boss') : currentActiveNode.bossName;
+      }
+    } else if (quizMode === 'learning') {
+      const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
+      currentEnemyName = waveState.name;
+    } else {
+      currentEnemyName = subjectMeta.enemy;
+    }
+
+    const isBiohazardOverlord = Boolean(
+      currentEnemyName?.toLowerCase().includes('biohazard') ||
+      currentActiveNode?.bossName?.toLowerCase().includes('biohazard') ||
+      currentActiveNode?.id === 'mb-3' ||
+      currentActiveNode?.idleSpriteUrl?.includes('microbio_finalboss') ||
+      currentActiveNode?.attackSpriteUrl?.includes('microbio_finalboss') ||
+      (selectedSubject === 'Microbiology' && (
+        isChapter3FinalBoss ||
+        (quizMode === 'boss-battle' && (battleStage === 3 || isChapter3FinalBoss)) ||
+        quizMode === 'test' ||
+        (quizMode === 'learning' && currentEnemyName?.toLowerCase().includes('biohazard'))
+      ))
+    );
+
+    const isSpecterBoss = Boolean(
+      currentEnemyName?.toLowerCase().includes('specter') ||
+      currentActiveNode?.bossName?.toLowerCase().includes('specter') ||
+      currentActiveNode?.id === 'cc-3' ||
+      currentActiveNode?.idleSpriteUrl?.includes('clinchem_finalboss') ||
+      currentActiveNode?.attackSpriteUrl?.includes('clinchem_finalboss') ||
+      (selectedSubject === 'Clinical Chemistry' && (isChapter3FinalBoss || quizMode !== 'boss-battle'))
+    );
+
+    const plannedAttackType: 'normal_attack' | 'heavy_attack' = quizMode === 'learning'
+      ? (Math.random() < 0.5 ? 'normal_attack' : 'heavy_attack')
+      : (action === 'heavy' ? 'heavy_attack' : 'normal_attack');
+
+    const isSpecterNormalAttack = isSpecterBoss && plannedAttackType === 'normal_attack';
+
+    const isCrystalGolemBoss = Boolean(
+      currentEnemyName?.toLowerCase().includes('crystal golem') ||
+      currentActiveNode?.bossName?.toLowerCase().includes('crystal golem') ||
+      currentActiveNode?.id === 'cm-3' ||
+      currentActiveNode?.idleSpriteUrl?.includes('clinmicro_finalboss') ||
+      currentActiveNode?.attackSpriteUrl?.includes('clinmicro_finalboss') ||
+      ((selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit')) && (
+        isChapter3FinalBoss ||
+        (quizMode === 'boss-battle' && (battleStage === 3 || isChapter3FinalBoss)) ||
+        quizMode === 'test' ||
+        (quizMode === 'learning' && currentEnemyName?.toLowerCase().includes('crystal golem'))
+      ))
+    );
+
+    const isMicrobeSwarm = Boolean(
+      currentEnemyName?.toLowerCase().includes('microbe swarm') ||
+      currentActiveNode?.minionName?.toLowerCase().includes('microbe swarm') ||
+      (quizMode === 'boss-battle' && battleStage === 1 && currentActiveNode?.id === 'mb-1')
+    );
+
+    const isSickleCellReaper = Boolean(
+      currentEnemyName?.toLowerCase().includes('sickle') ||
+      currentEnemyName?.toLowerCase().includes('reaper') ||
+      currentActiveNode?.bossName?.toLowerCase().includes('sickle') ||
+      currentActiveNode?.id === 'hem-3' ||
+      currentActiveNode?.idleSpriteUrl?.includes('hematology_finalboss') ||
+      currentActiveNode?.attackSpriteUrl?.includes('hematology_finalboss') ||
+      (selectedSubject === 'Hematology' && (
+        isChapter3FinalBoss ||
+        (quizMode === 'boss-battle' && (battleStage === 3 || isChapter3FinalBoss)) ||
+        quizMode === 'test' ||
+        (quizMode === 'learning' && currentEnemyName?.toLowerCase().includes('reaper'))
+      ))
+    );
+
+    const shouldSuppressWrongSfx = isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellReaper;
+
     if (isCorrect) {
       setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
@@ -1544,7 +1657,9 @@ export default function LearningQuest() {
       }
     } else {
       setStreak(0);
-      playSfx('wrong');
+      if (!shouldSuppressWrongSfx) {
+        playSfx('wrong');
+      }
     }
 
     let enemyDmg = 0;
@@ -1554,6 +1669,7 @@ export default function LearningQuest() {
 
     let newPoisonedState = playerPoisoned;
     let newShieldState = bossShieldActive;
+    let didInflictPoison = false;
 
     if (quizMode === 'boss-battle') {
       const playerStats = calculatePlayerStats(userLevel, streak, equippedItem);
@@ -1616,6 +1732,7 @@ export default function LearningQuest() {
 
         // Poison Infliction Mechanics: (Only if boss is NOT being defeated on this turn)
         if (battleStage >= 2 && !isCorrect && !willEnemyBeDefeated && enemyHealth > 0 && Math.random() < 0.25) {
+          didInflictPoison = true;
           newPoisonedState = true;
           toast({
             title: "POISONED! ☠️",
@@ -1630,6 +1747,7 @@ export default function LearningQuest() {
         if (equippedItem === 'buffered_saline' && !salineUsedThisBattle && (inventory.buffered_saline || 0) > 0) {
           if (newPoisonedState || (!isCorrect && playerDmg > 0)) {
             newPoisonedState = false;
+            didInflictPoison = false;
             setSalineUsedThisBattle(true);
             addFloatingText('player', 'DEBUFF NULLIFIED! 🧪💧', 'text-emerald-400');
             toast({
@@ -1709,11 +1827,12 @@ export default function LearningQuest() {
             setEnemyHealth(0);
             setBossShieldActive(false);
             setPlayerPoisoned(false);
-            if (isChapter3FinalBoss) {
-              playFinalBossMusic('victory');
-              const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+            const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+            // Allow player's winning attack animation (1200ms) to complete smoothly before Victory displays!
+            setTimeout(() => {
+              playBossBattleMusic('victory');
               handleFinish(currentScore, 'victory');
-            }
+            }, 800);
           } else if (battleStage === 1) {
             setBattleStage(2);
             setBossShieldActive(false);
@@ -1797,6 +1916,10 @@ export default function LearningQuest() {
         setPlayerHealth(nextHp);
 
         addFloatingText('player', `-${Math.ceil(playerDmg)} DMG!`, 'text-red-500');
+        if (didInflictPoison) {
+          playDebuffSound();
+          addFloatingText('player', '☠️ POISONED!', 'text-purple-400 font-black');
+        }
         const flashEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_hit_flash') !== 'false' : true;
         if (flashEnabled) {
           setHitFlash(true);
@@ -1815,40 +1938,39 @@ export default function LearningQuest() {
             });
           } else {
             // Boss-Battle & Test Mode: Strict Game Over Defeat
-            const activeNodes = getSubjectNodes(selectedSubject);
-            const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-            const isChapter3FinalBoss = quizMode === 'boss-battle' && currentActiveNode?.nodeNumber === 3;
+            // Allow the enemy's fatal attack animation to finish completely before Game Over displays!
+            setTimeout(() => {
+              addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-600 font-black');
+              setJudgementText('GAME OVER');
+              if (quizMode === 'boss-battle') {
+                playBossBattleMusic('defeat');
+              } else if (quizMode === 'test') {
+                playTestModeMusic('defeat');
+              } else {
+                playSfx('wrong');
+              }
+              toast({
+                variant: "destructive",
+                title: "💀 Defeated in Arena!",
+                description: "Your health dropped to 0. Review your answer performance to strengthen your weak areas!",
+              });
 
-            addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-600 font-black');
-            setJudgementText('GAME OVER');
-            if (isChapter3FinalBoss) {
-              playFinalBossMusic('defeat');
-            } else if (quizMode === 'test') {
-              playTestModeMusic('defeat');
-            } else {
-              playSfx('wrong');
-            }
-            toast({
-              variant: "destructive",
-              title: "💀 Defeated in Arena!",
-              description: "Your health dropped to 0. Review your answer performance to strengthen your weak areas!",
-            });
-
-            if (isChapter3FinalBoss) {
-              // For Chapter 3 Final Boss, handleFinish will transition ONLY after MusicWhenDefeatedByFinalBoss has played!
-              const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
-              handleFinish(currentScore, 'defeat');
-            } else if (quizMode === 'test') {
-              // For Test Mode, handleFinish will transition ONLY after MusicWhenLostInTestMode has played!
-              const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
-              handleFinish(currentScore, 'defeat');
-            } else {
-              setTimeout(() => {
-                setJudgementText(null);
+              if (quizMode === 'boss-battle') {
+                // For Boss-Battle Mode, handleFinish will transition ONLY after MusicWhenLostInBossBattleMode has played!
                 const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
                 handleFinish(currentScore, 'defeat');
-              }, 1800);
-            }
+              } else if (quizMode === 'test') {
+                // For Test Mode, handleFinish will transition ONLY after MusicWhenLostInTestMode has played!
+                const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+                handleFinish(currentScore, 'defeat');
+              } else {
+                setTimeout(() => {
+                  setJudgementText(null);
+                  const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+                  handleFinish(currentScore, 'defeat');
+                }, 1800);
+              }
+            }, 800);
           }
         }
       };
@@ -1865,22 +1987,65 @@ export default function LearningQuest() {
         const isStaphSentinel = quizMode === 'boss-battle'
           ? (battleStage === 2 && currentActiveNode?.id === 'mb-1')
           : false;
+        const isBiohazardBoss = quizMode === 'boss-battle'
+          ? (currentActiveNode?.id === 'mb-3' || currentActiveNode?.nodeNumber === 3 || currentActiveNode?.bossName?.toLowerCase().includes('biohazard'))
+          : (selectedSubject === 'Microbiology');
+        const isCrystalGolemBoss = quizMode === 'boss-battle'
+          ? (currentActiveNode?.id === 'cm-3' || (currentActiveNode?.nodeNumber === 3 && (selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit'))) || currentActiveNode?.bossName?.toLowerCase().includes('crystal golem'))
+          : (selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit'));
 
         if (quizMode === 'learning') {
           // In Learning Mode (no action cards), randomize 50/50 between Normal Attack and Heavy Attack on wrong answer!
-          const attackType = Math.random() < 0.5 ? 'normal_attack' : 'heavy_attack';
+          const attackType = plannedAttackType;
           setBossAnimState(attackType);
           const isSpikes = attackType === 'normal_attack' && isSpikesAttack;
           const isGramPositiveHeavy = isGramPositiveBoss && attackType === 'heavy_attack';
           const isStaphSentinelHeavy = isStaphSentinel && attackType === 'heavy_attack';
+          const isBiohazardHeavy = isBiohazardBoss && attackType === 'heavy_attack';
+          const isBiohazardNormal = isBiohazardBoss && attackType === 'normal_attack';
+          const isCrystalGolemHeavy = isCrystalGolemBoss && attackType === 'heavy_attack';
+          const isCrystalGolemNormal = isCrystalGolemBoss && attackType === 'normal_attack';
+          const isMicrobeSwarmHeavy = isMicrobeSwarm && attackType === 'heavy_attack';
+          const isMicrobeSwarmNormal = isMicrobeSwarm && attackType === 'normal_attack';
+          const isSickleCellReaperHeavy = isSickleCellReaper && attackType === 'heavy_attack';
           const resetDelay = isSpikes
             ? 1050
             : isGramPositiveHeavy
               ? 1650
               : isStaphSentinelHeavy
                 ? 1420
-                : (isGramPositiveBoss ? 1080 : 950);
-          const impactDelay = isSpikes ? 650 : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (attackType === 'heavy_attack' ? 320 : 300)));
+                : isBiohazardHeavy
+                  ? 1180
+                  : isBiohazardNormal
+                    ? 860
+                    : isCrystalGolemHeavy
+                      ? 980
+                      : isCrystalGolemNormal
+                        ? 880
+                        : isMicrobeSwarmHeavy
+                          ? 1020
+                          : isMicrobeSwarmNormal
+                            ? 820
+                            : isSickleCellReaperHeavy
+                              ? 950
+                              : (isGramPositiveBoss ? 1080 : 950);
+          const impactDelay = isSpikes
+            ? 650
+            : isBiohazardHeavy
+              ? 340
+              : isBiohazardNormal
+                ? 260
+                : isCrystalGolemHeavy
+                  ? 320
+                  : isCrystalGolemNormal
+                    ? 280
+                    : isMicrobeSwarmHeavy
+                      ? 350
+                      : isMicrobeSwarmNormal
+                        ? 270
+                        : isSickleCellReaperHeavy
+                          ? 340
+                          : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (attackType === 'heavy_attack' ? 320 : 300)));
           setTimeout(applyPlayerDamage, impactDelay);
           if (isGramPositiveHeavy) {
             setTimeout(() => {
@@ -1897,19 +2062,56 @@ export default function LearningQuest() {
           }
           setTimeout(() => setBossAnimState('idle'), resetDelay);
         } else {
-          const attackType = action === 'heavy' ? 'heavy_attack' : 'normal_attack';
+          const attackType = plannedAttackType;
           setBossAnimState(attackType);
           const isSpikes = attackType === 'normal_attack' && isSpikesAttack;
           const isGramPositiveHeavy = isGramPositiveBoss && attackType === 'heavy_attack';
           const isStaphSentinelHeavy = isStaphSentinel && attackType === 'heavy_attack';
+          const isBiohazardHeavy = isBiohazardBoss && attackType === 'heavy_attack';
+          const isBiohazardNormal = isBiohazardBoss && attackType === 'normal_attack';
+          const isCrystalGolemHeavy = isCrystalGolemBoss && attackType === 'heavy_attack';
+          const isCrystalGolemNormal = isCrystalGolemBoss && attackType === 'normal_attack';
+          const isMicrobeSwarmHeavy = isMicrobeSwarm && attackType === 'heavy_attack';
+          const isMicrobeSwarmNormal = isMicrobeSwarm && attackType === 'normal_attack';
+          const isSickleCellReaperHeavy = isSickleCellReaper && attackType === 'heavy_attack';
           const resetDelay = isSpikes
             ? 1050
             : isGramPositiveHeavy
               ? 1650
               : isStaphSentinelHeavy
                 ? 1420
-                : (isGramPositiveBoss ? 1080 : 950);
-          const impactDelay = isSpikes ? 650 : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (action === 'heavy' ? 320 : 300)));
+                : isBiohazardHeavy
+                  ? 1180
+                  : isBiohazardNormal
+                    ? 860
+                    : isCrystalGolemHeavy
+                      ? 980
+                      : isCrystalGolemNormal
+                        ? 880
+                        : isMicrobeSwarmHeavy
+                          ? 1020
+                          : isMicrobeSwarmNormal
+                            ? 820
+                            : isSickleCellReaperHeavy
+                              ? 950
+                              : (isGramPositiveBoss ? 1080 : 950);
+          const impactDelay = isSpikes
+            ? 650
+            : isBiohazardHeavy
+              ? 340
+              : isBiohazardNormal
+                ? 260
+                : isCrystalGolemHeavy
+                  ? 320
+                  : isCrystalGolemNormal
+                    ? 280
+                    : isMicrobeSwarmHeavy
+                      ? 350
+                      : isMicrobeSwarmNormal
+                        ? 270
+                        : isSickleCellReaperHeavy
+                          ? 340
+                          : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (action === 'heavy' ? 320 : 300)));
           setTimeout(applyPlayerDamage, impactDelay);
           if (isGramPositiveHeavy) {
             setTimeout(() => {
@@ -1932,6 +2134,13 @@ export default function LearningQuest() {
       }
     }
 
+    if (didInflictPoison && playerDmg <= 0) {
+      setTimeout(() => {
+        playDebuffSound();
+        addFloatingText('player', '☠️ POISONED!', 'text-purple-400 font-black');
+      }, 350);
+    }
+
     if (playerHeal > 0) {
       const currentMaxHp = getPlayerMaxHp();
       const actualHeal = Math.min(playerHeal, Math.max(0, currentMaxHp - playerHealth));
@@ -1943,35 +2152,32 @@ export default function LearningQuest() {
       }
     }
 
-    // In Learning Mode: If this was the final question, execute the 75% PRC Licensure Passing Threshold verdict!
+    // In Learning Mode: If this was the final question, play the last attack first, then display Victory/Defeat verdict!
     if (quizMode === 'learning' && userAnswers.length + 1 >= questions.length) {
       const currentTotalCorrect = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
       const isOverallPassing = (currentTotalCorrect / questions.length) >= 0.75;
 
-      // Step 1: Immediately drain losing entity's HP to 0 HP with impact animation
+      // Allow the final question's attack animation (player lunge or enemy counter) to complete first!
+      const attackDuration = isCorrect ? 1250 : 1350;
+
       setTimeout(() => {
+        setPlayerAnimState('idle');
+        setBossAnimState('idle');
+
         if (isOverallPassing) {
           setEnemyHealth(0);
           setHitEffectTarget('enemy');
           setHitEffectKey(k => k + 1);
-          setPlayerAnimState('attack');
-          addFloatingText('enemy', '💥 FINISHING STRIKE! 👑 BOSS DEFEATED!', 'text-amber-300 font-black');
+          addFloatingText('enemy', '👑 BOSS DEFEATED!', 'text-amber-300 font-black');
+          setJudgementText('YOU WON');
         } else {
           setPlayerHealth(0);
           setHitEffectTarget('player');
           setHitEffectKey(k => k + 1);
           addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-500 font-black');
-        }
-      }, 400);
-
-      // Step 2: Once HP has visibly drained to 0, display the floating verdict
-      setTimeout(() => {
-        if (isOverallPassing) {
-          setJudgementText('YOU WON');
-        } else {
           setJudgementText('YOU FAILED');
         }
-      }, 1100);
+      }, attackDuration);
     }
 
     setPlayerPoisoned(newPoisonedState);
@@ -2015,6 +2221,8 @@ export default function LearningQuest() {
     isFinishingRef.current = true;
 
     setScore(finalScore);
+    setBossAnimState('idle');
+    setPlayerAnimState('idle');
 
     let finalOutcome = outcome;
     if (!finalOutcome) {
@@ -2078,10 +2286,6 @@ export default function LearningQuest() {
       setJudgementText(finalOutcome === 'victory' ? 'VICTORY' : 'GAME OVER');
     }
 
-    const activeNodes = getSubjectNodes(selectedSubject);
-    const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-    const isChapter3FinalBoss = quizMode === 'boss-battle' && currentActiveNode?.nodeNumber === 3;
-
     const transitionToPostBattle = () => {
       setJudgementText(null);
       setIsFinished(true);
@@ -2094,10 +2298,10 @@ export default function LearningQuest() {
       }
     };
 
-    if (isChapter3FinalBoss) {
-      // Transition to post-battle STRICTLY after MusicWhenFinalBossIsDefeated / MusicWhenDefeatedByFinalBoss finishes playing!
+    if (quizMode === 'boss-battle') {
+      // Transition to post-battle STRICTLY after MusicWhenWonInBossBattleMode / MusicWhenLostInBossBattleMode finishes playing!
       const outcomeType = finalOutcome === 'victory' ? 'victory' : 'defeat';
-      playFinalBossMusic(outcomeType, () => {
+      playBossBattleMusic(outcomeType, () => {
         transitionToPostBattle();
       });
     } else if (quizMode === 'learning') {
@@ -2134,32 +2338,41 @@ export default function LearningQuest() {
 
     try {
       // Calculate difficulty clears: Defeating Easy, Medium, and Hard unlocks next chapter node!
-      const actualTotal = quizMode === 'boss-battle' ? (userAnswers.length || score) : questions.length;
-      const accuracyPercent = actualTotal > 0 ? Math.round((score / actualTotal) * 100) : 0;
-      const isVictory = quizMode === 'boss-battle' ? battleOutcome === 'victory' : accuracyPercent >= 60;
+      // Node clears and stars are EXCLUSIVELY earned in Boss-Battle Mode on unlocked nodes!
+      if (quizMode === 'boss-battle' && selectedNodeId && battleOutcome === 'victory') {
+        const activeNodes = getSubjectNodes(selectedSubject);
+        const nodeIndex = activeNodes.findIndex(n => n.id === selectedNodeId);
+        const isNodeUnlockedForClear = (idx: number): boolean => {
+          if (idx <= 0) return true;
+          const prevNodeId = activeNodes[idx - 1]?.id;
+          if (!prevNodeId) return false;
+          const prevClears = nodeClears[prevNodeId];
+          return !!(prevClears?.EASY && prevClears?.MEDIUM && prevClears?.HARD);
+        };
 
-      if (selectedNodeId && isVictory) {
-        const currentDiff = (bossDifficulty || 'MEDIUM').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD';
-        saveNodeClearAction(selectedNodeId, currentDiff, selectedSubject);
-        setNodeClears(prevClears => {
-          const prevNodeClears = prevClears[selectedNodeId] || {};
-          const updatedNodeClears = { ...prevNodeClears, [currentDiff]: true };
-          const updatedClearsMap = { ...prevClears, [selectedNodeId]: updatedNodeClears };
-          try {
-            localStorage.setItem('boardquest_node_clears', JSON.stringify(updatedClearsMap));
-          } catch (e) { }
-
-          const totalStars = (updatedNodeClears.EASY ? 1 : 0) + (updatedNodeClears.MEDIUM ? 1 : 0) + (updatedNodeClears.HARD ? 1 : 0);
-          setNodeStars(prevStars => {
-            const updatedStarsMap = { ...prevStars, [selectedNodeId]: Math.max(prevStars[selectedNodeId] || 0, totalStars) };
+        if (nodeIndex !== -1 && isNodeUnlockedForClear(nodeIndex)) {
+          const currentDiff = (bossDifficulty || 'MEDIUM').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD';
+          saveNodeClearAction(selectedNodeId, currentDiff, selectedSubject);
+          setNodeClears(prevClears => {
+            const prevNodeClears = prevClears[selectedNodeId] || {};
+            const updatedNodeClears = { ...prevNodeClears, [currentDiff]: true };
+            const updatedClearsMap = { ...prevClears, [selectedNodeId]: updatedNodeClears };
             try {
-              localStorage.setItem('boardquest_node_stars', JSON.stringify(updatedStarsMap));
+              localStorage.setItem('boardquest_node_clears', JSON.stringify(updatedClearsMap));
             } catch (e) { }
-            return updatedStarsMap;
-          });
 
-          return updatedClearsMap;
-        });
+            const totalStars = (updatedNodeClears.EASY ? 1 : 0) + (updatedNodeClears.MEDIUM ? 1 : 0) + (updatedNodeClears.HARD ? 1 : 0);
+            setNodeStars(prevStars => {
+              const updatedStarsMap = { ...prevStars, [selectedNodeId]: Math.max(prevStars[selectedNodeId] || 0, totalStars) };
+              try {
+                localStorage.setItem('boardquest_node_stars', JSON.stringify(updatedStarsMap));
+              } catch (e) { }
+              return updatedStarsMap;
+            });
+
+            return updatedClearsMap;
+          });
+        }
       }
 
       const result = await completeQuest({
@@ -2620,6 +2833,7 @@ export default function LearningQuest() {
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pb-12 w-full max-w-xl mx-auto px-2 sm:px-0 mt-6 sm:mt-8">
             <Button
               onClick={() => {
+                stopBossBattleMusic();
                 stopFinalBossMusic();
                 stopLearningModeMusic();
                 stopTestModeMusic();
@@ -2631,7 +2845,7 @@ export default function LearningQuest() {
             >
               Re-Enter Arena
             </Button>
-            <Link href="/" className="flex-1 flex" onClick={() => { stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); }}>
+            <Link href="/" className="flex-1 flex" onClick={() => { stopBossBattleMusic(); stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); }}>
               <Button className="w-full h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap">
                 Back to Dashboard
               </Button>
@@ -2643,6 +2857,7 @@ export default function LearningQuest() {
   }
 
   const handleFleeArena = () => {
+    stopBossBattleMusic();
     stopFinalBossMusic();
     stopLearningModeMusic();
     stopTestModeMusic();
@@ -2969,6 +3184,7 @@ export default function LearningQuest() {
             {(() => {
               const activeNodes = getSubjectNodes(selectedSubject);
               const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+              const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
 
               const currentQ = questions[Math.min(questions.length - 1, userAnswers.length)] || questions[0];
               const _currentDiff = String(currentQ?.difficulty || 'EASY').toUpperCase();
@@ -2983,23 +3199,29 @@ export default function LearningQuest() {
               let waveState: any = null;
 
               if (quizMode === 'boss-battle') {
-                activeEnemyName = battleStage === 1 ? currentActiveNode.minionName : battleStage === 2 ? currentActiveNode.miniBossName : currentActiveNode.bossName;
-                activeEnemyBadge = battleStage === 1 ? 'MINION 👾' : battleStage === 2 ? 'MINI-BOSS 👹' : 'BOSS 👑';
-                const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
-                const isBossStageOrCh3 = battleStage === 3 || isChapter3FinalBoss;
-
-                if (battleStage === 1 && currentActiveNode?.minionIdleSpriteUrl) {
-                  idleSprite = currentActiveNode.minionIdleSpriteUrl || null;
-                  attackSprite = currentActiveNode.minionAttackSpriteUrl || currentActiveNode.minionIdleSpriteUrl || null;
-                  heavyAttackSprite = currentActiveNode.minionHeavyAttackSpriteUrl || currentActiveNode.minionAttackSpriteUrl || null;
-                } else if (battleStage === 2 && currentActiveNode?.miniBossIdleSpriteUrl) {
-                  idleSprite = currentActiveNode.miniBossIdleSpriteUrl || null;
-                  attackSprite = currentActiveNode.miniBossAttackSpriteUrl || currentActiveNode.miniBossIdleSpriteUrl || null;
-                  heavyAttackSprite = currentActiveNode.miniBossHeavyAttackSpriteUrl || currentActiveNode.miniBossAttackSpriteUrl || null;
-                } else if (isBossStageOrCh3) {
+                if (isChapter3FinalBoss) {
+                  activeEnemyName = currentActiveNode.bossName;
+                  activeEnemyBadge = 'FINAL BOSS 👑';
                   idleSprite = currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null;
                   attackSprite = currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null;
                   heavyAttackSprite = currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null;
+                } else {
+                  activeEnemyName = battleStage === 1 ? (currentActiveNode.minionName || 'Minion') : battleStage === 2 ? (currentActiveNode.miniBossName || 'Mini-Boss') : currentActiveNode.bossName;
+                  activeEnemyBadge = battleStage === 1 ? 'MINION 👾' : battleStage === 2 ? 'MINI-BOSS 👹' : 'BOSS 👑';
+
+                  if (battleStage === 1 && currentActiveNode?.minionIdleSpriteUrl) {
+                    idleSprite = currentActiveNode.minionIdleSpriteUrl || null;
+                    attackSprite = currentActiveNode.minionAttackSpriteUrl || currentActiveNode.minionIdleSpriteUrl || null;
+                    heavyAttackSprite = currentActiveNode.minionHeavyAttackSpriteUrl || currentActiveNode.minionAttackSpriteUrl || null;
+                  } else if (battleStage === 2 && currentActiveNode?.miniBossIdleSpriteUrl) {
+                    idleSprite = currentActiveNode.miniBossIdleSpriteUrl || null;
+                    attackSprite = currentActiveNode.miniBossAttackSpriteUrl || currentActiveNode.miniBossIdleSpriteUrl || null;
+                    heavyAttackSprite = currentActiveNode.miniBossHeavyAttackSpriteUrl || currentActiveNode.miniBossAttackSpriteUrl || null;
+                  } else {
+                    idleSprite = currentActiveNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null;
+                    attackSprite = currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null;
+                    heavyAttackSprite = currentActiveNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null;
+                  }
                 }
                 displayEnemyHp = enemyHealth;
               } else if (quizMode === 'learning') {
@@ -3019,8 +3241,8 @@ export default function LearningQuest() {
                 displayEnemyHp = enemyHealth;
               }
 
-              const isMinionStageWithSprite = quizMode === 'boss-battle' && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl;
-              const isMiniBossStageWithSprite = quizMode === 'boss-battle' && battleStage === 2 && !!currentActiveNode?.miniBossIdleSpriteUrl;
+              const isMinionStageWithSprite = quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl;
+              const isMiniBossStageWithSprite = quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 2 && !!currentActiveNode?.miniBossIdleSpriteUrl;
 
               const effectiveIdleFrames = isMinionStageWithSprite
                 ? (currentActiveNode.minionIdleFrames || 8)
@@ -3116,8 +3338,32 @@ export default function LearningQuest() {
                       {idleSprite && attackSprite ? (
                         <BossSpriteAnimator
                           bossName={activeEnemyName || currentActiveNode?.bossName}
-                          normalAttackSfxUrl={activeEnemyName?.toLowerCase().includes('specter') ? '/SoundEffects/HyperglemicSpecterNormalAttack.mp3' : undefined}
-                          heavyAttackSfxUrl={activeEnemyName?.toLowerCase().includes('specter') ? '/SoundEffects/HyperglemicSpecterHeavyAttack.mp3' : undefined}
+                          normalAttackSfxUrl={
+                            activeEnemyName?.toLowerCase().includes('sickle') || currentActiveNode?.id === 'hem-3'
+                              ? '/SoundEffects/SickleCellReaperNormalAttack.mp3'
+                              : activeEnemyName?.toLowerCase().includes('microbe swarm')
+                              ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
+                              : activeEnemyName?.toLowerCase().includes('specter')
+                              ? '/SoundEffects/HyperglemicSpecterNormalAttack.mp3'
+                              : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-3')
+                              ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
+                              : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-3')
+                              ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
+                              : (currentActiveNode?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl)
+                          }
+                          heavyAttackSfxUrl={
+                            activeEnemyName?.toLowerCase().includes('sickle') || currentActiveNode?.id === 'hem-3'
+                              ? '/SoundEffects/SickleCellReaperHeavyAttack.mp3'
+                              : activeEnemyName?.toLowerCase().includes('microbe swarm')
+                              ? '/SoundEffects/MicrobeSwarmHeavyAttack.wav'
+                              : activeEnemyName?.toLowerCase().includes('specter')
+                              ? '/SoundEffects/HyperglemicSpecterHeavyAttack.mp3'
+                              : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-3')
+                              ? '/SoundEffects/BiohazardOverlordHeavyAttack.mp3'
+                              : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-3')
+                              ? '/SoundEffects/CrystalGolemHeavyAttack.mp3'
+                              : (currentActiveNode?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl)
+                          }
                           idleSpriteUrl={idleSprite}
                           attackSpriteUrl={attackSprite}
                           heavyAttackSpriteUrl={heavyAttackSprite || undefined}
@@ -3136,7 +3382,7 @@ export default function LearningQuest() {
                           heavyFrameHeight={effectiveHeavyFrameHeight}
                           idleDuration={effectiveIdleDuration || waveState?.idleDuration || currentActiveNode?.idleDuration || subjectMeta?.idleDuration || undefined}
                           idleFps={waveState?.idleFps || currentActiveNode?.idleFps || subjectMeta?.idleFps || undefined}
-                          animState={introPhase === 'active' ? bossAnimState : 'idle'}
+                          animState={(introPhase === 'active' && !judgementText && !battleOutcome && !isFinished) ? bossAnimState : 'idle'}
                           onAttackComplete={() => setBossAnimState('idle')}
                           scale={1.35}
                           isHit={isAnimating === "enemy"}
@@ -3175,7 +3421,7 @@ export default function LearningQuest() {
               {/* Standalone Foreground Player Character Sprite - Completely flush to bottom-left */}
               <div className={cn(
                 "relative flex flex-col items-center justify-end shrink-0 -mb-4 md:-mb-6 -ml-2 md:-ml-4 transition-all transform-gpu z-20",
-                playerAnimState === 'attack' && "animate-player-lunge"
+                playerAnimState === 'attack' && !judgementText && !battleOutcome && !isFinished && "animate-player-lunge"
               )}>
                 {/* Ground Shadow for Player Character */}
                 <div className="absolute bottom-4 w-36 md:w-52 h-5 bg-black/70 rounded-[100%] blur-md scale-y-50 pointer-events-none" />
@@ -3276,6 +3522,7 @@ export default function LearningQuest() {
               isLoading={isLoading}
               mode={quizMode}
               battleStage={battleStage}
+              isFinalBoss={quizMode === 'boss-battle' && getSubjectNodes(selectedSubject).find(n => n.id === selectedNodeId)?.nodeNumber === 3}
               bossShieldActive={bossShieldActive}
               playerPoisoned={playerPoisoned}
               streak={streak}

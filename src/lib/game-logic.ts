@@ -69,12 +69,12 @@ export function calculatePlayerStats(level: number, streak: number = 0, equipped
   // CRIT Rate: Base 15% + (streak * 2)% capped at +25% (+10% if Pipette of Clarity equipped)
   const critRate = Math.min(50, 15 + Math.min(25, streak * 2) + (hasClarity ? 10 : 0));
 
-  // Multiplier: 1.0x to 2.0x based on streak
+  // Multiplier: 1.0x to 1.50x based on streak
   let multiplier = 1.0;
-  if (streak >= 30) multiplier = 2.0;
-  else if (streak >= 14) multiplier = 1.5;
-  else if (streak >= 7) multiplier = 1.25;
-  else if (streak >= 3) multiplier = 1.1;
+  if (streak >= 30) multiplier = 1.50;
+  else if (streak >= 14) multiplier = 1.30;
+  else if (streak >= 7) multiplier = 1.15;
+  else if (streak >= 3) multiplier = 1.05;
 
   let equippedItemName = 'None Equipped';
   let equippedItemBuff = 'No active combat buff';

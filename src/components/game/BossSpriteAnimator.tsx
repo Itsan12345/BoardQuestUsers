@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { preloadSpecterSounds, playSpecterAttack, playAudioFile } from "@/lib/audio-manager";
+import { preloadSpecterSounds, playSpecterAttack, preloadBiohazardSounds, playBiohazardAttack, preloadCrystalGolemSounds, playCrystalGolemAttack, preloadMicrobeSwarmSounds, playMicrobeSwarmAttack, preloadSickleCellReaperSounds, playSickleCellReaperAttack, playAudioFile } from "@/lib/audio-manager";
 
 export type BossAnimState = "idle" | "normal_attack" | "heavy_attack";
 
@@ -132,6 +132,46 @@ export function BossSpriteAnimator({
   const isStaphSentinelHeavy = isHeavy && isStaphSentinelAttack;
   const isStaphSentinelNormal = !isHeavy && isStaphSentinelAttack;
 
+  const isBiohazardAttack = isAttacking && (
+    attackSpriteUrl?.includes('microbio_finalboss') ||
+    heavyAttackSpriteUrl?.includes('microbio_finalboss') ||
+    bossName?.toLowerCase().includes('biohazard') ||
+    heavyAttackSfxUrl?.includes('Biohazard') ||
+    normalAttackSfxUrl?.includes('Biohazard')
+  );
+  const isBiohazardHeavy = isHeavy && isBiohazardAttack;
+  const isBiohazardNormal = !isHeavy && isBiohazardAttack;
+
+  const isCrystalGolemAttack = isAttacking && (
+    attackSpriteUrl?.includes('clinmicro_finalboss') ||
+    heavyAttackSpriteUrl?.includes('clinmicro_finalboss') ||
+    bossName?.toLowerCase().includes('crystal golem') ||
+    heavyAttackSfxUrl?.includes('CrystalGolem') ||
+    normalAttackSfxUrl?.includes('CrystalGolem')
+  );
+
+  const isMicrobeSwarmAttack = isAttacking && (
+    attackSpriteUrl?.includes('microbio_chapterOneMinion') ||
+    heavyAttackSpriteUrl?.includes('microbio_chapterOneMinion') ||
+    bossName?.toLowerCase().includes('microbe swarm') ||
+    heavyAttackSfxUrl?.includes('MicrobeSwarm') ||
+    normalAttackSfxUrl?.includes('MicrobeSwarm')
+  );
+  const isMicrobeSwarmHeavy = isHeavy && isMicrobeSwarmAttack;
+  const isMicrobeSwarmNormal = !isHeavy && isMicrobeSwarmAttack;
+
+  const isSickleCellReaperAttack = isAttacking && (
+    attackSpriteUrl?.includes('hematology_finalboss') ||
+    heavyAttackSpriteUrl?.includes('hematology_finalboss') ||
+    undergroundSpikesUrl?.includes('hematology_finalboss') ||
+    bossName?.toLowerCase().includes('sickle') ||
+    bossName?.toLowerCase().includes('reaper') ||
+    heavyAttackSfxUrl?.includes('SickleCellReaper') ||
+    normalAttackSfxUrl?.includes('SickleCellReaper')
+  );
+  const isSickleCellReaperHeavy = isHeavy && isSickleCellReaperAttack;
+  const isSickleCellReaperNormal = !isHeavy && isSickleCellReaperAttack;
+
   const spriteDuration = (isNormalAttack && hasProjectile)
     ? 0.38
     : (isNormalAttack && hasUndergroundSpikes)
@@ -144,6 +184,18 @@ export function BossSpriteAnimator({
     ? 0.50
     : isStaphSentinelNormal
     ? 0.58
+    : isMicrobeSwarmHeavy
+    ? 0.75
+    : isMicrobeSwarmNormal
+    ? 0.65
+    : isSickleCellReaperHeavy
+    ? 0.70
+    : isSickleCellReaperNormal
+    ? 0.42
+    : isBiohazardHeavy
+    ? 0.82
+    : isBiohazardNormal
+    ? 0.48
     : isBiohazardIdle
     ? (idleDuration || (idleFps ? currentTotalFrames / idleFps : 1.05))
     : Math.max(0.48, Math.min(0.62, currentTotalFrames / fps));
@@ -156,10 +208,22 @@ export function BossSpriteAnimator({
     ? spriteDuration * 2
     : isStaphSentinelNormal
     ? 0.58
+    : isMicrobeSwarmHeavy
+    ? 0.75
+    : isMicrobeSwarmNormal
+    ? 0.65
+    : isSickleCellReaperHeavy
+    ? 0.70
+    : isSickleCellReaperNormal
+    ? 0.42
+    : isBiohazardHeavy
+    ? 0.82
+    : isBiohazardNormal
+    ? 0.48
     : spriteDuration;
 
   const lungeDuration = isAttacking
-    ? (hasProjectile ? 0.45 : hasUndergroundSpikes ? 1.05 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : 0.35))
+    ? (hasProjectile ? 0.45 : hasUndergroundSpikes ? 1.05 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : 0.35)))
     : spriteDuration;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
@@ -177,12 +241,62 @@ export function BossSpriteAnimator({
     (isWideBeam && currentFrameWidth === 480)
   );
 
-  // Preload Specter audio files immediately so playback starts with 0ms latency
+  const isBiohazard = (
+    bossName?.toLowerCase().includes('biohazard') ||
+    idleSpriteUrl?.includes('microbio_finalboss') ||
+    heavyAttackSpriteUrl?.includes('microbio_finalboss') ||
+    attackSpriteUrl?.includes('microbio_finalboss') ||
+    heavyAttackSfxUrl?.includes('Biohazard') ||
+    normalAttackSfxUrl?.includes('Biohazard')
+  );
+
+  const isCrystalGolem = (
+    bossName?.toLowerCase().includes('crystal golem') ||
+    idleSpriteUrl?.includes('clinmicro_finalboss') ||
+    heavyAttackSpriteUrl?.includes('clinmicro_finalboss') ||
+    attackSpriteUrl?.includes('clinmicro_finalboss') ||
+    heavyAttackSfxUrl?.includes('CrystalGolem') ||
+    normalAttackSfxUrl?.includes('CrystalGolem')
+  );
+
+  const isMicrobeSwarm = (
+    bossName?.toLowerCase().includes('microbe swarm') ||
+    idleSpriteUrl?.includes('microbio_chapterOneMinion') ||
+    heavyAttackSpriteUrl?.includes('microbio_chapterOneMinion') ||
+    attackSpriteUrl?.includes('microbio_chapterOneMinion') ||
+    heavyAttackSfxUrl?.includes('MicrobeSwarm') ||
+    normalAttackSfxUrl?.includes('MicrobeSwarm')
+  );
+
+  const isSickleCellReaper = (
+    bossName?.toLowerCase().includes('sickle') ||
+    bossName?.toLowerCase().includes('reaper') ||
+    idleSpriteUrl?.includes('hematology_finalboss') ||
+    heavyAttackSpriteUrl?.includes('hematology_finalboss') ||
+    attackSpriteUrl?.includes('hematology_finalboss') ||
+    undergroundSpikesUrl?.includes('hematology_finalboss') ||
+    heavyAttackSfxUrl?.includes('SickleCellReaper') ||
+    normalAttackSfxUrl?.includes('SickleCellReaper')
+  );
+
+  // Preload Specter, Biohazard, Crystal Golem, Microbe Swarm, and Sickle-Cell Reaper audio files immediately so playback starts with 0ms latency
   useEffect(() => {
-    if (isSpecter || heavyAttackSfxUrl || normalAttackSfxUrl) {
+    if (isSpecter || heavyAttackSfxUrl?.includes('Specter') || normalAttackSfxUrl?.includes('Specter')) {
       preloadSpecterSounds();
     }
-  }, [isSpecter, heavyAttackSfxUrl, normalAttackSfxUrl]);
+    if (isBiohazard || heavyAttackSfxUrl?.includes('Biohazard') || normalAttackSfxUrl?.includes('Biohazard')) {
+      preloadBiohazardSounds();
+    }
+    if (isCrystalGolem || heavyAttackSfxUrl?.includes('CrystalGolem') || normalAttackSfxUrl?.includes('CrystalGolem')) {
+      preloadCrystalGolemSounds();
+    }
+    if (isMicrobeSwarm || heavyAttackSfxUrl?.includes('MicrobeSwarm') || normalAttackSfxUrl?.includes('MicrobeSwarm')) {
+      preloadMicrobeSwarmSounds();
+    }
+    if (isSickleCellReaper || heavyAttackSfxUrl?.includes('SickleCellReaper') || normalAttackSfxUrl?.includes('SickleCellReaper')) {
+      preloadSickleCellReaperSounds();
+    }
+  }, [isSpecter, isBiohazard, isCrystalGolem, isMicrobeSwarm, isSickleCellReaper, heavyAttackSfxUrl, normalAttackSfxUrl]);
 
   // Key to force reset DOM animation state whenever animState changes
   const [animKey, setAnimKey] = useState(0);
@@ -192,18 +306,47 @@ export function BossSpriteAnimator({
     if (isAttacking) {
       if (lastPlayedAnimRef.current !== animState) {
         lastPlayedAnimRef.current = animState;
-        if (isSpecter || heavyAttackSfxUrl || normalAttackSfxUrl) {
+        if (isSickleCellReaper || isSickleCellReaperAttack) {
+          if (isHeavy) {
+            playSickleCellReaperAttack('heavy');
+          } else if (isNormalAttack) {
+            // The underground spikes burst from the ground at 400ms delay after boss glint
+            setTimeout(() => {
+              playSickleCellReaperAttack('normal');
+            }, 400);
+          }
+        } else if (isMicrobeSwarm || isMicrobeSwarmAttack) {
+          if (isHeavy) {
+            playMicrobeSwarmAttack('heavy');
+          } else if (isNormalAttack) {
+            playMicrobeSwarmAttack('normal');
+          }
+        } else if (isCrystalGolem || isCrystalGolemAttack) {
+          if (isHeavy) {
+            playCrystalGolemAttack('heavy');
+          } else if (isNormalAttack) {
+            playCrystalGolemAttack('normal');
+          }
+        } else if (isBiohazard || isBiohazardAttack) {
+          if (isHeavy) {
+            playBiohazardAttack('heavy');
+          } else if (isNormalAttack) {
+            playBiohazardAttack('normal');
+          }
+        } else if (isSpecter) {
+          if (isHeavy) {
+            playSpecterAttack('heavy');
+          } else if (isNormalAttack) {
+            playSpecterAttack('normal');
+          }
+        } else if (heavyAttackSfxUrl || normalAttackSfxUrl) {
           if (isHeavy) {
             if (heavyAttackSfxUrl) {
               playAudioFile(heavyAttackSfxUrl);
-            } else {
-              playSpecterAttack('heavy');
             }
           } else if (isNormalAttack) {
             if (normalAttackSfxUrl) {
               playAudioFile(normalAttackSfxUrl);
-            } else {
-              playSpecterAttack('normal');
             }
           }
         }
@@ -219,7 +362,7 @@ export function BossSpriteAnimator({
     } else {
       lastPlayedAnimRef.current = null;
     }
-  }, [animState, isAttacking, lungeDuration, isSpecter, isHeavy, isNormalAttack, heavyAttackSfxUrl, normalAttackSfxUrl]);
+  }, [animState, isAttacking, lungeDuration, isSickleCellReaper, isSickleCellReaperAttack, isMicrobeSwarm, isMicrobeSwarmAttack, isSpecter, isBiohazard, isBiohazardAttack, isCrystalGolem, isCrystalGolemAttack, isHeavy, isNormalAttack, heavyAttackSfxUrl, normalAttackSfxUrl]);
 
   const sheetWidth = currentFrameWidth * currentTotalFrames;
 
@@ -283,8 +426,10 @@ export function BossSpriteAnimator({
           isGramPositiveHeavy && "animate-boss-gram-positive-heavy-lunge",
           isGramPositiveNormal && "animate-boss-gram-positive-lunge",
           isStaphSentinelHeavy && "animate-boss-staph-sentinel-heavy-lunge",
-          isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && "animate-boss-heavy-lunge",
-          isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isGramPositiveAttack && "animate-boss-lunge",
+          isBiohazardHeavy && "animate-boss-biohazard-heavy-lunge",
+          isBiohazardNormal && "animate-boss-biohazard-lunge",
+          isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && "animate-boss-heavy-lunge",
+          isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isGramPositiveAttack && !isBiohazardAttack && "animate-boss-lunge",
           isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
         )}
         style={{
@@ -422,6 +567,42 @@ export function BossSpriteAnimator({
           }
         }
 
+        @keyframes bossBiohazardLunge {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          12% {
+            /* Dash directly in front of the player */
+            transform: translate(min(-60px, calc(-100cqw + 260px)), 15px) scale(1.35);
+          }
+          78% {
+            /* Execute strike while staying close to the player and pause cleanly */
+            transform: translate(min(-60px, calc(-100cqw + 260px)), 15px) scale(1.35);
+          }
+          100% {
+            /* Return smoothly to home position */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossBiohazardHeavyLunge {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          10% {
+            /* Dash into forward casting stance in arena */
+            transform: translate(min(-40px, calc(-100cqw + 390px)), 12px) scale(1.25);
+          }
+          80% {
+            /* Full toxic surge engulfs the player, then pause cleanly */
+            transform: translate(min(-40px, calc(-100cqw + 390px)), 12px) scale(1.25);
+          }
+          100% {
+            /* Return smoothly to home position on the right */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
         @media (min-width: 768px) {
           @keyframes bossLunge {
             0% {
@@ -531,6 +712,42 @@ export function BossSpriteAnimator({
             }
           }
 
+          @keyframes bossBiohazardLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            12% {
+              /* Lands close directly in front of the player on the left */
+              transform: translate(calc(-100cqw + 370px), 20px) scale(1.45);
+            }
+            78% {
+              /* Execute strike while staying close to the player and pause cleanly */
+              transform: translate(calc(-100cqw + 370px), 20px) scale(1.45);
+            }
+            100% {
+              /* Slides back smoothly to home position */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          @keyframes bossBiohazardHeavyLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            10% {
+              /* Plant feet in arena and fire the toxic biohazard storm directly into player */
+              transform: translate(calc(-100cqw + 510px), 15px) scale(1.25);
+            }
+            80% {
+              /* Full toxic surge engulfs the player, then pause cleanly */
+              transform: translate(calc(-100cqw + 510px), 15px) scale(1.25);
+            }
+            100% {
+              /* Glide smoothly back to home position on the right */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
           @keyframes bossProjectileFly {
             0% {
               transform: translate(0px, 0px) scale(0.8);
@@ -611,6 +828,14 @@ export function BossSpriteAnimator({
 
         .animate-boss-staph-sentinel-heavy-lunge {
           animation-name: bossStaphSentinelHeavyLunge;
+        }
+
+        .animate-boss-biohazard-lunge {
+          animation-name: bossBiohazardLunge;
+        }
+
+        .animate-boss-biohazard-heavy-lunge {
+          animation-name: bossBiohazardHeavyLunge;
         }
 
         @keyframes bossProjectileFly {

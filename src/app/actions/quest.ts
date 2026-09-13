@@ -325,6 +325,70 @@ export async function saveNodeClearAction(nodeId: string, difficulty: 'EASY' | '
 
     const diffUpper = difficulty.toUpperCase();
 
+    // Progression Integrity: Cannot clear chapter N > 1 unless chapter N-1 has cleared EASY, MEDIUM, and HARD
+    const match = nodeId.match(/^([a-z0-9_-]+)-(\d+)$/i);
+    if (match) {
+      const prefix = match[1];
+      const num = parseInt(match[2], 10);
+      if (num > 1) {
+        const prevNodeId = `${prefix}-${num - 1}`;
+        let prevCompletions: any[] = [];
+        if ((prisma as any).questNodeCompletion) {
+          prevCompletions = await (prisma as any).questNodeCompletion.findMany({
+            where: { userId, nodeId: prevNodeId, status: 'completed' },
+            select: { difficulty: true }
+          });
+        } else {
+          const rawRes: any = await (prisma as any).$runCommandRaw({
+            find: "QuestNodeCompletion",
+            filter: { userId: { $oid: userId }, nodeId: prevNodeId, status: "completed" },
+            projection: { difficulty: 1, _id: 0 }
+          });
+          if (rawRes?.cursor?.firstBatch) {
+            prevCompletions = rawRes.cursor.firstBatch;
+          }
+        }
+        const hasEasy = prevCompletions.some(c => (c.difficulty || '').toUpperCase() === 'EASY');
+        const hasMedium = prevCompletions.some(c => (c.difficulty || '').toUpperCase() === 'MEDIUM');
+        const hasHard = prevCompletions.some(c => (c.difficulty || '').toUpperCase() === 'HARD');
+        if (!hasEasy || !hasMedium || !hasHard) {
+          console.warn(`Rejected saving clear for locked node ${nodeId}: prerequisite ${prevNodeId} not fully completed.`);
+          return;
+        }
+      }
+    }
+
+    // Difficulty Progression Integrity: Cannot clear MEDIUM without EASY, or HARD without MEDIUM
+    if (diffUpper === 'MEDIUM' || diffUpper === 'HARD') {
+      let currentCompletions: any[] = [];
+      if ((prisma as any).questNodeCompletion) {
+        currentCompletions = await (prisma as any).questNodeCompletion.findMany({
+          where: { userId, nodeId, status: 'completed' },
+          select: { difficulty: true }
+        });
+      } else {
+        const rawRes: any = await (prisma as any).$runCommandRaw({
+          find: "QuestNodeCompletion",
+          filter: { userId: { $oid: userId }, nodeId, status: "completed" },
+          projection: { difficulty: 1, _id: 0 }
+        });
+        if (rawRes?.cursor?.firstBatch) {
+          currentCompletions = rawRes.cursor.firstBatch;
+        }
+      }
+      const hasEasy = currentCompletions.some(c => (c.difficulty || '').toUpperCase() === 'EASY');
+      const hasMedium = currentCompletions.some(c => (c.difficulty || '').toUpperCase() === 'MEDIUM');
+
+      if (diffUpper === 'MEDIUM' && !hasEasy) {
+        console.warn(`Rejected saving MEDIUM clear for ${nodeId}: EASY not yet completed.`);
+        return;
+      }
+      if (diffUpper === 'HARD' && (!hasEasy || !hasMedium)) {
+        console.warn(`Rejected saving HARD clear for ${nodeId}: EASY and MEDIUM must be completed first.`);
+        return;
+      }
+    }
+
     if ((prisma as any).questNodeCompletion) {
       await (prisma as any).questNodeCompletion.upsert({
         where: {
@@ -410,6 +474,37 @@ export async function getNodeClearsAction(): Promise<NodeClearsResult> {
 
       if (!nodeClearsMap[nodeId]) nodeClearsMap[nodeId] = {};
       nodeClearsMap[nodeId][diff] = true;
+    });
+
+    // Difficulty Progression Integrity within each node: EASY -> MEDIUM -> HARD
+    // A higher difficulty can NEVER be marked as cleared if preceding difficulty was not cleared!
+    Object.keys(nodeClearsMap).forEach((nodeId) => {
+      const clears = nodeClearsMap[nodeId];
+      if (clears) {
+        if (!clears.EASY) {
+          delete clears.MEDIUM;
+          delete clears.HARD;
+        } else if (!clears.MEDIUM) {
+          delete clears.HARD;
+        }
+      }
+    });
+
+    // Progression Integrity: Prune clears if previous node is not fully cleared
+    Object.keys(nodeClearsMap).forEach((nodeId) => {
+      const match = nodeId.match(/^([a-z0-9_-]+)-(\d+)$/i);
+      if (match) {
+        const prefix = match[1];
+        const num = parseInt(match[2], 10);
+        if (num > 1) {
+          const prevNodeId = `${prefix}-${num - 1}`;
+          const prevClears = nodeClearsMap[prevNodeId];
+          const isPrevFullyCleared = !!(prevClears?.EASY && prevClears?.MEDIUM && prevClears?.HARD);
+          if (!isPrevFullyCleared) {
+            delete nodeClearsMap[nodeId];
+          }
+        }
+      }
     });
 
     Object.keys(nodeClearsMap).forEach((nodeId) => {

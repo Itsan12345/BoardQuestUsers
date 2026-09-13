@@ -12,10 +12,10 @@ export interface ChapterNode {
   nodeNumber: number;
   title: string;
   subtopic: string;
-  minionName: string;
-  minionIcon: string;
-  miniBossName: string;
-  miniBossIcon: string;
+  minionName?: string;
+  minionIcon?: string;
+  miniBossName?: string;
+  miniBossIcon?: string;
   bossName: string;
   bossIcon: string;
 }
@@ -72,8 +72,10 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
   const selectedNode = subjectNodes.find(n => n.id === selectedNodeId) || subjectNodes[0];
   const selectedNodeIndex = subjectNodes.findIndex(n => n.id === selectedNode.id);
   const isSelectedUnlocked = isNodeUnlocked(selectedNodeIndex);
-  const selectedNodeClears = nodeClears[selectedNode.id] || {};
-  const currentStars = (selectedNodeClears.EASY ? 1 : 0) + (selectedNodeClears.MEDIUM ? 1 : 0) + (selectedNodeClears.HARD ? 1 : 0) || (nodeStars[selectedNode.id] || 0);
+  const selectedNodeClears = isSelectedUnlocked ? (nodeClears[selectedNode.id] || {}) : {};
+  const currentStars = isSelectedUnlocked
+    ? ((selectedNodeClears.EASY ? 1 : 0) + (selectedNodeClears.EASY && selectedNodeClears.MEDIUM ? 1 : 0) + (selectedNodeClears.EASY && selectedNodeClears.MEDIUM && selectedNodeClears.HARD ? 1 : 0) || 0)
+    : 0;
 
   // Auto-select the next un-cleared unlocked difficulty when selected node changes
   React.useEffect(() => {
@@ -210,8 +212,10 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
         <div className="absolute inset-0 z-20 pointer-events-none">
           {subjectNodes.map((node, index) => {
             const unlocked = isNodeUnlocked(index);
-            const clears = nodeClears[node.id] || {};
-            const stars = (clears.EASY ? 1 : 0) + (clears.MEDIUM ? 1 : 0) + (clears.HARD ? 1 : 0) || (nodeStars[node.id] || 0);
+            const clears = unlocked ? (nodeClears[node.id] || {}) : {};
+            const stars = unlocked
+              ? ((clears.EASY ? 1 : 0) + (clears.EASY && clears.MEDIUM ? 1 : 0) + (clears.EASY && clears.MEDIUM && clears.HARD ? 1 : 0) || 0)
+              : 0;
             const isSelected = selectedNodeId === node.id;
             const isBossNode = index === subjectNodes.length - 1;
             const s = selectedSubject.toLowerCase();
@@ -417,8 +421,8 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
             {isSelectedUnlocked && (
               <div className="flex items-center bg-black/60 p-0.5 sm:p-1 rounded-lg sm:rounded-xl border border-amber-500/30 w-full sm:w-auto justify-stretch sm:justify-center gap-1">
                 {(['EASY', 'MEDIUM', 'HARD'] as const).map((diff) => {
-                  const isCleared = !!selectedNodeClears[diff];
                   const isDiffUnlocked = isDifficultyUnlocked(selectedNode.id, diff);
+                  const isCleared = isDiffUnlocked && !!selectedNodeClears[diff];
                   return (
                     <button
                       key={diff}

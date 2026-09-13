@@ -180,10 +180,10 @@ export function calculateTotalXp(
   streak: number = 0
 ): number {
   let streakMultiplier = 1.0;
-  if (streak >= 30) streakMultiplier = 2.0;
-  else if (streak >= 14) streakMultiplier = 1.5;
-  else if (streak >= 7) streakMultiplier = 1.25;
-  else if (streak >= 3) streakMultiplier = 1.1;
+  if (streak >= 30) streakMultiplier = 1.50;
+  else if (streak >= 14) streakMultiplier = 1.30;
+  else if (streak >= 7) streakMultiplier = 1.15;
+  else if (streak >= 3) streakMultiplier = 1.05;
 
   const badgeXpBonus = earnedBadges.reduce((sum, badge) => sum + badge.xpReward, 0);
   const confidenceMultiplier = CONFIDENCE_MULTIPLIERS[confidenceLevel];

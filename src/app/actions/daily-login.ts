@@ -11,6 +11,7 @@ import {
   type DailyLoginStatusData,
   type DailyRewardTier,
 } from '@/lib/daily-login-config';
+import { getLevelFromXp } from '@/lib/badge-system';
 import { differenceInCalendarDays, parseISO, startOfDay, addDays } from 'date-fns';
 
 /**
@@ -254,7 +255,7 @@ export async function claimDailyLoginRewardAction(): Promise<{
 
     const currentXp = user.xp ?? 0;
     const updatedXp = currentXp + rewardTier.xp;
-    const updatedLevel = Math.max(1, Math.floor(updatedXp / 1000) + 1);
+    const updatedLevel = getLevelFromXp(updatedXp);
 
     // Check if user has already earned consistency badges (7-Day, 14-Day, 30-Day)
     const existingStreakBadges = await prisma.achievement.findMany({
@@ -288,6 +289,15 @@ export async function claimDailyLoginRewardAction(): Promise<{
           },
         }
       ),
+      // Update Prisma User for full ORM alignment
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          xp: updatedXp,
+          level: updatedLevel,
+          streak: currentStreak,
+        },
+      }).catch(() => {}),
       // Update DailyLogin collection with clean fields and strip duplicate clutter
       db.collection('DailyLogin').updateMany(
         loginQuery,

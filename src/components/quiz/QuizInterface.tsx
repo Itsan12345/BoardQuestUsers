@@ -28,6 +28,7 @@ interface QuizInterfaceProps {
   isLoading: boolean;
   mode: 'learning' | 'test' | 'boss-battle';
   battleStage?: 1 | 2 | 3;
+  isFinalBoss?: boolean;
   bossShieldActive?: boolean;
   playerPoisoned?: boolean;
   streak?: number;
@@ -36,7 +37,7 @@ interface QuizInterfaceProps {
   onUseClarity?: () => void;
 }
 
-export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, bossShieldActive, playerPoisoned, streak, equippedItem, clarityUsedThisBattle, onUseClarity }: QuizInterfaceProps) {
+export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, isFinalBoss, bossShieldActive, playerPoisoned, streak, equippedItem, clarityUsedThisBattle, onUseClarity }: QuizInterfaceProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -227,8 +228,11 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
           setIsAnswered(false);
           setIsTransitioning(false);
         } else {
-          onFinish(newScore);
-          setIsTransitioning(false);
+          // Allow the attack animation for the last question to play first (1300ms) before onFinish shows Victory/Defeat!
+          setTimeout(() => {
+            onFinish(newScore);
+            setIsTransitioning(false);
+          }, 1300);
         }
       }, 1000);
     }
@@ -284,12 +288,13 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
              {mode === 'boss-battle' && (
                <Badge className={cn(
                  "h-4 text-[8px] uppercase font-mono tracking-wider font-bold px-2 rounded-full border shadow-xs flex items-center gap-1",
+                 isFinalBoss ? "bg-red-500/20 text-red-500 border-red-500/50 animate-pulse" :
                  battleStage === 1 ? "bg-amber-500/15 text-amber-600 border-amber-500/40" :
                  battleStage === 2 ? "bg-purple-500/15 text-purple-600 border-purple-500/40" :
                  "bg-red-500/15 text-red-600 border-red-500/40 animate-pulse"
                )}>
-                 <span>{battleStage === 1 ? '👾' : battleStage === 2 ? '👹' : '👑'}</span>
-                 <span>STAGE {battleStage} / 3</span>
+                 <span>{isFinalBoss ? '👑' : battleStage === 1 ? '👾' : battleStage === 2 ? '👹' : '👑'}</span>
+                 <span>{isFinalBoss ? 'SOLO FINAL BOSS' : `STAGE ${battleStage} / 3`}</span>
                </Badge>
              )}
              {mode === 'learning' && (
