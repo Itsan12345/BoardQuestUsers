@@ -3,7 +3,7 @@
 // Web Audio API Synthesizer for Retro RPG Sound Effects
 // Zero external assets required - lightweight, crisp, and performant.
 
-type SfxType = 'click' | 'correct' | 'wrong' | 'attack' | 'heal' | 'victory' | 'defeat' | 'flee' | 'debuff' | 'poison' | 'specter_normal' | 'specter_heavy' | 'biohazard_normal' | 'biohazard_heavy' | 'crystal_golem_normal' | 'crystal_golem_heavy' | 'microbe_swarm_normal' | 'microbe_swarm_heavy' | 'sickle_reaper_normal' | 'sickle_reaper_heavy' | 'final_boss_victory' | 'final_boss_defeat' | 'boss_battle_win' | 'boss_battle_lost' | 'learning_win' | 'learning_lost' | 'test_win' | 'test_lost';
+type SfxType = 'click' | 'correct' | 'wrong' | 'attack' | 'heal' | 'victory' | 'defeat' | 'flee' | 'debuff' | 'poison' | 'specter_normal' | 'specter_heavy' | 'biohazard_normal' | 'biohazard_heavy' | 'staph_sentinel_normal' | 'staph_sentinel_heavy' | 'acid_slime_normal' | 'acid_slime_heavy' | 'crystal_golem_normal' | 'crystal_golem_heavy' | 'microbe_swarm_normal' | 'microbe_swarm_heavy' | 'sickle_cell_minion_normal' | 'sickle_cell_minion_heavy' | 'sickle_reaper_normal' | 'sickle_reaper_heavy' | 'fungal_spore_normal' | 'fungal_spore_heavy' | 'gram_positive_normal' | 'gram_positive_heavy' | 'final_boss_victory' | 'final_boss_defeat' | 'boss_battle_win' | 'boss_battle_lost' | 'learning_win' | 'learning_lost' | 'test_win' | 'test_lost';
 
 let audioCtx: AudioContext | null = null;
 
@@ -229,6 +229,26 @@ export function playSfx(type: SfxType) {
         break;
       }
 
+      case 'staph_sentinel_normal': {
+        playStaphSentinelAttack('normal');
+        break;
+      }
+
+      case 'staph_sentinel_heavy': {
+        playStaphSentinelAttack('heavy');
+        break;
+      }
+
+      case 'acid_slime_normal': {
+        playAcidSlimeAttack('normal');
+        break;
+      }
+
+      case 'acid_slime_heavy': {
+        playAcidSlimeAttack('heavy');
+        break;
+      }
+
       case 'crystal_golem_normal': {
         playCrystalGolemAttack('normal');
         break;
@@ -236,6 +256,26 @@ export function playSfx(type: SfxType) {
 
       case 'crystal_golem_heavy': {
         playCrystalGolemAttack('heavy');
+        break;
+      }
+
+      case 'sickle_cell_minion_normal': {
+        playSickleCellMinionAttack('normal');
+        break;
+      }
+
+      case 'sickle_cell_minion_heavy': {
+        playSickleCellMinionAttack('heavy');
+        break;
+      }
+
+      case 'gram_positive_normal': {
+        playGramPositiveAttack('normal');
+        break;
+      }
+
+      case 'gram_positive_heavy': {
+        playGramPositiveAttack('heavy');
         break;
       }
 
@@ -294,6 +334,16 @@ export function playSfx(type: SfxType) {
 
       case 'sickle_reaper_heavy': {
         playSickleCellReaperAttack('heavy');
+        break;
+      }
+
+      case 'fungal_spore_normal': {
+        playFungalSporeAttack('normal');
+        break;
+      }
+
+      case 'fungal_spore_heavy': {
+        playFungalSporeAttack('heavy');
         break;
       }
     }
@@ -862,6 +912,142 @@ export function playBiohazardAttack(type: 'normal' | 'heavy') {
   }
 }
 
+// Preloaded Audio instances for Staph Sentinel attacks
+// Uses BiohazardOverlordNormalAttack.mp3 for Normal Attack, and plays it twice smoothly at normal speed for Heavy Attack
+let staphSentinelAudio1: HTMLAudioElement | null = null;
+let staphSentinelAudio2: HTMLAudioElement | null = null;
+
+export function preloadStaphSentinelSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!staphSentinelAudio1) {
+      staphSentinelAudio1 = new Audio('/SoundEffects/BiohazardOverlordNormalAttack.mp3');
+      staphSentinelAudio1.preload = 'auto';
+      staphSentinelAudio1.load();
+    }
+    if (!staphSentinelAudio2) {
+      staphSentinelAudio2 = new Audio('/SoundEffects/BiohazardOverlordNormalAttack.mp3');
+      staphSentinelAudio2.preload = 'auto';
+      staphSentinelAudio2.load();
+    }
+  } catch (e) { }
+}
+
+export function playStaphSentinelAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    const playStrike = (baseAudio: HTMLAudioElement | null) => {
+      let audio: HTMLAudioElement;
+      if (baseAudio && baseAudio.paused) {
+        baseAudio.currentTime = 0;
+        audio = baseAudio;
+      } else {
+        audio = new Audio('/SoundEffects/BiohazardOverlordNormalAttack.mp3');
+      }
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Staph Sentinel attack:', err);
+        });
+      }
+    };
+
+    // First strike plays immediately at normal 1.0x speed
+    playStrike(staphSentinelAudio1);
+
+    // For Heavy Attack: play the audio twice with normal speed, timed smoothly with the second strike (480ms)
+    if (type === 'heavy') {
+      setTimeout(() => {
+        playStrike(staphSentinelAudio2);
+      }, 480);
+    }
+  } catch (err) {
+    console.warn('Failed to play Staph Sentinel attack sound:', err);
+  }
+}
+
+// Preloaded Audio instances for Acid Slime attacks (Clinical Chemistry Minion)
+let acidSlimeAudio1: HTMLAudioElement | null = null;
+let acidSlimeAudio2: HTMLAudioElement | null = null;
+let acidSlimeHeavyTimeoutId: NodeJS.Timeout | null = null;
+
+export function preloadAcidSlimeSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!acidSlimeAudio1) {
+      acidSlimeAudio1 = new Audio('/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3');
+      acidSlimeAudio1.preload = 'auto';
+      acidSlimeAudio1.playbackRate = 1.0;
+      acidSlimeAudio1.load();
+    }
+    if (!acidSlimeAudio2) {
+      acidSlimeAudio2 = new Audio('/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3');
+      acidSlimeAudio2.preload = 'auto';
+      acidSlimeAudio2.playbackRate = 1.0;
+      acidSlimeAudio2.load();
+    }
+  } catch (e) { }
+}
+
+export function playAcidSlimeAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    if (acidSlimeHeavyTimeoutId) {
+      clearTimeout(acidSlimeHeavyTimeoutId);
+      acidSlimeHeavyTimeoutId = null;
+    }
+
+    const src = '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3';
+
+    // First strike plays immediately at 0ms latency
+    const audio1 = acidSlimeAudio1 || new Audio(src);
+    audio1.currentTime = 0;
+    audio1.playbackRate = 1.0;
+    audio1.defaultPlaybackRate = 1.0;
+    audio1.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise1 = audio1.play();
+    if (playPromise1 !== undefined) {
+      playPromise1.catch(err => {
+        console.warn('Playback error for acid slime first strike:', err);
+      });
+    }
+
+    // Heavy Attack plays the sound effect twice for the double-cycle lunge
+    if (type === 'heavy') {
+      acidSlimeHeavyTimeoutId = setTimeout(() => {
+        try {
+          const vol = getSfxVolume();
+          if (vol <= 0) return;
+          const audio2 = acidSlimeAudio2 || new Audio(src);
+          audio2.currentTime = 0;
+          audio2.playbackRate = 1.0;
+          audio2.defaultPlaybackRate = 1.0;
+          audio2.volume = Math.max(0, Math.min(1, vol));
+          const playPromise2 = audio2.play();
+          if (playPromise2 !== undefined) {
+            playPromise2.catch(err => {
+              console.warn('Playback error for acid slime heavy second strike:', err);
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to play acid slime heavy second strike:', err);
+        }
+      }, 380);
+    }
+  } catch (err) {
+    console.warn('Failed to play acid slime attack sound:', err);
+  }
+}
+
 // Preloaded Audio instances for Crystal Golem attacks
 let crystalGolemHeavyAudio: HTMLAudioElement | null = null;
 let crystalGolemNormalAudio: HTMLAudioElement | null = null;
@@ -1053,7 +1239,9 @@ export function playSickleCellReaperAttack(type: 'normal' | 'heavy') {
     let audio: HTMLAudioElement;
 
     if (baseAudio) {
-      baseAudio.currentTime = 0;
+      try {
+        baseAudio.currentTime = 0;
+      } catch (e) { }
       audio = baseAudio;
     } else {
       audio = new Audio(src);
@@ -1075,4 +1263,204 @@ export function playSickleCellReaperAttack(type: 'normal' | 'heavy') {
     console.warn('Failed to play sickle reaper attack sound:', err);
   }
 }
+
+// Preloaded Audio instances for Chapter 1 Sickle Cell minion attacks
+let sickleCellMinionHeavyAudio: HTMLAudioElement | null = null;
+let sickleCellMinionNormalAudio: HTMLAudioElement | null = null;
+
+export function preloadSickleCellMinionSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!sickleCellMinionHeavyAudio) {
+      sickleCellMinionHeavyAudio = new Audio('/SoundEffects/SickleCellHeavyAttack.mp3');
+      sickleCellMinionHeavyAudio.preload = 'auto';
+      sickleCellMinionHeavyAudio.playbackRate = 1.5;
+      sickleCellMinionHeavyAudio.load();
+    }
+    if (!sickleCellMinionNormalAudio) {
+      sickleCellMinionNormalAudio = new Audio('/SoundEffects/SickleCellNormalAttack.mp3');
+      sickleCellMinionNormalAudio.preload = 'auto';
+      sickleCellMinionNormalAudio.playbackRate = 1.0;
+      sickleCellMinionNormalAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playSickleCellMinionAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    const src = type === 'heavy'
+      ? '/SoundEffects/SickleCellHeavyAttack.mp3'
+      : '/SoundEffects/SickleCellNormalAttack.mp3';
+
+    const baseAudio = type === 'heavy' ? sickleCellMinionHeavyAudio : sickleCellMinionNormalAudio;
+    let audio: HTMLAudioElement;
+
+    if (baseAudio) {
+      baseAudio.currentTime = 0;
+      audio = baseAudio;
+    } else {
+      audio = new Audio(src);
+    }
+
+    // Normal attack in normal speed (1.0x), Heavy attack in 1.5x speed
+    const targetRate = type === 'heavy' ? 1.5 : 1.0;
+    audio.playbackRate = targetRate;
+    audio.defaultPlaybackRate = targetRate;
+
+    audio.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Playback error for sickle cell minion ' + type + ' attack:', err);
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to play sickle cell minion attack sound:', err);
+  }
+}
+
+// Preloaded Audio instances for GMS Fungal Spore attacks (Histopathology Chapter 1)
+let fungalSporeHeavyAudio: HTMLAudioElement | null = null;
+let fungalSporeNormalAudio: HTMLAudioElement | null = null;
+
+export function preloadFungalSporeSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!fungalSporeHeavyAudio) {
+      fungalSporeHeavyAudio = new Audio('/SoundEffects/FungalSporeHeavyAttack.mp3');
+      fungalSporeHeavyAudio.preload = 'auto';
+      fungalSporeHeavyAudio.playbackRate = 1.5;
+      fungalSporeHeavyAudio.defaultPlaybackRate = 1.5;
+      fungalSporeHeavyAudio.load();
+    }
+    if (!fungalSporeNormalAudio) {
+      fungalSporeNormalAudio = new Audio('/SoundEffects/FungalSporeNormalAttack.mp3');
+      fungalSporeNormalAudio.preload = 'auto';
+      fungalSporeNormalAudio.playbackRate = 2.0;
+      fungalSporeNormalAudio.defaultPlaybackRate = 2.0;
+      fungalSporeNormalAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playFungalSporeAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    const src = type === 'heavy'
+      ? '/SoundEffects/FungalSporeHeavyAttack.mp3'
+      : '/SoundEffects/FungalSporeNormalAttack.mp3';
+
+    const baseAudio = type === 'heavy' ? fungalSporeHeavyAudio : fungalSporeNormalAudio;
+    let audio: HTMLAudioElement;
+
+    if (baseAudio) {
+      try {
+        baseAudio.currentTime = 0;
+      } catch (e) { }
+      audio = baseAudio;
+    } else {
+      audio = new Audio(src);
+    }
+
+    // Normal attack in 2.0x speed, Heavy attack in 1.5x speed
+    const targetRate = type === 'normal' ? 2.0 : 1.5;
+    audio.playbackRate = targetRate;
+    audio.defaultPlaybackRate = targetRate;
+
+    audio.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Playback error for fungal spore ' + type + ' attack:', err);
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to play fungal spore attack sound:', err);
+  }
+}
+
+// Preloaded Audio instances for Chapter 1 Boss Gram Positive Overlord attacks (Microbiology)
+let gramPositiveAudio1: HTMLAudioElement | null = null;
+let gramPositiveAudio2: HTMLAudioElement | null = null;
+let gramPositiveHeavyTimeoutId: NodeJS.Timeout | null = null;
+
+export function preloadGramPositiveSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!gramPositiveAudio1) {
+      gramPositiveAudio1 = new Audio('/SoundEffects/GramPositiveNormal&HeavyAttack.mp3');
+      gramPositiveAudio1.preload = 'auto';
+      gramPositiveAudio1.playbackRate = 1.0;
+      gramPositiveAudio1.load();
+    }
+    if (!gramPositiveAudio2) {
+      gramPositiveAudio2 = new Audio('/SoundEffects/GramPositiveNormal&HeavyAttack.mp3');
+      gramPositiveAudio2.preload = 'auto';
+      gramPositiveAudio2.playbackRate = 1.0;
+      gramPositiveAudio2.load();
+    }
+  } catch (e) { }
+}
+
+export function playGramPositiveAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    if (gramPositiveHeavyTimeoutId) {
+      clearTimeout(gramPositiveHeavyTimeoutId);
+      gramPositiveHeavyTimeoutId = null;
+    }
+
+    const src = '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3';
+
+    // First strike plays immediately at 0ms latency
+    const audio1 = gramPositiveAudio1 || new Audio(src);
+    audio1.currentTime = 0;
+    audio1.playbackRate = 1.0;
+    audio1.defaultPlaybackRate = 1.0;
+    audio1.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise1 = audio1.play();
+    if (playPromise1 !== undefined) {
+      playPromise1.catch(err => {
+        console.warn('Playback error for gram positive first strike:', err);
+      });
+    }
+
+    // Heavy Attack plays the sound effect twice for the 2-cycle attack
+    if (type === 'heavy') {
+      gramPositiveHeavyTimeoutId = setTimeout(() => {
+        try {
+          const vol = getSfxVolume();
+          if (vol <= 0) return;
+          const audio2 = gramPositiveAudio2 || new Audio(src);
+          audio2.currentTime = 0;
+          audio2.playbackRate = 1.0;
+          audio2.defaultPlaybackRate = 1.0;
+          audio2.volume = Math.max(0, Math.min(1, vol));
+          const playPromise2 = audio2.play();
+          if (playPromise2 !== undefined) {
+            playPromise2.catch(err => {
+              console.warn('Playback error for gram positive heavy second strike:', err);
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to play gram positive heavy second strike:', err);
+        }
+      }, 580);
+    }
+  } catch (err) {
+    console.warn('Failed to play gram positive attack sound:', err);
+  }
+}
+
+
 
