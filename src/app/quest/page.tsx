@@ -50,6 +50,8 @@ import { cn } from '@/lib/utils';
 import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
 import { HitEffectAnimator } from '@/components/game/HitEffectAnimator';
 import { UndergroundSpikesAnimator } from '@/components/game/UndergroundSpikesAnimator';
+import { JudicialHammerAnimator } from '@/components/game/JudicialHammerAnimator';
+import { UndergroundBlastAnimator } from '@/components/game/UndergroundBlastAnimator';
 
 const SUBJECT_METADATA: Record<string, {
   name: string;
@@ -166,7 +168,19 @@ const SUBJECT_METADATA: Record<string, {
     backgroundUrl: "/images/Hispatho256_bg.webp",
     difficulty: 3,
     biome: "The Citadel of Codes",
-    description: "Where science meets the letter of the law. Preserve the ethics."
+    description: "Where science meets the letter of the law. Preserve the ethics.",
+    idleSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_idleAnimation.png',
+    attackSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackGlintAnimation-1.png',
+    heavyAttackSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackGlintAnimation-1.png',
+    idleFrames: 6,
+    attackFrames: 12,
+    heavyAttackFrames: 18,
+    idleFrameWidth: 160,
+    idleFrameHeight: 140,
+    attackFrameWidth: 160,
+    attackFrameHeight: 140,
+    heavyFrameWidth: 160,
+    heavyFrameHeight: 140,
   },
   "Histopathology and Medtech Laws": {
     name: "Histopathology and Medtech Laws",
@@ -177,7 +191,19 @@ const SUBJECT_METADATA: Record<string, {
     backgroundUrl: "/images/Hispatho256_bg.webp",
     difficulty: 3,
     biome: "The Citadel of Codes",
-    description: "Where science meets the letter of the law. Preserve the ethics."
+    description: "Where science meets the letter of the law. Preserve the ethics.",
+    idleSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_idleAnimation.png',
+    attackSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackGlintAnimation-1.png',
+    heavyAttackSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackGlintAnimation-1.png',
+    idleFrames: 6,
+    attackFrames: 12,
+    heavyAttackFrames: 18,
+    idleFrameWidth: 160,
+    idleFrameHeight: 140,
+    attackFrameWidth: 160,
+    attackFrameHeight: 140,
+    heavyFrameWidth: 160,
+    heavyFrameHeight: 140,
   },
   "Histopathology & Medtech Laws": {
     name: "Histopathology & Medtech Laws",
@@ -188,7 +214,19 @@ const SUBJECT_METADATA: Record<string, {
     backgroundUrl: "/images/Hispatho256_bg.webp",
     difficulty: 3,
     biome: "The Citadel of Codes",
-    description: "Where science meets the letter of the law. Preserve the ethics."
+    description: "Where science meets the letter of the law. Preserve the ethics.",
+    idleSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_idleAnimation.png',
+    attackSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackGlintAnimation-1.png',
+    heavyAttackSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackGlintAnimation-1.png',
+    idleFrames: 6,
+    attackFrames: 12,
+    heavyAttackFrames: 18,
+    idleFrameWidth: 160,
+    idleFrameHeight: 140,
+    attackFrameWidth: 160,
+    attackFrameHeight: 140,
+    heavyFrameWidth: 160,
+    heavyFrameHeight: 140,
   }
 };
 
@@ -434,6 +472,10 @@ export default function LearningQuest() {
     attackProjectileUrl?: string;
     undergroundSpikesUrl?: string;
     undergroundSpikesFrames?: number;
+    hammerAttackUrl?: string;
+    hammerAttackFrames?: number;
+    undergroundBlastUrl?: string;
+    undergroundBlastFrames?: number;
     idleFrames?: number;
     attackFrames?: number;
     heavyAttackFrames?: number;
@@ -725,7 +767,30 @@ export default function LearningQuest() {
         minionIdleDuration: 1.0,
       },
       { id: 'hp-2', nodeNumber: 2, title: 'RA 5527 & MedTech Ethics', subtopic: 'Philippine Medical Technology Act of 1969', minionName: 'Statute Page', minionIcon: '📜', miniBossName: 'Legal Guardian', miniBossIcon: '🛡️', bossName: 'Jurisprudence Archon', bossIcon: '⚖️' },
-      { id: 'hp-3', nodeNumber: 3, title: '👑 Legal Beholder (FINAL BOSS)', subtopic: 'Biosafety, Lab Quality Assurance & Comprehensive Challenge', bossName: 'Legal Beholder', bossIcon: '👑' },
+      {
+        id: 'hp-3',
+        nodeNumber: 3,
+        title: '👑 Legal Beholder (FINAL BOSS)',
+        subtopic: 'Biosafety, Lab Quality Assurance & Comprehensive Challenge',
+        bossName: 'Legal Beholder',
+        bossIcon: '👑',
+        idleSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackGlintAnimation-1.png',
+        heavyAttackSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackGlintAnimation-1.png',
+        undergroundBlastUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackUndergroundBlastAnimation.png',
+        hammerAttackUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackHammerAnimation-2.png',
+        idleFrames: 6,
+        attackFrames: 12,
+        heavyAttackFrames: 18,
+        undergroundBlastFrames: 16,
+        hammerAttackFrames: 11,
+        idleFrameWidth: 160,
+        idleFrameHeight: 140,
+        attackFrameWidth: 160,
+        attackFrameHeight: 140,
+        heavyFrameWidth: 160,
+        heavyFrameHeight: 140,
+      },
     ],
   };
 
@@ -834,6 +899,10 @@ export default function LearningQuest() {
         heavyAttackSprite: ch3Node?.heavyAttackSpriteUrl || meta?.heavyAttackSpriteUrl || null,
         attackProjectileUrl: ch3Node?.attackProjectileUrl || meta?.attackProjectileUrl || null,
         undergroundSpikesUrl: ch3Node?.undergroundSpikesUrl || meta?.undergroundSpikesUrl || null,
+        hammerAttackUrl: ch3Node?.hammerAttackUrl || null,
+        hammerAttackFrames: ch3Node?.hammerAttackFrames || 11,
+        undergroundBlastUrl: ch3Node?.undergroundBlastUrl || null,
+        undergroundBlastFrames: ch3Node?.undergroundBlastFrames || 16,
         idleFrames: ch3Node?.idleFrames || meta?.idleFrames || 6,
         attackFrames: ch3Node?.attackFrames || meta?.attackFrames || 5,
         heavyAttackFrames: ch3Node?.heavyAttackFrames || meta?.heavyAttackFrames || 13,
@@ -2122,6 +2191,9 @@ export default function LearningQuest() {
         const isCrystalGolemBoss = quizMode === 'boss-battle'
           ? (currentActiveNode?.id === 'cm-3' || (currentActiveNode?.nodeNumber === 3 && (selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit'))) || currentActiveNode?.bossName?.toLowerCase().includes('crystal golem'))
           : (selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit'));
+        const isLegalBeholderBoss = quizMode === 'boss-battle'
+          ? (currentActiveNode?.id === 'hp-3' || currentActiveNode?.nodeNumber === 3 || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder'))
+          : (selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'));
 
         if (quizMode === 'learning') {
           // In Learning Mode (no action cards), randomize 50/50 between Normal Attack and Heavy Attack on wrong answer!
@@ -2132,6 +2204,8 @@ export default function LearningQuest() {
           const isStaphSentinelHeavy = isStaphSentinel && attackType === 'heavy_attack';
           const isBiohazardHeavy = isBiohazardBoss && attackType === 'heavy_attack';
           const isBiohazardNormal = isBiohazardBoss && attackType === 'normal_attack';
+          const isLegalBeholderNormal = isLegalBeholderBoss && attackType === 'normal_attack';
+          const isLegalBeholderHeavy = isLegalBeholderBoss && attackType === 'heavy_attack';
           const isCrystalGolemHeavy = isCrystalGolemBoss && attackType === 'heavy_attack';
           const isCrystalGolemNormal = isCrystalGolemBoss && attackType === 'normal_attack';
           const isMicrobeSwarmHeavy = isMicrobeSwarm && attackType === 'heavy_attack';
@@ -2145,6 +2219,8 @@ export default function LearningQuest() {
           const isGmsFungalSporeNormal = isGmsFungalSpore && attackType === 'normal_attack';
           const resetDelay = isSpikes
             ? 1050
+            : isLegalBeholderHeavy
+              ? 1150
             : isGramPositiveHeavy
               ? 1650
               : isStaphSentinelHeavy
@@ -2175,9 +2251,15 @@ export default function LearningQuest() {
                                         ? 920
                                         : isGmsFungalSporeNormal
                                           ? 780
-                                          : (isGramPositiveBoss ? 1080 : 950);
+                                          : isLegalBeholderNormal
+                                            ? 1050
+                                            : (isGramPositiveBoss ? 1080 : 950);
           const impactDelay = isSpikes
             ? 650
+            : isLegalBeholderHeavy
+              ? 700
+            : isLegalBeholderNormal
+              ? 650
             : isBiohazardHeavy
               ? 340
               : isBiohazardNormal
@@ -2230,6 +2312,8 @@ export default function LearningQuest() {
           const isStaphSentinelHeavy = isStaphSentinel && attackType === 'heavy_attack';
           const isBiohazardHeavy = isBiohazardBoss && attackType === 'heavy_attack';
           const isBiohazardNormal = isBiohazardBoss && attackType === 'normal_attack';
+          const isLegalBeholderNormal = isLegalBeholderBoss && attackType === 'normal_attack';
+          const isLegalBeholderHeavy = isLegalBeholderBoss && attackType === 'heavy_attack';
           const isCrystalGolemHeavy = isCrystalGolemBoss && attackType === 'heavy_attack';
           const isCrystalGolemNormal = isCrystalGolemBoss && attackType === 'normal_attack';
           const isMicrobeSwarmHeavy = isMicrobeSwarm && attackType === 'heavy_attack';
@@ -2243,6 +2327,8 @@ export default function LearningQuest() {
           const isGmsFungalSporeNormal = isGmsFungalSpore && attackType === 'normal_attack';
           const resetDelay = isSpikes
             ? 1050
+            : isLegalBeholderHeavy
+              ? 1150
             : isGramPositiveHeavy
               ? 1650
               : isStaphSentinelHeavy
@@ -2273,9 +2359,15 @@ export default function LearningQuest() {
                                         ? 920
                                         : isGmsFungalSporeNormal
                                           ? 780
-                                          : (isGramPositiveBoss ? 1080 : 950);
+                                          : isLegalBeholderNormal
+                                            ? 1050
+                                            : (isGramPositiveBoss ? 1080 : 950);
           const impactDelay = isSpikes
             ? 650
+            : isLegalBeholderHeavy
+              ? 700
+            : isLegalBeholderNormal
+              ? 650
             : isBiohazardHeavy
               ? 340
               : isBiohazardNormal
@@ -3678,6 +3770,59 @@ export default function LearningQuest() {
                       durationMs={550}
                       scale={2.2}
                       className="bottom-1 md:bottom-2 left-1/2 -translate-x-1/2"
+                    />
+                  );
+                })()}
+
+                {/* Chapter 3 Histopathology Final Boss (Legal Beholder): Judicial Hammer Attack Overlay */}
+                {(() => {
+                  const activeNodes = getSubjectNodes(selectedSubject);
+                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
+                  const isLegalBeholderActive = quizMode === 'boss-battle'
+                    ? (isChapter3FinalBoss || battleStage === 3 || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'))
+                    : (quizMode === 'learning'
+                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'))
+                        : (isChapter3FinalBoss || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')));
+                  if (!isLegalBeholderActive) return null;
+                  const hammerUrl = currentActiveNode?.hammerAttackUrl || '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackHammerAnimation-2.png';
+                  const hammerFrames = currentActiveNode?.hammerAttackFrames || 11;
+                  if (!hammerUrl) return null;
+                  return (
+                    <JudicialHammerAnimator
+                      isActive={bossAnimState === 'normal_attack'}
+                      spriteUrl={hammerUrl}
+                      frames={hammerFrames}
+                      delayMs={300}
+                      durationMs={550}
+                      scale={2.3}
+                      className="bottom-2 sm:bottom-4 md:bottom-6 left-[72%] sm:left-[74%] md:left-[76%] -translate-x-1/2"
+                    />
+                  );
+                })()}
+
+                {/* Chapter 3 Histopathology Final Boss (Legal Beholder): Underground Blast Heavy Attack Overlay */}
+                {(() => {
+                  const activeNodes = getSubjectNodes(selectedSubject);
+                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
+                  const isLegalBeholderActive = quizMode === 'boss-battle'
+                    ? (isChapter3FinalBoss || battleStage === 3 || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'))
+                    : (quizMode === 'learning'
+                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'))
+                        : (isChapter3FinalBoss || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')));
+                  if (!isLegalBeholderActive) return null;
+                  const blastUrl = currentActiveNode?.undergroundBlastUrl || '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackUndergroundBlastAnimation.png';
+                  const blastFrames = currentActiveNode?.undergroundBlastFrames || 16;
+                  return (
+                    <UndergroundBlastAnimator
+                      isActive={bossAnimState === 'heavy_attack'}
+                      spriteUrl={blastUrl}
+                      frames={blastFrames}
+                      delayMs={320}
+                      durationMs={800}
+                      scale={2.6}
+                      className="bottom-0 md:bottom-2 left-1/2 -translate-x-1/2"
                     />
                   );
                 })()}

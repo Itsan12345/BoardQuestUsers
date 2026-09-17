@@ -959,7 +959,18 @@ function ProfileContent() {
       {userProfile && (
         <AccountSettingsDialog
           open={accountSettingsOpen}
-          onOpenChange={setAccountSettingsOpen}
+          onOpenChange={(isOpen) => {
+            setAccountSettingsOpen(isOpen);
+            if (!isOpen) {
+              setAutoOpenCalendar(false);
+              if (searchParams.get('openSettings') || searchParams.get('focus') || searchParams.get('openCalendar')) {
+                router.replace('/profile');
+              }
+              if (typeof document !== 'undefined' && document.body) {
+                document.body.style.pointerEvents = '';
+              }
+            }
+          }}
           userProfile={userProfile}
           initialTab={initialSettingsTab}
           autoOpenTargetExamCalendar={autoOpenCalendar}

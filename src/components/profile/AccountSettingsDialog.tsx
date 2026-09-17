@@ -678,7 +678,11 @@ export function AccountSettingsDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[88vh] flex flex-col bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 overflow-hidden">
+        <DialogContent
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+          className="w-[95vw] max-w-2xl max-h-[88vh] flex flex-col bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 overflow-hidden"
+        >
           <DialogHeader className="pb-2.5 sm:pb-3 border-b border-border text-left shrink-0">
             <div id="tour-settings-header" className="flex items-start sm:items-center justify-between pr-6 gap-3 text-left">
               <div className="text-left min-w-0">

@@ -209,7 +209,9 @@ export function BossSpriteAnimator({
     attackSpriteUrl?.includes('hispatho_chapterOneMinion') ||
     heavyAttackSpriteUrl?.includes('hispatho_chapterOneMinion') ||
     bossName?.toLowerCase().includes('fungal spore') ||
-    bossName?.toLowerCase().includes('gms')
+    bossName?.toLowerCase().includes('gms') ||
+    heavyAttackSfxUrl?.includes('GmsFungalSpore') ||
+    normalAttackSfxUrl?.includes('GmsFungalSpore')
   );
   const isGmsFungalSporeHeavy = isHeavy && isGmsFungalSporeAttack;
   const isGmsFungalSporeNormal = !isHeavy && isGmsFungalSporeAttack;
@@ -218,6 +220,15 @@ export function BossSpriteAnimator({
     bossName?.toLowerCase().includes('fungal spore') ||
     bossName?.toLowerCase().includes('gms')
   );
+
+  const isLegalBeholderAttack = isAttacking && (
+    attackSpriteUrl?.includes('hispatho_chapterThreeFinalBoss') ||
+    heavyAttackSpriteUrl?.includes('hispatho_chapterThreeFinalBoss') ||
+    idleSpriteUrl?.includes('hispatho_chapterThreeFinalBoss') ||
+    bossName?.toLowerCase().includes('legal beholder')
+  );
+  const isLegalBeholderNormal = !isHeavy && isLegalBeholderAttack;
+  const isLegalBeholderHeavy = isHeavy && isLegalBeholderAttack;
 
   const spriteDuration = (isNormalAttack && hasProjectile)
     ? 0.38
@@ -249,6 +260,10 @@ export function BossSpriteAnimator({
     ? 0.82
     : isBiohazardNormal
     ? 0.48
+    : isLegalBeholderHeavy
+    ? 1.15
+    : isLegalBeholderNormal
+    ? 0.66
     : isAcidSlimeHeavy
     ? 0.82
     : isAcidSlimeNormal
@@ -289,6 +304,10 @@ export function BossSpriteAnimator({
     ? 0.82
     : isBiohazardNormal
     ? 0.48
+    : isLegalBeholderHeavy
+    ? 1.15
+    : isLegalBeholderNormal
+    ? 0.66
     : isAcidSlimeHeavy
     ? 0.82
     : isAcidSlimeNormal
@@ -300,7 +319,7 @@ export function BossSpriteAnimator({
     : spriteDuration;
 
   const lungeDuration = isAttacking
-    ? (hasProjectile ? 0.45 : hasUndergroundSpikes ? 1.05 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : 0.35)))))
+    ? (hasProjectile ? 0.45 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : 0.35)))))
     : spriteDuration;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
@@ -599,8 +618,8 @@ export function BossSpriteAnimator({
           isSickleCellMinionNormal && "animate-boss-sickle-cell-minion-lunge",
           isGmsFungalSporeHeavy && "animate-boss-fungal-spore-heavy-lunge",
           isGmsFungalSporeNormal && "animate-boss-fungal-spore-lunge",
-          isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && "animate-boss-heavy-lunge",
-          isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isGramPositiveAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && "animate-boss-lunge",
+          isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderHeavy && "animate-boss-heavy-lunge",
+          isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isGramPositiveAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderNormal && "animate-boss-lunge",
           isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
         )}
         style={{

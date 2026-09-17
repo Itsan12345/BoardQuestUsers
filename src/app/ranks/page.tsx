@@ -72,7 +72,6 @@ function LeaderboardContent() {
   const _isUserOnCurrentPage = user && topUsers.some(u => u.id === user.id);
   const totalPages = Math.ceil(totalUsers / limit) || 1;
   const userRankTitle = user ? getRankTitle(user.level || 1) : 'Apprentice Technician';
-  const fullLevelTitle = `Level ${user?.level || 1} ${userRankTitle}`;
 
   return (
     <div className="max-w-4xl mx-auto py-6 sm:py-10 px-3 sm:px-4 space-y-6 sm:space-y-8 relative">
@@ -212,7 +211,7 @@ function LeaderboardContent() {
               Lvl {user?.level || 1}
             </h3>
             <p className="text-[10px] sm:text-xs font-bold text-primary uppercase tracking-normal leading-tight">
-              {fullLevelTitle}
+              {userRankTitle}
             </p>
           </div>
         </Card>
