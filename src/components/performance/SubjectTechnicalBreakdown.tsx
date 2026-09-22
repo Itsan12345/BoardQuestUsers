@@ -93,16 +93,16 @@ export function SubjectTechnicalBreakdown({ items, onSelectSubject }: SubjectTec
                 <Badge
                   variant="outline"
                   className={`text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-lg shrink-0 ${
-                    item.status === 'Mastered' || item.mastery >= 90
+                    item.status === 'Mastered' || (item.mastery >= 90 && item.completion >= 50)
                       ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                      : item.status === 'Proficient' || item.mastery >= 75
+                      : item.status === 'Proficient' || (item.mastery >= 75 && item.completion >= 25)
                       ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
-                      : item.status === 'In Training' || item.mastery >= 50
+                      : item.status === 'In Training' || item.mastery >= 50 || item.completion > 0
                       ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
                       : 'bg-muted text-muted-foreground border-border'
                   }`}
                 >
-                  {item.status || (item.mastery >= 90 ? 'Mastered' : item.mastery >= 75 ? 'Proficient' : item.mastery >= 50 ? 'In Training' : 'Needs Focus')}
+                  {item.status || ((item.mastery >= 90 && item.completion >= 50) ? 'Mastered' : (item.mastery >= 75 && item.completion >= 25) ? 'Proficient' : (item.mastery >= 50 || item.completion > 0) ? 'In Training' : 'Needs Focus')}
                 </Badge>
               </div>
 

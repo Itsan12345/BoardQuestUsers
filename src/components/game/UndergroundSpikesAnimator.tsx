@@ -89,18 +89,18 @@ export function UndergroundSpikesAnimator({
           imageRendering: "pixelated",
           filter: "drop-shadow(0 0 8px rgba(185, 28, 28, 0.8)) drop-shadow(0 0 16px rgba(0, 0, 0, 0.9))",
           animation: isAnimating
-            ? `undergroundSpikesAnim ${durationMs / 1000}s steps(${frames}) 1 forwards`
+            ? `undergroundSpikesAnim ${durationMs / 1000}s steps(${frames - 1}) 1 forwards`
             : "none",
         }}
       />
 
       <style jsx global>{`
         @keyframes undergroundSpikesAnim {
-          from {
+          0% {
             transform: translateX(0px);
           }
-          to {
-            transform: translateX(-100%);
+          100% {
+            transform: translateX(calc(-100% + 100% / ${frames}));
           }
         }
       `}</style>

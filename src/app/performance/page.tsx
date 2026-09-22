@@ -135,21 +135,29 @@ function PerformanceContent() {
 
   const fullMastery: SubjectMasteryItem[] = activeCategories.map(subjectName => {
     const normTarget = subjectName.trim().toLowerCase();
-    const metrics = subjectMetrics.find((m: any) => 
-      m.subject === subjectName || (m.subject && m.subject.trim().toLowerCase() === normTarget)
-    );
+    const metrics = subjectMetrics.find((m: any) => m.subject?.trim().toLowerCase() === normTarget)
+      || subjectMetrics.find((m: any) => {
+        if (!m.subject) return false;
+        const s1 = m.subject.trim().toLowerCase();
+        const s2 = normTarget;
+        return s1.includes(s2) || s2.includes(s1);
+      });
     const completionVal = metrics?.completion ?? 0;
     const proficiencyVal = (metrics as any)?.proficiency ?? metrics?.mastery ?? 0;
     const totalCorrect = (metrics as any)?.totalCorrect ?? 0;
     const totalQAnswered = (metrics as any)?.totalQuestionsAnswered ?? 0;
 
-    let status = metrics?.masteryStatus;
-    if (!status || status === "Not Started") {
-      if (totalQAnswered === 0 && completionVal === 0) status = "Not Started";
-      else if (proficiencyVal >= 80 && totalQAnswered >= 25) status = "Mastered";
-      else if (proficiencyVal >= 65 && totalQAnswered >= 15) status = "Proficient";
-      else if (proficiencyVal >= 35 || totalQAnswered >= 1) status = "In Training";
-      else status = "Needs Focus";
+    let status: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' | 'Needs Focus' = 'Not Started';
+    if (totalQAnswered === 0 && completionVal === 0) {
+      status = "Not Started";
+    } else if (proficiencyVal >= 90 && completionVal >= 50) {
+      status = "Mastered";
+    } else if (proficiencyVal >= 75 && completionVal >= 25) {
+      status = "Proficient";
+    } else if (proficiencyVal >= 50 || completionVal > 0) {
+      status = "In Training";
+    } else {
+      status = "Needs Focus";
     }
 
     // Points earned = 25 Pts per correct question answered + 6 Pts per % completion (capped at 1200 max)

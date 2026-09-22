@@ -3,7 +3,7 @@
 // Web Audio API Synthesizer for Retro RPG Sound Effects
 // Zero external assets required - lightweight, crisp, and performant.
 
-type SfxType = 'click' | 'correct' | 'wrong' | 'attack' | 'heal' | 'victory' | 'defeat' | 'flee' | 'debuff' | 'poison' | 'specter_normal' | 'specter_heavy' | 'biohazard_normal' | 'biohazard_heavy' | 'staph_sentinel_normal' | 'staph_sentinel_heavy' | 'acid_slime_normal' | 'acid_slime_heavy' | 'crystal_golem_normal' | 'crystal_golem_heavy' | 'microbe_swarm_normal' | 'microbe_swarm_heavy' | 'sickle_cell_minion_normal' | 'sickle_cell_minion_heavy' | 'sickle_reaper_normal' | 'sickle_reaper_heavy' | 'fungal_spore_normal' | 'fungal_spore_heavy' | 'gram_positive_normal' | 'gram_positive_heavy' | 'final_boss_victory' | 'final_boss_defeat' | 'boss_battle_win' | 'boss_battle_lost' | 'learning_win' | 'learning_lost' | 'test_win' | 'test_lost';
+type SfxType = 'click' | 'correct' | 'wrong' | 'attack' | 'heal' | 'victory' | 'defeat' | 'flee' | 'debuff' | 'poison' | 'specter_normal' | 'specter_heavy' | 'biohazard_normal' | 'biohazard_heavy' | 'staph_sentinel_normal' | 'staph_sentinel_heavy' | 'acid_slime_normal' | 'acid_slime_heavy' | 'crystal_golem_normal' | 'crystal_golem_heavy' | 'microbe_swarm_normal' | 'microbe_swarm_heavy' | 'sickle_cell_minion_normal' | 'sickle_cell_minion_heavy' | 'sickle_reaper_normal' | 'sickle_reaper_heavy' | 'fungal_spore_normal' | 'fungal_spore_heavy' | 'gram_positive_normal' | 'gram_positive_heavy' | 'reagent_strip_slime_normal' | 'reagent_strip_slime_heavy' | 'final_boss_victory' | 'final_boss_defeat' | 'boss_battle_win' | 'boss_battle_lost' | 'learning_win' | 'learning_lost' | 'test_win' | 'test_lost';
 
 let audioCtx: AudioContext | null = null;
 
@@ -276,6 +276,16 @@ export function playSfx(type: SfxType) {
 
       case 'gram_positive_heavy': {
         playGramPositiveAttack('heavy');
+        break;
+      }
+
+      case 'reagent_strip_slime_normal': {
+        playReagentStripSlimeAttack('normal');
+        break;
+      }
+
+      case 'reagent_strip_slime_heavy': {
+        playReagentStripSlimeAttack('heavy');
         break;
       }
 
@@ -1462,5 +1472,125 @@ export function playGramPositiveAttack(type: 'normal' | 'heavy') {
   }
 }
 
+// Preloaded Audio instances for Reagent Strip Slime attacks (Clinical Microscopy Chapter 1 Minion)
+let reagentSlimeNormalAudio1: HTMLAudioElement | null = null;
+let reagentSlimeNormalAudio2: HTMLAudioElement | null = null;
+let reagentSlimeHeavyAudio1: HTMLAudioElement | null = null;
+let reagentSlimeHeavyAudio2: HTMLAudioElement | null = null;
+let reagentSlimeHeavyAudio3: HTMLAudioElement | null = null;
+let reagentSlimeHeavyAudio4: HTMLAudioElement | null = null;
+let reagentSlimeTimeoutIds: ReturnType<typeof setTimeout>[] = [];
 
+export function preloadReagentStripSlimeSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    const src = '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3';
+    if (!reagentSlimeNormalAudio1) {
+      reagentSlimeNormalAudio1 = new Audio(src);
+      reagentSlimeNormalAudio1.preload = 'auto';
+      reagentSlimeNormalAudio1.playbackRate = 1.0;
+      reagentSlimeNormalAudio1.load();
+    }
+    if (!reagentSlimeNormalAudio2) {
+      reagentSlimeNormalAudio2 = new Audio(src);
+      reagentSlimeNormalAudio2.preload = 'auto';
+      reagentSlimeNormalAudio2.playbackRate = 1.0;
+      reagentSlimeNormalAudio2.load();
+    }
+    if (!reagentSlimeHeavyAudio1) {
+      reagentSlimeHeavyAudio1 = new Audio(src);
+      reagentSlimeHeavyAudio1.preload = 'auto';
+      reagentSlimeHeavyAudio1.playbackRate = 2.0;
+      reagentSlimeHeavyAudio1.load();
+    }
+    if (!reagentSlimeHeavyAudio2) {
+      reagentSlimeHeavyAudio2 = new Audio(src);
+      reagentSlimeHeavyAudio2.preload = 'auto';
+      reagentSlimeHeavyAudio2.playbackRate = 2.0;
+      reagentSlimeHeavyAudio2.load();
+    }
+    if (!reagentSlimeHeavyAudio3) {
+      reagentSlimeHeavyAudio3 = new Audio(src);
+      reagentSlimeHeavyAudio3.preload = 'auto';
+      reagentSlimeHeavyAudio3.playbackRate = 2.0;
+      reagentSlimeHeavyAudio3.load();
+    }
+    if (!reagentSlimeHeavyAudio4) {
+      reagentSlimeHeavyAudio4 = new Audio(src);
+      reagentSlimeHeavyAudio4.preload = 'auto';
+      reagentSlimeHeavyAudio4.playbackRate = 2.0;
+      reagentSlimeHeavyAudio4.load();
+    }
+  } catch (e) { }
+}
 
+export function playReagentStripSlimeAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    // Clear any previous queued strike timeouts for a clean restart
+    reagentSlimeTimeoutIds.forEach(id => clearTimeout(id));
+    reagentSlimeTimeoutIds = [];
+
+    const src = '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3';
+
+    const playStrike = (baseAudio: HTMLAudioElement | null, rate: number = 1.0) => {
+      try {
+        const vol = getSfxVolume();
+        if (vol <= 0) return;
+        let audio: HTMLAudioElement;
+        if (baseAudio && baseAudio.paused) {
+          baseAudio.currentTime = 0;
+          audio = baseAudio;
+        } else if (baseAudio) {
+          audio = baseAudio.cloneNode(true) as HTMLAudioElement;
+        } else {
+          audio = new Audio(src);
+        }
+        audio.playbackRate = rate;
+        audio.defaultPlaybackRate = rate;
+        audio.volume = Math.max(0, Math.min(1, vol));
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(err => {
+            console.warn('Playback error for Reagent Strip Slime strike:', err);
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to play Reagent Strip Slime strike:', err);
+      }
+    };
+
+    if (type === 'normal') {
+      // Normal Attack: play sound effect twice at normal 1.0x speed
+      playStrike(reagentSlimeNormalAudio1, 1.0);
+
+      const timeoutId = setTimeout(() => {
+        playStrike(reagentSlimeNormalAudio2, 1.0);
+      }, 340);
+      reagentSlimeTimeoutIds.push(timeoutId);
+    } else {
+      // Heavy Attack: play sound effect four times in 2x speed
+      playStrike(reagentSlimeHeavyAudio1, 2.0);
+
+      const t1 = setTimeout(() => {
+        playStrike(reagentSlimeHeavyAudio2, 2.0);
+      }, 175);
+      reagentSlimeTimeoutIds.push(t1);
+
+      const t2 = setTimeout(() => {
+        playStrike(reagentSlimeHeavyAudio3, 2.0);
+      }, 350);
+      reagentSlimeTimeoutIds.push(t2);
+
+      const t3 = setTimeout(() => {
+        playStrike(reagentSlimeHeavyAudio4, 2.0);
+      }, 525);
+      reagentSlimeTimeoutIds.push(t3);
+    }
+  } catch (err) {
+    console.warn('Failed to play Reagent Strip Slime attack sound:', err);
+  }
+}

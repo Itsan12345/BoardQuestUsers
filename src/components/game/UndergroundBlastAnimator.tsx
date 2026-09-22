@@ -19,14 +19,15 @@ export function UndergroundBlastAnimator({
   isActive,
   spriteUrl = "/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackUndergroundBlastAnimation.png",
   frames = 16,
-  delayMs = 320,
-  durationMs = 800,
-  scale = 2.4,
+  delayMs = 240,
+  durationMs = 820,
+  scale = 2.8,
   className,
   onComplete,
 }: UndergroundBlastAnimatorProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isFading, setIsFading] = useState(false);
   const [animId, setAnimId] = useState(0);
   const onCompleteRef = useRef(onComplete);
 
@@ -37,26 +38,36 @@ export function UndergroundBlastAnimator({
   useEffect(() => {
     if (isActive && spriteUrl) {
       setAnimId((prev) => prev + 1);
+      setIsFading(false);
+
       // Warning glint plays first (delayMs), then blast erupts from below player
       const startTimer = setTimeout(() => {
         setIsVisible(true);
         setIsAnimating(true);
       }, delayMs);
 
+      // Smooth fade out right before eruption ends
+      const fadeTimer = setTimeout(() => {
+        setIsFading(true);
+      }, delayMs + Math.max(100, durationMs - 140));
+
       // Cleanly finish blast after durationMs
       const endTimer = setTimeout(() => {
         setIsVisible(false);
         setIsAnimating(false);
+        setIsFading(false);
         if (onCompleteRef.current) onCompleteRef.current();
-      }, delayMs + durationMs);
+      }, delayMs + durationMs + 80);
 
       return () => {
         clearTimeout(startTimer);
+        clearTimeout(fadeTimer);
         clearTimeout(endTimer);
       };
     } else {
       setIsVisible(false);
       setIsAnimating(false);
+      setIsFading(false);
     }
   }, [isActive, spriteUrl, delayMs, durationMs]);
 
@@ -70,14 +81,15 @@ export function UndergroundBlastAnimator({
     <div
       key={`blast-anim-${animId}`}
       className={cn(
-        "absolute pointer-events-none z-30 select-none flex items-center justify-center",
+        "absolute pointer-events-none z-0 select-none flex items-center justify-center transition-opacity duration-200 ease-out",
+        isFading ? "opacity-0" : "opacity-100",
         className
       )}
       style={{
         width: `${frameWidth * scale}px`,
         height: `${frameHeight * scale}px`,
         filter:
-          "drop-shadow(0 0 16px rgba(239, 68, 68, 0.95)) drop-shadow(0 0 28px rgba(245, 158, 11, 0.9))",
+          "drop-shadow(0 0 20px rgba(239, 68, 68, 0.95)) drop-shadow(0 0 36px rgba(245, 158, 11, 0.95))",
       }}
     >
       {/* Inner Viewport to clip adjacent frames without clipping the outer drop-shadow glow */}

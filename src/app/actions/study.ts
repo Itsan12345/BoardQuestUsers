@@ -145,11 +145,11 @@ export async function syncSubjectMastery(userId: string, subject: string) {
     let status = "Not Started";
     if (totalQAnswered === 0 && completion === 0) {
       status = "Not Started";
-    } else if (proficiency >= 80 && totalQAnswered >= 25) {
+    } else if (proficiency >= 90 && completion >= 50) {
       status = "Mastered";
-    } else if (proficiency >= 65 && totalQAnswered >= 15) {
+    } else if (proficiency >= 75 && completion >= 25) {
       status = "Proficient";
-    } else if (proficiency >= 35 || totalQAnswered >= 1) {
+    } else if (proficiency >= 50 || completion > 0) {
       status = "In Training";
     } else {
       status = "Needs Focus";
@@ -353,11 +353,11 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       let masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' | 'Needs Focus' = 'Not Started';
       if (totalQAnswered === 0 && completion === 0) {
         masteryStatus = 'Not Started';
-      } else if (proficiency >= 80 && totalQAnswered >= 25) {
+      } else if (proficiency >= 90 && completion >= 50) {
         masteryStatus = 'Mastered';
-      } else if (proficiency >= 65 && totalQAnswered >= 15) {
+      } else if (proficiency >= 75 && completion >= 25) {
         masteryStatus = 'Proficient';
-      } else if (proficiency >= 35 || totalQAnswered >= 1) {
+      } else if (proficiency >= 50 || completion > 0) {
         masteryStatus = 'In Training';
       } else {
         masteryStatus = 'Needs Focus';

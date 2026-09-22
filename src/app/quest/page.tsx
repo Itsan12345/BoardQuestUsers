@@ -52,6 +52,7 @@ import { HitEffectAnimator } from '@/components/game/HitEffectAnimator';
 import { UndergroundSpikesAnimator } from '@/components/game/UndergroundSpikesAnimator';
 import { JudicialHammerAnimator } from '@/components/game/JudicialHammerAnimator';
 import { UndergroundBlastAnimator } from '@/components/game/UndergroundBlastAnimator';
+import { HydraLightningAnimator } from '@/components/game/HydraLightningAnimator';
 
 const SUBJECT_METADATA: Record<string, {
   name: string;
@@ -72,6 +73,8 @@ const SUBJECT_METADATA: Record<string, {
   attackProjectileUrl?: string;
   undergroundSpikesUrl?: string;
   undergroundSpikesFrames?: number;
+  lightningAttackUrl?: string;
+  lightningAttackFrames?: number;
   idleFrames?: number;
   attackFrames?: number;
   heavyAttackFrames?: number;
@@ -144,7 +147,7 @@ const SUBJECT_METADATA: Record<string, {
     backgroundUrl: "/images/ImmunoHema256_bg.webp",
     difficulty: 5,
     biome: "The Serum Sea",
-    description: "Navigate the complex tides of antigens and antibodies."
+    description: "Navigate the complex tides of antigens and antibodies.",
   },
   "Clinical Microscopy & Parasitology": {
     name: "Clinical Microscopy & Parasitology",
@@ -476,6 +479,8 @@ export default function LearningQuest() {
     hammerAttackFrames?: number;
     undergroundBlastUrl?: string;
     undergroundBlastFrames?: number;
+    lightningAttackUrl?: string;
+    lightningAttackFrames?: number;
     idleFrames?: number;
     attackFrames?: number;
     heavyAttackFrames?: number;
@@ -729,12 +734,86 @@ export default function LearningQuest() {
       },
     ],
     "Immunology & Serology and Immunohematology": [
-      { id: 'is-1', nodeNumber: 1, title: 'Immunity & Serological Testing', subtopic: 'Innate/Adaptive Immunity, ELISA & Agglutination', minionName: 'Lymphocyte Swarm', minionIcon: '🛡️', miniBossName: 'Antigen Titan', miniBossIcon: '🧬', bossName: 'Immune Archon', bossIcon: '👑' },
+      {
+        id: 'is-1',
+        nodeNumber: 1,
+        title: 'Immunity & Serological Testing',
+        subtopic: 'Innate/Adaptive Immunity, ELISA & Agglutination',
+        minionName: 'Lymphocyte Swarm',
+        minionIcon: '🛡️',
+        miniBossName: 'Antigen Titan',
+        miniBossIcon: '🧬',
+        bossName: 'Immune Archon',
+        bossIcon: '👑',
+        minionIdleSpriteUrl: '/images/bosses/immunohema_chapterOneMinion_idleAnimation.png',
+        minionAttackSpriteUrl: '/images/bosses/immunohema_chapterOneMinion_normalAttackAnimation.png',
+        minionHeavyAttackSpriteUrl: '/images/bosses/immunohema_chapterOneMinion_heavyAttackAnimation.png',
+        minionNormalAttackSfxUrl: '/SoundEffects/MicrobeSwarmNormalAttack.mp3',
+        minionHeavyAttackSfxUrl: '/SoundEffects/MicrobeSwarmHeavyAttack.wav',
+        minionIdleFrames: 11,
+        minionAttackFrames: 14,
+        minionHeavyAttackFrames: 10,
+        minionIdleFrameWidth: 257,
+        minionIdleFrameHeight: 218,
+        minionAttackFrameWidth: 257,
+        minionAttackFrameHeight: 218,
+        minionHeavyFrameWidth: 257,
+        minionHeavyFrameHeight: 218,
+        minionIdleDuration: 1.2,
+      },
       { id: 'is-2', nodeNumber: 2, title: 'ABO & Rh Blood Group System', subtopic: 'Blood Group Antigens, Antibodies & Rh Discrepancies', minionName: 'ABO Antigen', minionIcon: '🩸', miniBossName: 'Rh Aggressive Golem', miniBossIcon: '🪨', bossName: 'Immunohematology Colossus', bossIcon: '👑' },
-      { id: 'is-3', nodeNumber: 3, title: '👑 Anti-Serum Hydra (FINAL BOSS)', subtopic: 'Transfusion Reactions, Crossmatching & Blood Bank', bossName: 'Anti-Serum Hydra', bossIcon: '👑' },
+      {
+        id: 'is-3',
+        nodeNumber: 3,
+        title: '👑 Anti-Serum Hydra (FINAL BOSS)',
+        subtopic: 'Transfusion Reactions, Crossmatching & Blood Bank',
+        bossName: 'Anti-Serum Hydra',
+        bossIcon: '👑',
+        idleSpriteUrl: '/images/bosses/immunohema_chapterThreeFinalBoss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/immunohema_chapterThreeFinalBoss_normalAttackAnimation.png?v=4',
+        heavyAttackSpriteUrl: '/images/bosses/immunohema_chapterThreeFinalBoss_heavyAttackGlintAnimation-1.png',
+        lightningAttackUrl: '/images/bosses/immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png',
+        idleFrames: 19,
+        attackFrames: 31,
+        heavyAttackFrames: 14,
+        lightningAttackFrames: 12,
+        idleFrameWidth: 143,
+        idleFrameHeight: 144,
+        attackFrameWidth: 384,
+        attackFrameHeight: 256,
+        heavyFrameWidth: 143,
+        heavyFrameHeight: 144,
+        idleDuration: 1.8,
+      },
     ],
     "Clinical Microscopy & Parasitology": [
-      { id: 'cm-1', nodeNumber: 1, title: 'Urinalysis Physical & Chemical Exam', subtopic: 'Color, Clarity, Specific Gravity & Reagents', minionName: 'Reagent Strip Slime', minionIcon: '🧪', miniBossName: 'Nitrite Spectre', miniBossIcon: '👻', bossName: 'Clinical Microscopy Overlord', bossIcon: '👑' },
+      {
+        id: 'cm-1',
+        nodeNumber: 1,
+        title: 'Urinalysis Physical & Chemical Exam',
+        subtopic: 'Color, Clarity, Specific Gravity & Reagents',
+        minionName: 'Reagent Strip Slime',
+        minionIcon: '🧪',
+        miniBossName: 'Nitrite Spectre',
+        miniBossIcon: '👻',
+        bossName: 'Clinical Microscopy Overlord',
+        bossIcon: '👑',
+        minionIdleSpriteUrl: '/images/bosses/clinmicro_chapterOneMinion_idleAnimation.png',
+        minionAttackSpriteUrl: '/images/bosses/clinmicro_chapterOneMinion_normalAttackAnimation.png',
+        minionHeavyAttackSpriteUrl: '/images/bosses/clinmicro_chapterOneMinion_heavyAttackAnimation.png',
+        minionIdleFrames: 6,
+        minionAttackFrames: 21,
+        minionHeavyAttackFrames: 31,
+        minionIdleFrameWidth: 128,
+        minionIdleFrameHeight: 128,
+        minionAttackFrameWidth: 348,
+        minionAttackFrameHeight: 401,
+        minionHeavyFrameWidth: 348,
+        minionHeavyFrameHeight: 401,
+        minionIdleDuration: 1.0,
+        minionNormalAttackSfxUrl: '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3',
+        minionHeavyAttackSfxUrl: '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3',
+      },
       { id: 'cm-2', nodeNumber: 2, title: 'Microscopic Sediments & Body Fluids', subtopic: 'Casts, Crystals, Synovial, Serous & CSF Analysis', minionName: 'Hyaline Cast', minionIcon: '💧', miniBossName: 'Oxalate Golem', miniBossIcon: '🪨', bossName: 'Sediment Colossus', bossIcon: '🩸' },
       { id: 'cm-3', nodeNumber: 3, title: '👑 Crystal Golem (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', bossName: 'Crystal Golem', bossIcon: '👑', idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png", attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png", heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png", normalAttackSfxUrl: "/SoundEffects/CrystalGolemNormalAttack.mp3", heavyAttackSfxUrl: "/SoundEffects/CrystalGolemHeavyAttack.mp3", idleFrames: 7, attackFrames: 17, heavyAttackFrames: 11, idleFrameWidth: 128, idleFrameHeight: 128, attackFrameWidth: 128, attackFrameHeight: 128, heavyFrameWidth: 176, heavyFrameHeight: 128 },
     ],
@@ -903,6 +982,8 @@ export default function LearningQuest() {
         hammerAttackFrames: ch3Node?.hammerAttackFrames || 11,
         undergroundBlastUrl: ch3Node?.undergroundBlastUrl || null,
         undergroundBlastFrames: ch3Node?.undergroundBlastFrames || 16,
+        lightningAttackUrl: ch3Node?.lightningAttackUrl || (meta as any)?.lightningAttackUrl || null,
+        lightningAttackFrames: ch3Node?.lightningAttackFrames || (meta as any)?.lightningAttackFrames || 12,
         idleFrames: ch3Node?.idleFrames || meta?.idleFrames || 6,
         attackFrames: ch3Node?.attackFrames || meta?.attackFrames || 5,
         heavyAttackFrames: ch3Node?.heavyAttackFrames || meta?.heavyAttackFrames || 13,
@@ -1040,6 +1121,12 @@ export default function LearningQuest() {
       '/images/bosses/hispatho_chapterOneMinion_idleAnimation.png',
       '/images/bosses/hispatho_chapterOneMinion_normalAttackAnimation.png',
       '/images/bosses/hispatho_chapterOneMinion_heavyAttackAnimation.png',
+      '/images/bosses/clinmicro_chapterOneMinion_idleAnimation.png',
+      '/images/bosses/clinmicro_chapterOneMinion_normalAttackAnimation.png',
+      '/images/bosses/clinmicro_chapterOneMinion_heavyAttackAnimation.png',
+      '/images/bosses/immunohema_chapterOneMinion_idleAnimation.png',
+      '/images/bosses/immunohema_chapterOneMinion_normalAttackAnimation.png',
+      '/images/bosses/immunohema_chapterOneMinion_heavyAttackAnimation.png',
     ];
     assetsToPreload.forEach(src => {
       const img = new window.Image();
@@ -1808,12 +1895,7 @@ export default function LearningQuest() {
       currentActiveNode?.idleSpriteUrl?.includes('hematology_finalboss') ||
       currentActiveNode?.attackSpriteUrl?.includes('hematology_finalboss') ||
       currentActiveNode?.heavyAttackSpriteUrl?.includes('hematology_finalboss') ||
-      (selectedSubject === 'Hematology' && (
-        isChapter3FinalBoss ||
-        (quizMode === 'boss-battle' && (battleStage === 3 || isChapter3FinalBoss)) ||
-        quizMode === 'test' ||
-        (quizMode === 'learning' && currentEnemyName?.toLowerCase().includes('reaper'))
-      ))
+      (selectedSubject === 'Hematology' && !isSickleCellMinion)
     );
 
     const isStaphSentinel = Boolean(
@@ -1822,9 +1904,17 @@ export default function LearningQuest() {
       (quizMode === 'boss-battle' && battleStage === 2 && currentActiveNode?.id === 'mb-1')
     );
 
-    const isAcidSlime = Boolean(
+    const isReagentStripSlime = Boolean(
+      currentEnemyName?.toLowerCase().includes('reagent strip') ||
+      (currentEnemyName?.toLowerCase().includes('slime') && !currentEnemyName?.toLowerCase().includes('acid')) ||
+      currentActiveNode?.minionName?.toLowerCase().includes('reagent strip') ||
+      currentActiveNode?.minionIdleSpriteUrl?.includes('clinmicro_chapterOneMinion') ||
+      (selectedSubject.toLowerCase().includes('microscopy') && currentActiveNode?.id === 'cm-1' && (quizMode !== 'boss-battle' || battleStage === 1))
+    );
+
+    const isAcidSlime = !isReagentStripSlime && Boolean(
       currentEnemyName?.toLowerCase().includes('acid slime') ||
-      currentEnemyName?.toLowerCase().includes('slime') ||
+      (currentEnemyName?.toLowerCase().includes('slime') && !currentEnemyName?.toLowerCase().includes('reagent')) ||
       currentActiveNode?.minionName?.toLowerCase().includes('acid slime') ||
       currentActiveNode?.minionIdleSpriteUrl?.includes('clinchem_chapterOneMinion') ||
       (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode !== 'boss-battle' || battleStage === 1))
@@ -1844,7 +1934,14 @@ export default function LearningQuest() {
       (quizMode === 'boss-battle' && battleStage === 3 && currentActiveNode?.id === 'mb-1')
     );
 
-    const shouldSuppressWrongSfx = isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore;
+    const isLymphocyteSwarm = Boolean(
+      currentEnemyName?.toLowerCase().includes('lymphocyte') ||
+      currentActiveNode?.minionName?.toLowerCase().includes('lymphocyte') ||
+      currentActiveNode?.minionIdleSpriteUrl?.includes('immunohema_chapterOneMinion') ||
+      ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && currentActiveNode?.id === 'is-1' && (quizMode !== 'boss-battle' || battleStage === 1))
+    );
+
+    const shouldSuppressWrongSfx = isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm;
 
     if (isCorrect) {
       setScore(prev => prev + 1);
@@ -2194,6 +2291,15 @@ export default function LearningQuest() {
         const isLegalBeholderBoss = quizMode === 'boss-battle'
           ? (currentActiveNode?.id === 'hp-3' || currentActiveNode?.nodeNumber === 3 || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder'))
           : (selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'));
+        const isHydraBoss = Boolean(
+          (selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) &&
+          (currentActiveNode?.id === 'is-3' || currentActiveNode?.nodeNumber === 3 || currentActiveNode?.bossName?.toLowerCase().includes('hydra')) &&
+          (quizMode === 'boss-battle'
+            ? (battleStage === 3 || isChapter3FinalBoss)
+            : quizMode === 'learning'
+              ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || isChapter3FinalBoss)
+              : isChapter3FinalBoss)
+        );
 
         if (quizMode === 'learning') {
           // In Learning Mode (no action cards), randomize 50/50 between Normal Attack and Heavy Attack on wrong answer!
@@ -2217,10 +2323,24 @@ export default function LearningQuest() {
           const isAcidSlimeNormal = isAcidSlime && attackType === 'normal_attack';
           const isGmsFungalSporeHeavy = isGmsFungalSpore && attackType === 'heavy_attack';
           const isGmsFungalSporeNormal = isGmsFungalSpore && attackType === 'normal_attack';
+          const isReagentStripSlimeHeavy = isReagentStripSlime && attackType === 'heavy_attack';
+          const isReagentStripSlimeNormal = isReagentStripSlime && attackType === 'normal_attack';
+          const isLymphocyteSwarmHeavy = isLymphocyteSwarm && attackType === 'heavy_attack';
+          const isLymphocyteSwarmNormal = isLymphocyteSwarm && attackType === 'normal_attack';
+          const isHydraHeavy = isHydraBoss && attackType === 'heavy_attack';
+          const isHydraNormal = isHydraBoss && attackType === 'normal_attack';
           const resetDelay = isSpikes
             ? 1050
             : isLegalBeholderHeavy
               ? 1150
+            : isHydraNormal
+              ? 1860
+            : isHydraHeavy
+              ? 1120
+            : isLymphocyteSwarmHeavy
+              ? 960
+            : isLymphocyteSwarmNormal
+              ? 900
             : isGramPositiveHeavy
               ? 1650
               : isStaphSentinelHeavy
@@ -2251,15 +2371,27 @@ export default function LearningQuest() {
                                         ? 920
                                         : isGmsFungalSporeNormal
                                           ? 780
-                                          : isLegalBeholderNormal
-                                            ? 1050
-                                            : (isGramPositiveBoss ? 1080 : 950);
+                                          : isReagentStripSlimeHeavy
+                                            ? 1100
+                                            : isReagentStripSlimeNormal
+                                              ? 880
+                                              : isLegalBeholderNormal
+                                                ? 1050
+                                                : (isGramPositiveBoss ? 1080 : 950);
           const impactDelay = isSpikes
             ? 650
             : isLegalBeholderHeavy
               ? 700
             : isLegalBeholderNormal
               ? 650
+            : isHydraNormal
+              ? 820
+            : isHydraHeavy
+              ? 420
+            : isLymphocyteSwarmHeavy
+              ? 420
+            : isLymphocyteSwarmNormal
+              ? 320
             : isBiohazardHeavy
               ? 340
               : isBiohazardNormal
@@ -2282,7 +2414,11 @@ export default function LearningQuest() {
                                 ? 340
                                 : isAcidSlimeNormal
                                   ? 270
-                                  : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (attackType === 'heavy_attack' ? 320 : 300)));
+                                  : isReagentStripSlimeHeavy
+                                    ? 330
+                                    : isReagentStripSlimeNormal
+                                      ? 320
+                                      : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (attackType === 'heavy_attack' ? 320 : 300)));
           setTimeout(applyPlayerDamage, impactDelay);
           if (isGramPositiveHeavy) {
             setTimeout(() => {
@@ -2302,6 +2438,12 @@ export default function LearningQuest() {
               setHitEffectTarget('player');
               setHitEffectKey(k => k + 1);
             }, 680);
+          } else if (isReagentStripSlimeHeavy) {
+            setTimeout(() => {
+              setIsAnimating("player");
+              setHitEffectTarget('player');
+              setHitEffectKey(k => k + 1);
+            }, 660);
           }
           setTimeout(() => setBossAnimState('idle'), resetDelay);
         } else {
@@ -2325,10 +2467,24 @@ export default function LearningQuest() {
           const isAcidSlimeNormal = isAcidSlime && attackType === 'normal_attack';
           const isGmsFungalSporeHeavy = isGmsFungalSpore && attackType === 'heavy_attack';
           const isGmsFungalSporeNormal = isGmsFungalSpore && attackType === 'normal_attack';
+          const isReagentStripSlimeHeavy = isReagentStripSlime && attackType === 'heavy_attack';
+          const isReagentStripSlimeNormal = isReagentStripSlime && attackType === 'normal_attack';
+          const isLymphocyteSwarmHeavy = isLymphocyteSwarm && attackType === 'heavy_attack';
+          const isLymphocyteSwarmNormal = isLymphocyteSwarm && attackType === 'normal_attack';
+          const isHydraHeavy = isHydraBoss && attackType === 'heavy_attack';
+          const isHydraNormal = isHydraBoss && attackType === 'normal_attack';
           const resetDelay = isSpikes
             ? 1050
             : isLegalBeholderHeavy
               ? 1150
+            : isHydraNormal
+              ? 1860
+            : isHydraHeavy
+              ? 1120
+            : isLymphocyteSwarmHeavy
+              ? 960
+            : isLymphocyteSwarmNormal
+              ? 900
             : isGramPositiveHeavy
               ? 1650
               : isStaphSentinelHeavy
@@ -2359,15 +2515,27 @@ export default function LearningQuest() {
                                         ? 920
                                         : isGmsFungalSporeNormal
                                           ? 780
-                                          : isLegalBeholderNormal
-                                            ? 1050
-                                            : (isGramPositiveBoss ? 1080 : 950);
+                                          : isReagentStripSlimeHeavy
+                                            ? 1100
+                                            : isReagentStripSlimeNormal
+                                              ? 880
+                                              : isLegalBeholderNormal
+                                                ? 1050
+                                                : (isGramPositiveBoss ? 1080 : 950);
           const impactDelay = isSpikes
             ? 650
             : isLegalBeholderHeavy
               ? 700
             : isLegalBeholderNormal
               ? 650
+            : isHydraNormal
+              ? 820
+            : isHydraHeavy
+              ? 420
+            : isLymphocyteSwarmHeavy
+              ? 420
+            : isLymphocyteSwarmNormal
+              ? 320
             : isBiohazardHeavy
               ? 340
               : isBiohazardNormal
@@ -2394,7 +2562,11 @@ export default function LearningQuest() {
                                     ? 360
                                     : isGmsFungalSporeNormal
                                       ? 280
-                                      : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (action === 'heavy' ? 320 : 300)));
+                                      : isReagentStripSlimeHeavy
+                                        ? 330
+                                        : isReagentStripSlimeNormal
+                                          ? 320
+                                          : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (action === 'heavy' ? 320 : 300)));
           setTimeout(applyPlayerDamage, impactDelay);
           if (isGramPositiveHeavy) {
             setTimeout(() => {
@@ -2414,6 +2586,12 @@ export default function LearningQuest() {
               setHitEffectTarget('player');
               setHitEffectKey(k => k + 1);
             }, 680);
+          } else if (isReagentStripSlimeHeavy) {
+            setTimeout(() => {
+              setIsAnimating("player");
+              setHitEffectTarget('player');
+              setHitEffectKey(k => k + 1);
+            }, 660);
           }
           setTimeout(() => setBossAnimState('idle'), resetDelay);
         }
@@ -3630,8 +3808,10 @@ export default function LearningQuest() {
                         <BossSpriteAnimator
                           bossName={activeEnemyName || currentActiveNode?.bossName}
                           normalAttackSfxUrl={
-                            activeEnemyName?.toLowerCase().includes('acid slime') || activeEnemyName?.toLowerCase().includes('slime') || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle'))
+                            (activeEnemyName?.toLowerCase().includes('acid slime') || (activeEnemyName?.toLowerCase().includes('slime') && !activeEnemyName?.toLowerCase().includes('reagent')) || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
                               ? '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3'
+                              : (activeEnemyName?.toLowerCase().includes('reagent') || attackSprite?.includes('clinmicro_chapterOneMinion') || (currentActiveNode?.id === 'cm-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
+                              ? '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3'
                               : activeEnemyName?.toLowerCase().includes('gram positive') || (currentActiveNode?.id === 'mb-1' && (activeEnemyBadge === 'BOSS' || battleStage === 3))
                               ? '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3'
                               : activeEnemyName?.toLowerCase().includes('staph')
@@ -3644,6 +3824,8 @@ export default function LearningQuest() {
                               ? '/SoundEffects/FungalSporeNormalAttack.mp3'
                               : activeEnemyName?.toLowerCase().includes('microbe swarm')
                               ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
+                              : (activeEnemyName?.toLowerCase().includes('lymphocyte') || attackSprite?.includes('immunohema_chapterOneMinion') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
+                              ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
                               : activeEnemyName?.toLowerCase().includes('specter')
                               ? '/SoundEffects/HyperglemicSpecterNormalAttack.mp3'
                               : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-3')
@@ -3653,8 +3835,10 @@ export default function LearningQuest() {
                               : (currentActiveNode?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl)
                           }
                           heavyAttackSfxUrl={
-                            activeEnemyName?.toLowerCase().includes('acid slime') || activeEnemyName?.toLowerCase().includes('slime') || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle'))
+                            (activeEnemyName?.toLowerCase().includes('acid slime') || (activeEnemyName?.toLowerCase().includes('slime') && !activeEnemyName?.toLowerCase().includes('reagent')) || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
                               ? '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3'
+                              : (activeEnemyName?.toLowerCase().includes('reagent') || heavyAttackSprite?.includes('clinmicro_chapterOneMinion') || (currentActiveNode?.id === 'cm-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
+                              ? '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3'
                               : activeEnemyName?.toLowerCase().includes('gram positive') || (currentActiveNode?.id === 'mb-1' && (activeEnemyBadge === 'BOSS' || battleStage === 3))
                               ? '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3'
                               : activeEnemyName?.toLowerCase().includes('staph')
@@ -3666,6 +3850,8 @@ export default function LearningQuest() {
                               : (activeEnemyName?.toLowerCase().includes('fungal spore') || activeEnemyName?.toLowerCase().includes('gms') || heavyAttackSprite?.includes('hispatho_chapterOneMinion') || (currentActiveNode?.id === 'hp-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
                               ? '/SoundEffects/FungalSporeHeavyAttack.mp3'
                               : activeEnemyName?.toLowerCase().includes('microbe swarm')
+                              ? '/SoundEffects/MicrobeSwarmHeavyAttack.wav'
+                              : (activeEnemyName?.toLowerCase().includes('lymphocyte') || heavyAttackSprite?.includes('immunohema_chapterOneMinion') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
                               ? '/SoundEffects/MicrobeSwarmHeavyAttack.wav'
                               : activeEnemyName?.toLowerCase().includes('specter')
                               ? '/SoundEffects/HyperglemicSpecterHeavyAttack.mp3'
@@ -3681,14 +3867,20 @@ export default function LearningQuest() {
                           attackProjectileUrl={waveState?.attackProjectileUrl || currentActiveNode?.attackProjectileUrl || subjectMeta?.attackProjectileUrl || undefined}
                           attackProjectileFrames={waveState?.attackProjectileFrames || currentActiveNode?.attackProjectileFrames || subjectMeta?.attackProjectileFrames || 5}
                           undergroundSpikesUrl={
-                            (isMinionStageWithSprite || isMiniBossStageWithSprite || (quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage < 3) || activeEnemyName?.toLowerCase().includes('sickle cell'))
+                            (isMinionStageWithSprite || isMiniBossStageWithSprite || activeEnemyName?.toLowerCase().includes('sickle cell'))
                               ? undefined
-                              : (waveState?.undergroundSpikesUrl || currentActiveNode?.undergroundSpikesUrl || (isChapter3FinalBoss ? subjectMeta?.undergroundSpikesUrl : undefined))
+                              : (attackSprite?.includes('hematology_finalboss_normalAttackGlintAnimation')
+                                  ? (currentActiveNode?.undergroundSpikesUrl || subjectMeta?.undergroundSpikesUrl || '/images/bosses/hematology_finalboss_normalAttackUndergroundSpikesAnimation.png')
+                                  : (waveState?.undergroundSpikesUrl || currentActiveNode?.undergroundSpikesUrl || (isChapter3FinalBoss ? subjectMeta?.undergroundSpikesUrl : undefined))
+                                )
                           }
                           undergroundSpikesFrames={
-                            (isMinionStageWithSprite || isMiniBossStageWithSprite || (quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage < 3) || activeEnemyName?.toLowerCase().includes('sickle cell'))
+                            (isMinionStageWithSprite || isMiniBossStageWithSprite || activeEnemyName?.toLowerCase().includes('sickle cell'))
                               ? undefined
-                              : (waveState?.undergroundSpikesFrames || currentActiveNode?.undergroundSpikesFrames || (isChapter3FinalBoss ? subjectMeta?.undergroundSpikesFrames : 8))
+                              : (attackSprite?.includes('hematology_finalboss_normalAttackGlintAnimation')
+                                  ? (currentActiveNode?.undergroundSpikesFrames || subjectMeta?.undergroundSpikesFrames || 8)
+                                  : (waveState?.undergroundSpikesFrames || currentActiveNode?.undergroundSpikesFrames || (isChapter3FinalBoss ? subjectMeta?.undergroundSpikesFrames : 8))
+                                )
                           }
                           idleFrames={effectiveIdleFrames}
                           attackFrames={effectiveAttackFrames}
@@ -3732,7 +3924,7 @@ export default function LearningQuest() {
 
             {/* Player Character Sprite & Info Card */}
             <div className={cn(
-              "absolute bottom-0 left-0 transition-all duration-1000 ease-out z-10 flex items-end gap-2 md:gap-3",
+              "absolute bottom-0 left-0 transition-all duration-1000 ease-out z-30 flex items-end gap-2 md:gap-3",
               (introPhase === 'cutscene' || introPhase === 'hidden') ? '-translate-x-[150%]' : 'translate-x-0',
               isAnimating === "player" && "animate-shake scale-105",
               isFleeing && "-translate-x-full opacity-0 duration-700 pointer-events-none"
@@ -3745,21 +3937,40 @@ export default function LearningQuest() {
                 {/* Ground Shadow for Player Character */}
                 <div className="absolute bottom-4 w-36 md:w-52 h-5 bg-black/70 rounded-[100%] blur-md scale-y-50 pointer-events-none" />
 
-                {/* Underground Spikes Eruption Animation directly beneath the Player - ONLY for Chapter 3 Final Boss (Sickle-Cell Reaper) */}
+                {/* Underground Spikes Eruption Animation directly beneath the Player - Sickle-Cell Reaper & Hematology Glint Attack */}
                 {(() => {
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const isChapter3FinalBoss = currentActiveNode.nodeNumber === 3;
-                  const isReaperActive = quizMode === 'boss-battle'
-                    ? (isChapter3FinalBoss || battleStage === 3)
-                    : (quizMode === 'learning'
-                        ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3
-                        : isChapter3FinalBoss);
-                  if (!isReaperActive) return null;
+                  const isMinionWithSprite = quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl;
+                  const isMiniBossWithSprite = quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 2 && !!currentActiveNode?.miniBossIdleSpriteUrl;
+                  if (isMinionWithSprite || isMiniBossWithSprite) return null;
+
                   const subjectMeta = getSubjectMeta(selectedSubject);
-                  const spikesUrl = currentActiveNode?.undergroundSpikesUrl || (isChapter3FinalBoss ? subjectMeta?.undergroundSpikesUrl : null);
+                  const currentEnemyAttackSprite = quizMode === 'boss-battle'
+                    ? (isChapter3FinalBoss
+                        ? (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl)
+                        : (battleStage === 1 && currentActiveNode?.minionAttackSpriteUrl
+                            ? currentActiveNode.minionAttackSpriteUrl
+                            : battleStage === 2 && currentActiveNode?.miniBossAttackSpriteUrl
+                            ? currentActiveNode.miniBossAttackSpriteUrl
+                            : (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl)))
+                    : (quizMode === 'learning'
+                        ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).attackSprite
+                        : (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl));
+
+                  const shouldRenderSpikes = Boolean(
+                    currentEnemyAttackSprite?.includes('hematology_finalboss_normalAttackGlintAnimation') ||
+                    currentActiveNode?.undergroundSpikesUrl ||
+                    (isChapter3FinalBoss && subjectMeta?.undergroundSpikesUrl) ||
+                    (selectedSubject === 'Hematology' && !isMinionWithSprite && !isMiniBossWithSprite)
+                  );
+
+                  if (!shouldRenderSpikes) return null;
+
+                  const spikesUrl = currentActiveNode?.undergroundSpikesUrl || subjectMeta?.undergroundSpikesUrl || '/images/bosses/hematology_finalboss_normalAttackUndergroundSpikesAnimation.png';
                   const spikesFrames = currentActiveNode?.undergroundSpikesFrames || subjectMeta?.undergroundSpikesFrames || 8;
-                  if (!spikesUrl) return null;
+
                   return (
                     <UndergroundSpikesAnimator
                       isActive={bossAnimState === 'normal_attack'}
@@ -3776,16 +3987,24 @@ export default function LearningQuest() {
 
                 {/* Chapter 3 Histopathology Final Boss (Legal Beholder): Judicial Hammer Attack Overlay */}
                 {(() => {
+                  const isHistoSubject = Boolean(selectedSubject?.toLowerCase().includes('histo') || selectedSubject?.toLowerCase().includes('law'));
+                  if (!isHistoSubject) return null;
+
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
-                  const isLegalBeholderActive = quizMode === 'boss-battle'
-                    ? (isChapter3FinalBoss || battleStage === 3 || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'))
-                    : (quizMode === 'learning'
-                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'))
-                        : (isChapter3FinalBoss || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')));
+                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'hp-3';
+                  const isLegalBeholder = isChapter3FinalBoss || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder');
+
+                  const isLegalBeholderActive = isLegalBeholder && (
+                    quizMode === 'boss-battle'
+                      ? (battleStage === 3 || isChapter3FinalBoss)
+                      : quizMode === 'learning'
+                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || isChapter3FinalBoss)
+                        : isChapter3FinalBoss
+                  );
                   if (!isLegalBeholderActive) return null;
-                  const hammerUrl = currentActiveNode?.hammerAttackUrl || '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackHammerAnimation-2.png';
+
+                  const hammerUrl = currentActiveNode?.hammerAttackUrl || (isLegalBeholder ? '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackHammerAnimation-2.png' : null);
                   const hammerFrames = currentActiveNode?.hammerAttackFrames || 11;
                   if (!hammerUrl) return null;
                   return (
@@ -3793,41 +4012,86 @@ export default function LearningQuest() {
                       isActive={bossAnimState === 'normal_attack'}
                       spriteUrl={hammerUrl}
                       frames={hammerFrames}
-                      delayMs={300}
-                      durationMs={550}
-                      scale={2.3}
-                      className="bottom-2 sm:bottom-4 md:bottom-6 left-[72%] sm:left-[74%] md:left-[76%] -translate-x-1/2"
+                      delayMs={220}
+                      durationMs={620}
+                      scale={2.6}
+                      className="bottom-4 sm:bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 z-30"
                     />
                   );
                 })()}
 
                 {/* Chapter 3 Histopathology Final Boss (Legal Beholder): Underground Blast Heavy Attack Overlay */}
                 {(() => {
+                  const isHistoSubject = Boolean(selectedSubject?.toLowerCase().includes('histo') || selectedSubject?.toLowerCase().includes('law'));
+                  if (!isHistoSubject) return null;
+
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
-                  const isLegalBeholderActive = quizMode === 'boss-battle'
-                    ? (isChapter3FinalBoss || battleStage === 3 || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'))
-                    : (quizMode === 'learning'
-                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'))
-                        : (isChapter3FinalBoss || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')));
+                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'hp-3';
+                  const isLegalBeholder = isChapter3FinalBoss || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder');
+
+                  const isLegalBeholderActive = isLegalBeholder && (
+                    quizMode === 'boss-battle'
+                      ? (battleStage === 3 || isChapter3FinalBoss)
+                      : quizMode === 'learning'
+                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || isChapter3FinalBoss)
+                        : isChapter3FinalBoss
+                  );
                   if (!isLegalBeholderActive) return null;
-                  const blastUrl = currentActiveNode?.undergroundBlastUrl || '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackUndergroundBlastAnimation.png';
+
+                  const blastUrl = currentActiveNode?.undergroundBlastUrl || (isLegalBeholder ? '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackUndergroundBlastAnimation.png' : null);
                   const blastFrames = currentActiveNode?.undergroundBlastFrames || 16;
+                  if (!blastUrl) return null;
                   return (
                     <UndergroundBlastAnimator
                       isActive={bossAnimState === 'heavy_attack'}
                       spriteUrl={blastUrl}
                       frames={blastFrames}
-                      delayMs={320}
-                      durationMs={800}
-                      scale={2.6}
-                      className="bottom-0 md:bottom-2 left-1/2 -translate-x-1/2"
+                      delayMs={240}
+                      durationMs={820}
+                      scale={2.8}
+                      className="bottom-0 md:bottom-2 left-1/2 -translate-x-1/2 z-30"
                     />
                   );
                 })()}
 
-                <div className="relative w-44 h-44 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-84 lg:h-84 shrink-0 transition-transform">
+                {/* Chapter 3 Immunology & Serology and Immunohematology Final Boss (Anti-Serum Hydra): Heavy Attack Lightning Overlay */}
+                {(() => {
+                  const isImmunoSubject = Boolean(selectedSubject?.toLowerCase().includes('immuno') || selectedSubject?.toLowerCase().includes('serology'));
+                  if (!isImmunoSubject) return null;
+
+                  const activeNodes = getSubjectNodes(selectedSubject);
+                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'is-3';
+                  const isHydra = isChapter3FinalBoss || Boolean(currentActiveNode?.bossName?.toLowerCase().includes('hydra'));
+
+                  const isHydraActive = isHydra && (
+                    quizMode === 'boss-battle'
+                      ? (battleStage === 3 || isChapter3FinalBoss)
+                      : quizMode === 'learning'
+                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || isChapter3FinalBoss)
+                        : isChapter3FinalBoss
+                  );
+
+                  if (!isHydraActive) return null;
+
+                  const lightningUrl = currentActiveNode?.lightningAttackUrl;
+                  const lightningFrames = currentActiveNode?.lightningAttackFrames || 12;
+                  if (!lightningUrl) return null;
+                  return (
+                    <HydraLightningAnimator
+                      isActive={bossAnimState === 'heavy_attack'}
+                      spriteUrl={lightningUrl}
+                      frames={lightningFrames}
+                      delayMs={250}
+                      durationMs={720}
+                      scale={2.8}
+                      className="bottom-6 sm:bottom-10 md:bottom-14 left-1/2 -translate-x-1/2 z-30"
+                    />
+                  );
+                })()}
+
+                <div className="relative z-10 w-44 h-44 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-84 lg:h-84 shrink-0 transition-transform">
                   <Image
                     src="/images/player/userPlayer_placeholder.png"
                     alt="Aspirant Character Sprite"

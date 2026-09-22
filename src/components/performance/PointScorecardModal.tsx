@@ -42,7 +42,7 @@ export function PointScorecardModal({
     if (!doc) return;
 
     const subjectsHtml = subjects.map(s => {
-      const statusText = s.status || (s.mastery >= 90 ? 'Mastered' : s.mastery >= 75 ? 'Proficient' : s.mastery >= 50 ? 'In Training' : 'Needs Focus');
+      const statusText = s.status || ((s.mastery >= 90 && s.completion >= 50) ? 'Mastered' : (s.mastery >= 75 && s.completion >= 25) ? 'Proficient' : (s.mastery >= 50 || s.completion > 0) ? 'In Training' : 'Needs Focus');
       const pts = s.points ?? Math.round(s.mastery * 10 + s.completion * 5);
       const statusStyle = statusText === 'Mastered' 
         ? 'background:#d1fae5; color:#047857; border:1px solid #a7f3d0;' 
@@ -270,7 +270,7 @@ export function PointScorecardModal({
                         </td>
                         <td className="py-2 px-3 text-right">
                           {(() => {
-                            const statusText = s.status || (s.mastery >= 90 ? 'Mastered' : s.mastery >= 75 ? 'Proficient' : s.mastery >= 50 ? 'In Training' : 'Needs Focus');
+                            const statusText = s.status || ((s.mastery >= 90 && s.completion >= 50) ? 'Mastered' : (s.mastery >= 75 && s.completion >= 25) ? 'Proficient' : (s.mastery >= 50 || s.completion > 0) ? 'In Training' : 'Needs Focus');
                             return (
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8.5px] font-bold ${
                                 statusText === 'Mastered'

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { preloadSpecterSounds, playSpecterAttack, preloadBiohazardSounds, playBiohazardAttack, preloadStaphSentinelSounds, playStaphSentinelAttack, preloadCrystalGolemSounds, playCrystalGolemAttack, preloadMicrobeSwarmSounds, playMicrobeSwarmAttack, preloadSickleCellReaperSounds, playSickleCellReaperAttack, preloadAcidSlimeSounds, playAcidSlimeAttack, preloadSickleCellMinionSounds, playSickleCellMinionAttack, preloadGramPositiveSounds, playGramPositiveAttack, preloadFungalSporeSounds, playFungalSporeAttack, playAudioFile } from "@/lib/audio-manager";
+import { preloadSpecterSounds, playSpecterAttack, preloadBiohazardSounds, playBiohazardAttack, preloadStaphSentinelSounds, playStaphSentinelAttack, preloadCrystalGolemSounds, playCrystalGolemAttack, preloadMicrobeSwarmSounds, playMicrobeSwarmAttack, preloadSickleCellReaperSounds, playSickleCellReaperAttack, preloadAcidSlimeSounds, playAcidSlimeAttack, preloadSickleCellMinionSounds, playSickleCellMinionAttack, preloadGramPositiveSounds, playGramPositiveAttack, preloadFungalSporeSounds, playFungalSporeAttack, preloadReagentStripSlimeSounds, playReagentStripSlimeAttack, playAudioFile } from "@/lib/audio-manager";
 
 export type BossAnimState = "idle" | "normal_attack" | "heavy_attack";
 
@@ -93,7 +93,57 @@ export function BossSpriteAnimator({
     ? attackSpriteUrl
     : idleSpriteUrl;
 
-  const currentTotalFrames = isHeavy
+  const isHydraAttack = isAttacking && (
+    attackSpriteUrl?.includes('immunohema_chapterThreeFinalBoss') ||
+    heavyAttackSpriteUrl?.includes('immunohema_chapterThreeFinalBoss') ||
+    idleSpriteUrl?.includes('immunohema_chapterThreeFinalBoss') ||
+    bossName?.toLowerCase().includes('hydra')
+  );
+  const isHydraHeavy = isHeavy && isHydraAttack;
+  const isHydraNormal = !isHeavy && isHydraAttack;
+  const isAntiSerumHydra = Boolean(
+    bossName?.toLowerCase().includes('hydra') ||
+    idleSpriteUrl?.includes('immunohema_chapterThreeFinalBoss') ||
+    attackSpriteUrl?.includes('immunohema_chapterThreeFinalBoss') ||
+    heavyAttackSpriteUrl?.includes('immunohema_chapterThreeFinalBoss')
+  );
+  const isHydraVerticalSprite = Boolean(
+    currentSpriteUrl?.includes('immunohema_chapterThreeFinalBoss_idleAnimation') ||
+    (!isAttacking && isAntiSerumHydra)
+  );
+
+  const isLymphocyteSwarmAttack = isAttacking && (
+    attackSpriteUrl?.includes('immunohema_chapterOneMinion') ||
+    heavyAttackSpriteUrl?.includes('immunohema_chapterOneMinion') ||
+    idleSpriteUrl?.includes('immunohema_chapterOneMinion') ||
+    bossName?.toLowerCase().includes('lymphocyte')
+  );
+  const isLymphocyteSwarmHeavy = isHeavy && isLymphocyteSwarmAttack;
+  const isLymphocyteSwarmNormal = !isHeavy && isLymphocyteSwarmAttack;
+  const isLymphocyteSwarmIdle = !isAttacking && (
+    idleSpriteUrl?.includes('immunohema_chapterOneMinion') ||
+    bossName?.toLowerCase().includes('lymphocyte')
+  );
+  const isLymphocyteSwarm = (
+    bossName?.toLowerCase().includes('lymphocyte') ||
+    idleSpriteUrl?.includes('immunohema_chapterOneMinion') ||
+    attackSpriteUrl?.includes('immunohema_chapterOneMinion') ||
+    heavyAttackSpriteUrl?.includes('immunohema_chapterOneMinion')
+  );
+
+  const currentTotalFrames = isHydraHeavy
+    ? 14
+    : isHydraNormal
+    ? (attackFrames || 31)
+    : isHydraVerticalSprite
+    ? 19
+    : isLymphocyteSwarmHeavy
+    ? 10
+    : isLymphocyteSwarmNormal
+    ? 14
+    : isLymphocyteSwarmIdle
+    ? 11
+    : isHeavy
     ? (heavyAttackFrames || 11)
     : (isNormalAttack && hasProjectile)
     ? idleFrames
@@ -101,7 +151,15 @@ export function BossSpriteAnimator({
     ? attackFrames
     : idleFrames;
 
-  const currentFrameWidth = isHeavy
+  const currentFrameWidth = isHydraHeavy
+    ? 143
+    : isHydraNormal
+    ? (attackFrameWidth || 384)
+    : isHydraVerticalSprite
+    ? 143
+    : isLymphocyteSwarm
+    ? 257
+    : isHeavy
     ? (heavyFrameWidth || 176)
     : (isNormalAttack && hasProjectile)
     ? (idleFrameWidth || 128)
@@ -109,7 +167,15 @@ export function BossSpriteAnimator({
     ? (attackFrameWidth || 128)
     : (idleFrameWidth || 128);
 
-  const currentFrameHeight = isHeavy
+  const currentFrameHeight = isHydraHeavy
+    ? 144
+    : isHydraNormal
+    ? (attackFrameHeight || 256)
+    : isHydraVerticalSprite
+    ? 144
+    : isLymphocyteSwarm
+    ? 218
+    : isHeavy
     ? (heavyFrameHeight || (heavyFrameWidth && heavyFrameWidth >= 300 ? 256 : 128))
     : (isNormalAttack && hasProjectile)
     ? (idleFrameHeight || 128)
@@ -117,7 +183,27 @@ export function BossSpriteAnimator({
     ? (attackFrameHeight || (attackFrameWidth && attackFrameWidth >= 300 ? 256 : 128))
     : (idleFrameHeight || 128);
 
-  const isWideBeam = isAttacking && currentFrameWidth >= 300;
+  const isReagentStripSlimeAttack = isAttacking && (
+    attackSpriteUrl?.includes('clinmicro_chapterOneMinion') ||
+    heavyAttackSpriteUrl?.includes('clinmicro_chapterOneMinion') ||
+    bossName?.toLowerCase().includes('reagent strip')
+  );
+  const isReagentStripSlimeHeavy = isHeavy && isReagentStripSlimeAttack;
+  const isReagentStripSlimeNormal = !isHeavy && isReagentStripSlimeAttack;
+  const isReagentStripSlimeIdle = !isAttacking && (
+    idleSpriteUrl?.includes('clinmicro_chapterOneMinion') ||
+    bossName?.toLowerCase().includes('reagent strip')
+  );
+  const isReagentStripSlime = (
+    bossName?.toLowerCase().includes('reagent strip') ||
+    idleSpriteUrl?.includes('clinmicro_chapterOneMinion') ||
+    attackSpriteUrl?.includes('clinmicro_chapterOneMinion') ||
+    heavyAttackSpriteUrl?.includes('clinmicro_chapterOneMinion')
+  );
+
+  const isWideBeam = isAttacking && currentFrameWidth >= 300 && !isReagentStripSlimeAttack && !isHydraAttack;
+
+  const effectiveScale = isReagentStripSlimeAttack ? Math.min(scale, 1.0) : scale;
 
   // Frame rates (fps) - Tuned for fast, immediate and punchy combat animations
   const fps = isHeavy
@@ -188,21 +274,30 @@ export function BossSpriteAnimator({
   );
   const isSickleCellReaperHeavy = isHeavy && isSickleCellReaperAttack;
   const isSickleCellReaperNormal = !isHeavy && isSickleCellReaperAttack;
+  const isReaperGlintNormal = !isHeavy && isAttacking && (
+    attackSpriteUrl?.includes('hematology_finalboss_normalAttackGlintAnimation') ||
+    isSickleCellReaperNormal ||
+    hasUndergroundSpikes
+  );
+  const isReaperGlintSprite = isReaperGlintNormal && (
+    currentSpriteUrl?.includes('hematology_finalboss_normalAttackGlintAnimation') ||
+    attackSpriteUrl?.includes('hematology_finalboss_normalAttackGlintAnimation')
+  );
 
-  const isAcidSlimeAttack = isAttacking && (
+  const isAcidSlimeAttack = !isReagentStripSlimeAttack && isAttacking && (
     attackSpriteUrl?.includes('clinchem_chapterOneMinion') ||
     heavyAttackSpriteUrl?.includes('clinchem_chapterOneMinion') ||
     bossName?.toLowerCase().includes('acid slime') ||
-    bossName?.toLowerCase().includes('slime') ||
+    (bossName?.toLowerCase().includes('slime') && !bossName?.toLowerCase().includes('reagent')) ||
     heavyAttackSfxUrl?.includes('AcidSlime') ||
     normalAttackSfxUrl?.includes('AcidSlime')
   );
   const isAcidSlimeHeavy = isHeavy && isAcidSlimeAttack;
   const isAcidSlimeNormal = !isHeavy && isAcidSlimeAttack;
-  const isAcidSlimeIdle = !isAttacking && (
+  const isAcidSlimeIdle = !isAttacking && !isReagentStripSlimeIdle && (
     idleSpriteUrl?.includes('clinchem_chapterOneMinion') ||
     bossName?.toLowerCase().includes('acid slime') ||
-    bossName?.toLowerCase().includes('slime')
+    (bossName?.toLowerCase().includes('slime') && !bossName?.toLowerCase().includes('reagent'))
   );
 
   const isGmsFungalSporeAttack = isAttacking && (
@@ -254,8 +349,10 @@ export function BossSpriteAnimator({
     ? (idleDuration || 1.3)
     : isSickleCellReaperHeavy
     ? 0.70
+    : isReaperGlintNormal
+    ? 0.45
     : isSickleCellReaperNormal
-    ? 0.42
+    ? 0.45
     : isBiohazardHeavy
     ? 0.82
     : isBiohazardNormal
@@ -264,6 +361,10 @@ export function BossSpriteAnimator({
     ? 1.15
     : isLegalBeholderNormal
     ? 0.66
+    : isHydraHeavy
+    ? 1.05
+    : isHydraNormal
+    ? 1.25
     : isAcidSlimeHeavy
     ? 0.82
     : isAcidSlimeNormal
@@ -276,6 +377,18 @@ export function BossSpriteAnimator({
     ? 0.67
     : isGmsFungalSporeIdle
     ? (idleDuration || 1.0)
+    : isReagentStripSlimeHeavy
+    ? 1.03
+    : isReagentStripSlimeNormal
+    ? 0.80
+    : isReagentStripSlimeIdle
+    ? (idleDuration || 1.0)
+    : isLymphocyteSwarmHeavy
+    ? 0.82
+    : isLymphocyteSwarmNormal
+    ? 0.78
+    : isLymphocyteSwarmIdle
+    ? (idleDuration || 1.2)
     : isBiohazardIdle
     ? (idleDuration || (idleFps ? currentTotalFrames / idleFps : 1.05))
     : Math.max(0.48, Math.min(0.62, currentTotalFrames / fps));
@@ -298,8 +411,10 @@ export function BossSpriteAnimator({
     ? 0.72
     : isSickleCellReaperHeavy
     ? 0.70
+    : isReaperGlintNormal
+    ? 1.05
     : isSickleCellReaperNormal
-    ? 0.42
+    ? 1.05
     : isBiohazardHeavy
     ? 0.82
     : isBiohazardNormal
@@ -308,6 +423,10 @@ export function BossSpriteAnimator({
     ? 1.15
     : isLegalBeholderNormal
     ? 0.66
+    : isHydraHeavy
+    ? 1.05
+    : isHydraNormal
+    ? 1.85
     : isAcidSlimeHeavy
     ? 0.82
     : isAcidSlimeNormal
@@ -316,10 +435,18 @@ export function BossSpriteAnimator({
     ? 0.81
     : isGmsFungalSporeNormal
     ? 0.67
+    : isReagentStripSlimeHeavy
+    ? 1.03
+    : isReagentStripSlimeNormal
+    ? 0.80
+    : isLymphocyteSwarmHeavy
+    ? 0.82
+    : isLymphocyteSwarmNormal
+    ? 0.78
     : spriteDuration;
 
   const lungeDuration = isAttacking
-    ? (hasProjectile ? 0.45 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : 0.35)))))
+    ? (hasProjectile ? 0.45 : isReaperGlintNormal ? 1.05 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : isHydraHeavy ? 1.05 : isHydraNormal ? 1.85 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : (isReagentStripSlimeAttack ? 0.08 : (isLymphocyteSwarmAttack ? 0.12 : 0.35)))))))
     : spriteDuration;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
@@ -398,9 +525,9 @@ export function BossSpriteAnimator({
     normalAttackSfxUrl?.includes('GramPositive')
   );
 
-  const isAcidSlime = (
+  const isAcidSlime = !isReagentStripSlime && (
     bossName?.toLowerCase().includes('acid slime') ||
-    bossName?.toLowerCase().includes('slime') ||
+    (bossName?.toLowerCase().includes('slime') && !bossName?.toLowerCase().includes('reagent')) ||
     idleSpriteUrl?.includes('clinchem_chapterOneMinion') ||
     attackSpriteUrl?.includes('clinchem_chapterOneMinion') ||
     heavyAttackSpriteUrl?.includes('clinchem_chapterOneMinion') ||
@@ -450,7 +577,13 @@ export function BossSpriteAnimator({
     if (isGmsFungalSpore || isGmsFungalSporeAttack || heavyAttackSfxUrl?.includes('FungalSpore') || normalAttackSfxUrl?.includes('FungalSpore')) {
       preloadFungalSporeSounds();
     }
-  }, [isSpecter, isStaphSentinel, isBiohazard, isCrystalGolem, isMicrobeSwarm, isSickleCellReaper, isSickleCellReaperAttack, isSickleCellMinion, isSickleCellMinionAttack, isAcidSlime, isGramPositive, isGramPositiveAttack, isGmsFungalSpore, isGmsFungalSporeAttack, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl]);
+    if (isReagentStripSlime || isReagentStripSlimeAttack || heavyAttackSfxUrl?.includes('ReagentStripSlime') || normalAttackSfxUrl?.includes('ReagentStripSlime')) {
+      preloadReagentStripSlimeSounds();
+    }
+    if (isLymphocyteSwarm || isLymphocyteSwarmAttack || heavyAttackSfxUrl?.includes('MicrobeSwarm') || normalAttackSfxUrl?.includes('MicrobeSwarm')) {
+      preloadMicrobeSwarmSounds();
+    }
+  }, [isSpecter, isStaphSentinel, isBiohazard, isCrystalGolem, isMicrobeSwarm, isSickleCellReaper, isSickleCellReaperAttack, isSickleCellMinion, isSickleCellMinionAttack, isAcidSlime, isGramPositive, isGramPositiveAttack, isGmsFungalSpore, isGmsFungalSporeAttack, isReagentStripSlime, isReagentStripSlimeAttack, isLymphocyteSwarm, isLymphocyteSwarmAttack, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl]);
 
   // Key to force reset DOM animation state whenever animState changes
   const [animKey, setAnimKey] = useState(0);
@@ -499,7 +632,7 @@ export function BossSpriteAnimator({
           } else if (isNormalAttack) {
             playStaphSentinelAttack('normal');
           }
-        } else if (isMicrobeSwarm || isMicrobeSwarmAttack) {
+        } else if (isMicrobeSwarm || isMicrobeSwarmAttack || isLymphocyteSwarm || isLymphocyteSwarmAttack) {
           if (isHeavy) {
             playMicrobeSwarmAttack('heavy');
           } else if (isNormalAttack) {
@@ -522,6 +655,12 @@ export function BossSpriteAnimator({
             playSpecterAttack('heavy');
           } else if (isNormalAttack) {
             playSpecterAttack('normal');
+          }
+        } else if (isReagentStripSlime || isReagentStripSlimeAttack) {
+          if (isHeavy) {
+            playReagentStripSlimeAttack('heavy');
+          } else if (isNormalAttack) {
+            playReagentStripSlimeAttack('normal');
           }
         } else if (heavyAttackSfxUrl || normalAttackSfxUrl) {
           if (isHeavy) {
@@ -546,9 +685,10 @@ export function BossSpriteAnimator({
     } else {
       lastPlayedAnimRef.current = null;
     }
-  }, [animState, isAttacking, lungeDuration, isGramPositive, isGramPositiveAttack, isSickleCellMinion, isSickleCellMinionAttack, isStaphSentinel, isStaphSentinelAttack, isSickleCellReaper, isSickleCellReaperAttack, isMicrobeSwarm, isMicrobeSwarmAttack, isSpecter, isBiohazard, isBiohazardAttack, isCrystalGolem, isCrystalGolemAttack, isAcidSlime, isAcidSlimeAttack, isGmsFungalSpore, isGmsFungalSporeAttack, isHeavy, isNormalAttack, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl]);
+  }, [animState, isAttacking, lungeDuration, isGramPositive, isGramPositiveAttack, isSickleCellMinion, isSickleCellMinionAttack, isStaphSentinel, isStaphSentinelAttack, isSickleCellReaper, isSickleCellReaperAttack, isMicrobeSwarm, isMicrobeSwarmAttack, isLymphocyteSwarm, isLymphocyteSwarmAttack, isSpecter, isBiohazard, isBiohazardAttack, isCrystalGolem, isCrystalGolemAttack, isAcidSlime, isAcidSlimeAttack, isGmsFungalSpore, isGmsFungalSporeAttack, isReagentStripSlime, isReagentStripSlimeAttack, isHeavy, isNormalAttack, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl]);
 
   const sheetWidth = currentFrameWidth * currentTotalFrames;
+  const sheetHeight = currentFrameHeight * currentTotalFrames;
 
   return (
     <div className={cn("relative inline-flex flex-col items-center justify-center select-none", className)}>
@@ -576,7 +716,7 @@ export function BossSpriteAnimator({
       {hasProjectile && (
         <div
           key={`projectile-${animKey}`}
-          className="absolute top-2 right-6 overflow-hidden pointer-events-none z-30 animate-boss-projectile-fly"
+          className="absolute top-2 right-6 overflow-hidden pointer-events-none z-10 animate-boss-projectile-fly"
           style={{
             width: `${128 * scale}px`,
             height: `${128 * scale}px`,
@@ -605,7 +745,7 @@ export function BossSpriteAnimator({
       <div
         key={`container-${animState}-${animKey}`}
         className={cn(
-          "relative overflow-hidden transition-all transform-gpu z-20",
+          "relative overflow-hidden transition-all transform-gpu z-10",
           isWideBeam && "animate-boss-beam-recoil",
           isGramPositiveHeavy && "animate-boss-gram-positive-heavy-lunge",
           isGramPositiveNormal && "animate-boss-gram-positive-lunge",
@@ -618,13 +758,19 @@ export function BossSpriteAnimator({
           isSickleCellMinionNormal && "animate-boss-sickle-cell-minion-lunge",
           isGmsFungalSporeHeavy && "animate-boss-fungal-spore-heavy-lunge",
           isGmsFungalSporeNormal && "animate-boss-fungal-spore-lunge",
-          isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderHeavy && "animate-boss-heavy-lunge",
-          isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isGramPositiveAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderNormal && "animate-boss-lunge",
+          isReagentStripSlimeHeavy && "animate-boss-reagent-slime-heavy-lunge",
+          isReagentStripSlimeNormal && "animate-boss-reagent-slime-lunge",
+          isLymphocyteSwarmHeavy && "animate-boss-lymphocyte-heavy-lunge",
+          isLymphocyteSwarmNormal && "animate-boss-lymphocyte-lunge",
+          isHydraNormal && "animate-boss-hydra-normal",
+          isReaperGlintNormal && "animate-boss-reaper-glint-normal",
+          isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderHeavy && !isHydraHeavy && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && "animate-boss-heavy-lunge",
+          isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isReaperGlintNormal && !isSickleCellReaperNormal && !isGramPositiveAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderNormal && !isHydraNormal && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && "animate-boss-lunge",
           isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
         )}
         style={{
-          width: `${currentFrameWidth * scale}px`,
-          height: `${currentFrameHeight * scale}px`,
+          width: `${currentFrameWidth * effectiveScale}px`,
+          height: `${currentFrameHeight * effectiveScale}px`,
           ...(isAttacking
             ? {
                 animationDuration: `${lungeDuration}s`,
@@ -640,17 +786,33 @@ export function BossSpriteAnimator({
           key={`sprite-${animState}-${animKey}`}
           className="absolute top-0 left-0"
           style={{
-            width: `${sheetWidth * scale}px`,
-            height: `${currentFrameHeight * scale}px`,
+            width: isHydraVerticalSprite ? `${currentFrameWidth * effectiveScale}px` : `${sheetWidth * effectiveScale}px`,
+            height: isHydraVerticalSprite ? `${sheetHeight * effectiveScale}px` : `${currentFrameHeight * effectiveScale}px`,
             backgroundImage: `url('${currentSpriteUrl}')`,
             backgroundRepeat: "no-repeat",
-            backgroundSize: `${sheetWidth * scale}px ${currentFrameHeight * scale}px`,
+            backgroundSize: isHydraVerticalSprite
+              ? `${currentFrameWidth * effectiveScale}px ${sheetHeight * effectiveScale}px`
+              : `${sheetWidth * effectiveScale}px ${currentFrameHeight * effectiveScale}px`,
             imageRendering: "pixelated",
-            animationName: "bossSpriteAnim",
-            animationDuration: `${spriteDuration}s`,
-            animationTimingFunction: `steps(${currentTotalFrames})`,
+            animationName: isHydraVerticalSprite
+              ? "bossVerticalSpriteAnim"
+              : isHydraNormal
+              ? "bossHydraNormalSpriteAnim"
+              : isHydraHeavy
+              ? "bossHydraHeavyGlintSpriteAnim"
+              : isReaperGlintSprite
+              ? "bossReaperGlintSpriteAnim"
+              : "bossSpriteAnim",
+            animationDuration: isHydraVerticalSprite ? `${idleDuration || 1.8}s` : `${spriteDuration}s`,
+            animationTimingFunction: isHydraNormal
+              ? `steps(${currentTotalFrames - 1})`
+              : isHydraHeavy
+              ? `steps(${currentTotalFrames - 1})`
+              : isReaperGlintSprite
+              ? `steps(5)`
+              : `steps(${currentTotalFrames})`,
             animationIterationCount: (isGramPositiveHeavy || isStaphSentinelHeavy) ? 2 : (isAttacking ? 1 : "infinite"),
-            animationFillMode: "none",
+            animationFillMode: (isHydraNormal || isHydraHeavy || isReaperGlintSprite) ? "forwards" : "none",
           }}
         />
       </div>
@@ -663,6 +825,42 @@ export function BossSpriteAnimator({
           }
           to {
             transform: translateX(-100%);
+          }
+        }
+
+        @keyframes bossHydraNormalSpriteAnim {
+          0% {
+            transform: translateX(0px);
+          }
+          100% {
+            transform: translateX(calc(-100% + 100% / 31));
+          }
+        }
+
+        @keyframes bossHydraHeavyGlintSpriteAnim {
+          0% {
+            transform: translateX(0px);
+          }
+          100% {
+            transform: translateX(calc(-100% + 100% / 14));
+          }
+        }
+
+        @keyframes bossReaperGlintSpriteAnim {
+          0% {
+            transform: translateX(0px);
+          }
+          100% {
+            transform: translateX(calc(-100% + 100% / 6));
+          }
+        }
+
+        @keyframes bossVerticalSpriteAnim {
+          from {
+            transform: translateY(0px);
+          }
+          to {
+            transform: translateY(-100%);
           }
         }
 
@@ -864,12 +1062,15 @@ export function BossSpriteAnimator({
             transform: translate(0px, 0px) scale(1);
           }
           14% {
-            transform: translate(min(-35px, calc(-100cqw + 380px)), 10px) scale(1.1);
+            /* Dash close in front of the player */
+            transform: translate(min(-65px, calc(-100cqw + 290px)), 12px) scale(1.18);
           }
           76% {
-            transform: translate(min(-35px, calc(-100cqw + 380px)), 10px) scale(1.1);
+            /* Vine connects directly into the player */
+            transform: translate(min(-65px, calc(-100cqw + 290px)), 12px) scale(1.18);
           }
           100% {
+            /* Return smoothly to home position */
             transform: translate(0px, 0px) scale(1);
           }
         }
@@ -879,12 +1080,103 @@ export function BossSpriteAnimator({
             transform: translate(0px, 0px) scale(1);
           }
           12% {
-            transform: translate(min(-40px, calc(-100cqw + 360px)), 12px) scale(1.15);
+            /* Dash close in front of the player */
+            transform: translate(min(-70px, calc(-100cqw + 275px)), 14px) scale(1.22);
           }
           78% {
-            transform: translate(min(-40px, calc(-100cqw + 360px)), 12px) scale(1.15);
+            /* Spore storm engulfs player directly from the front */
+            transform: translate(min(-70px, calc(-100cqw + 275px)), 14px) scale(1.22);
           }
           100% {
+            /* Return smoothly to home position */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossReagentSlimeLunge {
+          0% {
+            transform: translate(16px, -42px) scale(1);
+          }
+          14% {
+            transform: translate(min(-65px, calc(-100cqw + 320px)), -55px) scale(1.08);
+          }
+          76% {
+            transform: translate(min(-65px, calc(-100cqw + 320px)), -55px) scale(1.08);
+          }
+          100% {
+            transform: translate(16px, -42px) scale(1);
+          }
+        }
+
+        @keyframes bossReagentSlimeHeavyLunge {
+          0% {
+            transform: translate(16px, -42px) scale(1);
+          }
+          12% {
+            transform: translate(min(-75px, calc(-100cqw + 310px)), -60px) scale(1.12);
+          }
+          80% {
+            transform: translate(min(-75px, calc(-100cqw + 310px)), -60px) scale(1.12);
+          }
+          100% {
+            transform: translate(16px, -42px) scale(1);
+          }
+        }
+
+        @keyframes bossLymphocyteLunge {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          14% {
+            /* Dash close in front of the player */
+            transform: translate(min(-60px, calc(-100cqw + 280px)), 10px) scale(1.18);
+          }
+          76% {
+            /* Deliver smooth 14-frame normal strike at player */
+            transform: translate(min(-60px, calc(-100cqw + 280px)), 10px) scale(1.18);
+          }
+          100% {
+            /* Return smoothly to home resting position */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossLymphocyteHeavyLunge {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          12% {
+            /* Dash close in front of player */
+            transform: translate(min(-70px, calc(-100cqw + 265px)), 14px) scale(1.24);
+          }
+          78% {
+            /* Unleash massive heavy energy burst directly into player */
+            transform: translate(min(-70px, calc(-100cqw + 265px)), 14px) scale(1.24);
+          }
+          100% {
+            /* Return smoothly to home resting position */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossHydraNormalAttack {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          15% {
+            /* Glides across water close directly in front of the player */
+            transform: translate(calc(-100cqw + 360px), 0px) scale(1.1);
+          }
+          68% {
+            /* Holds position while 31-frame normal attack renders completely */
+            transform: translate(calc(-100cqw + 360px), 0px) scale(1.1);
+          }
+          76% {
+            /* Pauses cleanly in front of player as attack blast finishes */
+            transform: translate(calc(-100cqw + 360px), 0px) scale(1.1);
+          }
+          100% {
+            /* Returns smoothly across water to starting position with no trail */
             transform: translate(0px, 0px) scale(1);
           }
         }
@@ -930,13 +1222,13 @@ export function BossSpriteAnimator({
             0% {
               transform: translate(0px, 0px) scale(1);
             }
-            12% {
-              /* Dash in front of the player (standing to the right side of the player sprite) */
-              transform: translate(calc(-100cqw + 640px), 20px) scale(1.15);
+            14% {
+              /* Dash in front of the player (standing to the right side of the player sprite, beam centered squarely on player chest) */
+              transform: translate(calc(-100cqw + 725px), 20px) scale(1.15);
             }
             78% {
-              /* Fire beam directly into the player from the front, clear beam and pause cleanly */
-              transform: translate(calc(-100cqw + 640px), 20px) scale(1.15);
+              /* Fire beam directly into the middle of the player from the front, clear beam and pause cleanly */
+              transform: translate(calc(-100cqw + 725px), 20px) scale(1.15);
             }
             100% {
               /* Slide smoothly back to home position */
@@ -1105,12 +1397,15 @@ export function BossSpriteAnimator({
               transform: translate(0px, 0px) scale(1);
             }
             14% {
-              transform: translate(calc(-100cqw + 540px), 12px) scale(1.15);
+              /* Lands close in front of the player, vine strikes directly into the player character */
+              transform: translate(calc(-100cqw + 390px), 14px) scale(1.2);
             }
             76% {
-              transform: translate(calc(-100cqw + 540px), 12px) scale(1.15);
+              /* Vine strike connects directly into the front of the player, pause cleanly */
+              transform: translate(calc(-100cqw + 390px), 14px) scale(1.2);
             }
             100% {
+              /* Return smoothly to home position on the right */
               transform: translate(0px, 0px) scale(1);
             }
           }
@@ -1120,12 +1415,15 @@ export function BossSpriteAnimator({
               transform: translate(0px, 0px) scale(1);
             }
             12% {
-              transform: translate(calc(-100cqw + 510px), 16px) scale(1.2);
+              /* Lands close directly in front of the player */
+              transform: translate(calc(-100cqw + 375px), 18px) scale(1.25);
             }
             78% {
-              transform: translate(calc(-100cqw + 510px), 16px) scale(1.2);
+              /* Blast spore storm directly into the player's chest/face, pause cleanly */
+              transform: translate(calc(-100cqw + 375px), 18px) scale(1.25);
             }
             100% {
+              /* Slide smoothly back to home position on the right */
               transform: translate(0px, 0px) scale(1);
             }
           }
@@ -1151,6 +1449,66 @@ export function BossSpriteAnimator({
             }
           }
 
+          @keyframes bossReagentSlimeLunge {
+            0% {
+              transform: translate(22px, -50px) scale(1);
+            }
+            14% {
+              transform: translate(calc(-100cqw + 470px), -65px) scale(1.08);
+            }
+            76% {
+              transform: translate(calc(-100cqw + 470px), -65px) scale(1.08);
+            }
+            100% {
+              transform: translate(22px, -50px) scale(1);
+            }
+          }
+
+          @keyframes bossReagentSlimeHeavyLunge {
+            0% {
+              transform: translate(22px, -50px) scale(1);
+            }
+            12% {
+              transform: translate(calc(-100cqw + 450px), -70px) scale(1.12);
+            }
+            80% {
+              transform: translate(calc(-100cqw + 450px), -70px) scale(1.12);
+            }
+            100% {
+              transform: translate(22px, -50px) scale(1);
+            }
+          }
+
+          @keyframes bossLymphocyteLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            14% {
+              transform: translate(calc(-100cqw + 390px), 16px) scale(1.24);
+            }
+            76% {
+              transform: translate(calc(-100cqw + 390px), 16px) scale(1.24);
+            }
+            100% {
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          @keyframes bossLymphocyteHeavyLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            12% {
+              transform: translate(calc(-100cqw + 375px), 18px) scale(1.30);
+            }
+            78% {
+              transform: translate(calc(-100cqw + 375px), 18px) scale(1.30);
+            }
+            100% {
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
           @keyframes playerLunge {
             0% {
               transform: translate(0px, 0px) scale(1);
@@ -1168,19 +1526,41 @@ export function BossSpriteAnimator({
               transform: translate(0px, 0px) scale(1);
             }
           }
+
+          @keyframes bossHydraNormalAttack {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            15% {
+              /* Glides across water close directly in front of the player */
+              transform: translate(calc(-100cqw + 500px), 0px) scale(1.12);
+            }
+            68% {
+              /* Holds position while 31-frame normal attack renders completely */
+              transform: translate(calc(-100cqw + 500px), 0px) scale(1.12);
+            }
+            76% {
+              /* Pauses cleanly in front of player as attack blast finishes */
+              transform: translate(calc(-100cqw + 500px), 0px) scale(1.12);
+            }
+            100% {
+              /* Slide smoothly back across water to exact starting position with no trail */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
         }
 
         @keyframes bossBeamRecoil {
           0% {
             transform: translate(0px, 0px) scale(1);
           }
-          12% {
-            /* Dash in front of the player */
-            transform: translate(min(-60px, calc(-100cqw + 500px)), 15px) scale(1.1);
+          14% {
+            /* Dash in front of the player, beam centered squarely on player chest */
+            transform: translate(min(-40px, calc(-100cqw + 580px)), 15px) scale(1.1);
           }
           78% {
-            /* Fire beam directly into the player from the front, clear beam and pause cleanly */
-            transform: translate(min(-60px, calc(-100cqw + 500px)), 15px) scale(1.1);
+            /* Fire beam directly into the middle of the player from the front, clear beam and pause cleanly */
+            transform: translate(min(-40px, calc(-100cqw + 580px)), 15px) scale(1.1);
           }
           100% {
             /* Slide smoothly back to home position */
@@ -1242,6 +1622,57 @@ export function BossSpriteAnimator({
 
         .animate-boss-fungal-spore-heavy-lunge {
           animation-name: bossFungalSporeHeavyLunge;
+        }
+
+        .animate-boss-reagent-slime-lunge {
+          animation-name: bossReagentSlimeLunge;
+        }
+
+        .animate-boss-reagent-slime-heavy-lunge {
+          animation-name: bossReagentSlimeHeavyLunge;
+        }
+
+        .animate-boss-lymphocyte-lunge {
+          animation-name: bossLymphocyteLunge;
+        }
+
+        .animate-boss-lymphocyte-heavy-lunge {
+          animation-name: bossLymphocyteHeavyLunge;
+        }
+
+        .animate-boss-hydra-normal {
+          animation-name: bossHydraNormalAttack;
+        }
+
+        @keyframes bossReaperGlintNormal {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+            filter: drop-shadow(0 0 0px rgba(249, 115, 22, 0));
+          }
+          25% {
+            /* Stationary charge in place: subtle breath back and glowing amber aura, stays firmly at home position */
+            transform: translate(-4px, -2px) scale(1.04);
+            filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.7)) brightness(1.15);
+          }
+          45% {
+            /* Glint flash peak: weapon sparks and subterranean power surge */
+            transform: translate(-6px, -3px) scale(1.06);
+            filter: drop-shadow(0 0 18px rgba(234, 88, 12, 0.9)) brightness(1.3);
+          }
+          75% {
+            /* Underground spikes erupt under player: maintain steady spellcasting stance */
+            transform: translate(-3px, -1px) scale(1.03);
+            filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.5)) brightness(1.1);
+          }
+          100% {
+            /* Return smoothly to resting home position */
+            transform: translate(0px, 0px) scale(1);
+            filter: drop-shadow(0 0 0px rgba(249, 115, 22, 0));
+          }
+        }
+
+        .animate-boss-reaper-glint-normal {
+          animation-name: bossReaperGlintNormal;
         }
 
         @keyframes bossProjectileFly {
