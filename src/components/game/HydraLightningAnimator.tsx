@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { playHydraAttack, stopHydraAttack, preloadHydraSounds } from "@/lib/audio-manager";
 
 interface HydraLightningAnimatorProps {
   isActive: boolean;
@@ -32,6 +33,10 @@ export function HydraLightningAnimator({
   const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
+    preloadHydraSounds();
+  }, []);
+
+  useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
@@ -44,6 +49,8 @@ export function HydraLightningAnimator({
       const startTimer = setTimeout(() => {
         setIsVisible(true);
         setIsAnimating(true);
+        // Play the heavy attack sound effect in x2 speed smoothly when lightning animation is playing
+        playHydraAttack('heavy');
       }, delayMs);
 
       // Step 2: Smooth fade out right before lightning dissipates
@@ -51,11 +58,12 @@ export function HydraLightningAnimator({
         setIsFading(true);
       }, delayMs + Math.max(100, durationMs - 120));
 
-      // Step 3: Cleanly finish and unmount
+      // Step 3: Cleanly finish, smooth fade, and unmount
       const endTimer = setTimeout(() => {
         setIsVisible(false);
         setIsAnimating(false);
         setIsFading(false);
+        stopHydraAttack('heavy', 350);
         if (onCompleteRef.current) onCompleteRef.current();
       }, delayMs + durationMs + 60);
 
@@ -63,11 +71,13 @@ export function HydraLightningAnimator({
         clearTimeout(startTimer);
         clearTimeout(fadeTimer);
         clearTimeout(endTimer);
+        stopHydraAttack('heavy', 200);
       };
     } else {
       setIsVisible(false);
       setIsAnimating(false);
       setIsFading(false);
+      stopHydraAttack('heavy', 200);
     }
   }, [isActive, spriteUrl, delayMs, durationMs]);
 

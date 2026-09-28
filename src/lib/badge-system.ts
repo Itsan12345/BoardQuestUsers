@@ -211,7 +211,16 @@ export function getLevelProgress(xp: number): { currentLevelXp: number, xpForNex
   return { currentLevelXp, xpForNextLevel, percentage };
 }
 
-export function getRankTitle(level: number): string {
+export function getRankTitle(level: number, rankTiers?: any[]): string {
+  if (rankTiers && Array.isArray(rankTiers) && rankTiers.length > 0) {
+    const matchingTier = [...rankTiers]
+      .filter(t => t.isActive !== false && level >= (t.minLevel || 1) && (t.maxLevel == null || level <= t.maxLevel))
+      .sort((a, b) => (b.minLevel || 0) - (a.minLevel || 0))[0];
+    if (matchingTier) {
+      return matchingTier.title || matchingTier.name || 'Aspirant';
+    }
+  }
+
   if (level < 10) return 'Apprentice Technician';
   if (level < 25) return 'Adept Analyst';
   if (level < 50) return 'Senior Scientist';

@@ -29,6 +29,7 @@ export interface CompleteQuestResponse {
   success: boolean;
   earnedBadges: Badge[];
   totalXp: number;
+  newTotalXp?: number;
   newLevel: number;
   message: string;
   error?: string;
@@ -296,6 +297,7 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
       success: true,
       earnedBadges,
       totalXp: totalXpEarned,
+      newTotalXp,
       newLevel,
       message,
     };

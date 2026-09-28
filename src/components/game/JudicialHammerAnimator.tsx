@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { playLegalBeholderAttack, stopLegalBeholderAttack, preloadLegalBeholderSounds } from "@/lib/audio-manager";
 
 interface JudicialHammerAnimatorProps {
   isActive: boolean;
@@ -32,6 +33,10 @@ export function JudicialHammerAnimator({
   const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
+    preloadLegalBeholderSounds();
+  }, []);
+
+  useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
@@ -40,10 +45,12 @@ export function JudicialHammerAnimator({
       setAnimId((prev) => prev + 1);
       setIsFading(false);
 
-      // Step 1: Wait for boss warning glint animation to charge (delayMs)
+      // Step 1: Wait for boss warning glint animation to charge (delayMs), then hammer slams down
       const startTimer = setTimeout(() => {
         setIsVisible(true);
         setIsAnimating(true);
+        // Play Legal Beholder normal attack hammer sound effect smoothly
+        playLegalBeholderAttack('normal');
       }, delayMs);
 
       // Step 2: Smooth fade out right before completion
@@ -56,6 +63,7 @@ export function JudicialHammerAnimator({
         setIsVisible(false);
         setIsAnimating(false);
         setIsFading(false);
+        stopLegalBeholderAttack('normal', 250);
         if (onCompleteRef.current) onCompleteRef.current();
       }, delayMs + durationMs + 80);
 
@@ -63,11 +71,13 @@ export function JudicialHammerAnimator({
         clearTimeout(startTimer);
         clearTimeout(fadeTimer);
         clearTimeout(endTimer);
+        stopLegalBeholderAttack('normal', 150);
       };
     } else {
       setIsVisible(false);
       setIsAnimating(false);
       setIsFading(false);
+      stopLegalBeholderAttack('normal', 150);
     }
   }, [isActive, spriteUrl, delayMs, durationMs]);
 

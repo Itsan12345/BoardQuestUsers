@@ -391,4 +391,25 @@ model ReviewCenterCandidate {
   updatedAt      DateTime @updatedAt
 }
 
+model RankTier {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  rankId      String   @unique
+  title       String
+  name        String
+  description String   @default("")
+  minLevel    Int      @default(1)
+  maxLevel    Int?
+  minXp       Int      @default(0)
+  icon        String   @default("Award")
+  color       String   @default("#3B82F6")
+  spriteUrl   String?
+  perks       String[] @default([])
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([minLevel])
+}
+
+
 

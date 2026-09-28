@@ -1011,4 +1011,105 @@ export async function checkUserReviewCenterEnrollmentAction(): Promise<ReviewCen
   }
 }
 
+export async function getRankTiersAction() {
+  try {
+    let rankTiers: any[] = [];
+    
+    // First try via Prisma
+    if (typeof (prisma as any).rankTier?.findMany === 'function') {
+      try {
+        rankTiers = await (prisma as any).rankTier.findMany({
+          where: { isActive: true },
+          orderBy: { minLevel: 'asc' }
+        });
+      } catch {}
+    }
+
+    // Direct MongoDB fallback if prisma model query returned empty or failed
+    if (!rankTiers || rankTiers.length === 0) {
+      try {
+        const client = await clientPromise;
+        const db = client.db();
+        const docs = await db.collection('RankTier').find({ isActive: { $ne: false } }).sort({ minLevel: 1 }).toArray();
+        rankTiers = docs.map(doc => ({
+          id: doc._id.toString(),
+          rankId: doc.rankId,
+          title: doc.title || doc.name,
+          name: doc.name || doc.title,
+          description: doc.description || '',
+          minLevel: typeof doc.minLevel === 'number' ? doc.minLevel : (doc.minLevel?.toNumber ? doc.minLevel.toNumber() : Number(doc.minLevel) || 1),
+          maxLevel: doc.maxLevel == null ? null : (typeof doc.maxLevel === 'number' ? doc.maxLevel : (doc.maxLevel?.toNumber ? doc.maxLevel.toNumber() : Number(doc.maxLevel))),
+          minXp: typeof doc.minXp === 'number' ? doc.minXp : (doc.minXp?.toNumber ? doc.minXp.toNumber() : Number(doc.minXp) || 0),
+          icon: doc.icon || 'Award',
+          color: doc.color || '#3B82F6',
+          spriteUrl: doc.spriteUrl || null,
+          perks: doc.perks || [],
+          isActive: doc.isActive ?? true
+        }));
+      } catch (err) {
+        console.error('Error reading RankTier collection from MongoDB:', err);
+      }
+    }
+
+    // Default tiers fallback if database collection is empty
+    if (!rankTiers || rankTiers.length === 0) {
+      rankTiers = [
+        {
+          rankId: 'aspirant',
+          title: 'Apprentice Technician',
+          name: 'Apprentice Technician',
+          description: 'Aspirant students beginning their journey',
+          minLevel: 1,
+          maxLevel: 9,
+          minXp: 0,
+          icon: 'Award',
+          color: '#64748B',
+          isActive: true
+        },
+        {
+          rankId: 'adept',
+          title: 'Adept Analyst',
+          name: 'Adept Analyst',
+          description: 'Developing high proficiency in questing',
+          minLevel: 10,
+          maxLevel: 24,
+          minXp: 1000,
+          icon: 'Star',
+          color: '#3B82F6',
+          isActive: true
+        },
+        {
+          rankId: 'senior',
+          title: 'Senior Scientist',
+          name: 'Senior Scientist',
+          description: 'Advanced mastery across core MedTech subjects',
+          minLevel: 25,
+          maxLevel: 49,
+          minXp: 5000,
+          icon: 'Trophy',
+          color: '#A855F7',
+          isActive: true
+        },
+        {
+          rankId: 'grandmaster',
+          title: 'Grandmaster Pathologist',
+          name: 'Grandmaster Pathologist',
+          description: 'Peak licensure exam mastery',
+          minLevel: 50,
+          maxLevel: null,
+          minXp: 15000,
+          icon: 'Crown',
+          color: '#F59E0B',
+          isActive: true
+        }
+      ];
+    }
+
+    return JSON.parse(JSON.stringify(rankTiers));
+  } catch (error) {
+    console.error('Failed to fetch rank tiers:', error);
+    return [];
+  }
+}
+
 

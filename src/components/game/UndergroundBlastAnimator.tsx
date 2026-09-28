@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { playLegalBeholderAttack, stopLegalBeholderAttack, preloadLegalBeholderSounds } from "@/lib/audio-manager";
 
 interface UndergroundBlastAnimatorProps {
   isActive: boolean;
@@ -32,6 +33,10 @@ export function UndergroundBlastAnimator({
   const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
+    preloadLegalBeholderSounds();
+  }, []);
+
+  useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
@@ -44,6 +49,8 @@ export function UndergroundBlastAnimator({
       const startTimer = setTimeout(() => {
         setIsVisible(true);
         setIsAnimating(true);
+        // Play Legal Beholder heavy attack underground blast sound effect smoothly
+        playLegalBeholderAttack('heavy');
       }, delayMs);
 
       // Smooth fade out right before eruption ends
@@ -56,6 +63,7 @@ export function UndergroundBlastAnimator({
         setIsVisible(false);
         setIsAnimating(false);
         setIsFading(false);
+        stopLegalBeholderAttack('heavy', 250);
         if (onCompleteRef.current) onCompleteRef.current();
       }, delayMs + durationMs + 80);
 
@@ -63,11 +71,13 @@ export function UndergroundBlastAnimator({
         clearTimeout(startTimer);
         clearTimeout(fadeTimer);
         clearTimeout(endTimer);
+        stopLegalBeholderAttack('heavy', 150);
       };
     } else {
       setIsVisible(false);
       setIsAnimating(false);
       setIsFading(false);
+      stopLegalBeholderAttack('heavy', 150);
     }
   }, [isActive, spriteUrl, delayMs, durationMs]);
 

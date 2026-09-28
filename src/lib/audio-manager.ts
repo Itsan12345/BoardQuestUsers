@@ -1594,3 +1594,382 @@ export function playReagentStripSlimeAttack(type: 'normal' | 'heavy') {
     console.warn('Failed to play Reagent Strip Slime attack sound:', err);
   }
 }
+
+// Preloaded Audio instances for Anti-Serum Hydra attacks (Immunology Final Boss)
+let hydraNormalAudio: HTMLAudioElement | null = null;
+let hydraHeavyAudio: HTMLAudioElement | null = null;
+let hydraFadeInterval: NodeJS.Timeout | null = null;
+
+export function preloadHydraSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!hydraNormalAudio) {
+      hydraNormalAudio = new Audio('/SoundEffects/AntiSerumHydraNormalAttack.mp3');
+      hydraNormalAudio.preload = 'auto';
+      hydraNormalAudio.playbackRate = 1.0;
+      hydraNormalAudio.defaultPlaybackRate = 1.0;
+      hydraNormalAudio.load();
+    }
+    if (!hydraHeavyAudio) {
+      hydraHeavyAudio = new Audio('/SoundEffects/AntiSerumHydraHeavyAttack.mp3');
+      hydraHeavyAudio.preload = 'auto';
+      hydraHeavyAudio.playbackRate = 2.0;
+      hydraHeavyAudio.defaultPlaybackRate = 2.0;
+      hydraHeavyAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playHydraAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    if (hydraFadeInterval) {
+      clearInterval(hydraFadeInterval);
+      hydraFadeInterval = null;
+    }
+
+    if (type === 'normal') {
+      const src = '/SoundEffects/AntiSerumHydraNormalAttack.mp3';
+      const audio = hydraNormalAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Anti-Serum Hydra normal attack:', err);
+        });
+      }
+    } else {
+      const src = '/SoundEffects/AntiSerumHydraHeavyAttack.mp3';
+      const audio = hydraHeavyAudio || new Audio(src);
+      audio.currentTime = 0;
+      // Play Heavy attack in x2 speed as requested
+      audio.defaultPlaybackRate = 2.0;
+      audio.playbackRate = 2.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Anti-Serum Hydra heavy attack:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to play Anti-Serum Hydra attack sound:', err);
+  }
+}
+
+export function stopHydraAttack(type?: 'normal' | 'heavy', fadeDurationMs = 300) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (hydraFadeInterval) {
+      clearInterval(hydraFadeInterval);
+      hydraFadeInterval = null;
+    }
+
+    const audios = type === 'normal'
+      ? [hydraNormalAudio]
+      : type === 'heavy'
+      ? [hydraHeavyAudio]
+      : [hydraNormalAudio, hydraHeavyAudio];
+
+    audios.forEach(audio => {
+      if (!audio || audio.paused) return;
+      if (fadeDurationMs <= 0) {
+        audio.pause();
+        audio.currentTime = 0;
+        return;
+      }
+      const initialVol = audio.volume;
+      const stepTime = 30;
+      const steps = Math.max(1, Math.floor(fadeDurationMs / stepTime));
+      let currentStep = 0;
+      hydraFadeInterval = setInterval(() => {
+        currentStep++;
+        const nextVol = initialVol * (1 - currentStep / steps);
+        if (currentStep >= steps || nextVol <= 0.02) {
+          if (hydraFadeInterval) {
+            clearInterval(hydraFadeInterval);
+            hydraFadeInterval = null;
+          }
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = initialVol;
+        } else {
+          audio.volume = nextVol;
+        }
+      }, stepTime);
+    });
+  } catch (err) {
+    console.warn('Failed to stop/fade Hydra attack sound:', err);
+  }
+}
+
+// Preloaded Audio instances for Ketoacidosis Colossus attacks (Clinical Chemistry Chapter 1 Boss)
+let ketoacidosisNormalAudio: HTMLAudioElement | null = null;
+let ketoacidosisHeavyAudio: HTMLAudioElement | null = null;
+
+export function preloadKetoacidosisSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!ketoacidosisNormalAudio) {
+      ketoacidosisNormalAudio = new Audio('/SoundEffects/KetoacidosisColossusNormalAttack.mp3');
+      ketoacidosisNormalAudio.preload = 'auto';
+      ketoacidosisNormalAudio.playbackRate = 1.0;
+      ketoacidosisNormalAudio.defaultPlaybackRate = 1.0;
+      ketoacidosisNormalAudio.load();
+    }
+    if (!ketoacidosisHeavyAudio) {
+      ketoacidosisHeavyAudio = new Audio('/SoundEffects/KetoacidosisColossusHeavyAttack.mp3');
+      ketoacidosisHeavyAudio.preload = 'auto';
+      ketoacidosisHeavyAudio.playbackRate = 1.0;
+      ketoacidosisHeavyAudio.defaultPlaybackRate = 1.0;
+      ketoacidosisHeavyAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playKetoacidosisAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    if (type === 'normal') {
+      const src = '/SoundEffects/KetoacidosisColossusNormalAttack.mp3';
+      const audio = ketoacidosisNormalAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Ketoacidosis Colossus normal attack:', err);
+        });
+      }
+    } else {
+      const src = '/SoundEffects/KetoacidosisColossusHeavyAttack.mp3';
+      const audio = ketoacidosisHeavyAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Ketoacidosis Colossus heavy attack:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to play Ketoacidosis Colossus attack sound:', err);
+  }
+}
+
+// Preloaded Audio instances for Legal Beholder attacks (Histopathology & MedTech Laws Chapter 3 Final Boss)
+let legalBeholderNormalAudio: HTMLAudioElement | null = null;
+let legalBeholderHeavyAudio: HTMLAudioElement | null = null;
+let legalBeholderFadeInterval: NodeJS.Timeout | null = null;
+
+export function preloadLegalBeholderSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!legalBeholderNormalAudio) {
+      legalBeholderNormalAudio = new Audio('/SoundEffects/LegalBeholderNormalAttack.mp3');
+      legalBeholderNormalAudio.preload = 'auto';
+      legalBeholderNormalAudio.playbackRate = 1.0;
+      legalBeholderNormalAudio.defaultPlaybackRate = 1.0;
+      legalBeholderNormalAudio.load();
+    }
+    if (!legalBeholderHeavyAudio) {
+      legalBeholderHeavyAudio = new Audio('/SoundEffects/LegalBeholderHeavyAttack.mp3');
+      legalBeholderHeavyAudio.preload = 'auto';
+      legalBeholderHeavyAudio.playbackRate = 1.0;
+      legalBeholderHeavyAudio.defaultPlaybackRate = 1.0;
+      legalBeholderHeavyAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playLegalBeholderAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    if (legalBeholderFadeInterval) {
+      clearInterval(legalBeholderFadeInterval);
+      legalBeholderFadeInterval = null;
+    }
+
+    if (type === 'normal') {
+      const src = '/SoundEffects/LegalBeholderNormalAttack.mp3';
+      const audio = legalBeholderNormalAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Legal Beholder normal attack:', err);
+        });
+      }
+    } else {
+      const src = '/SoundEffects/LegalBeholderHeavyAttack.mp3';
+      const audio = legalBeholderHeavyAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Legal Beholder heavy attack:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to play Legal Beholder attack sound:', err);
+  }
+}
+
+export function stopLegalBeholderAttack(type?: 'normal' | 'heavy', fadeDurationMs = 250) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (legalBeholderFadeInterval) {
+      clearInterval(legalBeholderFadeInterval);
+      legalBeholderFadeInterval = null;
+    }
+
+    const audios = type === 'normal'
+      ? [legalBeholderNormalAudio]
+      : type === 'heavy'
+      ? [legalBeholderHeavyAudio]
+      : [legalBeholderNormalAudio, legalBeholderHeavyAudio];
+
+    audios.forEach(audio => {
+      if (!audio || audio.paused) return;
+      if (fadeDurationMs <= 0) {
+        audio.pause();
+        audio.currentTime = 0;
+        return;
+      }
+      const initialVol = audio.volume;
+      const stepTime = 30;
+      const steps = Math.max(1, Math.floor(fadeDurationMs / stepTime));
+      let currentStep = 0;
+      legalBeholderFadeInterval = setInterval(() => {
+        currentStep++;
+        const nextVol = initialVol * (1 - currentStep / steps);
+        if (currentStep >= steps || nextVol <= 0.02) {
+          if (legalBeholderFadeInterval) {
+            clearInterval(legalBeholderFadeInterval);
+            legalBeholderFadeInterval = null;
+          }
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = initialVol;
+        } else {
+          audio.volume = nextVol;
+        }
+      }, stepTime);
+    });
+  } catch (err) {
+    console.warn('Failed to stop/fade Legal Beholder attack sound:', err);
+  }
+}
+
+// Preloaded Audio instances for Hyperglycemic Mutant attacks (Clinical Chemistry Chapter 1 Mini-Boss)
+let hyperglycemicMutantNormalAudio: HTMLAudioElement | null = null;
+let hyperglycemicMutantHeavyAudio: HTMLAudioElement | null = null;
+
+export function preloadHyperglycemicMutantSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!hyperglycemicMutantNormalAudio) {
+      hyperglycemicMutantNormalAudio = new Audio('/SoundEffects/SickleCellNormalAttack.mp3');
+      hyperglycemicMutantNormalAudio.preload = 'auto';
+      hyperglycemicMutantNormalAudio.playbackRate = 1.0;
+      hyperglycemicMutantNormalAudio.defaultPlaybackRate = 1.0;
+      hyperglycemicMutantNormalAudio.load();
+    }
+    if (!hyperglycemicMutantHeavyAudio) {
+      hyperglycemicMutantHeavyAudio = new Audio('/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3');
+      hyperglycemicMutantHeavyAudio.preload = 'auto';
+      hyperglycemicMutantHeavyAudio.playbackRate = 1.0;
+      hyperglycemicMutantHeavyAudio.defaultPlaybackRate = 1.0;
+      hyperglycemicMutantHeavyAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playHyperglycemicMutantAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    if (type === 'normal') {
+      const src = '/SoundEffects/SickleCellNormalAttack.mp3';
+      try {
+        if (hyperglycemicMutantNormalAudio) {
+          hyperglycemicMutantNormalAudio.currentTime = 0;
+          hyperglycemicMutantNormalAudio.volume = Math.max(0, Math.min(1, masterVolume));
+          const p = hyperglycemicMutantNormalAudio.play();
+          if (p !== undefined) {
+            p.catch(() => {
+              const freshAudio = new Audio(src);
+              freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+              freshAudio.play().catch(() => {});
+            });
+          }
+        } else {
+          const freshAudio = new Audio(src);
+          freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+          freshAudio.play().catch(() => {});
+        }
+      } catch {
+        const freshAudio = new Audio(src);
+        freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+        freshAudio.play().catch(() => {});
+      }
+    } else {
+      const src = '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3';
+      try {
+        if (hyperglycemicMutantHeavyAudio) {
+          hyperglycemicMutantHeavyAudio.currentTime = 0;
+          hyperglycemicMutantHeavyAudio.volume = Math.max(0, Math.min(1, masterVolume));
+          const p = hyperglycemicMutantHeavyAudio.play();
+          if (p !== undefined) {
+            p.catch(() => {
+              const freshAudio = new Audio(src);
+              freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+              freshAudio.play().catch(() => {});
+            });
+          }
+        } else {
+          const freshAudio = new Audio(src);
+          freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+          freshAudio.play().catch(() => {});
+        }
+      } catch {
+        const freshAudio = new Audio(src);
+        freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+        freshAudio.play().catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to play Hyperglycemic Mutant attack sound:', err);
+  }
+}
+
+
+
+
