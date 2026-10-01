@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { CheckCircle2, XCircle, Loader2, Sparkles, BrainCircuit, Shield, Flame, Sword, ShieldPlus, Swords, ArrowRight, CornerDownLeft, ZoomIn, Maximize2, X, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Sparkles, BrainCircuit, Shield, Flame, Swords, ArrowRight, CornerDownLeft, ZoomIn, Maximize2, X, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type Question = {
@@ -331,67 +331,179 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       </div>
 
       {mode === 'boss-battle' && !activeMove ? (
-        <div className="flex flex-col items-center justify-center py-8 space-y-8 animate-in fade-in duration-500 w-full">
-          <div className="text-center space-y-2 px-6">
-            <h2 className="text-2xl md:text-3xl font-black font-headline text-foreground">Choose Your Move</h2>
-            <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Select an action for the next turn</p>
+        <div className="flex flex-col items-center justify-center py-6 sm:py-8 space-y-5 md:space-y-7 animate-in fade-in duration-500 w-full">
+          <div className="text-center space-y-1.5 px-4">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-xs mb-0.5">
+              <Swords className="w-3.5 h-3.5" />
+              <span>Battle Turn Action</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black font-headline tracking-tight text-foreground drop-shadow-sm">Choose Your Move</h2>
+            <p className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-widest">Select a combat card for this turn</p>
           </div>
           
-          <div className="grid grid-cols-3 gap-2 md:gap-6 w-full max-w-5xl px-2 md:px-6">
-            {/* Heavy Attack Card */}
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-6 md:gap-8 w-full max-w-4xl px-2 sm:px-6">
+            {/* Defend / Heal Card (Left - Matching Reference Image) */}
             <button
-              onClick={() => handleSelectMove('heavy')}
-              className={cn("border-2 hover:shadow-xl transition-all p-2 sm:p-4 md:p-8 rounded-xl md:rounded-3xl flex flex-col items-center text-center space-y-2 md:space-y-6 group", 
-                bossShieldActive ? "bg-blue-50 border-blue-400 hover:border-blue-600 shadow-blue-100" : "bg-background border-red-200 hover:border-red-500 hover:shadow-red-100"
-              )}
-            >
-              <div className={cn("w-10 h-10 md:w-24 md:h-24 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shrink-0", bossShieldActive ? "bg-blue-100" : "bg-red-50")}>
-                <Flame className={cn("w-5 h-5 md:w-12 md:h-12", bossShieldActive ? "text-blue-600" : "text-red-600")} strokeWidth={1.5} />
-              </div>
-              <div className="flex flex-col flex-1 justify-start">
-                <h3 className={cn("font-black uppercase tracking-tight text-[8px] sm:text-[10px] md:text-lg leading-tight", bossShieldActive ? "text-blue-700" : "text-red-700")}>
-                  Heavy Attack 
-                  {bossShieldActive && <span className="block text-[6px] md:text-xs bg-blue-500 text-white px-1 md:px-2 py-0.5 rounded mt-1 md:mt-2 animate-pulse">BREAKS SHIELD</span>}
-                </h3>
-                <p className="text-[6.5px] sm:text-[8px] md:text-xs font-bold text-muted-foreground mt-1 md:mt-2 leading-[1.2] md:leading-relaxed">Attempt a hard difficulty question. If correct, it deals massive damage. If wrong, the player takes a heavy counter-attack.</p>
-              </div>
-            </button>
-            
-            {/* Normal Attack Card */}
-            <button
-              onClick={() => handleSelectMove('normal')}
-              className={cn("border-2 transition-all p-2 sm:p-4 md:p-8 rounded-xl md:rounded-3xl flex flex-col items-center text-center space-y-2 md:space-y-6 group", 
-                bossShieldActive ? "bg-muted/40 border-border opacity-60" : "bg-background border-primary/20 hover:border-primary hover:shadow-xl hover:shadow-primary/10"
-              )}
-            >
-              <div className={cn("w-10 h-10 md:w-24 md:h-24 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shrink-0", bossShieldActive ? "bg-muted" : "bg-primary/10")}>
-                <Sword className={cn("w-5 h-5 md:w-12 md:h-12", bossShieldActive ? "text-muted-foreground" : "text-primary")} strokeWidth={1.5} />
-              </div>
-              <div className="flex flex-col flex-1 justify-start">
-                <h3 className={cn("font-black uppercase tracking-tight text-[8px] sm:text-[10px] md:text-lg leading-tight", bossShieldActive ? "text-muted-foreground" : "text-primary")}>
-                  Normal Attack 
-                  {bossShieldActive && <span className="block text-[6px] md:text-xs bg-slate-500 text-white px-1 md:px-2 py-0.5 rounded mt-1 md:mt-2">INEFFECTIVE</span>}
-                </h3>
-                <p className="text-[6.5px] sm:text-[8px] md:text-xs font-bold text-muted-foreground mt-1 md:mt-2 leading-[1.2] md:leading-relaxed">Answer a normal-difficulty question. Deals standard damage.</p>
-              </div>
-            </button>
-            
-            {/* Defend / Heal Card */}
-            <button
+              type="button"
               onClick={() => handleSelectMove('defend')}
-              className={cn("border-2 hover:shadow-xl transition-all p-2 sm:p-4 md:p-8 rounded-xl md:rounded-3xl flex flex-col items-center text-center space-y-2 md:space-y-6 group", 
-                playerPoisoned ? "bg-emerald-500/10 border-emerald-500 shadow-emerald-500/20 animate-pulse" : "bg-background border-emerald-500/30 hover:border-emerald-500 hover:shadow-emerald-500/10"
-              )}
+              className="group relative flex flex-col items-center cursor-pointer focus:outline-none transition-all duration-300 transform hover:-translate-y-2.5 hover:scale-[1.03] active:translate-y-1 active:scale-[0.98] w-full max-w-[280px] lg:max-w-[300px] mx-auto select-none"
             >
-              <div className="w-10 h-10 md:w-24 md:h-24 rounded-full bg-emerald-500/10 dark:bg-emerald-950/40 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
-                <ShieldPlus className="w-5 h-5 md:w-12 md:h-12 text-emerald-600 dark:text-emerald-400" strokeWidth={1.5} />
+              <div className={cn(
+                "relative w-full aspect-[56/72] transition-all duration-300 filter",
+                playerPoisoned 
+                  ? "drop-shadow-[0_0_18px_rgba(16,185,129,0.9)] animate-pulse" 
+                  : "drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_12px_24px_rgba(16,185,129,0.7)]"
+              )}>
+                {/* Pixel Art Card Base */}
+                <Image
+                  src="/images/bossbattlecards/heal_btn.png"
+                  alt="Defend / Heal Card"
+                  fill
+                  sizes="(max-width: 640px) 115px, (max-width: 1024px) 220px, 300px"
+                  unoptimized
+                  priority
+                  className="object-fill [image-rendering:pixelated] select-none pointer-events-none"
+                  draggable={false}
+                />
+
+                {/* Card Sheen on Hover */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-sm" />
+
+                {/* Content Area Inside Card's Lower Plate (Proportionately centered & fully responsive) */}
+                <div className="absolute inset-x-[7%] top-[49%] sm:top-[50%] bottom-[12%] sm:bottom-[13%] flex flex-col items-center justify-center text-center px-1 sm:px-2 gap-0 pointer-events-none">
+                  {/* Title & Badges */}
+                  <div className="w-full flex flex-col items-center">
+                    <h3 className="font-bytebounce uppercase tracking-wide text-xs min-[360px]:text-sm sm:text-lg md:text-xl lg:text-2xl leading-none text-[#4ade80] [text-shadow:1px_1px_0_#000,-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000]">
+                      DEFEND / HEAL
+                    </h3>
+                    
+                    {playerPoisoned && (
+                      <span className="inline-block font-bytebounce text-[8px] sm:text-xs bg-emerald-600 text-white px-1.5 py-0.5 rounded shadow-sm mt-0.5 animate-pulse border border-emerald-400 leading-none">
+                        CURES POISON
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div className="w-full px-0.5 -mt-0.5 sm:-mt-1">
+                    <p className="text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs md:text-[13px] lg:text-[14px] font-bold text-white leading-tight sm:leading-snug [text-shadow:0_1px_2px_rgba(0,0,0,0.95)] max-w-full mx-auto">
+                      <span className="sm:hidden">Restores HP & cures debuffs. Deals 0 boss damage.</span>
+                      <span className="hidden sm:inline">Restores player HP & cures debuffs. Deals 0 damage to boss.</span>
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-col flex-1 justify-start">
-                <h3 className="font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-tight text-[8px] sm:text-[10px] md:text-lg leading-tight">
-                  Defend / Heal 
-                  {playerPoisoned && <span className="block text-[6px] md:text-xs bg-emerald-500 text-white px-1 md:px-2 py-0.5 rounded mt-1 md:mt-2">CURES POISON</span>}
-                </h3>
-                <p className="text-[6.5px] sm:text-[8px] md:text-xs font-bold text-muted-foreground mt-1 md:mt-2 leading-[1.2] md:leading-relaxed">Answer an easier question dealing no damage to the boss, but restoring the player's HP. Great for when they are close to dying.</p>
+            </button>
+            
+            {/* Heavy Attack Card (Center - Matching Reference Image) */}
+            <button
+              type="button"
+              onClick={() => handleSelectMove('heavy')}
+              className="group relative flex flex-col items-center cursor-pointer focus:outline-none transition-all duration-300 transform hover:-translate-y-2.5 hover:scale-[1.03] active:translate-y-1 active:scale-[0.98] w-full max-w-[280px] lg:max-w-[300px] mx-auto select-none"
+            >
+              <div className={cn(
+                "relative w-full aspect-[56/72] transition-all duration-300 filter",
+                bossShieldActive 
+                  ? "drop-shadow-[0_0_18px_rgba(59,130,246,0.9)] animate-pulse" 
+                  : "drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_12px_24px_rgba(239,68,68,0.75)]"
+              )}>
+                {/* Pixel Art Card Base */}
+                <Image
+                  src="/images/bossbattlecards/heavyAttack_btn.png"
+                  alt="Heavy Attack Card"
+                  fill
+                  sizes="(max-width: 640px) 115px, (max-width: 1024px) 220px, 300px"
+                  unoptimized
+                  priority
+                  className="object-fill [image-rendering:pixelated] select-none pointer-events-none"
+                  draggable={false}
+                />
+
+                {/* Card Sheen on Hover */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-sm" />
+
+                {/* Content Area Inside Card's Lower Plate (Proportionately centered & fully responsive) */}
+                <div className="absolute inset-x-[7%] top-[51%] sm:top-[52%] bottom-[11%] sm:bottom-[12%] flex flex-col items-center justify-center text-center px-1 sm:px-2 gap-0 pointer-events-none">
+                  {/* Title & Badges */}
+                  <div className="w-full flex flex-col items-center">
+                    <h3 className={cn(
+                      "font-bytebounce uppercase tracking-wide text-xs min-[360px]:text-sm sm:text-lg md:text-xl lg:text-2xl leading-none [text-shadow:1px_1px_0_#000,-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000]",
+                      bossShieldActive ? "text-cyan-300" : "text-[#f87171]"
+                    )}>
+                      HEAVY ATTACK
+                    </h3>
+                    
+                    {bossShieldActive && (
+                      <span className="inline-block font-bytebounce text-[8px] sm:text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded shadow-sm mt-0.5 animate-pulse border border-blue-400 leading-none">
+                        BREAKS SHIELD
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div className="w-full px-0.5 -mt-0.5 sm:-mt-1">
+                    <p className="text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs md:text-[13px] lg:text-[14px] font-bold text-white leading-tight sm:leading-snug [text-shadow:0_1px_2px_rgba(0,0,0,0.95)] max-w-full mx-auto">
+                      <span className="sm:hidden">Deals massive damage. Counter-attacked if wrong!</span>
+                      <span className="hidden sm:inline">Deals massive damage. If wrong, player takes heavy counter-attack!</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </button>
+            
+            {/* Normal Attack Card (Right - Matching Reference Image) */}
+            <button
+              type="button"
+              onClick={() => handleSelectMove('normal')}
+              className="group relative flex flex-col items-center cursor-pointer focus:outline-none transition-all duration-300 transform hover:-translate-y-2.5 hover:scale-[1.03] active:translate-y-1 active:scale-[0.98] w-full max-w-[280px] lg:max-w-[300px] mx-auto select-none"
+            >
+              <div className={cn(
+                "relative w-full aspect-[56/72] transition-all duration-300 filter",
+                bossShieldActive 
+                  ? "opacity-60 grayscale-[40%] drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]" 
+                  : "drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_12px_24px_rgba(245,158,11,0.7)]"
+              )}>
+                {/* Pixel Art Card Base */}
+                <Image
+                  src="/images/bossbattlecards/normalAttack_btn.png"
+                  alt="Normal Attack Card"
+                  fill
+                  sizes="(max-width: 640px) 115px, (max-width: 1024px) 220px, 300px"
+                  unoptimized
+                  priority
+                  className="object-fill [image-rendering:pixelated] select-none pointer-events-none"
+                  draggable={false}
+                />
+
+                {/* Card Sheen on Hover */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-sm" />
+
+                {/* Content Area Inside Card's Lower Plate (Proportionately centered & fully responsive) */}
+                <div className="absolute inset-x-[7%] top-[49%] sm:top-[50%] bottom-[12%] sm:bottom-[13%] flex flex-col items-center justify-center text-center px-1 sm:px-2 gap-0 pointer-events-none">
+                  {/* Title & Badges */}
+                  <div className="w-full flex flex-col items-center">
+                    <h3 className={cn(
+                      "font-bytebounce uppercase tracking-wide text-xs min-[360px]:text-sm sm:text-lg md:text-xl lg:text-2xl leading-none [text-shadow:1px_1px_0_#000,-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000]",
+                      bossShieldActive ? "text-slate-300" : "text-[#facc15]"
+                    )}>
+                      NORMAL ATTACK
+                    </h3>
+                    
+                    {bossShieldActive && (
+                      <span className="inline-block font-bytebounce text-[8px] sm:text-xs bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded shadow-sm mt-0.5 border border-slate-500 leading-none">
+                        INEFFECTIVE
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div className="w-full px-0.5 -mt-0.5 sm:-mt-1">
+                    <p className="text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs md:text-[13px] lg:text-[14px] font-bold text-white leading-tight sm:leading-snug [text-shadow:0_1px_2px_rgba(0,0,0,0.95)] max-w-full mx-auto">
+                      <span className="sm:hidden">Standard damage with balanced risk.</span>
+                      <span className="hidden sm:inline">Answer a standard question. Deals reliable damage with balanced risk.</span>
+                    </p>
+                  </div>
+                </div>
               </div>
             </button>
           </div>

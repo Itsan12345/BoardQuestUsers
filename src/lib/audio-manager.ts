@@ -1091,8 +1091,10 @@ export function playCrystalGolemAttack(type: 'normal' | 'heavy') {
     const baseAudio = type === 'heavy' ? crystalGolemHeavyAudio : crystalGolemNormalAudio;
     let audio: HTMLAudioElement;
 
-    if (baseAudio) {
-      baseAudio.currentTime = 0;
+    if (baseAudio && baseAudio.paused) {
+      try {
+        baseAudio.currentTime = 0;
+      } catch (e) { }
       audio = baseAudio;
     } else {
       audio = new Audio(src);
@@ -1330,6 +1332,62 @@ export function playSickleCellMinionAttack(type: 'normal' | 'heavy') {
     }
   } catch (err) {
     console.warn('Failed to play sickle cell minion attack sound:', err);
+  }
+}
+
+// Preloaded Audio instances for Anemia Shade attacks (Hematology Chapter 1 Mini-Boss)
+let anemiaShadeHeavyAudio: HTMLAudioElement | null = null;
+let anemiaShadeNormalAudio: HTMLAudioElement | null = null;
+
+export function preloadAnemiaShadeSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!anemiaShadeHeavyAudio) {
+      anemiaShadeHeavyAudio = new Audio('/SoundEffects/SickleCellHeavyAttack.mp3');
+      anemiaShadeHeavyAudio.preload = 'auto';
+      anemiaShadeHeavyAudio.load();
+    }
+    if (!anemiaShadeNormalAudio) {
+      anemiaShadeNormalAudio = new Audio('/SoundEffects/SickleCellNormalAttack.mp3');
+      anemiaShadeNormalAudio.preload = 'auto';
+      anemiaShadeNormalAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playAnemiaShadeAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    const src = type === 'heavy'
+      ? '/SoundEffects/SickleCellHeavyAttack.mp3'
+      : '/SoundEffects/SickleCellNormalAttack.mp3';
+
+    const baseAudio = type === 'heavy' ? anemiaShadeHeavyAudio : anemiaShadeNormalAudio;
+    let audio: HTMLAudioElement;
+
+    if (baseAudio) {
+      try {
+        baseAudio.currentTime = 0;
+      } catch (e) { }
+      audio = baseAudio;
+    } else {
+      audio = new Audio(src);
+    }
+
+    audio.playbackRate = 1.0;
+    audio.defaultPlaybackRate = 1.0;
+    audio.volume = Math.max(0, Math.min(1, masterVolume));
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Playback error for anemia shade ' + type + ' attack:', err);
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to play anemia shade attack sound:', err);
   }
 }
 
