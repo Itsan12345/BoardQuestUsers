@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { playHydraAttack, stopHydraAttack, preloadHydraSounds } from "@/lib/audio-manager";
+import { playHydraAttack, stopHydraAttack, preloadHydraSounds, playImmuneArchonAttack, preloadImmuneArchonSounds } from "@/lib/audio-manager";
 
 interface HydraLightningAnimatorProps {
   isActive: boolean;
@@ -14,6 +14,7 @@ interface HydraLightningAnimatorProps {
   scale?: number;
   className?: string;
   onComplete?: () => void;
+  soundType?: 'hydra' | 'archon';
 }
 
 export function HydraLightningAnimator({
@@ -25,6 +26,7 @@ export function HydraLightningAnimator({
   scale = 2.6,
   className,
   onComplete,
+  soundType = 'hydra',
 }: HydraLightningAnimatorProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -34,7 +36,10 @@ export function HydraLightningAnimator({
 
   useEffect(() => {
     preloadHydraSounds();
-  }, []);
+    if (soundType === 'archon') {
+      preloadImmuneArchonSounds();
+    }
+  }, [soundType]);
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -49,37 +54,48 @@ export function HydraLightningAnimator({
       const startTimer = setTimeout(() => {
         setIsVisible(true);
         setIsAnimating(true);
-        // Play the heavy attack sound effect in x2 speed smoothly when lightning animation is playing
-        playHydraAttack('heavy');
+        if (soundType === 'archon') {
+          // Play the Immune Archon heavy attack sound effect at 1.0x normal speed
+          playImmuneArchonAttack('heavy');
+        } else {
+          // Play the heavy attack sound effect in x2 speed smoothly when lightning animation is playing
+          playHydraAttack('heavy');
+        }
       }, delayMs);
 
-      // Step 2: Smooth fade out right before lightning dissipates
+      // Step 2: Smooth fade out after all frames have rendered completely
       const fadeTimer = setTimeout(() => {
         setIsFading(true);
-      }, delayMs + Math.max(100, durationMs - 120));
+      }, delayMs + (soundType === 'archon' ? durationMs : Math.max(100, durationMs - 120)));
 
       // Step 3: Cleanly finish, smooth fade, and unmount
       const endTimer = setTimeout(() => {
         setIsVisible(false);
         setIsAnimating(false);
         setIsFading(false);
-        stopHydraAttack('heavy', 350);
+        if (soundType !== 'archon') {
+          stopHydraAttack('heavy', 350);
+        }
         if (onCompleteRef.current) onCompleteRef.current();
-      }, delayMs + durationMs + 60);
+      }, delayMs + durationMs + (soundType === 'archon' ? 260 : 60));
 
       return () => {
         clearTimeout(startTimer);
         clearTimeout(fadeTimer);
         clearTimeout(endTimer);
-        stopHydraAttack('heavy', 200);
+        if (soundType !== 'archon') {
+          stopHydraAttack('heavy', 200);
+        }
       };
     } else {
       setIsVisible(false);
       setIsAnimating(false);
       setIsFading(false);
-      stopHydraAttack('heavy', 200);
+      if (soundType !== 'archon') {
+        stopHydraAttack('heavy', 200);
+      }
     }
-  }, [isActive, spriteUrl, delayMs, durationMs]);
+  }, [isActive, spriteUrl, delayMs, durationMs, soundType]);
 
   if (!isVisible || !spriteUrl) return null;
 

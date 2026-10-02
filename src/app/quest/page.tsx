@@ -857,6 +857,23 @@ export default function LearningQuest() {
         miniBossHeavyFrameWidth: 183,
         miniBossHeavyFrameHeight: 153,
         miniBossIdleDuration: 1.0,
+        idleSpriteUrl: '/images/bosses/immunohema_chapterOneBoss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/immunohema_chapterOneBoss_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/immunohema_chapterOneBoss_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/ImmuneArchonNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/AntiSerumHydraHeavyAttack.mp3',
+        idleFrames: 7,
+        attackFrames: 11,
+        heavyAttackFrames: 18,
+        idleFrameWidth: 284,
+        idleFrameHeight: 220,
+        attackFrameWidth: 252,
+        attackFrameHeight: 177,
+        heavyFrameWidth: 247,
+        heavyFrameHeight: 228,
+        lightningAttackUrl: '/images/bosses/immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png',
+        lightningAttackFrames: 12,
+        idleDuration: 1.05,
       },
       { id: 'is-2', nodeNumber: 2, title: 'ABO & Rh Blood Group System', subtopic: 'Blood Group Antigens, Antibodies & Rh Discrepancies', minionName: 'ABO Antigen', minionIcon: '🩸', miniBossName: 'Rh Aggressive Golem', miniBossIcon: '🪨', bossName: 'Immunohematology Colossus', bossIcon: '👑' },
       {
@@ -2775,10 +2792,28 @@ export default function LearningQuest() {
         );
         const isAnemiaShadeHeavy = isAnemia && attackType === 'heavy_attack';
         const isAnemiaShadeNormal = isAnemia && attackType === 'normal_attack';
+        const isImmuneArchonBoss = !isLymphocyteSwarm && Boolean(
+          currentEnemyName?.toLowerCase().includes('immune archon') ||
+          (currentEnemyName?.toLowerCase().includes('archon') && !currentEnemyName?.toLowerCase().includes('hydra')) ||
+          currentActiveNode?.bossName?.toLowerCase().includes('immune archon') ||
+          currentActiveNode?.idleSpriteUrl?.includes('immunohema_chapterOneBoss') ||
+          (
+            (selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) &&
+            currentActiveNode?.id === 'is-1' &&
+            (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : true)
+          )
+        );
+        const isImmuneArchonHeavy = isImmuneArchonBoss && attackType === 'heavy_attack';
+        const isImmuneArchonNormal = isImmuneArchonBoss && attackType === 'normal_attack';
+
 
         const resetDelay = isSpikes
           ? 1050
-          : isAnemiaShadeHeavy
+          : isImmuneArchonHeavy
+            ? 2000
+            : isImmuneArchonNormal
+              ? 900
+              : isAnemiaShadeHeavy
             ? 1550
             : isAnemiaShadeNormal
               ? 1250
@@ -2848,7 +2883,11 @@ export default function LearningQuest() {
 
         const impactDelay = isSpikes
           ? 650
-          : isAnemiaShadeHeavy
+          : isImmuneArchonHeavy
+            ? 1050
+            : isImmuneArchonNormal
+              ? 380
+              : isAnemiaShadeHeavy
             ? 750
             : isAnemiaShadeNormal
               ? 700
@@ -2939,6 +2978,18 @@ export default function LearningQuest() {
             setHitEffectTarget('player');
             setHitEffectKey(k => k + 1);
           }, 750);
+        } else if (isImmuneArchonHeavy) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 1100);
+        } else if (isImmuneArchonNormal) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 380);
         }
         bossAttackResetDelay = resetDelay;
         setTimeout(() => setBossAnimState('idle'), resetDelay);
@@ -4297,7 +4348,17 @@ export default function LearningQuest() {
                 )
               );
 
-              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus;
+              const isCurrentImmuneArchon = Boolean(
+                (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : true) && (
+                  activeEnemyName?.toLowerCase().includes('immune archon') ||
+                  (activeEnemyName?.toLowerCase().includes('archon') && !activeEnemyName?.toLowerCase().includes('hydra')) ||
+                  idleSprite?.includes('immunohema_chapterOneBoss') ||
+                  currentActiveNode?.idleSpriteUrl?.includes('immunohema_chapterOneBoss') ||
+                  (selectedSubject === 'Immunology & Serology and Immunohematology' && currentActiveNode?.id === 'is-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : true))
+                )
+              );
+
+              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon;
 
               return (
                 <div className={cn(
@@ -4338,7 +4399,8 @@ export default function LearningQuest() {
                       ? "flex-1 w-full min-h-0 flex items-center justify-center pointer-events-auto relative"
                       : "flex justify-end pr-2 md:pr-4 mt-2 relative items-center min-h-[96px]",
                     isCurrentAntigenTitan && "-translate-y-[44px] md:-translate-y-[48px]",
-                    isCurrentKetoacidosisColossus && "-translate-y-[16px] md:-translate-y-[20px]"
+                    isCurrentKetoacidosisColossus && "-translate-y-[16px] md:-translate-y-[20px]",
+                    isCurrentImmuneArchon && "-translate-y-[20px] md:-translate-y-[24px]"
                   )}>
                     <div className={cn(
                       "relative inline-flex items-center justify-center transition-all duration-500 transform-gpu",
@@ -4371,13 +4433,15 @@ export default function LearningQuest() {
                                                 ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
                                                 : (activeEnemyName?.toLowerCase().includes('lymphocyte') || attackSprite?.includes('immunohema_chapterOneMinion') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
                                                   ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
-                                                  : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-3')
-                                                    ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
-                                                    : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-3')
-                                                      ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
-                                                      : (activeEnemyName?.toLowerCase().includes('antigen') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
-                                                        ? '/SoundEffects/KetoacidosisColossusNormalAttack.mp3'
-                                                        : (currentActiveNode?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl))
+                                                   : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-3')
+                                                     ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
+                                                     : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-3')
+                                                       ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
+                                                       : (activeEnemyName?.toLowerCase().includes('antigen') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
+                                                         ? '/SoundEffects/KetoacidosisColossusNormalAttack.mp3'
+                                                         : (activeEnemyName?.toLowerCase().includes('archon') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('BOSS') || (quizMode === 'boss-battle' && battleStage === 3))))
+                                                           ? '/SoundEffects/ImmuneArchonNormalAttack.mp3'
+                                                           : (currentActiveNode?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl))
                           }
                           heavyAttackSfxUrl={
                             waveState?.heavyAttackSfxUrl ||
@@ -4409,7 +4473,9 @@ export default function LearningQuest() {
                                                       ? '/SoundEffects/CrystalGolemHeavyAttack.mp3'
                                                       : (activeEnemyName?.toLowerCase().includes('antigen') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                                         ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
-                                                        : (currentActiveNode?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl))
+                                                          : (activeEnemyName?.toLowerCase().includes('archon') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('BOSS') || (quizMode === 'boss-battle' && battleStage === 3))))
+                                                            ? '/SoundEffects/AntiSerumHydraHeavyAttack.mp3'
+                                                            : (currentActiveNode?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl))
                           }
                           idleSpriteUrl={idleSprite}
                           attackSpriteUrl={attackSprite}
@@ -4611,7 +4677,7 @@ export default function LearningQuest() {
                   );
                 })()}
 
-                {/* Chapter 3 Immunology & Serology and Immunohematology Final Boss (Anti-Serum Hydra): Heavy Attack Lightning Overlay */}
+                {/* Immunology & Serology and Immunohematology: Heavy Attack Lightning Overlay (Anti-Serum Hydra & Immune Archon) */}
                 {(() => {
                   const isImmunoSubject = Boolean(selectedSubject?.toLowerCase().includes('immuno') || selectedSubject?.toLowerCase().includes('serology'));
                   if (!isImmunoSubject) return null;
@@ -4628,9 +4694,22 @@ export default function LearningQuest() {
                       ? (waveState?.waveStage === 3 && Boolean(waveState?.lightningAttackUrl || isHydra))
                       : isChapter3FinalBoss;
 
-                  if (!isHydraActive) return null;
+                  const isImmuneArchon = !isHydra && Boolean(
+                    currentActiveNode?.id === 'is-1' &&
+                    (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : true)
+                  ) || Boolean(currentActiveNode?.bossName?.toLowerCase().includes('immune archon'));
 
-                  const lightningUrl = (quizMode === 'learning' ? waveState?.lightningAttackUrl : null) || currentActiveNode?.lightningAttackUrl || (isHydra ? '/images/bosses/immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png' : null);
+                  const isImmuneArchonActive = quizMode === 'boss-battle'
+                    ? (isImmuneArchon && battleStage === 3)
+                    : quizMode === 'learning'
+                      ? (waveState?.waveStage === 3 && isImmuneArchon)
+                      : isImmuneArchon;
+
+                  if (!isHydraActive && !isImmuneArchonActive) return null;
+
+                  const lightningUrl = isImmuneArchonActive
+                    ? '/images/bosses/immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png'
+                    : ((quizMode === 'learning' ? waveState?.lightningAttackUrl : null) || currentActiveNode?.lightningAttackUrl || (isHydra ? '/images/bosses/immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png' : null));
                   const lightningFrames = (quizMode === 'learning' ? waveState?.lightningAttackFrames : null) || currentActiveNode?.lightningAttackFrames || 12;
                   if (!lightningUrl) return null;
                   return (
@@ -4638,13 +4717,15 @@ export default function LearningQuest() {
                       isActive={bossAnimState === 'heavy_attack'}
                       spriteUrl={lightningUrl}
                       frames={lightningFrames}
-                      delayMs={250}
-                      durationMs={720}
+                      delayMs={isImmuneArchonActive ? 650 : 250}
+                      durationMs={isImmuneArchonActive ? 960 : 720}
+                      soundType={isImmuneArchonActive ? 'archon' : 'hydra'}
                       scale={2.8}
                       className="bottom-6 sm:bottom-10 md:bottom-14 left-1/2 -translate-x-1/2 z-30"
                     />
                   );
                 })()}
+
 
                 {/* Chapter 1 Hematology Mini-Boss (Anemia Shade): Heavy Attack Slash Overlay directly on Player's Body */}
                 {(() => {

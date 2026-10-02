@@ -41,6 +41,12 @@
   - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_heavyAttackAnimation.png` (9 frames, 128x128) with `CrystalGolemNormalAttack.mp3`
   - All animations, timings, scale, position, and audio effects are permanently locked.
 - **Anti-Serum Hydra (Ch 3 Final Boss - `is-3`)**: All animations, lightning effects, frame dimensions, vertical spritesheet configuration, and audio effects are permanently locked.
+- **Immune Archon (Ch 1 Boss - `is-1`)**:
+  - `idleSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_idleAnimation.png` (7 frames, 284x220)
+  - `attackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_normalAttackAnimation.png` (11 frames, 252x177) with `ImmuneArchonNormalAttack.mp3`
+  - `heavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackAnimation.png` (18 frames, 247x228) playing in-place as a warning glint animation (no lunge)
+  - `lightningAttackUrl`: `/images/bosses/immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png` (12 frames, 145x145 via `HydraLightningAnimator` with `soundType="archon"`, 960ms duration, and `AntiSerumHydraHeavyAttack.mp3` at 1.0x speed).
+  - **TEMPORARY PLACEHOLDER NOTICE**: The lightning attack animation (`immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png`) is temporarily borrowed while the custom-made Immune Archon lightning attack animation is being created. When the user provides the original custom lightning asset, seamlessly swap the asset URL, frame counts, and dimensions on node `is-1` and `HydraLightningAnimator`.
 
 ### Clinical Microscopy & Parasitology
 - **Reagent Strip Slime (Ch 1 Minion)**: Full animation sequence, lunges, and sound effects (`ReagentStripSlimeNormal&HeavyAttack.mp3`) are permanently locked.

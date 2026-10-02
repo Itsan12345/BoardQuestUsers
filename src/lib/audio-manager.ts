@@ -1768,6 +1768,68 @@ export function stopHydraAttack(type?: 'normal' | 'heavy', fadeDurationMs = 300)
   }
 }
 
+// Preloaded Audio instances for Immune Archon attacks (Immunology & Serology Chapter 1 Boss)
+let immuneArchonNormalAudio: HTMLAudioElement | null = null;
+let immuneArchonHeavyAudio: HTMLAudioElement | null = null;
+
+export function preloadImmuneArchonSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!immuneArchonNormalAudio) {
+      immuneArchonNormalAudio = new Audio('/SoundEffects/ImmuneArchonNormalAttack.mp3');
+      immuneArchonNormalAudio.preload = 'auto';
+      immuneArchonNormalAudio.playbackRate = 1.0;
+      immuneArchonNormalAudio.defaultPlaybackRate = 1.0;
+      immuneArchonNormalAudio.load();
+    }
+    if (!immuneArchonHeavyAudio) {
+      immuneArchonHeavyAudio = new Audio('/SoundEffects/AntiSerumHydraHeavyAttack.mp3');
+      immuneArchonHeavyAudio.preload = 'auto';
+      immuneArchonHeavyAudio.playbackRate = 1.0;
+      immuneArchonHeavyAudio.defaultPlaybackRate = 1.0;
+      immuneArchonHeavyAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playImmuneArchonAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    if (type === 'normal') {
+      const src = '/SoundEffects/ImmuneArchonNormalAttack.mp3';
+      const audio = immuneArchonNormalAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Immune Archon normal attack:', err);
+        });
+      }
+    } else {
+      const src = '/SoundEffects/AntiSerumHydraHeavyAttack.mp3';
+      const audio = immuneArchonHeavyAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Immune Archon heavy attack:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to play Immune Archon attack sound:', err);
+  }
+}
+
 // Preloaded Audio instances for Ketoacidosis Colossus attacks (Clinical Chemistry Chapter 1 Boss)
 let ketoacidosisNormalAudio: HTMLAudioElement | null = null;
 let ketoacidosisHeavyAudio: HTMLAudioElement | null = null;

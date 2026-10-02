@@ -168,10 +168,10 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       if (isCorrect) setScore(s => s + 1);
       if (onAnswer) onAnswer(isCorrect, currentQuestionIndex, letter, undefined, currentQuestion);
 
-      // Auto-smooth scroll down to explanation after battle animations complete
+      // Auto-smooth scroll down to explanation after battle animations complete if needed
       setTimeout(() => {
         if (nextActionRef.current) {
-          nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       }, 1350);
     } else if (mode === 'boss-battle') {
@@ -179,6 +179,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       if (isCorrect) setScore(s => s + 1);
       if (onAnswer) onAnswer(isCorrect, currentQuestionIndex, letter, activeMove || undefined, currentQuestion);
       
+      const transitionDelay = (!isCorrect && activeMove === 'heavy') ? 2100 : 1500;
       setTimeout(() => {
         if (currentIndex < questions.length - 1) {
           const nextIdx = currentIndex + 1;
@@ -190,7 +191,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
         } else {
           onFinish(isCorrect ? score + 1 : score);
         }
-      }, 1500);
+      }, transitionDelay);
     } else {
       // Test Mode: Brief visual feedback before transition
       const finalIsCorrect = isCorrect; 
@@ -560,269 +561,318 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
             </div>
           )}
 
-          <div className="px-4 sm:px-6 space-y-3">
-            {currentQuestion.type === 'SHORT_ANSWER' ? (
-              <div className="space-y-4">
-                <Input
-                  value={selectedAnswer || ''}
-                  onChange={(e) => !isAnswered && setSelectedAnswer(e.target.value)}
-                  disabled={isAnswered}
-                  placeholder="Type your answer here..."
-                  className={cn(
-                    "w-full text-lg p-6 rounded-2xl border-2 transition-all shadow-sm focus-visible:ring-primary focus-visible:border-primary",
-                    isAnswered && (selectedAnswer?.trim().toLowerCase() === currentQuestion.correctAnswer.trim().toLowerCase()
-                      ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-900 dark:text-emerald-300" 
-                      : "bg-red-50 dark:bg-red-950/40 border-red-500 text-red-900 dark:text-red-300")
-                  )}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isAnswered && selectedAnswer) {
-                      handleSubmit(selectedAnswer);
-                    }
-                  }}
-                />
-                
-                {isAnswered && (
-                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500/40 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Correct Answer</span>
-                    </div>
-                    <span className="font-black text-emerald-700 dark:text-emerald-300 text-sm">{currentQuestion.correctAnswer}</span>
-                  </div>
-                )}
-                
-                {!isAnswered && (
-                  <Button 
-                    className="w-full font-bold uppercase tracking-widest flex items-center justify-center gap-2"
-                    size="lg"
-                    disabled={!selectedAnswer?.trim()}
-                    onClick={() => handleSubmit(selectedAnswer || '')}
-                  >
-                    Submit Answer <CornerDownLeft className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-            ) : hasChoiceImages ? (
-              /* Responsive Choice Images Grid (1 col on mobile, 2 cols on tablet/desktop) */
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {currentQuestion.options.map((option, idx) => {
-                  const letter = optionLetters[idx];
-                  const isSelected = selectedAnswer === letter;
-                  const isEliminated = eliminatedOptionLetters.includes(letter);
-                  const choiceImg = currentQuestion.choiceImages?.[idx];
-                  const hasThisImg = isValidImageUrl(choiceImg);
-
-                  const isCorrect = isAnswered && letter === currentQuestion.correctAnswer;
-                  const isWrong = isAnswered && isSelected && !isCorrect;
-
-                  return (
-                    <div
-                      key={letter}
-                      onClick={() => {
-                        if (!isAnswered && !isTransitioning && !isEliminated) {
-                          handleSubmit(letter);
+          {(() => {
+            const renderOptions = () => {
+              if (currentQuestion.type === 'SHORT_ANSWER') {
+                return (
+                  <div className="space-y-4">
+                    <Input
+                      value={selectedAnswer || ''}
+                      onChange={(e) => !isAnswered && setSelectedAnswer(e.target.value)}
+                      disabled={isAnswered}
+                      placeholder="Type your answer here..."
+                      className={cn(
+                        "w-full text-lg p-6 rounded-2xl border-2 transition-all shadow-sm focus-visible:ring-primary focus-visible:border-primary",
+                        isAnswered && (selectedAnswer?.trim().toLowerCase() === currentQuestion.correctAnswer.trim().toLowerCase()
+                          ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-900 dark:text-emerald-300" 
+                          : "bg-red-50 dark:bg-red-950/40 border-red-500 text-red-900 dark:text-red-300")
+                      )}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !isAnswered && selectedAnswer) {
+                          handleSubmit(selectedAnswer);
                         }
                       }}
+                    />
+                    
+                    {isAnswered && (
+                      <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500/40 flex items-center justify-between shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Correct Answer</span>
+                        </div>
+                        <span className="font-black text-emerald-700 dark:text-emerald-300 text-sm">{currentQuestion.correctAnswer}</span>
+                      </div>
+                    )}
+                    
+                    {!isAnswered && (
+                      <Button 
+                        className="w-full font-bold uppercase tracking-widest flex items-center justify-center gap-2"
+                        size="lg"
+                        disabled={!selectedAnswer?.trim()}
+                        onClick={() => handleSubmit(selectedAnswer || '')}
+                      >
+                        Submit Answer <CornerDownLeft className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              }
+
+              if (hasChoiceImages) {
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {currentQuestion.options.map((option, idx) => {
+                      const letter = optionLetters[idx];
+                      const isSelected = selectedAnswer === letter;
+                      const isEliminated = eliminatedOptionLetters.includes(letter);
+                      const choiceImg = currentQuestion.choiceImages?.[idx];
+                      const hasThisImg = isValidImageUrl(choiceImg);
+
+                      const isCorrect = isAnswered && letter === currentQuestion.correctAnswer;
+                      const isWrong = isAnswered && isSelected && !isCorrect;
+
+                      return (
+                        <div
+                          key={letter}
+                          onClick={() => {
+                            if (!isAnswered && !isTransitioning && !isEliminated) {
+                              handleSubmit(letter);
+                            }
+                          }}
+                          className={cn(
+                            "flex flex-col p-3 sm:p-4 rounded-2xl border-2 transition-all text-left shadow-xs relative overflow-hidden cursor-pointer group select-none",
+                            !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border hover:border-primary/60 hover:bg-primary/5 hover:shadow-md dark:hover:bg-primary/10",
+                            isCorrect && "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 shadow-emerald-500/20 text-emerald-950 dark:text-emerald-200 ring-2 ring-emerald-500/30",
+                            isWrong && "bg-red-50 dark:bg-red-950/40 border-red-500 shadow-red-500/20 text-red-950 dark:text-red-200 ring-2 ring-red-500/30",
+                            isAnswered && !isSelected && !isCorrect && "opacity-50 grayscale",
+                            isEliminated && "opacity-40 grayscale bg-muted border-border cursor-not-allowed line-through"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={cn(
+                                "flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs sm:text-sm transition-all",
+                                isCorrect ? "bg-green-500 text-white shadow-xs" : 
+                                isWrong ? "bg-red-500 text-white shadow-xs" : 
+                                isEliminated ? "bg-slate-300 text-slate-500" :
+                                isSelected ? "bg-primary text-white" : "bg-muted text-primary border border-border"
+                              )}>
+                                {isCorrect ? (
+                                  <CheckCircle2 className="w-4 h-4" />
+                                ) : isWrong ? (
+                                  <XCircle className="w-4 h-4" />
+                                ) : (
+                                  letter
+                                )}
+                              </div>
+                              {option && option.trim().length > 0 && (
+                                <span className={cn(
+                                  "text-xs sm:text-sm font-bold truncate",
+                                  isEliminated && "line-through text-slate-400",
+                                  isCorrect ? "text-green-700 dark:text-green-300" : isWrong ? "text-red-700 dark:text-red-300" : "text-foreground"
+                                )}>
+                                  {option}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isEliminated && (
+                                <span className="text-[7.5px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1.5 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                                  Filtered Out 🧪
+                                </span>
+                              )}
+                              {hasThisImg && (
+                                <button
+                                  type="button"
+                                  title="Enlarge option image"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setZoomedImage({ url: choiceImg!, title: `Choice ${letter}: ${option || 'Clinical Specimen'}` });
+                                  }}
+                                  className="p-1 sm:p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/40 hover:border-primary/40 bg-card/60"
+                                >
+                                  <ZoomIn className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {hasThisImg ? (
+                            <div 
+                              className="relative w-full h-36 sm:h-44 md:h-48 rounded-xl overflow-hidden bg-black/5 dark:bg-black/40 border border-border/50 flex items-center justify-center group/img"
+                            >
+                              <Image
+                                src={choiceImg!}
+                                alt={`Option ${letter}`}
+                                fill
+                                sizes="(max-width: 640px) 100vw, 350px"
+                                className="object-contain p-1.5 transition-transform duration-300 group-hover/img:scale-105"
+                                unoptimized={!choiceImg?.includes('supabase.co')}
+                              />
+                              <div 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setZoomedImage({ url: choiceImg!, title: `Choice ${letter}: ${option || 'Clinical Specimen'}` });
+                                }}
+                                className="absolute top-2 right-2 p-1.5 rounded-md bg-black/60 text-white opacity-0 group-hover/img:opacity-100 transition-opacity backdrop-blur-xs hover:scale-110 z-10"
+                              >
+                                <Maximize2 className="w-3.5 h-3.5" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full h-24 rounded-xl border border-dashed border-border/50 flex items-center justify-center text-xs text-muted-foreground font-semibold">
+                              <span>{option}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {currentQuestion.options.map((option, idx) => {
+                    const letter = optionLetters[idx];
+                    const isSelected = selectedAnswer === letter;
+                    const isEliminated = eliminatedOptionLetters.includes(letter);
+                    
+                    const isCorrect = isAnswered && letter === currentQuestion.correctAnswer;
+                    const isWrong = isAnswered && isSelected && !isCorrect;
+
+                    return (
+                      <button
+                        key={letter}
+                        disabled={isAnswered || isTransitioning || isEliminated}
+                        onClick={() => handleSubmit(letter)}
+                        className={cn(
+                          "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left shadow-sm relative overflow-hidden text-foreground",
+                          !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10",
+                          isCorrect && "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-950 dark:text-emerald-200",
+                          isWrong && "bg-red-50 dark:bg-red-950/40 border-red-500 text-red-950 dark:text-red-200",
+                          isAnswered && !isSelected && !isCorrect && "opacity-50 grayscale",
+                          isEliminated && "opacity-40 grayscale bg-muted border-border cursor-not-allowed line-through"
+                        )}
+                      >
+                        <div className={cn(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-sm transition-all",
+                          isCorrect ? "bg-green-500 text-white" : 
+                          isWrong ? "bg-red-500 text-white" : 
+                          isEliminated ? "bg-slate-300 text-slate-500" :
+                          isSelected ? "bg-primary text-white" : "bg-muted text-primary"
+                        )}>
+                          {isCorrect ? (
+                            <CheckCircle2 className="w-4 h-4" />
+                          ) : isWrong ? (
+                            <XCircle className="w-4 h-4" />
+                          ) : (
+                            letter
+                          )}
+                        </div>
+                        <span className={cn(
+                          "text-sm font-bold flex-1",
+                          isEliminated && "line-through text-slate-400",
+                          isCorrect ? "text-green-700" : isWrong ? "text-red-700" : "text-foreground"
+                        )}>
+                          {option}
+                        </span>
+                        {isEliminated && (
+                          <span className="text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200 shrink-0">
+                            Filtered Out 🧪
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            };
+
+            if (mode === 'learning') {
+              return (
+                <div className="px-4 sm:px-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 items-start">
+                    {/* Left: 3/4 Size on Desktop (Options Column) */}
+                    <div className="lg:col-span-3 space-y-3">
+                      {renderOptions()}
+                    </div>
+
+                    {/* Right: 1/4 Size on Desktop (AI Tutor Logic Analysis Column) */}
+                    <div 
+                      ref={nextActionRef}
                       className={cn(
-                        "flex flex-col p-3 sm:p-4 rounded-2xl border-2 transition-all text-left shadow-xs relative overflow-hidden cursor-pointer group select-none",
-                        !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border hover:border-primary/60 hover:bg-primary/5 hover:shadow-md dark:hover:bg-primary/10",
-                        isCorrect && "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 shadow-emerald-500/20 text-emerald-950 dark:text-emerald-200 ring-2 ring-emerald-500/30",
-                        isWrong && "bg-red-50 dark:bg-red-950/40 border-red-500 shadow-red-500/20 text-red-950 dark:text-red-200 ring-2 ring-red-500/30",
-                        isAnswered && !isSelected && !isCorrect && "opacity-50 grayscale",
-                        isEliminated && "opacity-40 grayscale bg-muted border-border cursor-not-allowed line-through"
+                        "lg:col-span-1 flex flex-col gap-4",
+                        !isAnswered ? "hidden lg:flex" : "flex"
                       )}
                     >
-                      {/* Header row: Letter badge + Option text + Zoom action */}
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={cn(
-                            "flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs sm:text-sm transition-all",
-                            isCorrect ? "bg-green-500 text-white shadow-xs" : 
-                            isWrong ? "bg-red-500 text-white shadow-xs" : 
-                            isEliminated ? "bg-slate-300 text-slate-500" :
-                            isSelected ? "bg-primary text-white" : "bg-muted text-primary border border-border"
-                          )}>
-                            {isCorrect ? (
-                              <CheckCircle2 className="w-4 h-4" />
-                            ) : isWrong ? (
-                              <XCircle className="w-4 h-4" />
+                      {isAnswered ? (
+                        <>
+                          <div className="p-4 sm:p-5 bg-primary/5 rounded-2xl border-2 border-dashed border-primary/20 animate-in fade-in slide-in-from-bottom-2 duration-300 shadow-xs">
+                            <div className="flex items-center gap-2 mb-2.5">
+                              <div className="bg-primary/10 p-1.5 rounded-lg shrink-0">
+                                <Sparkles className="w-4 h-4 text-primary" />
+                              </div>
+                              <p className="text-[10px] font-black text-primary uppercase tracking-widest leading-tight">
+                                AI Tutor Logic Analysis
+                              </p>
+                            </div>
+                            
+                            {currentQuestion.explanation ? (
+                              <p className="text-xs text-muted-foreground italic leading-relaxed whitespace-pre-line">
+                                {currentQuestion.explanation}
+                              </p>
+                            ) : isFetchingExplanation ? (
+                              <div className="flex items-center gap-2.5 py-3">
+                                <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />
+                                <p className="text-[10px] font-bold text-primary animate-pulse">INTERPRETING DATA...</p>
+                              </div>
                             ) : (
-                              letter
+                              <div className="py-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => {
+                                    setIsFetchingExplanation(true);
+                                    if (onRequestExplanation) onRequestExplanation(currentQuestionIndex);
+                                  }}
+                                  className="w-full text-xs text-primary border-primary hover:bg-primary hover:text-white"
+                                >
+                                  <BrainCircuit className="w-3.5 h-3.5 mr-2" />
+                                  Ask AI Tutor
+                                </Button>
+                              </div>
                             )}
                           </div>
-                          {option && option.trim().length > 0 && (
-                            <span className={cn(
-                              "text-xs sm:text-sm font-bold truncate",
-                              isEliminated && "line-through text-slate-400",
-                              isCorrect ? "text-green-700 dark:text-green-300" : isWrong ? "text-red-700 dark:text-red-300" : "text-foreground"
-                            )}>
-                              {option}
-                            </span>
-                          )}
-                        </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {isEliminated && (
-                            <span className="text-[7.5px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1.5 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
-                              Filtered Out 🧪
-                            </span>
-                          )}
-                          {hasThisImg && (
-                            <button
-                              type="button"
-                              title="Enlarge option image"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setZoomedImage({ url: choiceImg!, title: `Choice ${letter}: ${option || 'Clinical Specimen'}` });
-                              }}
-                              className="p-1 sm:p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors border border-border/40 hover:border-primary/40 bg-card/60"
+                          <div className="w-full animate-in fade-in duration-300 delay-75 pb-4">
+                            <Button 
+                              onClick={handleNext}
+                              size="lg"
+                              className="w-full font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all rounded-xl border-2 border-primary/20 bg-primary/10 text-primary hover:bg-primary hover:text-white py-5 text-xs sm:text-sm"
                             >
-                              <ZoomIn className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Choice Image thumbnail container */}
-                      {hasThisImg ? (
-                        <div 
-                          className="relative w-full h-36 sm:h-44 md:h-48 rounded-xl overflow-hidden bg-black/5 dark:bg-black/40 border border-border/50 flex items-center justify-center group/img"
-                        >
-                          <Image
-                            src={choiceImg!}
-                            alt={`Option ${letter}`}
-                            fill
-                            sizes="(max-width: 640px) 100vw, 350px"
-                            className="object-contain p-1.5 transition-transform duration-300 group-hover/img:scale-105"
-                            unoptimized={!choiceImg?.includes('supabase.co')}
-                          />
-                          {/* Quick zoom icon overlay */}
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setZoomedImage({ url: choiceImg!, title: `Choice ${letter}: ${option || 'Clinical Specimen'}` });
-                            }}
-                            className="absolute top-2 right-2 p-1.5 rounded-md bg-black/60 text-white opacity-0 group-hover/img:opacity-100 transition-opacity backdrop-blur-xs hover:scale-110 z-10"
-                          >
-                            <Maximize2 className="w-3.5 h-3.5" />
+                              <span>{currentIndex < questions.length - 1 ? "Next Quest" : "Finish Quest"}</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </Button>
                           </div>
-                        </div>
+                        </>
                       ) : (
-                        <div className="w-full h-24 rounded-xl border border-dashed border-border/50 flex items-center justify-center text-xs text-muted-foreground font-semibold">
-                          <span>{option}</span>
+                        /* Standby State on Desktop (1/4 Column) */
+                        <div className="p-4 sm:p-5 bg-card/40 rounded-2xl border-2 border-dashed border-border/60 flex flex-col items-center justify-center text-center p-6 min-h-[160px] text-muted-foreground/60 select-none">
+                          <div className="bg-muted/40 p-2 rounded-xl mb-2.5">
+                            <Sparkles className="w-4 h-4 text-primary/60" />
+                          </div>
+                          <p className="text-[10px] font-black text-foreground/75 uppercase tracking-widest mb-1">
+                            AI Tutor Logic Analysis
+                          </p>
+                          <p className="text-[11px] text-muted-foreground leading-snug">
+                            Select an answer to reveal clinical reasoning and step-by-step logic breakdown.
+                          </p>
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              currentQuestion.options.map((option, idx) => {
-                const letter = optionLetters[idx];
-                const isSelected = selectedAnswer === letter;
-                const isEliminated = eliminatedOptionLetters.includes(letter);
-                
-                // Show correctness indicators
-                const isCorrect = isAnswered && letter === currentQuestion.correctAnswer;
-                const isWrong = isAnswered && isSelected && !isCorrect;
+                  </div>
+                </div>
+              );
+            }
 
-                return (
-                  <button
-                    key={letter}
-                    disabled={isAnswered || isTransitioning || isEliminated}
-                    onClick={() => handleSubmit(letter)}
-                    className={cn(
-                      "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left shadow-sm relative overflow-hidden text-foreground",
-                      !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10",
-                      isCorrect && "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-950 dark:text-emerald-200",
-                      isWrong && "bg-red-50 dark:bg-red-950/40 border-red-500 text-red-950 dark:text-red-200",
-                      isAnswered && !isSelected && !isCorrect && "opacity-50 grayscale",
-                      isEliminated && "opacity-40 grayscale bg-muted border-border cursor-not-allowed line-through"
-                    )}
-                  >
-                    <div className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-sm transition-all",
-                      isCorrect ? "bg-green-500 text-white" : 
-                      isWrong ? "bg-red-500 text-white" : 
-                      isEliminated ? "bg-slate-300 text-slate-500" :
-                      isSelected ? "bg-primary text-white" : "bg-muted text-primary"
-                    )}>
-                      {isCorrect ? (
-                        <CheckCircle2 className="w-4 h-4" />
-                      ) : isWrong ? (
-                        <XCircle className="w-4 h-4" />
-                      ) : (
-                        letter
-                      )}
-                    </div>
-                    <span className={cn(
-                      "text-sm font-bold flex-1",
-                      isEliminated && "line-through text-slate-400",
-                      isCorrect ? "text-green-700" : isWrong ? "text-red-700" : "text-foreground"
-                    )}>
-                      {option}
-                    </span>
-                    {isEliminated && (
-                      <span className="text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200 shrink-0">
-                        Filtered Out 🧪
-                      </span>
-                    )}
-                  </button>
-                );
-              })
-            )}
-          </div>
-
-          {mode === 'learning' && isAnswered && (
-            <div ref={nextActionRef} className="mx-6 mt-8 space-y-6">
-              <div className="p-5 bg-primary/5 rounded-2xl border-2 border-dashed border-primary/20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                 <div className="flex items-center gap-2 mb-3">
-                   <div className="bg-primary/10 p-1.5 rounded-lg">
-                     <Sparkles className="w-4 h-4 text-primary" />
-                   </div>
-                   <p className="text-[10px] font-black text-primary uppercase tracking-widest">
-                     AI Tutor Logic Analysis
-                   </p>
-                 </div>
-                 
-                 {currentQuestion.explanation ? (
-                   <p className="text-xs text-muted-foreground italic leading-relaxed">
-                     {currentQuestion.explanation}
-                   </p>
-                 ) : isFetchingExplanation ? (
-                   <div className="flex items-center gap-3 py-2">
-                     <Loader2 className="w-3 h-3 text-primary animate-spin" />
-                     <p className="text-[10px] font-bold text-primary animate-pulse">INTERPRETING DATA...</p>
-                   </div>
-                 ) : (
-                   <div className="py-2">
-                     <Button 
-                       variant="outline" 
-                       size="sm" 
-                       onClick={() => {
-                         setIsFetchingExplanation(true);
-                         if (onRequestExplanation) onRequestExplanation(currentQuestionIndex);
-                       }}
-                       className="text-xs text-primary border-primary hover:bg-primary hover:text-white"
-                     >
-                       <BrainCircuit className="w-3 h-3 mr-2" />
-                       Ask AI Tutor
-                     </Button>
-                   </div>
-                 )}
+            return (
+              <div className="px-4 sm:px-6 space-y-3">
+                {renderOptions()}
               </div>
-              <div className="flex justify-end animate-in fade-in duration-500 delay-150 pb-6">
-                <Button 
-                  onClick={handleNext}
-                  size="lg"
-                  className="font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all rounded-xl border-2 border-primary/20 bg-primary/10 text-primary hover:bg-primary hover:text-white px-8"
-                >
-                  {currentIndex < questions.length - 1 ? "Next Quest" : "Finish Quest"}
-                  <ArrowRight className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </>
       )}
 
