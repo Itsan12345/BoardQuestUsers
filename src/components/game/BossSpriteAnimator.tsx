@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { preloadSpecterSounds, playSpecterAttack, preloadBiohazardSounds, playBiohazardAttack, preloadStaphSentinelSounds, playStaphSentinelAttack, preloadCrystalGolemSounds, playCrystalGolemAttack, preloadMicrobeSwarmSounds, playMicrobeSwarmAttack, preloadSickleCellReaperSounds, playSickleCellReaperAttack, preloadAcidSlimeSounds, playAcidSlimeAttack, preloadSickleCellMinionSounds, playSickleCellMinionAttack, preloadAnemiaShadeSounds, playAnemiaShadeAttack, preloadGramPositiveSounds, playGramPositiveAttack, preloadFungalSporeSounds, playFungalSporeAttack, preloadReagentStripSlimeSounds, playReagentStripSlimeAttack, preloadHydraSounds, playHydraAttack, preloadKetoacidosisSounds, playKetoacidosisAttack, preloadLegalBeholderSounds, playLegalBeholderAttack, preloadHyperglycemicMutantSounds, playHyperglycemicMutantAttack, playAudioFile } from "@/lib/audio-manager";
+import { preloadSpecterSounds, playSpecterAttack, preloadBiohazardSounds, playBiohazardAttack, preloadStaphSentinelSounds, playStaphSentinelAttack, preloadCrystalGolemSounds, playCrystalGolemAttack, preloadMicrobeSwarmSounds, playMicrobeSwarmAttack, preloadSickleCellReaperSounds, playSickleCellReaperAttack, preloadAcidSlimeSounds, playAcidSlimeAttack, preloadSickleCellMinionSounds, playSickleCellMinionAttack, preloadAnemiaShadeSounds, playAnemiaShadeAttack, preloadGramPositiveSounds, playGramPositiveAttack, preloadFungalSporeSounds, playFungalSporeAttack, preloadReagentStripSlimeSounds, playReagentStripSlimeAttack, preloadHydraSounds, playHydraAttack, preloadKetoacidosisSounds, playKetoacidosisAttack, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, playHyperglycemicMutantAttack, playAudioFile } from "@/lib/audio-manager";
 
 export type BossAnimState = "idle" | "normal_attack" | "heavy_attack";
 
@@ -187,7 +187,7 @@ export function BossSpriteAnimator({
   const currentTotalFrames = isHydraHeavy
     ? 14
     : isHydraNormal
-      ? (attackFrames || 31)
+      ? (attackFrames && attackFrames >= 31 ? attackFrames : 31)
       : isHydraVerticalSprite
         ? 19
         : isLymphocyteSwarmHeavy
@@ -219,7 +219,7 @@ export function BossSpriteAnimator({
   const currentFrameWidth = isHydraHeavy
     ? 143
     : isHydraNormal
-      ? (attackFrameWidth || 384)
+      ? (attackFrameWidth && attackFrameWidth >= 300 ? attackFrameWidth : 384)
       : isHydraVerticalSprite
         ? 143
         : isLymphocyteSwarm
@@ -241,7 +241,7 @@ export function BossSpriteAnimator({
   const currentFrameHeight = isHydraHeavy
     ? 144
     : isHydraNormal
-      ? (attackFrameHeight || 256)
+      ? (attackFrameHeight && attackFrameHeight >= 200 ? attackFrameHeight : 256)
       : isHydraVerticalSprite
         ? 144
         : isLymphocyteSwarm
@@ -758,7 +758,7 @@ export function BossSpriteAnimator({
     if (isHyperglycemicMutant || isHyperglycemicMutantAttack || attackSpriteUrl?.includes('clinchem_chapterOneMiniBoss') || heavyAttackSpriteUrl?.includes('clinchem_chapterOneMiniBoss')) {
       preloadHyperglycemicMutantSounds();
     }
-  }, [isSpecter, isStaphSentinel, isBiohazard, isCrystalGolem, isMicrobeSwarm, isSickleCellReaper, isSickleCellReaperAttack, isSickleCellMinion, isSickleCellMinionAttack, isAnemiaShade, isAnemiaShadeAttack, isAcidSlime, isGramPositive, isGramPositiveAttack, isGmsFungalSpore, isGmsFungalSporeAttack, isReagentStripSlime, isReagentStripSlimeAttack, isLymphocyteSwarm, isLymphocyteSwarmAttack, isHydraAttack, isAntiSerumHydra, isKetoacidosisColossus, isKetoacidosisColossusAttack, isAntigenTitan, isAntigenTitanAttack, isLegalBeholderAttack, isHyperglycemicMutant, isHyperglycemicMutantAttack, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl]);
+  }, [isSpecter, isStaphSentinel, isBiohazard, isCrystalGolem, isMicrobeSwarm, isSickleCellReaper, isSickleCellReaperAttack, isSickleCellMinion, isSickleCellMinionAttack, isAnemiaShade, isAnemiaShadeAttack, isAcidSlime, isGramPositive, isGramPositiveAttack, isGmsFungalSpore, isGmsFungalSporeAttack, isReagentStripSlime, isReagentStripSlimeAttack, isLymphocyteSwarm, isLymphocyteSwarmAttack, isHydraAttack, isAntiSerumHydra, isKetoacidosisColossus, isKetoacidosisColossusAttack, isAntigenTitan, isAntigenTitanAttack, isLegalBeholderAttack, isHyperglycemicMutant, isHyperglycemicMutantAttack, attackSpriteUrl, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl]);
 
   // Key to force reset DOM animation state whenever animState changes
   const [animKey, setAnimKey] = useState(0);
@@ -1123,19 +1123,21 @@ export function BossSpriteAnimator({
                           ? "bossHyperglycemicMutantHeavySpriteAnim"
                           : isKetoacidosisColossusHeavy
                             ? "bossKetoacidosisColossusHeavySpriteAnim"
-                            : isAntigenTitanHeavy
-                              ? "bossAntigenTitanHeavySpriteAnim"
-                              : isAntigenTitanNormal
-                                ? "bossAntigenTitanNormalSpriteAnim"
-                                : isAnemiaShadeNormal
-                                  ? "bossAnemiaNormalSpriteAnim"
-                                  : "bossSpriteAnim",
+                            : isKetoacidosisColossusNormal
+                              ? "bossKetoacidosisColossusNormalSpriteAnim"
+                              : isAntigenTitanHeavy
+                                ? "bossAntigenTitanHeavySpriteAnim"
+                                : isAntigenTitanNormal
+                                  ? "bossAntigenTitanNormalSpriteAnim"
+                                  : isAnemiaShadeNormal
+                                    ? "bossAnemiaNormalSpriteAnim"
+                                    : "bossSpriteAnim",
               animationDuration: isHydraVerticalSprite ? `${idleDuration || 1.8}s` : (isHyperglycemicMutantNormal ? '0.80s' : isHyperglycemicMutantHeavy ? '0.95s' : isAnemiaShadeNormal ? '1.25s' : `${spriteDuration}s`),
               animationTimingFunction: isHydraNormal
                 ? `steps(${currentTotalFrames - 1})`
                 : isHydraHeavy
                   ? `steps(${currentTotalFrames - 1})`
-                  : (isKetoacidosisColossusHeavy || isAntigenTitanHeavy || isAntigenTitanNormal)
+                  : (isKetoacidosisColossusHeavy || isKetoacidosisColossusNormal || isAntigenTitanHeavy || isAntigenTitanNormal)
                     ? `steps(${currentTotalFrames - 1})`
                     : isReaperGlintSprite
                       ? `steps(5)`
@@ -1184,6 +1186,15 @@ export function BossSpriteAnimator({
           }
           100% {
             transform: translateX(calc(-100% + 100% / 6));
+          }
+        }
+
+        @keyframes bossKetoacidosisColossusNormalSpriteAnim {
+          0% {
+            transform: translateX(0px);
+          }
+          100% {
+            transform: translateX(calc(-100% + 100% / 7));
           }
         }
 
@@ -2527,7 +2538,7 @@ export function BossSpriteAnimator({
           }
           12% {
             /* Charge across arena to land directly to the left side of the boss sprite */
-            transform: isKetoacidosisColossus
+            transform: ${isKetoacidosisColossus
           ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
           : isAntigenTitan
             ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'
@@ -2538,7 +2549,7 @@ export function BossSpriteAnimator({
           }
           78% {
             /* Slash boss, then pause cleanly in front of boss */
-            transform: isKetoacidosisColossus
+            transform: ${isKetoacidosisColossus
           ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
           : isAntigenTitan
             ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'

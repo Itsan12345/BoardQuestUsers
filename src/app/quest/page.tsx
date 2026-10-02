@@ -28,7 +28,8 @@ import {
   Compass,
   RotateCw,
   X,
-  Lock
+  Lock,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -476,10 +477,19 @@ export default function LearningQuest() {
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
-  const [learningStage, setLearningStage] = useState<1 | 2 | 3>(1);
+  const [_learningStage, setLearningStage] = useState<1 | 2 | 3>(1);
+  const [activeQuizIndex, setActiveQuizIndex] = useState(0);
+  const [waveCharOffscreen, setWaveCharOffscreen] = useState(false);
+  const [waveTransition, setWaveTransition] = useState<{
+    stage: 'outcome' | 'arrival';
+    fromWave: 1 | 2;
+    toWave: 2 | 3;
+    wasDefeated: boolean;
+    incomingEnemyName: string;
+    incomingEnemyBadge: string;
+  } | null>(null);
   const [learningWaveEnemies, setLearningWaveEnemies] = useState<{
-    minion: { name: string; icon: string; badge: string };
-    enforcer: {
+    minion: {
       name: string;
       icon: string;
       badge: string;
@@ -496,8 +506,61 @@ export default function LearningQuest() {
       heavyFrameWidth?: number;
       heavyFrameHeight?: number;
       idleDuration?: number;
+      normalAttackSfxUrl?: string;
+      heavyAttackSfxUrl?: string;
     };
-    boss: { name: string; icon: string; badge: string; idleSprite: string | null; attackSprite: string | null; heavyAttackSprite: string | null; idleFrames: number; attackFrames: number; heavyAttackFrames: number };
+    enforcer: {
+      name: string;
+      icon: string;
+      badge: string;
+      idleSprite?: string | null;
+      attackSprite?: string | null;
+      heavyAttackSprite?: string | null;
+      slashSprite?: string | null;
+      idleFrames?: number;
+      attackFrames?: number;
+      heavyAttackFrames?: number;
+      idleFrameWidth?: number;
+      idleFrameHeight?: number;
+      attackFrameWidth?: number;
+      attackFrameHeight?: number;
+      heavyFrameWidth?: number;
+      heavyFrameHeight?: number;
+      idleDuration?: number;
+      normalAttackSfxUrl?: string;
+      heavyAttackSfxUrl?: string;
+    };
+    boss: {
+      name: string;
+      icon: string;
+      badge: string;
+      idleSprite: string | null;
+      attackSprite: string | null;
+      heavyAttackSprite: string | null;
+      attackProjectileUrl?: string | null;
+      attackProjectileFrames?: number;
+      undergroundSpikesUrl?: string | null;
+      undergroundSpikesFrames?: number;
+      hammerAttackUrl?: string | null;
+      hammerAttackFrames?: number;
+      undergroundBlastUrl?: string | null;
+      undergroundBlastFrames?: number;
+      lightningAttackUrl?: string | null;
+      lightningAttackFrames?: number;
+      idleFrames: number;
+      attackFrames: number;
+      heavyAttackFrames: number;
+      idleFrameWidth?: number;
+      idleFrameHeight?: number;
+      attackFrameWidth?: number;
+      attackFrameHeight?: number;
+      heavyFrameWidth?: number;
+      heavyFrameHeight?: number;
+      idleDuration?: number;
+      idleFps?: number;
+      normalAttackSfxUrl?: string;
+      heavyAttackSfxUrl?: string;
+    };
   } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('cc-1');
   const [showChapterMap, setShowChapterMap] = useState<boolean>(false);
@@ -927,28 +990,63 @@ export default function LearningQuest() {
     questions: Question[],
     userAnswersList: { isCorrect: boolean; difficulty?: string }[],
     subject: string,
-    waveEnemies: any
+    waveEnemies: any,
+    overrideStage?: 1 | 2 | 3,
+    customQIndex?: number
   ) => {
+    const activeNodes = getSubjectNodes(subject || selectedSubject);
+    const ch1Node = activeNodes.find(n => n.nodeNumber === 1) || activeNodes[0];
+    const ch3Node = activeNodes.find(n => n.nodeNumber === 3) || activeNodes[activeNodes.length - 1];
+    const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || ch1Node;
+    const subjectMeta = getSubjectMeta(subject || selectedSubject);
+    const wave3BossNode = (currentActiveNode?.nodeNumber === 1 && ch1Node?.idleSpriteUrl)
+      ? ch1Node
+      : (currentActiveNode?.nodeNumber === 3 ? ch3Node : (currentActiveNode?.idleSpriteUrl ? currentActiveNode : ch3Node));
+
+    const waveMinion = waveEnemies?.minion;
+    const waveEnforcer = waveEnemies?.enforcer;
+    const waveBoss = waveEnemies?.boss;
+
     if (!questions || questions.length === 0) {
       return {
         waveStage: 1,
-        name: 'Lab Minion',
+        name: waveMinion?.name || currentActiveNode?.minionName || ch1Node?.minionName || 'Lab Minion',
         badge: 'MINION 👾',
-        icon: '🧪',
+        icon: waveMinion?.icon || currentActiveNode?.minionIcon || ch1Node?.minionIcon || '🧪',
         hp: 100,
         maxHp: 100,
         damagePerQ: 34,
-        idleSprite: null,
-        attackSprite: null,
-        heavyAttackSprite: null,
+        idleSprite: waveMinion?.idleSprite !== undefined ? waveMinion.idleSprite : (currentActiveNode?.minionIdleSpriteUrl || ch1Node?.minionIdleSpriteUrl || null),
+        attackSprite: waveMinion?.attackSprite !== undefined ? waveMinion.attackSprite : (currentActiveNode?.minionAttackSpriteUrl || ch1Node?.minionAttackSpriteUrl || null),
+        heavyAttackSprite: waveMinion?.heavyAttackSprite !== undefined ? waveMinion.heavyAttackSprite : (currentActiveNode?.minionHeavyAttackSpriteUrl || ch1Node?.minionHeavyAttackSpriteUrl || null),
+        idleFrames: waveMinion?.idleFrames || currentActiveNode?.minionIdleFrames || ch1Node?.minionIdleFrames || 8,
+        attackFrames: waveMinion?.attackFrames || currentActiveNode?.minionAttackFrames || ch1Node?.minionAttackFrames || 14,
+        heavyAttackFrames: waveMinion?.heavyAttackFrames || currentActiveNode?.minionHeavyAttackFrames || ch1Node?.minionHeavyAttackFrames || 10,
+        idleFrameWidth: waveMinion?.idleFrameWidth || currentActiveNode?.minionIdleFrameWidth || ch1Node?.minionIdleFrameWidth || 128,
+        idleFrameHeight: waveMinion?.idleFrameHeight || currentActiveNode?.minionIdleFrameHeight || ch1Node?.minionIdleFrameHeight || 128,
+        attackFrameWidth: waveMinion?.attackFrameWidth || currentActiveNode?.minionAttackFrameWidth || ch1Node?.minionAttackFrameWidth || 257,
+        attackFrameHeight: waveMinion?.attackFrameHeight || currentActiveNode?.minionAttackFrameHeight || ch1Node?.minionAttackFrameHeight || 218,
+        heavyFrameWidth: waveMinion?.heavyFrameWidth || currentActiveNode?.minionHeavyFrameWidth || ch1Node?.minionHeavyFrameWidth || 257,
+        heavyFrameHeight: waveMinion?.heavyFrameHeight || currentActiveNode?.minionHeavyFrameHeight || ch1Node?.minionHeavyFrameHeight || 218,
+        idleDuration: waveMinion?.idleDuration || currentActiveNode?.minionIdleDuration || ch1Node?.minionIdleDuration || 1.2,
+        normalAttackSfxUrl: waveMinion?.normalAttackSfxUrl || currentActiveNode?.minionNormalAttackSfxUrl || ch1Node?.minionNormalAttackSfxUrl,
+        heavyAttackSfxUrl: waveMinion?.heavyAttackSfxUrl || currentActiveNode?.minionHeavyAttackSfxUrl || ch1Node?.minionHeavyAttackSfxUrl,
       };
     }
 
-    const currentQIndex = Math.min(questions.length - 1, userAnswersList.length);
-    const currentQ = questions[currentQIndex] || questions[0];
-    const currentDiff = String(currentQ?.difficulty || 'EASY').toUpperCase();
+    const effectiveQIndex = customQIndex !== undefined
+      ? Math.min(questions.length - 1, customQIndex)
+      : Math.min(questions.length - 1, userAnswersList.length);
+    const currentQ = questions[effectiveQIndex] || questions[0];
+    const currentDiff = overrideStage === 1
+      ? 'EASY'
+      : overrideStage === 2
+        ? 'MEDIUM'
+        : overrideStage === 3
+          ? 'HARD'
+          : String(currentQ?.difficulty || 'EASY').toUpperCase();
 
-    const waveStage = currentDiff === 'EASY' ? 1 : currentDiff === 'MEDIUM' ? 2 : 3;
+    const waveStage = overrideStage || (currentDiff === 'EASY' ? 1 : currentDiff === 'MEDIUM' ? 2 : 3);
 
     // Filter questions that belong to the current wave difficulty
     const waveQuestions = questions.filter(q => String(q.difficulty || 'EASY').toUpperCase() === currentDiff);
@@ -960,6 +1058,9 @@ export default function LearningQuest() {
       return ans.isCorrect && qDiff === currentDiff;
     }).length;
 
+    // Scale player's damage per question across the total number of questions in this wave!
+    // Each question deals (100 / waveQCount) damage, ensuring the enemy's HP depletes
+    // smoothly across the entire wave and only reaches 0 HP upon answering all wave questions.
     const damagePerQ = 100 / waveQCount;
     const currentHp = Math.max(0, Math.round(100 - (correctInWave * damagePerQ)));
 
@@ -968,83 +1069,92 @@ export default function LearningQuest() {
     const isPassing = (totalCorrect / Math.max(1, questions.length)) >= 0.75;
     const effectiveHp = isFinished ? (isPassing ? 0 : Math.max(20, currentHp)) : currentHp;
 
-    const waveMinion = waveEnemies?.minion;
-    const waveEnforcer = waveEnemies?.enforcer;
-    const waveBoss = waveEnemies?.boss;
-
     if (waveStage === 1) {
       return {
         waveStage: 1,
-        name: waveMinion?.name || 'Reagent Strip Slime',
+        name: waveMinion?.name || currentActiveNode?.minionName || ch1Node?.minionName || 'Lab Minion',
         badge: 'MINION 👾',
-        icon: waveMinion?.icon || '🧪',
+        icon: waveMinion?.icon || currentActiveNode?.minionIcon || ch1Node?.minionIcon || '🧪',
         hp: effectiveHp,
         maxHp: 100,
         damagePerQ,
-        idleSprite: null,
-        attackSprite: null,
-        heavyAttackSprite: null,
+        idleSprite: waveMinion?.idleSprite !== undefined ? waveMinion.idleSprite : (currentActiveNode?.minionIdleSpriteUrl || ch1Node?.minionIdleSpriteUrl || null),
+        attackSprite: waveMinion?.attackSprite !== undefined ? waveMinion.attackSprite : (currentActiveNode?.minionAttackSpriteUrl || ch1Node?.minionAttackSpriteUrl || null),
+        heavyAttackSprite: waveMinion?.heavyAttackSprite !== undefined ? waveMinion.heavyAttackSprite : (currentActiveNode?.minionHeavyAttackSpriteUrl || ch1Node?.minionHeavyAttackSpriteUrl || null),
+        idleFrames: waveMinion?.idleFrames || currentActiveNode?.minionIdleFrames || ch1Node?.minionIdleFrames || 8,
+        attackFrames: waveMinion?.attackFrames || currentActiveNode?.minionAttackFrames || ch1Node?.minionAttackFrames || 14,
+        heavyAttackFrames: waveMinion?.heavyAttackFrames || currentActiveNode?.minionHeavyAttackFrames || ch1Node?.minionHeavyAttackFrames || 10,
+        idleFrameWidth: waveMinion?.idleFrameWidth || currentActiveNode?.minionIdleFrameWidth || ch1Node?.minionIdleFrameWidth || 128,
+        idleFrameHeight: waveMinion?.idleFrameHeight || currentActiveNode?.minionIdleFrameHeight || ch1Node?.minionIdleFrameHeight || 128,
+        attackFrameWidth: waveMinion?.attackFrameWidth || currentActiveNode?.minionAttackFrameWidth || ch1Node?.minionAttackFrameWidth || 257,
+        attackFrameHeight: waveMinion?.attackFrameHeight || currentActiveNode?.minionAttackFrameHeight || ch1Node?.minionAttackFrameHeight || 218,
+        heavyFrameWidth: waveMinion?.heavyFrameWidth || currentActiveNode?.minionHeavyFrameWidth || ch1Node?.minionHeavyFrameWidth || 257,
+        heavyFrameHeight: waveMinion?.heavyFrameHeight || currentActiveNode?.minionHeavyFrameHeight || ch1Node?.minionHeavyFrameHeight || 218,
+        idleDuration: waveMinion?.idleDuration || currentActiveNode?.minionIdleDuration || ch1Node?.minionIdleDuration || 1.2,
+        normalAttackSfxUrl: waveMinion?.normalAttackSfxUrl || currentActiveNode?.minionNormalAttackSfxUrl || ch1Node?.minionNormalAttackSfxUrl,
+        heavyAttackSfxUrl: waveMinion?.heavyAttackSfxUrl || currentActiveNode?.minionHeavyAttackSfxUrl || ch1Node?.minionHeavyAttackSfxUrl,
       };
     } else if (waveStage === 2) {
       return {
         waveStage: 2,
-        name: waveEnforcer?.name || 'Nitrite Spectre',
-        badge: 'ENFORCER 👹',
-        icon: waveEnforcer?.icon || '👻',
+        name: waveEnforcer?.name || currentActiveNode?.miniBossName || ch1Node?.miniBossName || 'Diagnostic Spectre',
+        badge: 'MINI-BOSS 👹',
+        icon: waveEnforcer?.icon || currentActiveNode?.miniBossIcon || ch1Node?.miniBossIcon || '👻',
         hp: effectiveHp,
         maxHp: 100,
         damagePerQ,
-        idleSprite: waveEnforcer?.idleSprite || null,
-        attackSprite: waveEnforcer?.attackSprite || null,
-        heavyAttackSprite: waveEnforcer?.heavyAttackSprite || null,
-        idleFrames: waveEnforcer?.idleFrames || 7,
-        attackFrames: waveEnforcer?.attackFrames || 8,
-        heavyAttackFrames: waveEnforcer?.heavyAttackFrames || 9,
-        idleFrameWidth: waveEnforcer?.idleFrameWidth || 128,
-        idleFrameHeight: waveEnforcer?.idleFrameHeight || 128,
-        attackFrameWidth: waveEnforcer?.attackFrameWidth || 128,
-        attackFrameHeight: waveEnforcer?.attackFrameHeight || 128,
-        heavyFrameWidth: waveEnforcer?.heavyFrameWidth || 183,
-        heavyFrameHeight: waveEnforcer?.heavyFrameHeight || 153,
-        idleDuration: waveEnforcer?.idleDuration || 1.0,
+        idleSprite: waveEnforcer?.idleSprite !== undefined ? waveEnforcer.idleSprite : (currentActiveNode?.miniBossIdleSpriteUrl || ch1Node?.miniBossIdleSpriteUrl || null),
+        attackSprite: waveEnforcer?.attackSprite !== undefined ? waveEnforcer.attackSprite : (currentActiveNode?.miniBossAttackSpriteUrl || ch1Node?.miniBossAttackSpriteUrl || null),
+        heavyAttackSprite: waveEnforcer?.heavyAttackSprite !== undefined ? waveEnforcer.heavyAttackSprite : (currentActiveNode?.miniBossHeavyAttackSpriteUrl || ch1Node?.miniBossHeavyAttackSpriteUrl || null),
+        slashSpriteUrl: waveEnforcer?.slashSprite || currentActiveNode?.miniBossSlashSpriteUrl || ch1Node?.miniBossSlashSpriteUrl || null,
+        idleFrames: waveEnforcer?.idleFrames || currentActiveNode?.miniBossIdleFrames || ch1Node?.miniBossIdleFrames || 7,
+        attackFrames: waveEnforcer?.attackFrames || currentActiveNode?.miniBossAttackFrames || ch1Node?.miniBossAttackFrames || 8,
+        heavyAttackFrames: waveEnforcer?.heavyAttackFrames || currentActiveNode?.miniBossHeavyAttackFrames || ch1Node?.miniBossHeavyAttackFrames || 9,
+        idleFrameWidth: waveEnforcer?.idleFrameWidth || currentActiveNode?.miniBossIdleFrameWidth || ch1Node?.miniBossIdleFrameWidth || 128,
+        idleFrameHeight: waveEnforcer?.idleFrameHeight || currentActiveNode?.miniBossIdleFrameHeight || ch1Node?.miniBossIdleFrameHeight || 128,
+        attackFrameWidth: waveEnforcer?.attackFrameWidth || currentActiveNode?.miniBossAttackFrameWidth || ch1Node?.miniBossAttackFrameWidth || 128,
+        attackFrameHeight: waveEnforcer?.attackFrameHeight || currentActiveNode?.miniBossAttackFrameHeight || ch1Node?.miniBossAttackFrameHeight || 128,
+        heavyFrameWidth: waveEnforcer?.heavyFrameWidth || currentActiveNode?.miniBossHeavyFrameWidth || ch1Node?.miniBossHeavyFrameWidth || 183,
+        heavyFrameHeight: waveEnforcer?.heavyFrameHeight || currentActiveNode?.miniBossHeavyFrameHeight || ch1Node?.miniBossHeavyFrameHeight || 153,
+        idleDuration: waveEnforcer?.idleDuration || currentActiveNode?.miniBossIdleDuration || ch1Node?.miniBossIdleDuration || 1.0,
+        normalAttackSfxUrl: waveEnforcer?.normalAttackSfxUrl || currentActiveNode?.miniBossNormalAttackSfxUrl || ch1Node?.miniBossNormalAttackSfxUrl,
+        heavyAttackSfxUrl: waveEnforcer?.heavyAttackSfxUrl || currentActiveNode?.miniBossHeavyAttackSfxUrl || ch1Node?.miniBossHeavyAttackSfxUrl,
       };
     } else {
-      const meta = getSubjectMeta(subject);
-      const activeNodes = getSubjectNodes(subject);
-      const ch3Node = activeNodes.find(n => n.nodeNumber === 3) || activeNodes[0];
-
       return {
         waveStage: 3,
-        name: waveBoss?.name || meta.enemy,
-        badge: 'ELITE 👑',
-        icon: waveBoss?.icon || '👑',
+        name: waveBoss?.name || wave3BossNode?.bossName || subjectMeta.enemy,
+        badge: wave3BossNode?.nodeNumber === 3 ? 'FINAL BOSS 👑' : 'BOSS 👑',
+        icon: waveBoss?.icon || wave3BossNode?.bossIcon || '👑',
         hp: effectiveHp,
         maxHp: 100,
         damagePerQ,
-        idleSprite: ch3Node?.idleSpriteUrl || meta?.idleSpriteUrl || null,
-        attackSprite: ch3Node?.attackSpriteUrl || meta?.attackSpriteUrl || null,
-        heavyAttackSprite: ch3Node?.heavyAttackSpriteUrl || meta?.heavyAttackSpriteUrl || null,
-        attackProjectileUrl: ch3Node?.attackProjectileUrl || meta?.attackProjectileUrl || null,
-        undergroundSpikesUrl: ch3Node?.undergroundSpikesUrl || meta?.undergroundSpikesUrl || null,
-        hammerAttackUrl: ch3Node?.hammerAttackUrl || null,
-        hammerAttackFrames: ch3Node?.hammerAttackFrames || 11,
-        undergroundBlastUrl: ch3Node?.undergroundBlastUrl || null,
-        undergroundBlastFrames: ch3Node?.undergroundBlastFrames || 16,
-        lightningAttackUrl: ch3Node?.lightningAttackUrl || (meta as any)?.lightningAttackUrl || null,
-        lightningAttackFrames: ch3Node?.lightningAttackFrames || (meta as any)?.lightningAttackFrames || 12,
-        idleFrames: ch3Node?.idleFrames || meta?.idleFrames || 6,
-        attackFrames: ch3Node?.attackFrames || meta?.attackFrames || 5,
-        heavyAttackFrames: ch3Node?.heavyAttackFrames || meta?.heavyAttackFrames || 13,
-        attackProjectileFrames: ch3Node?.attackProjectileFrames || meta?.attackProjectileFrames || 5,
-        undergroundSpikesFrames: ch3Node?.undergroundSpikesFrames || meta?.undergroundSpikesFrames || 8,
-        idleFrameWidth: ch3Node?.idleFrameWidth || meta?.idleFrameWidth || 128,
-        attackFrameWidth: ch3Node?.attackFrameWidth || meta?.attackFrameWidth || 128,
-        heavyFrameWidth: ch3Node?.heavyFrameWidth || meta?.heavyFrameWidth || 480,
-        idleFrameHeight: ch3Node?.idleFrameHeight || meta?.idleFrameHeight || 128,
-        attackFrameHeight: ch3Node?.attackFrameHeight || meta?.attackFrameHeight || 128,
-        heavyFrameHeight: ch3Node?.heavyFrameHeight || meta?.heavyFrameHeight || 256,
-        idleDuration: ch3Node?.idleDuration || meta?.idleDuration || undefined,
-        idleFps: ch3Node?.idleFps || meta?.idleFps || undefined,
+        idleSprite: waveBoss?.idleSprite !== undefined ? waveBoss.idleSprite : (wave3BossNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null),
+        attackSprite: waveBoss?.attackSprite !== undefined ? waveBoss.attackSprite : (wave3BossNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null),
+        heavyAttackSprite: waveBoss?.heavyAttackSprite !== undefined ? waveBoss.heavyAttackSprite : (wave3BossNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null),
+        attackProjectileUrl: waveBoss?.attackProjectileUrl || wave3BossNode?.attackProjectileUrl || null,
+        attackProjectileFrames: waveBoss?.attackProjectileFrames || wave3BossNode?.attackProjectileFrames || 5,
+        undergroundSpikesUrl: waveBoss?.undergroundSpikesUrl || wave3BossNode?.undergroundSpikesUrl || null,
+        undergroundSpikesFrames: waveBoss?.undergroundSpikesFrames || wave3BossNode?.undergroundSpikesFrames || 8,
+        hammerAttackUrl: waveBoss?.hammerAttackUrl || wave3BossNode?.hammerAttackUrl || null,
+        hammerAttackFrames: waveBoss?.hammerAttackFrames || wave3BossNode?.hammerAttackFrames || 11,
+        undergroundBlastUrl: waveBoss?.undergroundBlastUrl || wave3BossNode?.undergroundBlastUrl || null,
+        undergroundBlastFrames: waveBoss?.undergroundBlastFrames || wave3BossNode?.undergroundBlastFrames || 16,
+        lightningAttackUrl: waveBoss?.lightningAttackUrl || wave3BossNode?.lightningAttackUrl || (subjectMeta as any)?.lightningAttackUrl || null,
+        lightningAttackFrames: waveBoss?.lightningAttackFrames || wave3BossNode?.lightningAttackFrames || (subjectMeta as any)?.lightningAttackFrames || 12,
+        idleFrames: waveBoss?.idleFrames || wave3BossNode?.idleFrames || ch3Node?.idleFrames || subjectMeta?.idleFrames || 6,
+        attackFrames: waveBoss?.attackFrames || wave3BossNode?.attackFrames || ch3Node?.attackFrames || subjectMeta?.attackFrames || 5,
+        heavyAttackFrames: waveBoss?.heavyAttackFrames || wave3BossNode?.heavyAttackFrames || ch3Node?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 13,
+        idleFrameWidth: waveBoss?.idleFrameWidth || wave3BossNode?.idleFrameWidth || ch3Node?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128,
+        attackFrameWidth: waveBoss?.attackFrameWidth || wave3BossNode?.attackFrameWidth || ch3Node?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128,
+        heavyFrameWidth: waveBoss?.heavyFrameWidth || wave3BossNode?.heavyFrameWidth || ch3Node?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 480,
+        idleFrameHeight: waveBoss?.idleFrameHeight || wave3BossNode?.idleFrameHeight || ch3Node?.idleFrameHeight || subjectMeta?.idleFrameHeight || 128,
+        attackFrameHeight: waveBoss?.attackFrameHeight || wave3BossNode?.attackFrameHeight || ch3Node?.attackFrameHeight || subjectMeta?.attackFrameHeight || 128,
+        heavyFrameHeight: waveBoss?.heavyFrameHeight || wave3BossNode?.heavyFrameHeight || ch3Node?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 256,
+        idleDuration: waveBoss?.idleDuration || wave3BossNode?.idleDuration || ch3Node?.idleDuration || subjectMeta?.idleDuration || undefined,
+        idleFps: waveBoss?.idleFps || wave3BossNode?.idleFps || ch3Node?.idleFps || subjectMeta?.idleFps || undefined,
+        normalAttackSfxUrl: waveBoss?.normalAttackSfxUrl || wave3BossNode?.normalAttackSfxUrl || ch3Node?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl,
+        heavyAttackSfxUrl: waveBoss?.heavyAttackSfxUrl || wave3BossNode?.heavyAttackSfxUrl || ch3Node?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl,
       };
     }
   };
@@ -1783,6 +1893,9 @@ export default function LearningQuest() {
     setPlayerAnimState('idle');
     setIsAnimating(null);
     setJudgementText(null);
+    setActiveQuizIndex(0);
+    setWaveTransition(null);
+    setWaveCharOffscreen(false);
     try {
       if (quizMode === 'boss-battle' && specificDifficulty) {
         setBossDifficulty(specificDifficulty);
@@ -1847,47 +1960,84 @@ export default function LearningQuest() {
       } else if (quizMode === 'learning') {
         setLearningStage(1);
         const activeNodes = getSubjectNodes(selectedSubject);
-        const nonFinalNodes = activeNodes.filter(n => n.nodeNumber !== 3);
-        const pool = nonFinalNodes.length > 0 ? nonFinalNodes : activeNodes;
-        const randomNode1 = pool[Math.floor(Math.random() * pool.length)] || activeNodes[0];
-        const randomNode2 = pool[Math.floor(Math.random() * pool.length)] || activeNodes[0];
-        const randomNode3 = activeNodes[Math.floor(Math.random() * activeNodes.length)] || activeNodes[0];
+        const ch1Node = activeNodes.find(n => n.nodeNumber === 1) || activeNodes[0];
+        const ch3Node = activeNodes.find(n => n.nodeNumber === 3) || activeNodes[activeNodes.length - 1];
+        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || ch1Node;
         const subjectMeta = getSubjectMeta(selectedSubject);
+        const wave3BossNode = (currentActiveNode?.nodeNumber === 1 && ch1Node?.idleSpriteUrl) ? ch1Node : ch3Node;
 
         setLearningWaveEnemies({
           minion: {
-            name: randomNode1.minionName || 'Reagent Strip Slime',
-            icon: randomNode1.minionIcon || '🧪',
+            name: ch1Node?.minionName || 'Lab Minion',
+            icon: ch1Node?.minionIcon || '🧪',
             badge: 'MINION 👾',
+            idleSprite: ch1Node?.minionIdleSpriteUrl || null,
+            attackSprite: ch1Node?.minionAttackSpriteUrl || null,
+            heavyAttackSprite: ch1Node?.minionHeavyAttackSpriteUrl || null,
+            idleFrames: ch1Node?.minionIdleFrames || 8,
+            attackFrames: ch1Node?.minionAttackFrames || 14,
+            heavyAttackFrames: ch1Node?.minionHeavyAttackFrames || 10,
+            idleFrameWidth: ch1Node?.minionIdleFrameWidth || 128,
+            idleFrameHeight: ch1Node?.minionIdleFrameHeight || 128,
+            attackFrameWidth: ch1Node?.minionAttackFrameWidth || 257,
+            attackFrameHeight: ch1Node?.minionAttackFrameHeight || 218,
+            heavyFrameWidth: ch1Node?.minionHeavyFrameWidth || 257,
+            heavyFrameHeight: ch1Node?.minionHeavyFrameHeight || 218,
+            idleDuration: ch1Node?.minionIdleDuration || 1.2,
+            normalAttackSfxUrl: ch1Node?.minionNormalAttackSfxUrl,
+            heavyAttackSfxUrl: ch1Node?.minionHeavyAttackSfxUrl,
           },
           enforcer: {
-            name: randomNode2.miniBossName || 'Nitrite Spectre',
-            icon: randomNode2.miniBossIcon || '👻',
-            badge: 'ENFORCER 👹',
-            idleSprite: randomNode2.miniBossIdleSpriteUrl || null,
-            attackSprite: randomNode2.miniBossAttackSpriteUrl || null,
-            heavyAttackSprite: randomNode2.miniBossHeavyAttackSpriteUrl || null,
-            idleFrames: randomNode2.miniBossIdleFrames || 7,
-            attackFrames: randomNode2.miniBossAttackFrames || 8,
-            heavyAttackFrames: randomNode2.miniBossHeavyAttackFrames || 9,
-            idleFrameWidth: randomNode2.miniBossIdleFrameWidth || 128,
-            idleFrameHeight: randomNode2.miniBossIdleFrameHeight || 128,
-            attackFrameWidth: randomNode2.miniBossAttackFrameWidth || 128,
-            attackFrameHeight: randomNode2.miniBossAttackFrameHeight || 128,
-            heavyFrameWidth: randomNode2.miniBossHeavyFrameWidth || 183,
-            heavyFrameHeight: randomNode2.miniBossHeavyFrameHeight || 153,
-            idleDuration: randomNode2.miniBossIdleDuration || 1.0,
+            name: ch1Node?.miniBossName || 'Diagnostic Spectre',
+            icon: ch1Node?.miniBossIcon || '👻',
+            badge: 'MINI-BOSS 👹',
+            idleSprite: ch1Node?.miniBossIdleSpriteUrl || null,
+            attackSprite: ch1Node?.miniBossAttackSpriteUrl || null,
+            heavyAttackSprite: ch1Node?.miniBossHeavyAttackSpriteUrl || null,
+            slashSprite: ch1Node?.miniBossSlashSpriteUrl || null,
+            idleFrames: ch1Node?.miniBossIdleFrames || 7,
+            attackFrames: ch1Node?.miniBossAttackFrames || 8,
+            heavyAttackFrames: ch1Node?.miniBossHeavyAttackFrames || 9,
+            idleFrameWidth: ch1Node?.miniBossIdleFrameWidth || 128,
+            idleFrameHeight: ch1Node?.miniBossIdleFrameHeight || 128,
+            attackFrameWidth: ch1Node?.miniBossAttackFrameWidth || 128,
+            attackFrameHeight: ch1Node?.miniBossAttackFrameHeight || 128,
+            heavyFrameWidth: ch1Node?.miniBossHeavyFrameWidth || 183,
+            heavyFrameHeight: ch1Node?.miniBossHeavyFrameHeight || 153,
+            idleDuration: ch1Node?.miniBossIdleDuration || 1.0,
+            normalAttackSfxUrl: ch1Node?.miniBossNormalAttackSfxUrl,
+            heavyAttackSfxUrl: ch1Node?.miniBossHeavyAttackSfxUrl,
           },
           boss: {
-            name: randomNode3.bossName || subjectMeta.enemy,
-            icon: randomNode3.bossIcon || '👑',
-            badge: 'ELITE 👑',
-            idleSprite: randomNode3.idleSpriteUrl || subjectMeta.idleSpriteUrl || null,
-            attackSprite: randomNode3.attackSpriteUrl || subjectMeta.attackSpriteUrl || null,
-            heavyAttackSprite: randomNode3.heavyAttackSpriteUrl || subjectMeta.heavyAttackSpriteUrl || null,
-            idleFrames: randomNode3.idleFrames || subjectMeta.idleFrames || 7,
-            attackFrames: randomNode3.attackFrames || subjectMeta.attackFrames || 17,
-            heavyAttackFrames: randomNode3.heavyAttackFrames || subjectMeta.heavyAttackFrames || 11,
+            name: wave3BossNode?.bossName || subjectMeta.enemy,
+            icon: wave3BossNode?.bossIcon || '👑',
+            badge: wave3BossNode?.nodeNumber === 3 ? 'FINAL BOSS 👑' : 'BOSS 👑',
+            idleSprite: wave3BossNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null,
+            attackSprite: wave3BossNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null,
+            heavyAttackSprite: wave3BossNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null,
+            attackProjectileUrl: wave3BossNode?.attackProjectileUrl || ch3Node?.attackProjectileUrl || null,
+            attackProjectileFrames: wave3BossNode?.attackProjectileFrames || ch3Node?.attackProjectileFrames || 5,
+            undergroundSpikesUrl: wave3BossNode?.undergroundSpikesUrl || ch3Node?.undergroundSpikesUrl || null,
+            undergroundSpikesFrames: wave3BossNode?.undergroundSpikesFrames || ch3Node?.undergroundSpikesFrames || 8,
+            hammerAttackUrl: wave3BossNode?.hammerAttackUrl || ch3Node?.hammerAttackUrl || null,
+            hammerAttackFrames: wave3BossNode?.hammerAttackFrames || ch3Node?.hammerAttackFrames || 11,
+            undergroundBlastUrl: wave3BossNode?.undergroundBlastUrl || ch3Node?.undergroundBlastUrl || null,
+            undergroundBlastFrames: wave3BossNode?.undergroundBlastFrames || ch3Node?.undergroundBlastFrames || 16,
+            lightningAttackUrl: wave3BossNode?.lightningAttackUrl || ch3Node?.lightningAttackUrl || null,
+            lightningAttackFrames: wave3BossNode?.lightningAttackFrames || ch3Node?.lightningAttackFrames || 12,
+            idleFrames: wave3BossNode?.idleFrames || ch3Node?.idleFrames || subjectMeta?.idleFrames || 6,
+            attackFrames: wave3BossNode?.attackFrames || ch3Node?.attackFrames || subjectMeta?.attackFrames || 5,
+            heavyAttackFrames: wave3BossNode?.heavyAttackFrames || ch3Node?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 13,
+            idleFrameWidth: wave3BossNode?.idleFrameWidth || ch3Node?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128,
+            attackFrameWidth: wave3BossNode?.attackFrameWidth || ch3Node?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128,
+            heavyFrameWidth: wave3BossNode?.heavyFrameWidth || ch3Node?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 480,
+            idleFrameHeight: wave3BossNode?.idleFrameHeight || ch3Node?.idleFrameHeight || subjectMeta?.idleFrameHeight || 128,
+            attackFrameHeight: wave3BossNode?.attackFrameHeight || ch3Node?.attackFrameHeight || subjectMeta?.attackFrameHeight || 128,
+            heavyFrameHeight: wave3BossNode?.heavyFrameHeight || ch3Node?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 256,
+            idleDuration: wave3BossNode?.idleDuration || ch3Node?.idleDuration || subjectMeta?.idleDuration || undefined,
+            idleFps: wave3BossNode?.idleFps || ch3Node?.idleFps || subjectMeta?.idleFps || undefined,
+            normalAttackSfxUrl: wave3BossNode?.normalAttackSfxUrl || ch3Node?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl,
+            heavyAttackSfxUrl: wave3BossNode?.heavyAttackSfxUrl || ch3Node?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl,
           },
         });
       }
@@ -1920,6 +2070,74 @@ export default function LearningQuest() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleQuestionChange = (nextIdx: number) => {
+    if (quizMode === 'learning' && questions && questions.length > 0) {
+      const currentQ = questions[activeQuizIndex] || questions[0];
+      const nextQ = questions[nextIdx] || questions[questions.length - 1];
+      const currentDiff = String(currentQ?.difficulty || 'EASY').toUpperCase();
+      const nextDiff = String(nextQ?.difficulty || 'EASY').toUpperCase();
+      const fromWave = currentDiff === 'EASY' ? 1 : currentDiff === 'MEDIUM' ? 2 : 3;
+      const toWave = nextDiff === 'EASY' ? 1 : nextDiff === 'MEDIUM' ? 2 : 3;
+
+      if (toWave > fromWave) {
+        // A wave transition is occurring!
+        const waveQuestions = questions.filter(q => String(q.difficulty || 'EASY').toUpperCase() === currentDiff);
+        const requiredToDefeat = Math.max(1, Math.ceil(waveQuestions.length * 0.65));
+        const correctInWave = userAnswers.filter((ans, idx) => {
+          const qDiff = String(ans.difficulty || questions[idx]?.difficulty || 'EASY').toUpperCase();
+          return ans.isCorrect && qDiff === currentDiff;
+        }).length;
+        const wasDefeated = correctInWave >= requiredToDefeat || enemyHealth <= 0;
+
+        const nextWaveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, toWave as 1 | 2 | 3, nextIdx);
+
+        // Phase 1: Display the Previous Wave Outcome Tag & Verdict first
+        if (wasDefeated) {
+          try {
+            playSfx('correct');
+          } catch (e) {}
+        }
+
+        // Start characters sliding offscreen and display Phase 1 Outcome
+        setWaveCharOffscreen(true);
+
+        setWaveTransition({
+          stage: 'outcome',
+          fromWave: fromWave as 1 | 2,
+          toWave: toWave as 2 | 3,
+          wasDefeated,
+          incomingEnemyName: nextWaveState.name,
+          incomingEnemyBadge: nextWaveState.badge,
+        });
+
+        // Phase 2: After 1400ms, transition smoothly to the Next Wave Threat Arrival
+        setTimeout(() => {
+          try {
+            playDebuffSound();
+          } catch (e) {}
+
+          setActiveQuizIndex(nextIdx);
+          setEnemyHealth(100);
+          setLearningStage(toWave as 1 | 2 | 3);
+          setWaveTransition(prev => prev ? { ...prev, stage: 'arrival' } : null);
+        }, 1400);
+
+        // After Phase 2 completes (2800ms): dissolve the banner, then smoothly show the slide-in transition of Player & Enemy into the clear arena
+        setTimeout(() => {
+          setWaveTransition(null);
+
+          // Once banner overlay dissolves, trigger Player & Enemy to glide smoothly into the clear arena
+          setTimeout(() => {
+            setWaveCharOffscreen(false);
+          }, 60);
+        }, 2800);
+        return;
+      }
+    }
+
+    setActiveQuizIndex(nextIdx);
   };
 
   const handleAnswer = (isCorrect: boolean, index: number, letter: string, action?: 'heavy' | 'normal' | 'defend', questionData?: Question) => {
@@ -1959,8 +2177,13 @@ export default function LearningQuest() {
     const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
     const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
     const subjectMeta = getSubjectMeta(selectedSubject);
+    let bossAttackResetDelay = 1000;
 
     let currentEnemyName = subjectMeta.enemy;
+    const currentWaveStage = quizMode === 'learning'
+      ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex).waveStage
+      : null;
+
     if (quizMode === 'boss-battle') {
       if (isChapter3FinalBoss) {
         currentEnemyName = currentActiveNode.bossName;
@@ -1968,7 +2191,7 @@ export default function LearningQuest() {
         currentEnemyName = battleStage === 1 ? (currentActiveNode.minionName || 'Minion') : battleStage === 2 ? (currentActiveNode.miniBossName || 'Mini-Boss') : currentActiveNode.bossName;
       }
     } else if (quizMode === 'learning') {
-      const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
+      const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex);
       currentEnemyName = waveState.name;
     } else {
       currentEnemyName = subjectMeta.enemy;
@@ -1984,7 +2207,7 @@ export default function LearningQuest() {
         isChapter3FinalBoss ||
         (quizMode === 'boss-battle' && (battleStage === 3 || isChapter3FinalBoss)) ||
         quizMode === 'test' ||
-        (quizMode === 'learning' && currentEnemyName?.toLowerCase().includes('biohazard'))
+        (quizMode === 'learning' && (currentWaveStage === 3 || currentEnemyName?.toLowerCase().includes('biohazard')))
       ))
     );
 
@@ -1994,7 +2217,11 @@ export default function LearningQuest() {
       currentActiveNode?.id === 'cc-3' ||
       currentActiveNode?.idleSpriteUrl?.includes('clinchem_finalboss') ||
       currentActiveNode?.attackSpriteUrl?.includes('clinchem_finalboss') ||
-      (selectedSubject === 'Clinical Chemistry' && (isChapter3FinalBoss || quizMode !== 'boss-battle'))
+      (selectedSubject === 'Clinical Chemistry' && (
+        isChapter3FinalBoss ||
+        (quizMode === 'boss-battle' && isChapter3FinalBoss) ||
+        (quizMode === 'learning' && currentWaveStage === 3 && (currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'cc-3' || currentEnemyName?.toLowerCase().includes('specter')))
+      ))
     );
 
     const plannedAttackType: 'normal_attack' | 'heavy_attack' = quizMode === 'learning'
@@ -2013,28 +2240,28 @@ export default function LearningQuest() {
         isChapter3FinalBoss ||
         (quizMode === 'boss-battle' && (battleStage === 3 || isChapter3FinalBoss)) ||
         quizMode === 'test' ||
-        (quizMode === 'learning' && currentEnemyName?.toLowerCase().includes('crystal golem'))
+        (quizMode === 'learning' && (currentWaveStage === 3 || currentEnemyName?.toLowerCase().includes('crystal golem')))
       ))
     );
 
     const isMicrobeSwarm = Boolean(
       currentEnemyName?.toLowerCase().includes('microbe swarm') ||
       currentActiveNode?.minionName?.toLowerCase().includes('microbe swarm') ||
-      (quizMode === 'boss-battle' && battleStage === 1 && currentActiveNode?.id === 'mb-1')
+      ((quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : false) && currentActiveNode?.id === 'mb-1')
     );
 
     const isSickleCellMinion = Boolean(
       (currentEnemyName?.toLowerCase().includes('sickle cell') && !currentEnemyName?.toLowerCase().includes('reaper')) ||
       currentActiveNode?.minionName?.toLowerCase().includes('sickle cell') ||
       currentActiveNode?.minionIdleSpriteUrl?.includes('hematology_chapterOneMinion') ||
-      (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode !== 'boss-battle' || battleStage === 1))
+      (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : true))
     );
 
     const isAnemiaShade = Boolean(
       currentEnemyName?.toLowerCase().includes('anemia') ||
       currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') ||
       currentActiveNode?.miniBossIdleSpriteUrl?.includes('hematology_chapterOneMiniBoss') ||
-      (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 2 : false))
+      (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false))
     );
 
     const isSickleCellReaper = !isSickleCellMinion && !isAnemiaShade && Boolean(
@@ -2045,13 +2272,13 @@ export default function LearningQuest() {
       currentActiveNode?.idleSpriteUrl?.includes('hematology_finalboss') ||
       currentActiveNode?.attackSpriteUrl?.includes('hematology_finalboss') ||
       currentActiveNode?.heavyAttackSpriteUrl?.includes('hematology_finalboss') ||
-      (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-3')
+      (selectedSubject === 'Hematology' && (currentActiveNode?.id === 'hem-3' || (quizMode === 'learning' && currentWaveStage === 3)))
     );
 
     const isStaphSentinel = Boolean(
       currentEnemyName?.toLowerCase().includes('staph') ||
       currentActiveNode?.miniBossName?.toLowerCase().includes('staph') ||
-      (quizMode === 'boss-battle' && battleStage === 2 && currentActiveNode?.id === 'mb-1')
+      ((quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false) && currentActiveNode?.id === 'mb-1')
     );
 
     const isReagentStripSlime = Boolean(
@@ -2059,7 +2286,7 @@ export default function LearningQuest() {
       (currentEnemyName?.toLowerCase().includes('slime') && !currentEnemyName?.toLowerCase().includes('acid')) ||
       currentActiveNode?.minionName?.toLowerCase().includes('reagent strip') ||
       currentActiveNode?.minionIdleSpriteUrl?.includes('clinmicro_chapterOneMinion') ||
-      (selectedSubject.toLowerCase().includes('microscopy') && currentActiveNode?.id === 'cm-1' && (quizMode !== 'boss-battle' || battleStage === 1))
+      (selectedSubject.toLowerCase().includes('microscopy') && currentActiveNode?.id === 'cm-1' && (quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : true))
     );
 
     const isAcidSlime = !isSpecterBoss && !isReagentStripSlime && Boolean(
@@ -2067,7 +2294,7 @@ export default function LearningQuest() {
       (currentEnemyName?.toLowerCase().includes('slime') && !currentEnemyName?.toLowerCase().includes('reagent')) ||
       currentActiveNode?.minionName?.toLowerCase().includes('acid slime') ||
       currentActiveNode?.minionIdleSpriteUrl?.includes('clinchem_chapterOneMinion') ||
-      (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode !== 'boss-battle' || battleStage === 1))
+      (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : false))
     );
 
     const isGmsFungalSpore = Boolean(
@@ -2075,20 +2302,20 @@ export default function LearningQuest() {
       currentEnemyName?.toLowerCase().includes('gms') ||
       currentActiveNode?.minionName?.toLowerCase().includes('fungal spore') ||
       currentActiveNode?.minionIdleSpriteUrl?.includes('hispatho_chapterOneMinion') ||
-      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode !== 'boss-battle' || battleStage === 1))
+      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : true))
     );
 
     const isGramPositiveBoss = Boolean(
       currentEnemyName?.toLowerCase().includes('gram positive') ||
       currentActiveNode?.bossName?.toLowerCase().includes('gram positive') ||
-      (quizMode === 'boss-battle' && battleStage === 3 && currentActiveNode?.id === 'mb-1')
+      ((quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false) && currentActiveNode?.id === 'mb-1')
     );
 
     const isLymphocyteSwarm = Boolean(
       currentEnemyName?.toLowerCase().includes('lymphocyte') ||
       currentActiveNode?.minionName?.toLowerCase().includes('lymphocyte') ||
       currentActiveNode?.minionIdleSpriteUrl?.includes('immunohema_chapterOneMinion') ||
-      ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && currentActiveNode?.id === 'is-1' && (quizMode !== 'boss-battle' || battleStage === 1))
+      ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && currentActiveNode?.id === 'is-1' && (quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : false))
     );
 
     const isHyperglycemicMutant = !isSpecterBoss && Boolean(
@@ -2097,13 +2324,13 @@ export default function LearningQuest() {
       currentEnemyName?.toLowerCase().includes('hyperglycemic mutant') ||
       currentActiveNode?.miniBossName?.toLowerCase().includes('mutant') ||
       currentActiveNode?.miniBossIdleSpriteUrl?.includes('clinchem_chapterOneMiniBoss') ||
-      (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode === 'boss-battle' && battleStage === 2))
+      (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false))
     );
 
     const isHydraBoss = Boolean(
       currentEnemyName?.toLowerCase().includes('hydra') ||
       currentActiveNode?.bossName?.toLowerCase().includes('hydra') ||
-      ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && (currentActiveNode?.id === 'is-3' || currentActiveNode?.nodeNumber === 3) && (quizMode === 'boss-battle' ? battleStage === 3 : true))
+      ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && (currentActiveNode?.id === 'is-3' || currentActiveNode?.nodeNumber === 3) && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : true))
     );
 
     const isKetoacidosisColossus = Boolean(
@@ -2111,17 +2338,17 @@ export default function LearningQuest() {
       currentEnemyName?.toLowerCase().includes('colossus') ||
       currentActiveNode?.bossName?.toLowerCase().includes('ketoacidosis') ||
       currentActiveNode?.bossName?.toLowerCase().includes('colossus') ||
-      (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode === 'boss-battle' ? battleStage === 3 : true))
+      (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
     );
 
     const isLegalBeholder = Boolean(
       currentEnemyName?.toLowerCase().includes('legal beholder') ||
       currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') ||
-      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && (currentActiveNode?.id === 'hp-3' || currentActiveNode?.nodeNumber === 3) && (quizMode === 'boss-battle' ? battleStage === 3 : true))
+      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && (currentActiveNode?.id === 'hp-3' || currentActiveNode?.nodeNumber === 3) && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : true))
     );
 
     const isAntigenTitan = !isLymphocyteSwarm && Boolean(
-      (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 2 : false) && (
+      (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false) && (
         currentEnemyName?.toLowerCase().includes('antigen titan') ||
         currentEnemyName?.toLowerCase().includes('antigen') ||
         currentActiveNode?.miniBossName?.toLowerCase().includes('antigen') ||
@@ -2136,7 +2363,7 @@ export default function LearningQuest() {
       setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
       playSfx('correct');
-      if (quizMode === 'boss-battle') {
+      if (quizMode === 'boss-battle' || quizMode === 'learning') {
         setTimeout(() => playSfx('attack'), 150);
       }
     } else {
@@ -2268,7 +2495,7 @@ export default function LearningQuest() {
 
       playerHeal *= playerMul;
     } else if (quizMode === 'learning') {
-      const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
+      const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex);
       if (isCorrect) {
         enemyDmg = waveState.damagePerQ;
         const currentMaxHp = getPlayerMaxHp();
@@ -2344,32 +2571,23 @@ export default function LearningQuest() {
             });
           }
         } else if (quizMode === 'learning' && nextHp <= 0) {
-          if (learningStage === 1) {
-            setLearningStage(2);
-            setEnemyHealth(100);
-            setIsAnimating("enemy");
-            setBossAnimState('idle');
-            setPlayerAnimState('idle');
-            addFloatingText('enemy', '👾 MINION DEFEATED! 👹 ENFORCER ENTERS!', 'text-amber-300 font-black');
+          setEnemyHealth(0);
+          setIsAnimating("enemy");
+          setBossAnimState('idle');
+          if (currentWaveStage === 1) {
+            addFloatingText('enemy', '👾 MINION DEFEATED!', 'text-amber-300 font-black');
             toast({
-              title: "👾 Wave 1 Cleared!",
-              description: "You defeated the Minion! Prepare to face the Enforcer!",
+              title: "👾 Wave 1 Minion Slain!",
+              description: "You defeated the Minion! Complete the wave to face the Mini-Boss!",
             });
-          } else if (learningStage === 2) {
-            setLearningStage(3);
-            setEnemyHealth(100);
-            setIsAnimating("enemy");
-            setBossAnimState('idle');
-            setPlayerAnimState('idle');
-            addFloatingText('enemy', '👹 ENFORCER DEFEATED! 👑 ELITE BOSS APPEARS!', 'text-red-400 font-black');
+          } else if (currentWaveStage === 2) {
+            addFloatingText('enemy', '👹 MINI-BOSS DEFEATED!', 'text-red-400 font-black');
             toast({
-              title: "👹 Wave 2 Cleared!",
-              description: "The Enforcer has fallen! The Elite Boss enters the arena!",
+              title: "👹 Wave 2 Mini-Boss Slain!",
+              description: "The Mini-Boss has fallen! The Final Boss awaits!",
             });
           } else {
-            setEnemyHealth(100);
-            setIsAnimating("enemy");
-            addFloatingText('enemy', '👑 ELITE BOSS DEFEATED!', 'text-yellow-300 font-black');
+            addFloatingText('enemy', '👑 BOSS DEFEATED!', 'text-yellow-300 font-black');
           }
         } else {
           setEnemyHealth(nextHp);
@@ -2465,454 +2683,265 @@ export default function LearningQuest() {
         const activeNodes = getSubjectNodes(selectedSubject);
         const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
         const subjectMeta = getSubjectMeta(selectedSubject);
-        const isSpikesAttack = !isSickleCellMinion && !!(currentActiveNode?.undergroundSpikesUrl || subjectMeta?.undergroundSpikesUrl);
+        const isSpikesAttack = !isSickleCellMinion && Boolean(
+          currentActiveNode?.undergroundSpikesUrl ||
+          subjectMeta?.undergroundSpikesUrl ||
+          currentEnemyName?.toLowerCase().includes('reaper') ||
+          (selectedSubject === 'Hematology' && (currentActiveNode?.id === 'hem-3' || (quizMode === 'learning' && currentWaveStage === 3)))
+        );
         const isGramPositiveBoss = quizMode === 'boss-battle'
           ? (battleStage === 3 && currentActiveNode?.id === 'mb-1')
-          : false;
+          : (quizMode === 'learning' && currentWaveStage === 3 && (currentActiveNode?.id === 'mb-1' || currentEnemyName?.toLowerCase().includes('gram positive')));
         const isStaphSentinel = quizMode === 'boss-battle'
           ? (battleStage === 2 && currentActiveNode?.id === 'mb-1')
-          : false;
+          : (quizMode === 'learning' && currentWaveStage === 2 && (currentActiveNode?.id === 'mb-1' || currentEnemyName?.toLowerCase().includes('staph')));
         const isBiohazardBoss = quizMode === 'boss-battle'
           ? (currentActiveNode?.id === 'mb-3' || currentActiveNode?.nodeNumber === 3 || currentActiveNode?.bossName?.toLowerCase().includes('biohazard'))
-          : (selectedSubject === 'Microbiology');
+          : (quizMode === 'learning'
+            ? (currentWaveStage === 3 && (currentActiveNode?.id === 'mb-3' || currentActiveNode?.nodeNumber === 3 || currentEnemyName?.toLowerCase().includes('biohazard')))
+            : (selectedSubject === 'Microbiology'));
         const isCrystalGolemBoss = quizMode === 'boss-battle'
           ? (currentActiveNode?.id === 'cm-3' || (currentActiveNode?.nodeNumber === 3 && (selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit'))) || currentActiveNode?.bossName?.toLowerCase().includes('crystal golem'))
-          : (selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit'));
+          : (quizMode === 'learning'
+            ? (currentWaveStage === 3 && (currentActiveNode?.id === 'cm-3' || currentActiveNode?.nodeNumber === 3 || currentEnemyName?.toLowerCase().includes('crystal golem') || selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit')))
+            : (selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit')));
         const isLegalBeholderBoss = quizMode === 'boss-battle'
           ? (currentActiveNode?.id === 'hp-3' || currentActiveNode?.nodeNumber === 3 || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder'))
-          : (selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law'));
+          : (quizMode === 'learning'
+            ? (currentWaveStage === 3 && (currentActiveNode?.id === 'hp-3' || currentActiveNode?.nodeNumber === 3 || currentEnemyName?.toLowerCase().includes('legal beholder') || selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')))
+            : (selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')));
         const isHydraBoss = Boolean(
-          (selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) &&
-          (currentActiveNode?.id === 'is-3' || currentActiveNode?.nodeNumber === 3 || currentActiveNode?.bossName?.toLowerCase().includes('hydra')) &&
-          (quizMode === 'boss-battle'
-            ? (battleStage === 3 || isChapter3FinalBoss)
-            : quizMode === 'learning'
-              ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || isChapter3FinalBoss)
-              : isChapter3FinalBoss)
+          currentEnemyName?.toLowerCase().includes('hydra') ||
+          (
+            (selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) &&
+            (currentActiveNode?.id === 'is-3' || currentActiveNode?.nodeNumber === 3 || currentActiveNode?.bossName?.toLowerCase().includes('hydra') || (quizMode === 'learning' && currentWaveStage === 3)) &&
+            (quizMode === 'boss-battle'
+              ? (battleStage === 3 || isChapter3FinalBoss)
+              : quizMode === 'learning'
+                ? (currentWaveStage === 3 || isChapter3FinalBoss)
+                : isChapter3FinalBoss)
+          )
         );
 
-        if (quizMode === 'learning') {
-          // In Learning Mode (no action cards), randomize 50/50 between Normal Attack and Heavy Attack on wrong answer!
-          const attackType = plannedAttackType;
-          setBossAnimState(attackType);
-          const isSpikes = attackType === 'normal_attack' && isSpikesAttack;
-          const isGramPositiveHeavy = isGramPositiveBoss && attackType === 'heavy_attack';
-          const isStaphSentinelHeavy = isStaphSentinel && attackType === 'heavy_attack';
-          const isBiohazardHeavy = isBiohazardBoss && attackType === 'heavy_attack';
-          const isBiohazardNormal = isBiohazardBoss && attackType === 'normal_attack';
-          const isLegalBeholderNormal = isLegalBeholderBoss && attackType === 'normal_attack';
-          const isLegalBeholderHeavy = isLegalBeholderBoss && attackType === 'heavy_attack';
-          const isCrystalGolemHeavy = isCrystalGolemBoss && attackType === 'heavy_attack';
-          const isCrystalGolemNormal = isCrystalGolemBoss && attackType === 'normal_attack';
-          const isMicrobeSwarmHeavy = isMicrobeSwarm && attackType === 'heavy_attack';
-          const isMicrobeSwarmNormal = isMicrobeSwarm && attackType === 'normal_attack';
-          const isSickleCellReaperHeavy = isSickleCellReaper && attackType === 'heavy_attack';
-          const isSickleCellMinionHeavy = isSickleCellMinion && attackType === 'heavy_attack';
-          const isSickleCellMinionNormal = isSickleCellMinion && attackType === 'normal_attack';
-          const isAcidSlimeHeavy = isAcidSlime && attackType === 'heavy_attack';
-          const isAcidSlimeNormal = isAcidSlime && attackType === 'normal_attack';
-          const isGmsFungalSporeHeavy = isGmsFungalSpore && attackType === 'heavy_attack';
-          const isGmsFungalSporeNormal = isGmsFungalSpore && attackType === 'normal_attack';
-          const isReagentStripSlimeHeavy = isReagentStripSlime && attackType === 'heavy_attack';
-          const isReagentStripSlimeNormal = isReagentStripSlime && attackType === 'normal_attack';
-          const isLymphocyteSwarmHeavy = isLymphocyteSwarm && attackType === 'heavy_attack';
-          const isLymphocyteSwarmNormal = isLymphocyteSwarm && attackType === 'normal_attack';
-          const isHydraHeavy = isHydraBoss && attackType === 'heavy_attack';
-          const isHydraNormal = isHydraBoss && attackType === 'normal_attack';
-          const isHyperglycemicMutantHeavy = isHyperglycemicMutant && attackType === 'heavy_attack';
-          const isHyperglycemicMutantNormal = isHyperglycemicMutant && attackType === 'normal_attack';
-          const isKetoacidosisColossusHeavy = isKetoacidosisColossus && attackType === 'heavy_attack';
-          const isKetoacidosisColossusNormal = isKetoacidosisColossus && attackType === 'normal_attack';
-          const isAntigen = !isLymphocyteSwarm && Boolean(
-            getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 2 && (
-              currentActiveNode?.miniBossName?.toLowerCase().includes('antigen') ||
-              currentActiveNode?.miniBossIdleSpriteUrl?.includes('immunohema_chapterOneMiniBoss') ||
-              ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && currentActiveNode?.id === 'is-1')
-            )
-          );
-          const isAntigenTitanHeavy = isAntigen && attackType === 'heavy_attack';
-          const isAntigenTitanNormal = isAntigen && attackType === 'normal_attack';
-          const isAnemia = !isSickleCellMinion && Boolean(
-            getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 2 && (
-              currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') ||
-              currentActiveNode?.miniBossIdleSpriteUrl?.includes('hematology_chapterOneMiniBoss') ||
-              (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1')
-            )
-          );
-          const isAnemiaShadeHeavy = isAnemia && attackType === 'heavy_attack';
-          const isAnemiaShadeNormal = isAnemia && attackType === 'normal_attack';
-          const resetDelay = isSpikes
-            ? 1050
-            : isAnemiaShadeHeavy
-              ? 1550
-              : isAnemiaShadeNormal
-                ? 1250
-                : isKetoacidosisColossusHeavy
-                  ? 900
-                  : isKetoacidosisColossusNormal
-                    ? 750
-                    : isAntigenTitanHeavy
-                      ? 900
-                      : isAntigenTitanNormal
-                        ? 750
-                    : isHyperglycemicMutantHeavy
-                  ? 950
-                  : isHyperglycemicMutantNormal
-                    ? 800
-                    : isLegalBeholderHeavy
-                      ? 1150
-                      : isHydraNormal
-                        ? 1860
-                        : isHydraHeavy
-                          ? 1120
-                          : isLymphocyteSwarmHeavy
-                            ? 960
-                            : isLymphocyteSwarmNormal
-                              ? 900
-                              : isGramPositiveHeavy
-                                ? 1650
-                                : isStaphSentinelHeavy
-                                  ? 1420
-                                  : isBiohazardHeavy
-                                    ? 1180
-                                    : isBiohazardNormal
-                                      ? 860
-                                      : isCrystalGolemHeavy
-                                        ? 980
-                                        : isCrystalGolemNormal
-                                          ? 880
-                                          : isMicrobeSwarmHeavy
-                                            ? 1020
-                                            : isMicrobeSwarmNormal
-                                              ? 820
-                                              : isSickleCellReaperHeavy
-                                                ? 950
-                                                : isSickleCellMinionHeavy
-                                                  ? 950
-                                                  : isSickleCellMinionNormal
-                                                    ? 800
-                                                    : isHyperglycemicMutantHeavy
-                                                      ? 980
-                                                      : isHyperglycemicMutantNormal
-                                                        ? 830
-                                                        : isKetoacidosisColossusHeavy
-                                                          ? 880
-                                                          : isKetoacidosisColossusNormal
-                                                            ? 720
-                                                    : isAcidSlimeHeavy
-                                                      ? 880
-                                                      : isAcidSlimeNormal
-                                                        ? 620
-                                                        : isGmsFungalSporeHeavy
-                                                          ? 920
-                                                          : isGmsFungalSporeNormal
-                                                            ? 780
-                                                            : isReagentStripSlimeHeavy
-                                                              ? 1100
-                                                              : isReagentStripSlimeNormal
-                                                                ? 880
-                                                                : isLegalBeholderNormal
-                                                                  ? 1050
-                                                                  : (isGramPositiveBoss ? 1080 : 950);
-          const impactDelay = isSpikes
-            ? 650
-            : isAnemiaShadeHeavy
-              ? 750
-              : isAnemiaShadeNormal
-                ? 700
-                : isKetoacidosisColossusHeavy
-                  ? 480
-                  : isKetoacidosisColossusNormal
-                    ? 280
-                    : isAntigenTitanHeavy
-                      ? 480
-                      : isAntigenTitanNormal
-                        ? 280
-                    : isHyperglycemicMutantHeavy
-                  ? 430
-                  : isHyperglycemicMutantNormal
-                    ? 360
-                    : isLegalBeholderHeavy
-                      ? 700
-                      : isLegalBeholderNormal
-                        ? 650
-                        : isHydraNormal
-                          ? 820
-                          : isHydraHeavy
-                            ? 420
-                            : isLymphocyteSwarmHeavy
-                              ? 420
-                              : isLymphocyteSwarmNormal
-                                ? 320
-                                : isBiohazardHeavy
-                                  ? 340
-                                  : isBiohazardNormal
-                                    ? 260
-                                    : isCrystalGolemHeavy
-                                      ? 320
-                                      : isCrystalGolemNormal
-                                        ? 280
-                                        : isMicrobeSwarmHeavy
-                                          ? 350
-                                          : isMicrobeSwarmNormal
-                                            ? 270
-                                            : isSickleCellReaperHeavy
-                                              ? 340
-                                              : isSickleCellMinionHeavy
-                                                ? 380
-                                                : isSickleCellMinionNormal
-                                                  ? 270
+        const attackType = plannedAttackType;
+        setBossAnimState(attackType);
+        const isSpikes = attackType === 'normal_attack' && isSpikesAttack;
+        const isGramPositiveHeavy = isGramPositiveBoss && attackType === 'heavy_attack';
+        const isGramPositiveNormal = isGramPositiveBoss && attackType === 'normal_attack';
+        const isStaphSentinelHeavy = isStaphSentinel && attackType === 'heavy_attack';
+        const isStaphSentinelNormal = isStaphSentinel && attackType === 'normal_attack';
+        const isBiohazardHeavy = isBiohazardBoss && attackType === 'heavy_attack';
+        const isBiohazardNormal = isBiohazardBoss && attackType === 'normal_attack';
+        const isLegalBeholderNormal = isLegalBeholderBoss && attackType === 'normal_attack';
+        const isLegalBeholderHeavy = isLegalBeholderBoss && attackType === 'heavy_attack';
+        const isCrystalGolemHeavy = isCrystalGolemBoss && attackType === 'heavy_attack';
+        const isCrystalGolemNormal = isCrystalGolemBoss && attackType === 'normal_attack';
+        const isMicrobeSwarmHeavy = isMicrobeSwarm && attackType === 'heavy_attack';
+        const isMicrobeSwarmNormal = isMicrobeSwarm && attackType === 'normal_attack';
+        const isSickleCellReaperHeavy = isSickleCellReaper && attackType === 'heavy_attack';
+        const isSickleCellMinionHeavy = isSickleCellMinion && attackType === 'heavy_attack';
+        const isSickleCellMinionNormal = isSickleCellMinion && attackType === 'normal_attack';
+        const isAcidSlimeHeavy = isAcidSlime && attackType === 'heavy_attack';
+        const isAcidSlimeNormal = isAcidSlime && attackType === 'normal_attack';
+        const isGmsFungalSporeHeavy = isGmsFungalSpore && attackType === 'heavy_attack';
+        const isGmsFungalSporeNormal = isGmsFungalSpore && attackType === 'normal_attack';
+        const isReagentStripSlimeHeavy = isReagentStripSlime && attackType === 'heavy_attack';
+        const isReagentStripSlimeNormal = isReagentStripSlime && attackType === 'normal_attack';
+        const isLymphocyteSwarmHeavy = isLymphocyteSwarm && attackType === 'heavy_attack';
+        const isLymphocyteSwarmNormal = isLymphocyteSwarm && attackType === 'normal_attack';
+        const isHydraHeavy = isHydraBoss && attackType === 'heavy_attack';
+        const isHydraNormal = isHydraBoss && attackType === 'normal_attack';
+        const isHyperglycemicMutantHeavy = isHyperglycemicMutant && attackType === 'heavy_attack';
+        const isHyperglycemicMutantNormal = isHyperglycemicMutant && attackType === 'normal_attack';
+        const isKetoacidosisColossusHeavy = isKetoacidosisColossus && attackType === 'heavy_attack';
+        const isKetoacidosisColossusNormal = isKetoacidosisColossus && attackType === 'normal_attack';
+        const isAntigen = !isLymphocyteSwarm && Boolean(
+          (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false) && (
+            currentEnemyName?.toLowerCase().includes('antigen') ||
+            currentActiveNode?.miniBossName?.toLowerCase().includes('antigen') ||
+            currentActiveNode?.miniBossIdleSpriteUrl?.includes('immunohema_chapterOneMiniBoss') ||
+            ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && currentActiveNode?.id === 'is-1')
+          )
+        );
+        const isAntigenTitanHeavy = isAntigen && attackType === 'heavy_attack';
+        const isAntigenTitanNormal = isAntigen && attackType === 'normal_attack';
+        const isAnemia = !isSickleCellMinion && Boolean(
+          (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false) && (
+            currentEnemyName?.toLowerCase().includes('anemia') ||
+            currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') ||
+            currentActiveNode?.miniBossIdleSpriteUrl?.includes('hematology_chapterOneMiniBoss') ||
+            (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1')
+          )
+        );
+        const isAnemiaShadeHeavy = isAnemia && attackType === 'heavy_attack';
+        const isAnemiaShadeNormal = isAnemia && attackType === 'normal_attack';
+
+        const resetDelay = isSpikes
+          ? 1050
+          : isAnemiaShadeHeavy
+            ? 1550
+            : isAnemiaShadeNormal
+              ? 1250
+              : isHydraNormal
+                ? 1860
+                : isHydraHeavy
+                  ? 1120
+                  : isGramPositiveHeavy
+                    ? 1650
+                    : isGramPositiveNormal
+                      ? 1100
+                      : isStaphSentinelHeavy
+                        ? 1420
+                        : isStaphSentinelNormal
+                          ? 950
+                          : isBiohazardHeavy
+                            ? 1200
+                            : isBiohazardNormal
+                              ? 860
+                              : isLegalBeholderHeavy
+                                ? 1150
+                                : isLegalBeholderNormal
+                                  ? 1050
+                                  : isHyperglycemicMutantHeavy
+                                    ? 950
+                                    : isHyperglycemicMutantNormal
+                                      ? 800
+                                      : isKetoacidosisColossusHeavy
+                                        ? 900
+                                        : isKetoacidosisColossusNormal
+                                          ? 750
+                                          : isAntigenTitanHeavy
+                                            ? 900
+                                            : isAntigenTitanNormal
+                                              ? 750
+                                              : isCrystalGolemHeavy
+                                                ? 1000
+                                                : isCrystalGolemNormal
+                                                  ? 880
                                                   : isAcidSlimeHeavy
-                                                    ? 340
+                                                    ? 1200
                                                     : isAcidSlimeNormal
-                                                      ? 270
-                                                      : isReagentStripSlimeHeavy
-                                                        ? 330
-                                                        : isReagentStripSlimeNormal
-                                                          ? 320
-                                                          : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (attackType === 'heavy_attack' ? 320 : 300)));
-          setTimeout(applyPlayerDamage, impactDelay);
-          if (isGramPositiveHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 950);
-          } else if (isStaphSentinelHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 840);
-          } else if (isAcidSlimeHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 680);
-          } else if (isReagentStripSlimeHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 660);
-          } else if (isAnemiaShadeHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 750);
-          }
-          setTimeout(() => setBossAnimState('idle'), resetDelay);
-        } else {
-          const attackType = plannedAttackType;
-          setBossAnimState(attackType);
-          const isSpikes = attackType === 'normal_attack' && isSpikesAttack;
-          const isGramPositiveHeavy = isGramPositiveBoss && attackType === 'heavy_attack';
-          const isStaphSentinelHeavy = isStaphSentinel && attackType === 'heavy_attack';
-          const isBiohazardHeavy = isBiohazardBoss && attackType === 'heavy_attack';
-          const isBiohazardNormal = isBiohazardBoss && attackType === 'normal_attack';
-          const isLegalBeholderNormal = isLegalBeholderBoss && attackType === 'normal_attack';
-          const isLegalBeholderHeavy = isLegalBeholderBoss && attackType === 'heavy_attack';
-          const isCrystalGolemHeavy = isCrystalGolemBoss && attackType === 'heavy_attack';
-          const isCrystalGolemNormal = isCrystalGolemBoss && attackType === 'normal_attack';
-          const isMicrobeSwarmHeavy = isMicrobeSwarm && attackType === 'heavy_attack';
-          const isMicrobeSwarmNormal = isMicrobeSwarm && attackType === 'normal_attack';
-          const isSickleCellReaperHeavy = isSickleCellReaper && attackType === 'heavy_attack';
-          const isSickleCellMinionHeavy = isSickleCellMinion && attackType === 'heavy_attack';
-          const isSickleCellMinionNormal = isSickleCellMinion && attackType === 'normal_attack';
-          const isAcidSlimeHeavy = isAcidSlime && attackType === 'heavy_attack';
-          const isAcidSlimeNormal = isAcidSlime && attackType === 'normal_attack';
-          const isGmsFungalSporeHeavy = isGmsFungalSpore && attackType === 'heavy_attack';
-          const isGmsFungalSporeNormal = isGmsFungalSpore && attackType === 'normal_attack';
-          const isReagentStripSlimeHeavy = isReagentStripSlime && attackType === 'heavy_attack';
-          const isReagentStripSlimeNormal = isReagentStripSlime && attackType === 'normal_attack';
-          const isLymphocyteSwarmHeavy = isLymphocyteSwarm && attackType === 'heavy_attack';
-          const isLymphocyteSwarmNormal = isLymphocyteSwarm && attackType === 'normal_attack';
-          const isHydraHeavy = isHydraBoss && attackType === 'heavy_attack';
-          const isHydraNormal = isHydraBoss && attackType === 'normal_attack';
-          const isHyperglycemicMutantHeavy = isHyperglycemicMutant && attackType === 'heavy_attack';
-          const isHyperglycemicMutantNormal = isHyperglycemicMutant && attackType === 'normal_attack';
-          const isKetoacidosisColossusHeavy = isKetoacidosisColossus && attackType === 'heavy_attack';
-          const isKetoacidosisColossusNormal = isKetoacidosisColossus && attackType === 'normal_attack';
-          const isAntigen = !isLymphocyteSwarm && Boolean(
-            quizMode === 'boss-battle' && battleStage === 2 && (
-              currentActiveNode?.miniBossName?.toLowerCase().includes('antigen') ||
-              currentActiveNode?.miniBossIdleSpriteUrl?.includes('immunohema_chapterOneMiniBoss') ||
-              ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && currentActiveNode?.id === 'is-1')
-            )
-          );
-          const isAntigenTitanHeavy = isAntigen && attackType === 'heavy_attack';
-          const isAntigenTitanNormal = isAntigen && attackType === 'normal_attack';
-          const isAnemia = !isSickleCellMinion && Boolean(
-            quizMode === 'boss-battle' && battleStage === 2 && (
-              currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') ||
-              currentActiveNode?.miniBossIdleSpriteUrl?.includes('hematology_chapterOneMiniBoss') ||
-              (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1')
-            )
-          );
-          const isAnemiaShadeHeavy = isAnemia && attackType === 'heavy_attack';
-          const isAnemiaShadeNormal = isAnemia && attackType === 'normal_attack';
-          const resetDelay = isSpikes
-            ? 1050
-            : isAnemiaShadeHeavy
-              ? 1550
-              : isAnemiaShadeNormal
-                ? 1250
-                : isKetoacidosisColossusHeavy
-                  ? 900
-                  : isKetoacidosisColossusNormal
-                    ? 750
-                    : isAntigenTitanHeavy
-                      ? 900
-                      : isAntigenTitanNormal
-                        ? 750
-                    : isHyperglycemicMutantHeavy
-                  ? 950
-                  : isHyperglycemicMutantNormal
-                    ? 800
-                    : isLegalBeholderHeavy
-                      ? 1150
-                      : isHydraNormal
-                        ? 1860
-                        : isHydraHeavy
-                          ? 1120
-                          : isLymphocyteSwarmHeavy
-                            ? 960
-                            : isLymphocyteSwarmNormal
-                              ? 900
-                              : isGramPositiveHeavy
-                                ? 1650
-                                : isStaphSentinelHeavy
-                                  ? 1420
-                                  : isBiohazardHeavy
-                                    ? 1180
-                                    : isBiohazardNormal
-                                      ? 860
-                                      : isCrystalGolemHeavy
-                                        ? 980
-                                        : isCrystalGolemNormal
-                                          ? 880
-                                          : isMicrobeSwarmHeavy
-                                            ? 1020
-                                            : isMicrobeSwarmNormal
-                                              ? 820
-                                              : isSickleCellReaperHeavy
-                                                ? 950
-                                                : isSickleCellMinionHeavy
-                                                  ? 950
-                                                  : isSickleCellMinionNormal
-                                                    ? 800
-                                                    : isAcidSlimeHeavy
-                                                      ? 880
-                                                      : isAcidSlimeNormal
-                                                        ? 620
-                                                        : isGmsFungalSporeHeavy
-                                                          ? 920
-                                                          : isGmsFungalSporeNormal
-                                                            ? 780
-                                                            : isReagentStripSlimeHeavy
-                                                              ? 1100
-                                                              : isReagentStripSlimeNormal
-                                                                ? 880
-                                                                : isLegalBeholderNormal
-                                                                  ? 1050
-                                                                  : (isGramPositiveBoss ? 1080 : 950);
-          const impactDelay = isSpikes
-            ? 650
-            : isAnemiaShadeHeavy
-              ? 750
-              : isAnemiaShadeNormal
-                ? 700
-                : isKetoacidosisColossusHeavy
-                  ? 480
-                  : isKetoacidosisColossusNormal
-                    ? 280
-                    : isAntigenTitanHeavy
-                      ? 480
-                      : isAntigenTitanNormal
-                        ? 280
-                    : isHyperglycemicMutantHeavy
-                  ? 430
-                  : isHyperglycemicMutantNormal
-                    ? 360
-                    : isLegalBeholderHeavy
-                      ? 700
-                      : isLegalBeholderNormal
-                        ? 650
-                        : isHydraNormal
-                          ? 820
-                          : isHydraHeavy
-                            ? 420
-                            : isLymphocyteSwarmHeavy
-                              ? 420
-                              : isLymphocyteSwarmNormal
-                                ? 320
-                                : isBiohazardHeavy
-                                  ? 340
-                                  : isBiohazardNormal
-                                    ? 260
-                                    : isCrystalGolemHeavy
+                                                      ? 950
+                                                      : isMicrobeSwarmHeavy
+                                                        ? 1120
+                                                        : isMicrobeSwarmNormal
+                                                          ? 1020
+                                                          : isSickleCellMinionHeavy
+                                                            ? 1050
+                                                            : isSickleCellMinionNormal
+                                                              ? 900
+                                                              : isSickleCellReaperHeavy
+                                                                ? 1080
+                                                                : isLymphocyteSwarmHeavy
+                                                                  ? 960
+                                                                  : isLymphocyteSwarmNormal
+                                                                    ? 920
+                                                                    : isGmsFungalSporeHeavy
+                                                                      ? 1020
+                                                                      : isGmsFungalSporeNormal
+                                                                        ? 880
+                                                                        : isReagentStripSlimeHeavy
+                                                                          ? 1150
+                                                                          : isReagentStripSlimeNormal
+                                                                            ? 900
+                                                                            : (isGramPositiveBoss ? 1100 : 950);
+
+        const impactDelay = isSpikes
+          ? 650
+          : isAnemiaShadeHeavy
+            ? 750
+            : isAnemiaShadeNormal
+              ? 700
+              : isHydraNormal
+                ? 820
+                : isHydraHeavy
+                  ? 420
+                  : isLegalBeholderHeavy
+                    ? 700
+                    : isLegalBeholderNormal
+                      ? 650
+                      : isKetoacidosisColossusHeavy
+                        ? 480
+                        : isKetoacidosisColossusNormal
+                          ? 280
+                          : isAntigenTitanHeavy
+                            ? 480
+                            : isAntigenTitanNormal
+                              ? 280
+                              : isHyperglycemicMutantHeavy
+                                ? 430
+                                : isHyperglycemicMutantNormal
+                                  ? 360
+                                  : isLymphocyteSwarmHeavy
+                                    ? 420
+                                    : isLymphocyteSwarmNormal
                                       ? 320
-                                      : isCrystalGolemNormal
-                                        ? 280
-                                        : isMicrobeSwarmHeavy
-                                          ? 350
-                                          : isMicrobeSwarmNormal
-                                            ? 270
-                                            : isSickleCellReaperHeavy
-                                              ? 340
-                                              : isSickleCellMinionHeavy
-                                                ? 380
-                                                : isSickleCellMinionNormal
+                                      : isBiohazardHeavy
+                                        ? 340
+                                        : isBiohazardNormal
+                                          ? 260
+                                          : isCrystalGolemHeavy
+                                            ? 320
+                                            : isCrystalGolemNormal
+                                              ? 280
+                                              : isMicrobeSwarmHeavy
+                                                ? 350
+                                                : isMicrobeSwarmNormal
                                                   ? 270
-                                                  : isAcidSlimeHeavy
+                                                  : isSickleCellReaperHeavy
                                                     ? 340
-                                                    : isAcidSlimeNormal
-                                                      ? 270
-                                                      : isGmsFungalSporeHeavy
-                                                        ? 360
-                                                        : isGmsFungalSporeNormal
-                                                          ? 280
-                                                          : isReagentStripSlimeHeavy
-                                                            ? 330
-                                                            : isReagentStripSlimeNormal
-                                                              ? 320
-                                                              : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (action === 'heavy' ? 320 : 300)));
-          setTimeout(applyPlayerDamage, impactDelay);
-          if (isGramPositiveHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 950);
-          } else if (isStaphSentinelHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 840);
-          } else if (isAcidSlimeHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 680);
-          } else if (isReagentStripSlimeHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 660);
-          } else if (isAnemiaShadeHeavy) {
-            setTimeout(() => {
-              setIsAnimating("player");
-              setHitEffectTarget('player');
-              setHitEffectKey(k => k + 1);
-            }, 750);
-          }
-          setTimeout(() => setBossAnimState('idle'), resetDelay);
+                                                    : isSickleCellMinionHeavy
+                                                      ? 380
+                                                      : isSickleCellMinionNormal
+                                                        ? 270
+                                                        : isAcidSlimeHeavy
+                                                          ? 340
+                                                          : isAcidSlimeNormal
+                                                            ? 270
+                                                            : isGmsFungalSporeHeavy
+                                                              ? 360
+                                                              : isGmsFungalSporeNormal
+                                                                ? 280
+                                                                : isReagentStripSlimeHeavy
+                                                                  ? 330
+                                                                  : isReagentStripSlimeNormal
+                                                                    ? 320
+                                                                    : (isGramPositiveBoss ? 350 : (isStaphSentinel ? 340 : (attackType === 'heavy_attack' ? 320 : 300)));
+
+        setTimeout(applyPlayerDamage, impactDelay);
+        if (isGramPositiveHeavy) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 950);
+        } else if (isStaphSentinelHeavy) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 840);
+        } else if (isAcidSlimeHeavy) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 680);
+        } else if (isReagentStripSlimeHeavy) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 660);
+        } else if (isAnemiaShadeHeavy) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 750);
         }
+        bossAttackResetDelay = resetDelay;
+        setTimeout(() => setBossAnimState('idle'), resetDelay);
       } else {
         setBossAnimState('idle');
         applyPlayerDamage();
@@ -2945,7 +2974,7 @@ export default function LearningQuest() {
       const isOverallPassing = (currentTotalCorrect / questions.length) >= 0.75;
 
       // Allow the final question's attack animation (player lunge or enemy counter) to complete first!
-      const attackDuration = isCorrect ? 1250 : 1350;
+      const attackDuration = isCorrect ? 1250 : Math.max(1350, bossAttackResetDelay + 200);
 
       setTimeout(() => {
         setPlayerAnimState('idle');
@@ -3273,7 +3302,7 @@ export default function LearningQuest() {
               <div className="flex justify-center items-center gap-4 sm:gap-8 md:gap-12 py-3 sm:py-4">
                 <div className="text-center">
                   <div className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-primary">{score}/{questions.length}</div>
-                  <div className="text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Accuracy</div>
+                  <div className="text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score</div>
                 </div>
                 <div className="h-8 sm:h-10 md:h-12 w-px bg-border" />
                 <div className="text-center">
@@ -3868,6 +3897,108 @@ export default function LearningQuest() {
               hitFlash ? "opacity-30" : "opacity-0"
             )} />
 
+            {/* Gamified RPG Wave Transition Overlay (Matches Floating Verdict Styling) */}
+            {waveTransition && (
+              <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/65 backdrop-blur-md animate-in fade-in duration-400 pointer-events-none p-4 select-none">
+                {/* Ambient Radial Color Glow */}
+                <div className={cn(
+                  "absolute w-72 sm:w-96 h-40 sm:h-48 rounded-full blur-3xl pointer-events-none -translate-y-2 opacity-60 transition-all duration-700",
+                  waveTransition.stage === 'outcome'
+                    ? (waveTransition.wasDefeated ? "bg-emerald-500/50" : "bg-amber-500/50")
+                    : (waveTransition.toWave === 3 ? "bg-red-500/60" : "bg-amber-500/60")
+                )} />
+
+                {/* Animated Phase Content Container */}
+                <div key={waveTransition.stage} className="flex flex-col items-center justify-center text-center z-10 animate-in fade-in zoom-in-95 duration-500">
+                  {waveTransition.stage === 'outcome' ? (
+                    <>
+                      {/* Stage 1: Previous Wave Outcome Tag */}
+                      <div className="flex items-center gap-2 mb-1 animate-in slide-in-from-top-3 duration-400">
+                        {waveTransition.wasDefeated ? (
+                          <>
+                            <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
+                            <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-emerald-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                              WAVE {waveTransition.fromWave} CLEARED • {waveTransition.fromWave === 1 ? "MINION ELIMINATED" : "MINI-BOSS SLAIN"}
+                            </span>
+                            <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-emerald-400 animate-pulse" />
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-amber-400 animate-pulse" />
+                            <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                              WAVE {waveTransition.fromWave} TIMEOUT • ENEMY RETREATED
+                            </span>
+                            <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-amber-400 animate-pulse" />
+                          </>
+                        )}
+                      </div>
+
+                      {/* Stage 1: Giant RPG Outcome Title */}
+                      <h2 className={cn(
+                        "font-bytebounce text-6xl sm:text-8xl md:text-9xl font-black uppercase tracking-wider leading-none animate-in zoom-in-75 duration-500 my-0.5",
+                        waveTransition.wasDefeated
+                          ? "text-emerald-300 drop-shadow-[0_0_35px_rgba(16,185,129,0.95)]"
+                          : "text-amber-400 drop-shadow-[0_0_35px_rgba(245,158,11,0.95)]"
+                      )}>
+                        {waveTransition.wasDefeated ? `WAVE ${waveTransition.fromWave} CLEARED` : `WAVE ${waveTransition.fromWave} TIMEOUT`}
+                      </h2>
+
+                      {/* Stage 1: Floating Subtitle Description */}
+                      <p className="text-[10px] sm:text-xs md:text-sm font-medium text-white/90 font-mono tracking-tight max-w-md text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] mt-1">
+                        {waveTransition.wasDefeated
+                          ? (waveTransition.fromWave === 1
+                              ? "Minion eliminated! Prepare for higher threat escalation."
+                              : "Mini-Boss vanquished! Brace for the final chapter confrontation.")
+                          : (waveTransition.fromWave === 1
+                              ? "Wave questions completed. The minion retreated as a stronger foe emerges!"
+                              : "Wave questions completed. The mini-boss retreated as the final terror approaches!")}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      {/* Stage 2: Next Wave Threat Tag */}
+                      <div className="flex items-center gap-2 mb-1 animate-in slide-in-from-top-3 duration-400">
+                        {waveTransition.toWave === 3 ? (
+                          <>
+                            <Skull className="w-4 h-4 md:w-5 md:h-5 text-red-400 animate-bounce" />
+                            <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-red-400 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                              CRITICAL THREAT • CHAPTER FINAL BOSS
+                            </span>
+                            <Skull className="w-4 h-4 md:w-5 md:h-5 text-red-400 animate-bounce" />
+                          </>
+                        ) : (
+                          <>
+                            <Swords className="w-4 h-4 md:w-5 md:h-5 text-amber-400 animate-pulse" />
+                            <span className="text-[11px] sm:text-sm md:text-base font-bytebounce uppercase tracking-widest font-black text-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                              THREAT LEVEL ESCALATION • INCOMING MINI-BOSS
+                            </span>
+                            <Swords className="w-4 h-4 md:w-5 md:h-5 text-amber-400 animate-pulse" />
+                          </>
+                        )}
+                      </div>
+
+                      {/* Stage 2: Giant RPG Threat Title */}
+                      <h2 className={cn(
+                        "font-bytebounce text-6xl sm:text-8xl md:text-9xl font-black uppercase tracking-wider leading-none animate-in zoom-in-75 duration-500 my-0.5",
+                        waveTransition.toWave === 3
+                          ? "text-red-500 drop-shadow-[0_0_35px_rgba(239,68,68,0.95)]"
+                          : "text-amber-300 drop-shadow-[0_0_35px_rgba(245,158,11,0.95)]"
+                      )}>
+                        {waveTransition.toWave === 3 ? "FINAL BOSS AWAKENS" : "MINI-BOSS APPROACHES"}
+                      </h2>
+
+                      {/* Stage 2: Floating Target Announcement Subtitle */}
+                      <p className="text-[10px] sm:text-xs md:text-sm font-medium text-white/90 font-mono tracking-tight max-w-md text-center drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] mt-1">
+                        {waveTransition.toWave === 3
+                          ? `Target: ${waveTransition.incomingEnemyName} (${waveTransition.incomingEnemyBadge}). The ultimate licensure trial begins!`
+                          : `Target: ${waveTransition.incomingEnemyName} (${waveTransition.incomingEnemyBadge}). Brace your defenses!`}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Gamified Battle Simulation Floating Verdict (No Box/Container) */}
             {judgementText && (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/65 backdrop-blur-md animate-in fade-in duration-500 pointer-events-none p-4 select-none">
@@ -4038,7 +4169,7 @@ export default function LearningQuest() {
                 }
                 displayEnemyHp = enemyHealth;
               } else if (quizMode === 'learning') {
-                waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies);
+                waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex);
                 activeEnemyName = waveState.name;
                 activeEnemyBadge = waveState.badge;
                 idleSprite = waveState.idleSprite;
@@ -4054,89 +4185,97 @@ export default function LearningQuest() {
                 displayEnemyHp = enemyHealth;
               }
 
-              const isMinionStageWithSprite = quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl;
-              const isMiniBossStageWithSprite = quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 2 && !!currentActiveNode?.miniBossIdleSpriteUrl;
+              const ch1Node = activeNodes.find(n => n.nodeNumber === 1) || activeNodes[0];
+              const ch3Node = activeNodes.find(n => n.nodeNumber === 3) || activeNodes[activeNodes.length - 1];
+              const wave3BossNode = (currentActiveNode?.nodeNumber === 1 && ch1Node?.idleSpriteUrl) ? ch1Node : ch3Node;
+              const isMinionStageWithSprite = ((quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 1) || (quizMode === 'learning' && waveState?.waveStage === 1)) && !!(idleSprite || currentActiveNode?.minionIdleSpriteUrl || ch1Node?.minionIdleSpriteUrl);
+              const isMiniBossStageWithSprite = ((quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 2) || (quizMode === 'learning' && waveState?.waveStage === 2)) && !!(idleSprite || currentActiveNode?.miniBossIdleSpriteUrl || ch1Node?.miniBossIdleSpriteUrl);
 
               const effectiveIdleFrames = isMinionStageWithSprite
-                ? (currentActiveNode.minionIdleFrames || 8)
+                ? (waveState?.idleFrames || currentActiveNode.minionIdleFrames || ch1Node?.minionIdleFrames || 8)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossIdleFrames || 7)
-                  : (waveState?.idleFrames || currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7);
+                  ? (waveState?.idleFrames || currentActiveNode.miniBossIdleFrames || ch1Node?.miniBossIdleFrames || 7)
+                  : (waveState?.idleFrames || wave3BossNode?.idleFrames || ch3Node?.idleFrames || currentActiveNode?.idleFrames || subjectMeta?.idleFrames || 7);
 
               const effectiveAttackFrames = isMinionStageWithSprite
-                ? (currentActiveNode.minionAttackFrames || 14)
+                ? (waveState?.attackFrames || currentActiveNode.minionAttackFrames || ch1Node?.minionAttackFrames || 14)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossAttackFrames || 9)
-                  : (waveState?.attackFrames || currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17);
+                  ? (waveState?.attackFrames || currentActiveNode.miniBossAttackFrames || ch1Node?.miniBossAttackFrames || 9)
+                  : (waveState?.attackFrames || wave3BossNode?.attackFrames || ch3Node?.attackFrames || currentActiveNode?.attackFrames || subjectMeta?.attackFrames || 17);
 
               const effectiveHeavyAttackFrames = isMinionStageWithSprite
-                ? (currentActiveNode.minionHeavyAttackFrames || 10)
+                ? (waveState?.heavyAttackFrames || currentActiveNode.minionHeavyAttackFrames || ch1Node?.minionHeavyAttackFrames || 10)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossHeavyAttackFrames || 9)
-                  : (waveState?.heavyAttackFrames || currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11);
+                  ? (waveState?.heavyAttackFrames || currentActiveNode.miniBossHeavyAttackFrames || ch1Node?.miniBossHeavyAttackFrames || 9)
+                  : (waveState?.heavyAttackFrames || wave3BossNode?.heavyAttackFrames || ch3Node?.heavyAttackFrames || currentActiveNode?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 11);
 
               const effectiveIdleFrameWidth = isMinionStageWithSprite
-                ? (currentActiveNode.minionIdleFrameWidth || 128)
+                ? (waveState?.idleFrameWidth || currentActiveNode.minionIdleFrameWidth || ch1Node?.minionIdleFrameWidth || 128)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossIdleFrameWidth || 128)
-                  : (waveState?.idleFrameWidth || currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128);
+                  ? (waveState?.idleFrameWidth || currentActiveNode.miniBossIdleFrameWidth || ch1Node?.miniBossIdleFrameWidth || 128)
+                  : (waveState?.idleFrameWidth || wave3BossNode?.idleFrameWidth || ch3Node?.idleFrameWidth || currentActiveNode?.idleFrameWidth || subjectMeta?.idleFrameWidth || 128);
 
               const effectiveAttackFrameWidth = isMinionStageWithSprite
-                ? (currentActiveNode.minionAttackFrameWidth || 257)
+                ? (waveState?.attackFrameWidth || currentActiveNode.minionAttackFrameWidth || ch1Node?.minionAttackFrameWidth || 257)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossAttackFrameWidth || 160)
-                  : (waveState?.attackFrameWidth || currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128);
+                  ? (waveState?.attackFrameWidth || currentActiveNode.miniBossAttackFrameWidth || ch1Node?.miniBossAttackFrameWidth || 160)
+                  : (waveState?.attackFrameWidth || wave3BossNode?.attackFrameWidth || ch3Node?.attackFrameWidth || currentActiveNode?.attackFrameWidth || subjectMeta?.attackFrameWidth || 128);
 
               const effectiveHeavyFrameWidth = isMinionStageWithSprite
-                ? (currentActiveNode.minionHeavyFrameWidth || 257)
+                ? (waveState?.heavyFrameWidth || currentActiveNode.minionHeavyFrameWidth || ch1Node?.minionHeavyFrameWidth || 257)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossHeavyFrameWidth || 160)
-                  : (waveState?.heavyFrameWidth || currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176);
+                  ? (waveState?.heavyFrameWidth || currentActiveNode.miniBossHeavyFrameWidth || ch1Node?.miniBossHeavyFrameWidth || 160)
+                  : (waveState?.heavyFrameWidth || wave3BossNode?.heavyFrameWidth || ch3Node?.heavyFrameWidth || currentActiveNode?.heavyFrameWidth || subjectMeta?.heavyFrameWidth || 176);
 
               const effectiveIdleFrameHeight = isMinionStageWithSprite
-                ? (currentActiveNode.minionIdleFrameHeight || 128)
+                ? (waveState?.idleFrameHeight || currentActiveNode.minionIdleFrameHeight || ch1Node?.minionIdleFrameHeight || 128)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossIdleFrameHeight || 128)
-                  : (waveState?.idleFrameHeight || currentActiveNode?.idleFrameHeight || subjectMeta?.idleFrameHeight || 128);
+                  ? (waveState?.idleFrameHeight || currentActiveNode.miniBossIdleFrameHeight || ch1Node?.miniBossIdleFrameHeight || 128)
+                  : (waveState?.idleFrameHeight || wave3BossNode?.idleFrameHeight || ch3Node?.idleFrameHeight || currentActiveNode?.idleFrameHeight || subjectMeta?.idleFrameHeight || 128);
 
               const effectiveAttackFrameHeight = isMinionStageWithSprite
-                ? (currentActiveNode.minionAttackFrameHeight || 218)
+                ? (waveState?.attackFrameHeight || currentActiveNode.minionAttackFrameHeight || ch1Node?.minionAttackFrameHeight || 218)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossAttackFrameHeight || 157)
-                  : (waveState?.attackFrameHeight || currentActiveNode?.attackFrameHeight || subjectMeta?.attackFrameHeight || 128);
+                  ? (waveState?.attackFrameHeight || currentActiveNode.miniBossAttackFrameHeight || ch1Node?.miniBossAttackFrameHeight || 157)
+                  : (waveState?.attackFrameHeight || wave3BossNode?.attackFrameHeight || ch3Node?.attackFrameHeight || currentActiveNode?.attackFrameHeight || subjectMeta?.attackFrameHeight || 128);
 
               const effectiveHeavyFrameHeight = isMinionStageWithSprite
-                ? (currentActiveNode.minionHeavyFrameHeight || 218)
+                ? (waveState?.heavyFrameHeight || currentActiveNode.minionHeavyFrameHeight || ch1Node?.minionHeavyFrameHeight || 218)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossHeavyFrameHeight || 157)
-                  : (waveState?.heavyFrameHeight || currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128);
+                  ? (waveState?.heavyFrameHeight || currentActiveNode.miniBossHeavyFrameHeight || ch1Node?.miniBossHeavyFrameHeight || 157)
+                  : (waveState?.heavyFrameHeight || wave3BossNode?.heavyFrameHeight || ch3Node?.heavyFrameHeight || currentActiveNode?.heavyFrameHeight || subjectMeta?.heavyFrameHeight || 128);
 
               const effectiveIdleDuration = isMinionStageWithSprite
-                ? (currentActiveNode.minionIdleDuration || 2.8)
+                ? (waveState?.idleDuration || currentActiveNode.minionIdleDuration || ch1Node?.minionIdleDuration || 2.8)
                 : isMiniBossStageWithSprite
-                  ? (currentActiveNode.miniBossIdleDuration || 1.0)
-                  : (waveState?.idleDuration || currentActiveNode?.idleDuration || subjectMeta?.idleDuration || undefined);
+                  ? (waveState?.idleDuration || currentActiveNode.miniBossIdleDuration || ch1Node?.miniBossIdleDuration || 1.0)
+                  : (waveState?.idleDuration || wave3BossNode?.idleDuration || ch3Node?.idleDuration || currentActiveNode?.idleDuration || subjectMeta?.idleDuration || undefined);
 
               const stageMaxHp = quizMode === 'boss-battle'
                 ? calculateEnemyStageHp(battleStage, userLevel, bossDifficulty || 'MEDIUM')
                 : 100;
 
               const isCurrentMutant = Boolean(
-                activeEnemyName?.toLowerCase().includes('mutant') ||
-                activeEnemyName?.toLowerCase().includes('hyperglemic mutant') ||
-                activeEnemyName?.toLowerCase().includes('hyperglycemic mutant') ||
-                currentActiveNode?.miniBossIdleSpriteUrl?.includes('clinchem_chapterOneMiniBoss') ||
-                (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode === 'boss-battle' && battleStage === 2))
+                (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? waveState?.waveStage === 2 : false) && (
+                  activeEnemyName?.toLowerCase().includes('mutant') ||
+                  activeEnemyName?.toLowerCase().includes('hyperglemic mutant') ||
+                  activeEnemyName?.toLowerCase().includes('hyperglycemic mutant') ||
+                  idleSprite?.includes('clinchem_chapterOneMiniBoss') ||
+                  currentActiveNode?.miniBossIdleSpriteUrl?.includes('clinchem_chapterOneMiniBoss') ||
+                  (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1')
+                )
               );
 
               const isCurrentAcidSlime = Boolean(
-                idleSprite?.includes('clinchem_chapterOneMinion') ||
-                attackSprite?.includes('clinchem_chapterOneMinion') ||
-                heavyAttackSprite?.includes('clinchem_chapterOneMinion') ||
-                activeEnemyName?.toLowerCase().includes('acid slime') ||
-                (activeEnemyName?.toLowerCase().includes('slime') && !activeEnemyName?.toLowerCase().includes('reagent')) ||
-                currentActiveNode?.minionIdleSpriteUrl?.includes('clinchem_chapterOneMinion') ||
-                (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode !== 'boss-battle' || battleStage === 1))
+                (quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? waveState?.waveStage === 1 : false) && (
+                  idleSprite?.includes('clinchem_chapterOneMinion') ||
+                  attackSprite?.includes('clinchem_chapterOneMinion') ||
+                  heavyAttackSprite?.includes('clinchem_chapterOneMinion') ||
+                  activeEnemyName?.toLowerCase().includes('acid slime') ||
+                  (activeEnemyName?.toLowerCase().includes('slime') && !activeEnemyName?.toLowerCase().includes('reagent')) ||
+                  currentActiveNode?.minionIdleSpriteUrl?.includes('clinchem_chapterOneMinion') ||
+                  (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1')
+                )
               );
 
               const isCurrentAntigenTitan = Boolean(
@@ -4148,13 +4287,23 @@ export default function LearningQuest() {
                 )
               );
 
-              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan;
+              const isCurrentKetoacidosisColossus = Boolean(
+                (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : false) && (
+                  activeEnemyName?.toLowerCase().includes('ketoacidosis') ||
+                  activeEnemyName?.toLowerCase().includes('colossus') ||
+                  idleSprite?.includes('clinchem_chapterOneBoss') ||
+                  currentActiveNode?.idleSpriteUrl?.includes('clinchem_chapterOneBoss') ||
+                  (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1')
+                )
+              );
+
+              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus;
 
               return (
                 <div className={cn(
                   "absolute top-14 right-4 md:top-16 md:right-8 transition-all duration-1000 ease-out z-10 flex flex-col",
                   isSpecialCenteredBoss ? "bottom-0 items-center pointer-events-none" : "items-end",
-                  (introPhase === 'cutscene' || introPhase === 'hidden') ? 'translate-x-[150%]' : 'translate-x-0',
+                  (introPhase === 'cutscene' || introPhase === 'hidden' || waveCharOffscreen) ? 'translate-x-[150%]' : 'translate-x-0',
                   isAnimating === "enemy" && "animate-shake scale-110"
                 )}>
                   <div className={cn(
@@ -4170,6 +4319,9 @@ export default function LearningQuest() {
                         ) : quizMode === 'boss-battle' && enemyHealth <= 60 && enemyHealth > 0 ? (
                           <span className="text-[7px] md:text-[8px] bg-orange-500 text-white px-1.5 py-0.5 rounded font-black shrink-0" title="Double damage on player mistakes!">AGGRESSIVE</span>
                         ) : null}
+                        {displayEnemyHp <= 0 && (
+                          <span className="text-[7px] md:text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse">DEFEATED ☠️</span>
+                        )}
                         <span className="text-[7px] md:text-[8px] bg-primary text-white px-1.5 py-0.5 rounded font-black shrink-0">{activeEnemyBadge}</span>
                       </div>
                     </div>
@@ -4185,14 +4337,19 @@ export default function LearningQuest() {
                     isSpecialCenteredBoss
                       ? "flex-1 w-full min-h-0 flex items-center justify-center pointer-events-auto relative"
                       : "flex justify-end pr-2 md:pr-4 mt-2 relative items-center min-h-[96px]",
-                    isCurrentAntigenTitan && "-translate-y-[44px] md:-translate-y-[48px]"
+                    isCurrentAntigenTitan && "-translate-y-[44px] md:-translate-y-[48px]",
+                    isCurrentKetoacidosisColossus && "-translate-y-[16px] md:-translate-y-[20px]"
                   )}>
-                    <div className="relative inline-flex items-center justify-center">
+                    <div className={cn(
+                      "relative inline-flex items-center justify-center transition-all duration-500 transform-gpu",
+                      displayEnemyHp <= 0 && "opacity-40 grayscale filter blur-[0.5px] scale-95 transition-all duration-700"
+                    )}>
                       {idleSprite && attackSprite ? (
                         <BossSpriteAnimator
                           bossName={activeEnemyName || currentActiveNode?.bossName}
                           normalAttackSfxUrl={
-                            activeEnemyName?.toLowerCase().includes('specter')
+                            waveState?.normalAttackSfxUrl ||
+                            (activeEnemyName?.toLowerCase().includes('specter')
                               ? '/SoundEffects/HyperglemicSpecterNormalAttack.mp3'
                               : (activeEnemyName?.toLowerCase().includes('mutant') || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                 ? '/SoundEffects/SickleCellNormalAttack.mp3'
@@ -4220,10 +4377,11 @@ export default function LearningQuest() {
                                                       ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
                                                       : (activeEnemyName?.toLowerCase().includes('antigen') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                                         ? '/SoundEffects/KetoacidosisColossusNormalAttack.mp3'
-                                                        : (currentActiveNode?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl)
+                                                        : (currentActiveNode?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl))
                           }
                           heavyAttackSfxUrl={
-                            activeEnemyName?.toLowerCase().includes('specter')
+                            waveState?.heavyAttackSfxUrl ||
+                            (activeEnemyName?.toLowerCase().includes('specter')
                               ? '/SoundEffects/HyperglemicSpecterHeavyAttack.mp3'
                               : (activeEnemyName?.toLowerCase().includes('mutant') || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                 ? '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3'
@@ -4251,12 +4409,12 @@ export default function LearningQuest() {
                                                       ? '/SoundEffects/CrystalGolemHeavyAttack.mp3'
                                                       : (activeEnemyName?.toLowerCase().includes('antigen') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                                         ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
-                                                        : (currentActiveNode?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl)
+                                                        : (currentActiveNode?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl))
                           }
                           idleSpriteUrl={idleSprite}
                           attackSpriteUrl={attackSprite}
                           heavyAttackSpriteUrl={heavyAttackSprite || undefined}
-                          slashSpriteUrl={currentActiveNode?.miniBossSlashSpriteUrl || (activeEnemyName?.toLowerCase().includes('anemia') ? '/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_SlashAnimation.png' : undefined)}
+                          slashSpriteUrl={waveState?.slashSpriteUrl || currentActiveNode?.miniBossSlashSpriteUrl || (activeEnemyName?.toLowerCase().includes('anemia') ? '/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_SlashAnimation.png' : undefined)}
                           attackProjectileUrl={waveState?.attackProjectileUrl || currentActiveNode?.attackProjectileUrl || subjectMeta?.attackProjectileUrl || undefined}
                           attackProjectileFrames={waveState?.attackProjectileFrames || currentActiveNode?.attackProjectileFrames || subjectMeta?.attackProjectileFrames || 5}
                           undergroundSpikesUrl={
@@ -4318,7 +4476,7 @@ export default function LearningQuest() {
             {/* Player Character Sprite & Info Card */}
             <div className={cn(
               "absolute bottom-0 left-0 transition-all duration-1000 ease-out z-30 flex items-end gap-2 md:gap-3",
-              (introPhase === 'cutscene' || introPhase === 'hidden') ? '-translate-x-[150%]' : 'translate-x-0',
+              (introPhase === 'cutscene' || introPhase === 'hidden' || waveCharOffscreen) ? '-translate-x-[150%]' : 'translate-x-0',
               isAnimating === "player" && "animate-shake scale-105",
               isFleeing && "-translate-x-full opacity-0 duration-700 pointer-events-none"
             )}>
@@ -4335,8 +4493,9 @@ export default function LearningQuest() {
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const isChapter3FinalBoss = currentActiveNode.nodeNumber === 3;
-                  const isMinionWithSprite = quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl;
-                  const isMiniBossWithSprite = quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 2 && !!currentActiveNode?.miniBossIdleSpriteUrl;
+                  const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
+                  const isMinionWithSprite = (quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl) || (quizMode === 'learning' && waveState?.waveStage === 1);
+                  const isMiniBossWithSprite = (quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 2 && !!currentActiveNode?.miniBossIdleSpriteUrl) || (quizMode === 'learning' && waveState?.waveStage === 2);
                   if (isMinionWithSprite || isMiniBossWithSprite) return null;
 
                   const subjectMeta = getSubjectMeta(selectedSubject);
@@ -4349,19 +4508,26 @@ export default function LearningQuest() {
                           ? currentActiveNode.miniBossAttackSpriteUrl
                           : (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl)))
                     : (quizMode === 'learning'
-                      ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).attackSprite
+                      ? waveState?.attackSprite
                       : (currentActiveNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl));
 
+                  const isHematology = selectedSubject === 'Hematology' || (selectedSubject?.toLowerCase().includes('hematology') && !selectedSubject?.toLowerCase().includes('immuno'));
+                  const spikesUrl = (quizMode === 'learning' ? waveState?.undergroundSpikesUrl : null) ||
+                    currentActiveNode?.undergroundSpikesUrl ||
+                    ((currentEnemyAttackSprite?.includes('hematology_finalboss') || (isHematology && ((quizMode === 'learning' && waveState?.waveStage === 3) || isChapter3FinalBoss)))
+                      ? '/images/bosses/hematology_finalboss_normalAttackUndergroundSpikesAnimation.png'
+                      : '');
+                  const spikesFrames = (quizMode === 'learning' ? waveState?.undergroundSpikesFrames : null) || currentActiveNode?.undergroundSpikesFrames || 8;
+
                   const shouldRenderSpikes = Boolean(
-                    currentEnemyAttackSprite?.includes('hematology_finalboss_normalAttackGlintAnimation') ||
-                    (isChapter3FinalBoss && currentActiveNode?.undergroundSpikesUrl)
+                    spikesUrl && (
+                      currentEnemyAttackSprite?.includes('hematology_finalboss') ||
+                      (isChapter3FinalBoss && currentActiveNode?.undergroundSpikesUrl) ||
+                      (quizMode === 'learning' && waveState?.waveStage === 3 && (isHematology || waveState?.undergroundSpikesUrl))
+                    )
                   );
 
-                  if (!shouldRenderSpikes) return null;
-
-                  const spikesUrl = currentActiveNode?.undergroundSpikesUrl || (currentEnemyAttackSprite?.includes('hematology_finalboss_normalAttackGlintAnimation') ? '/images/bosses/hematology_finalboss_normalAttackUndergroundSpikesAnimation.png' : '');
-                  const spikesFrames = currentActiveNode?.undergroundSpikesFrames || 8;
-                  if (!spikesUrl) return null;
+                  if (!shouldRenderSpikes || !spikesUrl) return null;
 
                   return (
                     <UndergroundSpikesAnimator
@@ -4385,19 +4551,18 @@ export default function LearningQuest() {
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'hp-3';
-                  const isLegalBeholder = isChapter3FinalBoss || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder');
+                  const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
+                  const isLegalBeholder = isChapter3FinalBoss || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') || Boolean(waveState?.name?.toLowerCase().includes('legal beholder')) || (quizMode === 'learning' && waveState?.waveStage === 3);
 
-                  const isLegalBeholderActive = isLegalBeholder && (
-                    quizMode === 'boss-battle'
-                      ? (battleStage === 3 || isChapter3FinalBoss)
-                      : quizMode === 'learning'
-                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || isChapter3FinalBoss)
-                        : isChapter3FinalBoss
-                  );
+                  const isLegalBeholderActive = quizMode === 'boss-battle'
+                    ? (isLegalBeholder && (battleStage === 3 || isChapter3FinalBoss))
+                    : quizMode === 'learning'
+                      ? (waveState?.waveStage === 3 && Boolean(waveState?.hammerAttackUrl || isLegalBeholder))
+                      : isChapter3FinalBoss;
                   if (!isLegalBeholderActive) return null;
 
-                  const hammerUrl = currentActiveNode?.hammerAttackUrl || (isLegalBeholder ? '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackHammerAnimation-2.png' : null);
-                  const hammerFrames = currentActiveNode?.hammerAttackFrames || 11;
+                  const hammerUrl = (quizMode === 'learning' ? waveState?.hammerAttackUrl : null) || currentActiveNode?.hammerAttackUrl || (isLegalBeholder ? '/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackHammerAnimation-2.png' : null);
+                  const hammerFrames = (quizMode === 'learning' ? waveState?.hammerAttackFrames : null) || currentActiveNode?.hammerAttackFrames || 11;
                   if (!hammerUrl) return null;
                   return (
                     <JudicialHammerAnimator
@@ -4420,19 +4585,18 @@ export default function LearningQuest() {
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'hp-3';
-                  const isLegalBeholder = isChapter3FinalBoss || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder');
+                  const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
+                  const isLegalBeholder = isChapter3FinalBoss || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') || Boolean(waveState?.name?.toLowerCase().includes('legal beholder')) || (quizMode === 'learning' && waveState?.waveStage === 3);
 
-                  const isLegalBeholderActive = isLegalBeholder && (
-                    quizMode === 'boss-battle'
-                      ? (battleStage === 3 || isChapter3FinalBoss)
-                      : quizMode === 'learning'
-                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || isChapter3FinalBoss)
-                        : isChapter3FinalBoss
-                  );
+                  const isLegalBeholderActive = quizMode === 'boss-battle'
+                    ? (isLegalBeholder && (battleStage === 3 || isChapter3FinalBoss))
+                    : quizMode === 'learning'
+                      ? (waveState?.waveStage === 3 && Boolean(waveState?.undergroundBlastUrl || isLegalBeholder))
+                      : isChapter3FinalBoss;
                   if (!isLegalBeholderActive) return null;
 
-                  const blastUrl = currentActiveNode?.undergroundBlastUrl || (isLegalBeholder ? '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackUndergroundBlastAnimation.png' : null);
-                  const blastFrames = currentActiveNode?.undergroundBlastFrames || 16;
+                  const blastUrl = (quizMode === 'learning' ? waveState?.undergroundBlastUrl : null) || currentActiveNode?.undergroundBlastUrl || (isLegalBeholder ? '/images/bosses/hispatho_chapterThreeFinalBoss_heavyAttackUndergroundBlastAnimation.png' : null);
+                  const blastFrames = (quizMode === 'learning' ? waveState?.undergroundBlastFrames : null) || currentActiveNode?.undergroundBlastFrames || 16;
                   if (!blastUrl) return null;
                   return (
                     <UndergroundBlastAnimator
@@ -4455,20 +4619,19 @@ export default function LearningQuest() {
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'is-3';
-                  const isHydra = isChapter3FinalBoss || Boolean(currentActiveNode?.bossName?.toLowerCase().includes('hydra'));
+                  const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
+                  const isHydra = isChapter3FinalBoss || Boolean(currentActiveNode?.bossName?.toLowerCase().includes('hydra')) || Boolean(waveState?.name?.toLowerCase().includes('hydra')) || (quizMode === 'learning' && waveState?.waveStage === 3);
 
-                  const isHydraActive = isHydra && (
-                    quizMode === 'boss-battle'
-                      ? (battleStage === 3 || isChapter3FinalBoss)
-                      : quizMode === 'learning'
-                        ? (getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 3 || isChapter3FinalBoss)
-                        : isChapter3FinalBoss
-                  );
+                  const isHydraActive = quizMode === 'boss-battle'
+                    ? (isHydra && (battleStage === 3 || isChapter3FinalBoss))
+                    : quizMode === 'learning'
+                      ? (waveState?.waveStage === 3 && Boolean(waveState?.lightningAttackUrl || isHydra))
+                      : isChapter3FinalBoss;
 
                   if (!isHydraActive) return null;
 
-                  const lightningUrl = currentActiveNode?.lightningAttackUrl;
-                  const lightningFrames = currentActiveNode?.lightningAttackFrames || 12;
+                  const lightningUrl = (quizMode === 'learning' ? waveState?.lightningAttackUrl : null) || currentActiveNode?.lightningAttackUrl || (isHydra ? '/images/bosses/immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png' : null);
+                  const lightningFrames = (quizMode === 'learning' ? waveState?.lightningAttackFrames : null) || currentActiveNode?.lightningAttackFrames || 12;
                   if (!lightningUrl) return null;
                   return (
                     <HydraLightningAnimator
@@ -4485,24 +4648,25 @@ export default function LearningQuest() {
 
                 {/* Chapter 1 Hematology Mini-Boss (Anemia Shade): Heavy Attack Slash Overlay directly on Player's Body */}
                 {(() => {
-                  const isHematology = Boolean(selectedSubject?.toLowerCase().includes('hema'));
+                  const isHematology = selectedSubject === 'Hematology' || (selectedSubject?.toLowerCase().includes('hematology') && !selectedSubject?.toLowerCase().includes('immuno'));
                   if (!isHematology) return null;
 
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-                  // Strictly Stage 2 Mini-Boss (Anemia Shade), NEVER Stage 1 (Sickle Cell) or Stage 3 (Colossus/Reaper)
+                  const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
+
+                  // Strictly Stage 2 Mini-Boss (Anemia Shade), NEVER Stage 1 (Sickle Cell) or Stage 3 (Colossus/Reaper), and NEVER Antigen Titan
                   const isAnemiaActive = Boolean(
-                    (quizMode === 'boss-battle'
-                      ? battleStage === 2
+                    quizMode === 'boss-battle'
+                      ? (battleStage === 2 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.miniBossName?.toLowerCase().includes('anemia')))
                       : quizMode === 'learning'
-                        ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies).waveStage === 2
-                        : false) &&
-                    (currentActiveNode?.id === 'hem-1' || currentActiveNode?.miniBossName?.toLowerCase().includes('anemia'))
+                        ? (waveState?.waveStage === 2 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') || waveState?.name?.toLowerCase().includes('anemia') || waveState?.idleSprite?.includes('hematology_chapterOneMiniBoss')))
+                        : false
                   );
 
                   if (!isAnemiaActive) return null;
 
-                  const slashUrl = currentActiveNode?.miniBossSlashSpriteUrl || '/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_SlashAnimation.png';
+                  const slashUrl = (quizMode === 'learning' ? waveState?.slashSpriteUrl : null) || currentActiveNode?.miniBossSlashSpriteUrl || '/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_SlashAnimation.png';
 
                   return (
                     <AnemiaSlashAnimator
@@ -4581,8 +4745,12 @@ export default function LearningQuest() {
           </div>
 
           <div className={cn(
-            "flex-1 bg-background transition-transform duration-700 ease-out z-20",
-            introPhase === 'active' ? 'translate-y-0' : 'translate-y-[100%]'
+            "flex-1 bg-background transition-all duration-700 ease-out z-20",
+            introPhase !== 'active'
+              ? 'translate-y-[100%] opacity-0 pointer-events-none'
+              : waveTransition
+                ? 'opacity-0 pointer-events-none translate-y-6 duration-500'
+                : 'translate-y-0 opacity-100'
           )}>
             <QuizInterface
               questions={questions}
@@ -4599,6 +4767,7 @@ export default function LearningQuest() {
               equippedItem={equippedItem}
               clarityUsedThisBattle={clarityUsedThisBattle}
               onUseClarity={handleUseClarity}
+              onQuestionChange={handleQuestionChange}
             />
           </div>
         </main>

@@ -35,9 +35,10 @@ interface QuizInterfaceProps {
   equippedItem?: string | null;
   clarityUsedThisBattle?: boolean;
   onUseClarity?: () => void;
+  onQuestionChange?: (index: number) => void;
 }
 
-export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, isFinalBoss, bossShieldActive, playerPoisoned, streak, equippedItem, clarityUsedThisBattle, onUseClarity }: QuizInterfaceProps) {
+export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, isFinalBoss, bossShieldActive, playerPoisoned, streak, equippedItem, clarityUsedThisBattle, onUseClarity, onQuestionChange }: QuizInterfaceProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -180,7 +181,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       
       setTimeout(() => {
         if (currentIndex < questions.length - 1) {
-          setCurrentIndex(currentIndex + 1);
+          const nextIdx = currentIndex + 1;
+          setCurrentIndex(nextIdx);
+          if (onQuestionChange) onQuestionChange(nextIdx);
           setSelectedAnswer(null);
           setIsAnswered(false);
           setActiveMove(null);
@@ -223,7 +226,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
             setTurnMap(nextTurnMap);
           }
 
-          setCurrentIndex(currentIndex + 1);
+          const nextIdx = currentIndex + 1;
+          setCurrentIndex(nextIdx);
+          if (onQuestionChange) onQuestionChange(nextIdx);
           setSelectedAnswer(null);
           setIsAnswered(false);
           setIsTransitioning(false);
@@ -240,7 +245,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      if (onQuestionChange) onQuestionChange(nextIdx);
       setSelectedAnswer(null);
       setIsAnswered(false);
       setActiveMove(null);
