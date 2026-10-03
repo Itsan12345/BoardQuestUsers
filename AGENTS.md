@@ -80,6 +80,19 @@
   - Scale & Positioning: `effectiveScale = scale * 1.50` with vertical alignment `-translate-y-[8px] md:-translate-y-[12px]` in `src/app/quest/page.tsx`
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/BiohazardOverlordNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/LegalBeholderHeavyAttack.mp3`
   - All animations, timings, frame dimensions, delays, scales, positions, and sound effect bindings are permanently locked to not modify, alter, degrade, or cross-contaminate. Must NEVER leak into Chapter 2 or Chapter 3.
+- **Fixation Overlord (Ch 1 Boss - `hp-1`)**:
+  - `idleSpriteUrl`: `/images/bosses/hispatho_chapterOneBoss_idleAnimation.png` (8 frames, 128x128, 1.0s loop)
+  - `attackSpriteUrl`: `/images/bosses/hispatho_chapterOneBoss_normalAttackAnimation.png` (15 frames, 256x176, 1.25s duration, `step-end` with 15 dedicated keyframes)
+  - Normal Attack Sequence & Timing:
+    - 0–150ms: Swift dash directly in front of the player (`min(-45px, calc(-100cqw + 350px))` / `calc(-100cqw + 460px)`)
+    - 0–1250ms: Executes and renders all 15 frames of the normal attack in front of the player, with `BiohazardOverlordNormalAttack.mp3` triggered at blade swing frame (~750ms) and blade impact at 750ms (`impactDelay = 750ms`, hit spark, and shake)
+    - 1250ms–2184ms: Seamlessly transitions to `idleSpriteUrl` in a dedicated clipped 128x128 window at `left: 77 * effectiveScale px, top: 39 * effectiveScale px`, pausing for ~1 second in its Idle stance in front of the player
+    - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
+  - `heavyAttackSpriteUrl`: `/images/bosses/hispatho_chapterOneBoss_heavtAttackGlintAnimation-1.png` (10 frames, 144x191, playing in place as warning glint animation with no lunge, outer container `overflow-visible`, inner container `overflow-hidden` at `bottom: 0`, `left: -6 * effectiveScale px`)
+  - `heavyAttackNailedUrl`: `/images/bosses/hispatho_chapterOneBoss_heavtAttackNailedAnimation-2.png` (15 frames, 256x128 via `FixationNailedAnimator` at scale 2.2 positioned on player body from 240ms to 1200ms with piercing impact at frame 7 ~688ms, holding frame 14 until 1260ms, smooth fade-out from 1260ms to 1480ms, and `resetDelay = 1550ms`)
+  - Scale & Positioning: `effectiveScale = scale * 1.50` with vertical alignment `translate-y-[32px] md:translate-y-[40px]` in `src/app/quest/page.tsx` ensuring generous clearance below the Enemy HP bar and SHIELDED badge
+  - Sound effects: `normalAttackSfxUrl: /SoundEffects/BiohazardOverlordNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/LegalBeholderHeavyAttack.mp3`
+  - All animations, timings, frame dimensions, delays, scales, positions, and sound effect bindings are permanently locked to not modify, alter, degrade, or cross-contaminate. Must NEVER leak into Chapter 2 or Chapter 3.
 - **Legal Beholder (Ch 3 Final Boss - `hp-3`)**:
   - `idleSpriteUrl`: `/images/bosses/hispatho_chapterThreeFinalBoss_idleAnimation.png` (6 frames, 160x140)
   - `attackSpriteUrl`: `/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackGlintAnimation-1.png` (12 frames, 160x140)

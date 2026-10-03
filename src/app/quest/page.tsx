@@ -57,6 +57,7 @@ import { HydraLightningAnimator } from '@/components/game/HydraLightningAnimator
 import { AnemiaSlashAnimator } from '@/components/game/AnemiaSlashAnimator';
 import { ColossusFistAnimator } from '@/components/game/ColossusFistAnimator';
 import { ParaffinBallsAnimator } from '@/components/game/ParaffinBallsAnimator';
+import { FixationNailedAnimator } from '@/components/game/FixationNailedAnimator';
 
 const SUBJECT_METADATA: Record<string, {
   name: string;
@@ -480,6 +481,11 @@ export default function LearningQuest() {
     heavyAttackFistFrames?: number;
     miniBossHeavyAttackBallsUrl?: string;
     miniBossHeavyBallsFrames?: number;
+    heavyAttackNailedUrl?: string;
+    heavyAttackNailedFrames?: number;
+    heavyNailedFrames?: number;
+    heavyNailedFrameWidth?: number;
+    heavyNailedFrameHeight?: number;
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
@@ -556,6 +562,8 @@ export default function LearningQuest() {
       lightningAttackFrames?: number;
       heavyAttackFistUrl?: string | null;
       heavyAttackFistFrames?: number;
+      heavyAttackNailedUrl?: string | null;
+      heavyAttackNailedFrames?: number;
       idleFrames: number;
       attackFrames: number;
       heavyAttackFrames: number;
@@ -1003,6 +1011,25 @@ export default function LearningQuest() {
         miniBossHeavyFrameWidth: 128,
         miniBossHeavyFrameHeight: 128,
         miniBossIdleDuration: 1.0,
+        idleSpriteUrl: '/images/bosses/hispatho_chapterOneBoss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/hispatho_chapterOneBoss_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/hispatho_chapterOneBoss_heavtAttackGlintAnimation-1.png',
+        heavyAttackNailedUrl: '/images/bosses/hispatho_chapterOneBoss_heavtAttackNailedAnimation-2.png',
+        idleFrames: 8,
+        attackFrames: 15,
+        heavyAttackFrames: 10,
+        heavyNailedFrames: 15,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 256,
+        attackFrameHeight: 176,
+        heavyFrameWidth: 144,
+        heavyFrameHeight: 191,
+        heavyNailedFrameWidth: 256,
+        heavyNailedFrameHeight: 128,
+        idleDuration: 1.0,
+        normalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/LegalBeholderHeavyAttack.mp3',
       },
       { id: 'hp-2', nodeNumber: 2, title: 'RA 5527 & MedTech Ethics', subtopic: 'Philippine Medical Technology Act of 1969', minionName: 'Statute Page', minionIcon: '📜', miniBossName: 'Legal Guardian', miniBossIcon: '🛡️', bossName: 'Jurisprudence Archon', bossIcon: '⚖️' },
       {
@@ -1205,6 +1232,8 @@ export default function LearningQuest() {
         lightningAttackFrames: waveBoss?.lightningAttackFrames || wave3BossNode?.lightningAttackFrames || (subjectMeta as any)?.lightningAttackFrames || 12,
         heavyAttackFistUrl: waveBoss?.heavyAttackFistUrl || wave3BossNode?.heavyAttackFistUrl || null,
         heavyAttackFistFrames: waveBoss?.heavyAttackFistFrames || wave3BossNode?.heavyAttackFistFrames || 9,
+        heavyAttackNailedUrl: waveBoss?.heavyAttackNailedUrl || wave3BossNode?.heavyAttackNailedUrl || null,
+        heavyAttackNailedFrames: waveBoss?.heavyAttackNailedFrames || wave3BossNode?.heavyAttackNailedFrames || 15,
         idleFrames: waveBoss?.idleFrames || wave3BossNode?.idleFrames || ch3Node?.idleFrames || subjectMeta?.idleFrames || 6,
         attackFrames: waveBoss?.attackFrames || wave3BossNode?.attackFrames || ch3Node?.attackFrames || subjectMeta?.attackFrames || 5,
         heavyAttackFrames: waveBoss?.heavyAttackFrames || wave3BossNode?.heavyAttackFrames || ch3Node?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 13,
@@ -2089,6 +2118,8 @@ export default function LearningQuest() {
             undergroundBlastFrames: wave3BossNode?.undergroundBlastFrames || ch3Node?.undergroundBlastFrames || 16,
             lightningAttackUrl: wave3BossNode?.lightningAttackUrl || ch3Node?.lightningAttackUrl || null,
             lightningAttackFrames: wave3BossNode?.lightningAttackFrames || ch3Node?.lightningAttackFrames || 12,
+            heavyAttackNailedUrl: wave3BossNode?.heavyAttackNailedUrl || null,
+            heavyAttackNailedFrames: wave3BossNode?.heavyAttackNailedFrames || 15,
             idleFrames: wave3BossNode?.idleFrames || ch3Node?.idleFrames || subjectMeta?.idleFrames || 6,
             attackFrames: wave3BossNode?.attackFrames || ch3Node?.attackFrames || subjectMeta?.attackFrames || 5,
             heavyAttackFrames: wave3BossNode?.heavyAttackFrames || ch3Node?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 13,
@@ -2441,7 +2472,14 @@ export default function LearningQuest() {
       currentActiveNode?.miniBossIdleSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
       ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false))
     );
-    const shouldSuppressWrongSfx = isSpecterBoss || isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm || isHyperglycemicMutant || isHydraBoss || isKetoacidosisColossus || isLegalBeholder || isAntigenTitan || isAnemiaShade || isErythrocyteColossusBoss || isParaffinGolem;
+
+    const isFixationOverlord = !isGmsFungalSpore && !isParaffinGolem && !isLegalBeholder && Boolean(
+      currentEnemyName?.toLowerCase().includes('fixation') ||
+      currentActiveNode?.bossName?.toLowerCase().includes('fixation') ||
+      currentActiveNode?.idleSpriteUrl?.includes('hispatho_chapterOneBoss') ||
+      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
+    );
+    const shouldSuppressWrongSfx = isSpecterBoss || isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm || isHyperglycemicMutant || isHydraBoss || isKetoacidosisColossus || isLegalBeholder || isAntigenTitan || isAnemiaShade || isErythrocyteColossusBoss || isParaffinGolem || isFixationOverlord;
 
     if (isCorrect) {
       setScore(prev => prev + 1);
@@ -2876,10 +2914,16 @@ export default function LearningQuest() {
         const isErythrocyteColossusNormal = isErythrocyteColossusBoss && attackType === 'normal_attack';
         const isParaffinGolemHeavy = isParaffinGolem && attackType === 'heavy_attack';
         const isParaffinGolemNormal = isParaffinGolem && attackType === 'normal_attack';
+        const isFixationOverlordHeavy = isFixationOverlord && attackType === 'heavy_attack';
+        const isFixationOverlordNormal = isFixationOverlord && attackType === 'normal_attack';
 
 
         const resetDelay = isSpikes
           ? 1050
+          : isFixationOverlordHeavy
+            ? 1550
+            : isFixationOverlordNormal
+              ? 2600
           : isParaffinGolemHeavy
             ? 1150
             : isParaffinGolemNormal
@@ -2962,6 +3006,10 @@ export default function LearningQuest() {
 
         const impactDelay = isSpikes
           ? 650
+          : isFixationOverlordHeavy
+            ? 660
+            : isFixationOverlordNormal
+              ? 750
           : isParaffinGolemHeavy
             ? 700
             : isParaffinGolemNormal
@@ -3095,6 +3143,18 @@ export default function LearningQuest() {
             setHitEffectTarget('player');
             setHitEffectKey(k => k + 1);
           }, 700);
+        } else if (isFixationOverlordNormal) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 750);
+        } else if (isFixationOverlordHeavy) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 660);
         }
         bossAttackResetDelay = resetDelay;
         setTimeout(() => setBossAnimState('idle'), resetDelay);
@@ -4481,7 +4541,16 @@ export default function LearningQuest() {
                 )
               );
 
-              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon || isCurrentErythrocyteColossus || isCurrentParaffinGolem;
+              const isCurrentFixationOverlord = Boolean(
+                (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : false) && (
+                  activeEnemyName?.toLowerCase().includes('fixation') ||
+                  idleSprite?.includes('hispatho_chapterOneBoss') ||
+                  currentActiveNode?.idleSpriteUrl?.includes('hispatho_chapterOneBoss') ||
+                  ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : false))
+                )
+              );
+
+              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon || isCurrentErythrocyteColossus || isCurrentParaffinGolem || isCurrentFixationOverlord;
 
               return (
                 <div className={cn(
@@ -4525,7 +4594,8 @@ export default function LearningQuest() {
                     isCurrentKetoacidosisColossus && "-translate-y-[16px] md:-translate-y-[20px]",
                     isCurrentImmuneArchon && "-translate-y-[20px] md:-translate-y-[24px]",
                     isCurrentErythrocyteColossus && "translate-y-[8px] md:translate-y-[12px]",
-                    isCurrentParaffinGolem && "-translate-y-[8px] md:-translate-y-[12px]"
+                    isCurrentParaffinGolem && "-translate-y-[8px] md:-translate-y-[12px]",
+                    isCurrentFixationOverlord && "translate-y-[32px] md:translate-y-[40px]"
                   )}>
                     <div className={cn(
                       "relative inline-flex items-center justify-center transition-all duration-500 transform-gpu",
@@ -4882,6 +4952,42 @@ export default function LearningQuest() {
                       durationMs={820}
                       scale={2.0}
                       className="-bottom-16 sm:-bottom-24 md:-bottom-[120px] left-1/2 sm:left-[52%] -translate-x-1/2 z-30"
+                    />
+                  );
+                })()}
+
+                {/* Chapter 1 Histopathology Boss (Fixation Overlord): Heavy Attack Nailed Overlay on Player Body */}
+                {(() => {
+                  const isHisto = selectedSubject?.toLowerCase().includes('histo') || selectedSubject?.toLowerCase().includes('law');
+                  if (!isHisto) return null;
+
+                  const activeNodes = getSubjectNodes(selectedSubject);
+                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
+
+                  // Strictly Chapter 1 Boss Stage 3 (Fixation Overlord), NEVER Minion (GMS Fungal Spore), Mini-Boss (Paraffin Golem), or Final Boss hp-3 (Legal Beholder)
+                  const isFixationActive = Boolean(
+                    quizMode === 'boss-battle'
+                      ? (battleStage === 3 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || currentActiveNode?.idleSpriteUrl?.includes('hispatho_chapterOneBoss')))
+                      : quizMode === 'learning'
+                        ? (waveState?.waveStage === 3 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || waveState?.name?.toLowerCase().includes('fixation') || waveState?.idleSprite?.includes('hispatho_chapterOneBoss')))
+                        : (currentActiveNode?.id === 'hp-1' || currentActiveNode?.bossName?.toLowerCase().includes('fixation'))
+                  );
+
+                  if (!isFixationActive) return null;
+
+                  const nailedUrl = (quizMode === 'learning' ? waveState?.heavyAttackNailedUrl : null) || currentActiveNode?.heavyAttackNailedUrl || '/images/bosses/hispatho_chapterOneBoss_heavtAttackNailedAnimation-2.png';
+
+                  return (
+                    <FixationNailedAnimator
+                      isActive={bossAnimState === 'heavy_attack'}
+                      triggerKey={hitEffectKey}
+                      spriteUrl={nailedUrl}
+                      frames={15}
+                      delayMs={240}
+                      durationMs={960}
+                      scale={2.2}
+                      className="bottom-2 sm:bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-40"
                     />
                   );
                 })()}
