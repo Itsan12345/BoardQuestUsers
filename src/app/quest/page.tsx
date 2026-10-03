@@ -2366,11 +2366,13 @@ export default function LearningQuest() {
     );
 
     const isGmsFungalSpore = Boolean(
-      currentEnemyName?.toLowerCase().includes('fungal spore') ||
-      currentEnemyName?.toLowerCase().includes('gms') ||
-      currentActiveNode?.minionName?.toLowerCase().includes('fungal spore') ||
-      currentActiveNode?.minionIdleSpriteUrl?.includes('hispatho_chapterOneMinion') ||
-      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : true))
+      (currentEnemyName?.toLowerCase().includes('fungal spore') && !currentEnemyName?.toLowerCase().includes('paraffin')) ||
+      (currentEnemyName?.toLowerCase().includes('gms') && !currentEnemyName?.toLowerCase().includes('paraffin')) ||
+      ((quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : false) && (
+        currentActiveNode?.minionName?.toLowerCase().includes('fungal spore') ||
+        currentActiveNode?.minionIdleSpriteUrl?.includes('hispatho_chapterOneMinion') ||
+        ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1')
+      ))
     );
 
     const isGramPositiveBoss = Boolean(
