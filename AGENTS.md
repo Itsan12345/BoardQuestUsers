@@ -26,6 +26,19 @@
   - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_DashAnimation.png` (15 frames, 128x128) with 3-phase execution (Dash 0-620ms -> Disappear 620-1380ms -> Smooth Idle 1380ms+)
   - `miniBossSlashSpriteUrl`: `/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_SlashAnimation.png` (15 frames, 128x128 via `AnemiaSlashAnimator` on player body from 620ms to 1360ms with impact at 750ms)
   - Preloaded sound effects via `preloadAnemiaShadeSounds` and `playAnemiaShadeAttack` permanently locked.
+- **Erythrocyte Colossus (Ch 1 Boss - `hem-1`)**:
+  - `idleSpriteUrl`: `/images/bosses/hematology_chapterOneBoss_idleAnimation.png` (8 frames, 128x176, 1.0s loop)
+  - `attackSpriteUrl`: `/images/bosses/hematology_chapterOneBoss_normalAttackAnimation.png` (22 frames, 208x176, 1.25s duration, `step-end` with 22 dedicated keyframes)
+  - Normal Attack Sequence & Timing:
+    - 0–150ms: Swift dash in front of the player (`min(-45px, calc(-100cqw + 400px))` / `calc(-100cqw + 520px)`)
+    - 0–1250ms: Executes and renders all 22 frames of the normal attack in front of the player, with fist impact at 1050ms (`impactDelay = 1050ms`, hit spark, and shake)
+    - 1250ms–2184ms: Seamlessly transitions to `idleSpriteUrl` in a dedicated clipped 128x176 window at `left: 34 * effectiveScale px`, pausing for ~1 second in its Idle stance in front of the player
+    - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
+  - `heavyAttackSpriteUrl`: `/images/bosses/hematology_chapterOneBoss_heavyAttackGlintAnimation-1.png` (14 frames, 176x196, playing in place as warning glint)
+  - `heavyAttackFistUrl`: `/images/bosses/hematology_chapterOneBoss_heavyAttackFistAnimation-2.png` (9 frames, 176x196, scale 2.5 via `ColossusFistAnimator` on player body from 220ms to 940ms, impact at 460ms, reset at 1150ms)
+  - Scale & Positioning: `effectiveScale = scale * 0.90` with vertical alignment `translate-y-[8px] md:translate-y-[12px]` in `src/app/quest/page.tsx` ensuring generous clearance below the Enemy HP bar
+  - Sound effects: Intentionally suppressed pending user audio asset provision.
+  - All animations, timings, scale, position, and components are permanently locked. Must NEVER leak into Chapter 2 or Chapter 3.
 - **Sickle-Cell Reaper (Ch 3 Final Boss - `hem-3`)**:
   - `idleSpriteUrl`: `/images/bosses/hematology_finalboss_idleAnimation.png` (6 frames, 128x128)
   - `attackSpriteUrl`: `/images/bosses/hematology_finalboss_normalAttackGlintAnimation.png` (6 frames, 128x128)
@@ -78,3 +91,27 @@
 ## 4. Absolute Non-Interference with Approved Sprite Animations
 - **Permanent Lock**: All the above verified and approved enemy sprite animations, spritesheets, audio files, frame timings, lunges, delays, and overlays are **PERMANENTLY LOCKED**.
 - **Progressive Addition Only**: When adding new sprite animations for enemies that do not yet have them, all code changes must be strictly isolated. Under NO circumstances should any approved enemy configuration be modified, replaced, reverted, degraded, or cross-contaminated.
+
+---
+
+## 5. Permitted Reading & Cross-Referencing
+- **Reference Permitted & Encouraged**: Agents **are fully permitted and encouraged to read, inspect, and cross-reference** the approved configurations, frame dimensions, keyframe animations, delay patterns, and animator components in `AGENTS.md` and `GEMINI.md` to guide new implementations.
+- **Strict Read-Only Constraint**: Cross-referencing is strictly for guidance and architectural alignment. Agents must NEVER alter, edit, mutate, overwrite, or cross-contaminate any verified and approved sprite animation code or documentation.
+
+---
+
+## 6. Animation Timing, Smoothness & Pace Standard (Golden Reference)
+- **Benchmark Components & Golden References**: When building or tuning any new sprite attack animations (both boss body animations and overlay animators), agents must match the smooth timing, natural pace, and complete frame rendering of:
+  - `JudicialHammerAnimator` (`src/components/game/JudicialHammerAnimator.tsx`): Benchmark for smooth, readable pacing and complete frame playback without skipping or rushing.
+  - `ColossusFistAnimator` (`src/components/game/ColossusFistAnimator.tsx`): Benchmark for heavy strike pacing, allowing every single frame of the descending slam to render fluidly and legibly before impact.
+  - **Forward Lunge Attack Benchmark (`hematology_chapterOneBoss_normalAttackAnimation.png`)**: The Erythrocyte Colossus Normal Attack is the **definitive golden standard** for all enemy attacks that lunge forward towards the player. All forward-lunging attacks must mirror this smooth 4-phase timing and choreography:
+    1. **Swift Forward Dash** (0–6% of movement / ~150ms): Fast, decisive dash directly in front of the player.
+    2. **Full In-Place Attack Execution**: Renders and plays all frames of the attack sequence completely in front of the player without skipping or rushing (with impact synchronized to hit reactions/sparks).
+    3. **1-Second Idle Pause in Front of Player**: Seamlessly transitions to the enemy's Idle stance in a dedicated frame window and pauses in front of the player for ~1 second, creating dramatic weight and presence.
+    4. **Smooth Glide Return**: While remaining in Idle stance, smoothly glides back to its home pedestal using a fluid easing curve (e.g. `cubic-bezier(0.25, 1, 0.5, 1)`) and settles cleanly into position before the reset delay expires.
+- **Execution Rules**:
+  - **Full Frame Playback**: Never rush or compress animation durations so short that intermediate frames are skipped, truncated, or blurred.
+  - **Impact Synchronization**: Time hit sparks, player hit reactions, and screen shakes to sync precisely with the visual impact frame of the animation.
+  - **Smooth Transitions**: Ensure multi-phase movements (lunges, glides, pauses, returns) use smooth easing curves and settle cleanly onto their starting pedestal.
+
+

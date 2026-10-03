@@ -205,6 +205,24 @@ export function BossSpriteAnimator({
     heavyAttackSpriteUrl?.includes('immunohema_chapterOneBoss')
   );
 
+  const isErythrocyteColossusAttack = isAttacking && (
+    attackSpriteUrl?.includes('hematology_chapterOneBoss') ||
+    heavyAttackSpriteUrl?.includes('hematology_chapterOneBoss') ||
+    bossName?.toLowerCase().includes('erythrocyte')
+  );
+  const isErythrocyteColossusHeavy = isHeavy && isErythrocyteColossusAttack;
+  const isErythrocyteColossusNormal = !isHeavy && isErythrocyteColossusAttack;
+  const isErythrocyteColossusIdle = !isAttacking && (
+    idleSpriteUrl?.includes('hematology_chapterOneBoss') ||
+    bossName?.toLowerCase().includes('erythrocyte')
+  );
+  const isErythrocyteColossus = (
+    bossName?.toLowerCase().includes('erythrocyte') ||
+    idleSpriteUrl?.includes('hematology_chapterOneBoss') ||
+    attackSpriteUrl?.includes('hematology_chapterOneBoss') ||
+    heavyAttackSpriteUrl?.includes('hematology_chapterOneBoss')
+  );
+
   const currentTotalFrames = isHydraHeavy
     ? 14
     : isHydraNormal
@@ -235,6 +253,12 @@ export function BossSpriteAnimator({
                               ? 11
                               : isImmuneArchonIdle
                                 ? 7
+                                : isErythrocyteColossusHeavy
+                                  ? 14
+                                  : isErythrocyteColossusNormal
+                                    ? 22
+                                    : isErythrocyteColossusIdle
+                                      ? 8
                                 : isHeavy
                       ? (heavyAttackFrames || 11)
                       : (isNormalAttack && hasProjectile)
@@ -263,6 +287,12 @@ export function BossSpriteAnimator({
                     ? 252
                     : isImmuneArchonIdle
                       ? 284
+                      : isErythrocyteColossusHeavy
+                        ? 176
+                        : isErythrocyteColossusNormal
+                          ? 208
+                          : isErythrocyteColossusIdle
+                            ? 128
                       : isHeavy
                   ? (heavyFrameWidth || 176)
                   : (isNormalAttack && hasProjectile)
@@ -291,6 +321,12 @@ export function BossSpriteAnimator({
                     ? 177
                     : isImmuneArchonIdle
                       ? 220
+                      : isErythrocyteColossusHeavy
+                        ? 196
+                        : isErythrocyteColossusNormal
+                          ? 176
+                          : isErythrocyteColossusIdle
+                            ? 176
                       : isHeavy
                   ? (heavyFrameHeight || (heavyFrameWidth && heavyFrameWidth >= 300 ? 256 : 128))
                   : (isNormalAttack && hasProjectile)
@@ -321,18 +357,18 @@ export function BossSpriteAnimator({
     attackSpriteUrl?.includes('clinchem_chapterOneBoss') ||
     heavyAttackSpriteUrl?.includes('clinchem_chapterOneBoss') ||
     bossName?.toLowerCase().includes('ketoacidosis') ||
-    bossName?.toLowerCase().includes('colossus')
+    (bossName?.toLowerCase().includes('colossus') && !bossName?.toLowerCase().includes('erythrocyte'))
   );
   const isKetoacidosisColossusHeavy = isHeavy && isKetoacidosisColossusAttack;
   const isKetoacidosisColossusNormal = !isHeavy && isKetoacidosisColossusAttack;
   const isKetoacidosisColossusIdle = !isSpecter && !isAttacking && (
     idleSpriteUrl?.includes('clinchem_chapterOneBoss') ||
     bossName?.toLowerCase().includes('ketoacidosis') ||
-    bossName?.toLowerCase().includes('colossus')
+    (bossName?.toLowerCase().includes('colossus') && !bossName?.toLowerCase().includes('erythrocyte'))
   );
   const isKetoacidosisColossus = !isSpecter && (
     bossName?.toLowerCase().includes('ketoacidosis') ||
-    bossName?.toLowerCase().includes('colossus') ||
+    (bossName?.toLowerCase().includes('colossus') && !bossName?.toLowerCase().includes('erythrocyte')) ||
     idleSpriteUrl?.includes('clinchem_chapterOneBoss') ||
     attackSpriteUrl?.includes('clinchem_chapterOneBoss') ||
     heavyAttackSpriteUrl?.includes('clinchem_chapterOneBoss')
@@ -359,7 +395,7 @@ export function BossSpriteAnimator({
     heavyAttackSpriteUrl?.includes('immunohema_chapterOneMiniBoss')
   );
 
-  const isWideBeam = isAttacking && currentFrameWidth >= 300 && !isReagentStripSlimeAttack && !isHydraAttack && !isKetoacidosisColossusAttack && !isAntigenTitanAttack && !isImmuneArchonAttack;
+  const isWideBeam = isAttacking && currentFrameWidth >= 300 && !isReagentStripSlimeAttack && !isHydraAttack && !isKetoacidosisColossusAttack && !isAntigenTitanAttack && !isImmuneArchonAttack && !isErythrocyteColossusAttack;
 
   const effectiveScale = isHyperglycemicMutant
     ? scale * 1.55
@@ -369,9 +405,11 @@ export function BossSpriteAnimator({
         ? scale * 1.18
         : isImmuneArchon
           ? scale * 1.35
-          : isReagentStripSlimeAttack
-          ? Math.min(scale, 1.0)
-          : scale;
+          : isErythrocyteColossus
+            ? scale * 0.90
+            : isReagentStripSlimeAttack
+            ? Math.min(scale, 1.0)
+            : scale;
 
   // Frame rates (fps) - Tuned for fast, immediate and punchy combat animations
   const fps = isHeavy
@@ -586,6 +624,12 @@ export function BossSpriteAnimator({
                                                                                               ? 0.80
                                                                                               : isImmuneArchonIdle
                                                                                                 ? (idleDuration || 1.0)
+                                                                                                : isErythrocyteColossusHeavy
+                                                                                                  ? 0.90
+                                                                                                  : isErythrocyteColossusNormal
+                                                                                                    ? 1.25
+                                                                                                    : isErythrocyteColossusIdle
+                                                                                                      ? (idleDuration || 1.0)
                                                                                           : isBiohazardIdle
                                                                                             ? (idleDuration || (idleFps ? currentTotalFrames / idleFps : 1.05))
                                                                                             : Math.max(0.48, Math.min(0.62, currentTotalFrames / fps));
@@ -660,10 +704,14 @@ export function BossSpriteAnimator({
                                                                   ? 1.55
                                                                   : isImmuneArchonNormal
                                                                     ? 0.80
+                                                                    : isErythrocyteColossusHeavy
+                                                                      ? 0.90
+                                                                      : isErythrocyteColossusNormal
+                                                                        ? 1.25
                                                                 : spriteDuration;
 
   const lungeDuration = isAttacking
-    ? (hasProjectile ? 0.45 : isAnemiaShadeHeavy ? 1.55 : isAnemiaShadeNormal ? 1.25 : isReaperGlintNormal ? 1.05 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : isHydraHeavy ? 1.05 : isHydraNormal ? 1.85 : isHyperglycemicMutantHeavy ? 0.95 : isHyperglycemicMutantNormal ? 0.80 : isKetoacidosisColossusHeavy ? 0.85 : isKetoacidosisColossusNormal ? 0.70 : isAntigenTitanHeavy ? 0.85 : isAntigenTitanNormal ? 0.70 : isImmuneArchonHeavy ? 1.55 : isImmuneArchonNormal ? 0.90 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : (isReagentStripSlimeAttack ? 0.08 : (isLymphocyteSwarmAttack ? 0.12 : 0.35)))))))
+    ? (hasProjectile ? 0.45 : isAnemiaShadeHeavy ? 1.55 : isAnemiaShadeNormal ? 1.25 : isReaperGlintNormal ? 1.05 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : isHydraHeavy ? 1.05 : isHydraNormal ? 1.85 : isHyperglycemicMutantHeavy ? 0.95 : isHyperglycemicMutantNormal ? 0.80 : isKetoacidosisColossusHeavy ? 0.85 : isKetoacidosisColossusNormal ? 0.70 : isAntigenTitanHeavy ? 0.85 : isAntigenTitanNormal ? 0.70 : isImmuneArchonHeavy ? 1.55 : isImmuneArchonNormal ? 0.90 : isErythrocyteColossusHeavy ? 0.90 : isErythrocyteColossusNormal ? 2.60 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : (isReagentStripSlimeAttack ? 0.08 : (isLymphocyteSwarmAttack ? 0.12 : 0.35)))))))
     : spriteDuration;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
@@ -837,6 +885,22 @@ export function BossSpriteAnimator({
     }
   }, [isAnemiaShadeHeavy, animKey]);
 
+  const [colossusNormalPhase, setColossusNormalPhase] = useState<'attack' | 'idle'>('attack');
+
+  useEffect(() => {
+    if (isErythrocyteColossusNormal) {
+      setColossusNormalPhase('attack');
+      const idleTimer = setTimeout(() => {
+        setColossusNormalPhase('idle');
+      }, 1250);
+      return () => {
+        clearTimeout(idleTimer);
+      };
+    } else {
+      setColossusNormalPhase('attack');
+    }
+  }, [isErythrocyteColossusNormal, animKey]);
+
   useEffect(() => {
     let sfxTimer: NodeJS.Timeout | null = null;
 
@@ -969,11 +1033,11 @@ export function BossSpriteAnimator({
           // when hispatho_chapterThreeFinalBoss_heavyAttackUndergroundBlastAnimation.png is played.
         } else if (heavyAttackSfxUrl || normalAttackSfxUrl) {
           if (isHeavy) {
-            if (heavyAttackSfxUrl && !isHydraAttack && !isAntiSerumHydra && !isLegalBeholderAttack && !isImmuneArchonHeavy) {
+            if (heavyAttackSfxUrl && !isHydraAttack && !isAntiSerumHydra && !isLegalBeholderAttack && !isImmuneArchonHeavy && !isErythrocyteColossus) {
               playAudioFile(heavyAttackSfxUrl);
             }
           } else if (isNormalAttack) {
-            if (normalAttackSfxUrl && !isLegalBeholderAttack && !isImmuneArchonNormal) {
+            if (normalAttackSfxUrl && !isLegalBeholderAttack && !isImmuneArchonNormal && !isErythrocyteColossus) {
               playAudioFile(normalAttackSfxUrl);
             }
           }
@@ -995,6 +1059,7 @@ export function BossSpriteAnimator({
     }
   }, [animState, isAttacking, lungeDuration, isGramPositive, isGramPositiveAttack, isSickleCellMinion, isSickleCellMinionAttack, isAnemiaShade, isAnemiaShadeAttack, isStaphSentinel, isStaphSentinelAttack, isSickleCellReaper, isSickleCellReaperAttack, isMicrobeSwarm, isMicrobeSwarmAttack, isLymphocyteSwarm, isLymphocyteSwarmAttack, isHydraAttack, isAntiSerumHydra, isKetoacidosisColossus, isKetoacidosisColossusAttack, isAntigenTitan, isAntigenTitanAttack, isLegalBeholderAttack, isHyperglycemicMutant, isHyperglycemicMutantAttack, isImmuneArchon, isImmuneArchonAttack, isSpecter, isBiohazard, isBiohazardAttack, isCrystalGolem, isCrystalGolemAttack, isAcidSlime, isAcidSlimeAttack, isGmsFungalSpore, isGmsFungalSporeAttack, isReagentStripSlime, isReagentStripSlimeAttack, isHeavy, isNormalAttack, attackSpriteUrl, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl, bossName]);
 
+  const isColossusNormalIdlePhase = isErythrocyteColossusNormal && colossusNormalPhase === 'idle';
   const sheetWidth = currentFrameWidth * currentTotalFrames;
   const sheetHeight = currentFrameHeight * currentTotalFrames;
 
@@ -1142,13 +1207,15 @@ export function BossSpriteAnimator({
             isAntigenTitanNormal && "animate-boss-antigen-titan-lunge",
             isImmuneArchonHeavy && "animate-boss-immune-archon-heavy-lunge",
             isImmuneArchonNormal && "animate-boss-immune-archon-lunge",
-            isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderHeavy && !isHydraHeavy && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantHeavy && !isKetoacidosisColossusHeavy && !isAntigenTitanHeavy && !isImmuneArchonHeavy && !isAnemiaShadeAttack && "animate-boss-heavy-lunge",
-            isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isReaperGlintNormal && !isSickleCellReaperNormal && !isGramPositiveAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderNormal && !isHydraNormal && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantNormal && !isKetoacidosisColossusNormal && !isAntigenTitanNormal && !isImmuneArchonNormal && !isAnemiaShadeAttack && "animate-boss-lunge",
+            isErythrocyteColossusHeavy && "animate-boss-erythrocyte-colossus-heavy-lunge",
+            isErythrocyteColossusNormal && "animate-boss-erythrocyte-colossus-lunge",
+            isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderHeavy && !isHydraHeavy && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantHeavy && !isKetoacidosisColossusHeavy && !isAntigenTitanHeavy && !isImmuneArchonHeavy && !isErythrocyteColossusHeavy && !isAnemiaShadeAttack && "animate-boss-heavy-lunge",
+            isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isReaperGlintNormal && !isSickleCellReaperNormal && !isGramPositiveAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderNormal && !isHydraNormal && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantNormal && !isKetoacidosisColossusNormal && !isAntigenTitanNormal && !isImmuneArchonNormal && !isErythrocyteColossusNormal && !isAnemiaShadeAttack && "animate-boss-lunge",
             isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
           )}
           style={{
             width: `${currentFrameWidth * effectiveScale}px`,
-            height: `${(isImmuneArchon ? (isImmuneArchonHeavy ? 228 : isImmuneArchonNormal ? 177 : 220) : currentFrameHeight) * effectiveScale}px`,
+            height: `${(isImmuneArchon ? (isImmuneArchonHeavy ? 228 : isImmuneArchonNormal ? 177 : 220) : isErythrocyteColossus ? (isErythrocyteColossusHeavy ? 196 : 176) : currentFrameHeight) * effectiveScale}px`,
             ...(isAttacking
               ? {
                 animationDuration: `${lungeDuration}s`,
@@ -1160,61 +1227,90 @@ export function BossSpriteAnimator({
           }}
         >
           {/* Spritesheet Render Engine */}
-          <div
-            key={`sprite-${animState}-${animKey}`}
-            className="absolute top-0 left-0"
-            style={{
-              width: isHydraVerticalSprite ? `${currentFrameWidth * effectiveScale}px` : `${sheetWidth * effectiveScale}px`,
-              height: isHydraVerticalSprite ? `${sheetHeight * effectiveScale}px` : `${currentFrameHeight * effectiveScale}px`,
-              backgroundImage: `url('${currentSpriteUrl}')`,
-              backgroundRepeat: "no-repeat",
-              backgroundSize: isHydraVerticalSprite
-                ? `${currentFrameWidth * effectiveScale}px ${sheetHeight * effectiveScale}px`
-                : `${sheetWidth * effectiveScale}px ${currentFrameHeight * effectiveScale}px`,
-              imageRendering: "pixelated",
-              animationName: isHydraVerticalSprite
-                ? "bossVerticalSpriteAnim"
-                : isHydraNormal
-                  ? "bossHydraNormalSpriteAnim"
-                  : isHydraHeavy
-                    ? "bossHydraHeavyGlintSpriteAnim"
-                    : isReaperGlintSprite
-                      ? "bossReaperGlintSpriteAnim"
-                      : isHyperglycemicMutantNormal
-                        ? "bossHyperglycemicMutantNormalSpriteAnim"
-                        : isHyperglycemicMutantHeavy
-                          ? "bossHyperglycemicMutantHeavySpriteAnim"
-                          : isKetoacidosisColossusHeavy
-                            ? "bossKetoacidosisColossusHeavySpriteAnim"
-                            : isKetoacidosisColossusNormal
-                              ? "bossKetoacidosisColossusNormalSpriteAnim"
-                              : isAntigenTitanHeavy
-                                ? "bossAntigenTitanHeavySpriteAnim"
-                                : isAntigenTitanNormal
-                                  ? "bossAntigenTitanNormalSpriteAnim"
-                                  : isImmuneArchonHeavy
-                                    ? "bossImmuneArchonHeavySpriteAnim"
-                                    : isImmuneArchonNormal
-                                      ? "bossImmuneArchonNormalSpriteAnim"
-                                      : isAnemiaShadeNormal
-                                        ? "bossAnemiaNormalSpriteAnim"
-                                        : "bossSpriteAnim",
-              animationDuration: isHydraVerticalSprite ? `${idleDuration || 1.8}s` : (isImmuneArchonHeavy ? '1.55s' : isImmuneArchonNormal ? '0.80s' : isHyperglycemicMutantNormal ? '0.80s' : isHyperglycemicMutantHeavy ? '0.95s' : isAnemiaShadeNormal ? '1.25s' : `${spriteDuration}s`),
-              animationTimingFunction: isHydraNormal
-                ? `steps(${currentTotalFrames - 1})`
-                : isHydraHeavy
+          {isColossusNormalIdlePhase ? (
+            <div
+              key={`sprite-colossus-idle-${animKey}`}
+              className="absolute top-0 overflow-hidden"
+              style={{
+                left: `${34 * effectiveScale}px`,
+                width: `${128 * effectiveScale}px`,
+                height: `${176 * effectiveScale}px`,
+              }}
+            >
+              <div
+                className="absolute top-0 left-0"
+                style={{
+                  width: `${128 * 8 * effectiveScale}px`,
+                  height: `${176 * effectiveScale}px`,
+                  backgroundImage: `url('${idleSpriteUrl || '/images/bosses/hematology_chapterOneBoss_idleAnimation.png'}')`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundSize: `${128 * 8 * effectiveScale}px ${176 * effectiveScale}px`,
+                  imageRendering: "pixelated",
+                  animation: "bossSpriteAnim 1.0s steps(8) infinite",
+                }}
+              />
+            </div>
+          ) : (
+            <div
+              key={`sprite-${animState}-${animKey}`}
+              className="absolute top-0 left-0"
+              style={{
+                width: isHydraVerticalSprite ? `${currentFrameWidth * effectiveScale}px` : `${sheetWidth * effectiveScale}px`,
+                height: isHydraVerticalSprite ? `${sheetHeight * effectiveScale}px` : `${currentFrameHeight * effectiveScale}px`,
+                backgroundImage: `url('${currentSpriteUrl}')`,
+                backgroundRepeat: "no-repeat",
+                backgroundSize: isHydraVerticalSprite
+                  ? `${currentFrameWidth * effectiveScale}px ${sheetHeight * effectiveScale}px`
+                  : `${sheetWidth * effectiveScale}px ${currentFrameHeight * effectiveScale}px`,
+                imageRendering: "pixelated",
+                animationName: isHydraVerticalSprite
+                  ? "bossVerticalSpriteAnim"
+                  : isHydraNormal
+                    ? "bossHydraNormalSpriteAnim"
+                    : isHydraHeavy
+                      ? "bossHydraHeavyGlintSpriteAnim"
+                      : isReaperGlintSprite
+                        ? "bossReaperGlintSpriteAnim"
+                        : isHyperglycemicMutantNormal
+                          ? "bossHyperglycemicMutantNormalSpriteAnim"
+                          : isHyperglycemicMutantHeavy
+                            ? "bossHyperglycemicMutantHeavySpriteAnim"
+                            : isKetoacidosisColossusHeavy
+                              ? "bossKetoacidosisColossusHeavySpriteAnim"
+                              : isKetoacidosisColossusNormal
+                                ? "bossKetoacidosisColossusNormalSpriteAnim"
+                                : isAntigenTitanHeavy
+                                  ? "bossAntigenTitanHeavySpriteAnim"
+                                  : isAntigenTitanNormal
+                                    ? "bossAntigenTitanNormalSpriteAnim"
+                                    : isImmuneArchonHeavy
+                                      ? "bossImmuneArchonHeavySpriteAnim"
+                                      : isImmuneArchonNormal
+                                        ? "bossImmuneArchonNormalSpriteAnim"
+                                        : isErythrocyteColossusHeavy
+                                          ? "bossErythrocyteHeavySpriteAnim"
+                                          : isErythrocyteColossusNormal
+                                            ? "bossErythrocyteNormalSpriteAnim"
+                                        : isAnemiaShadeNormal
+                                          ? "bossAnemiaNormalSpriteAnim"
+                                          : "bossSpriteAnim",
+                animationDuration: isHydraVerticalSprite ? `${idleDuration || 1.8}s` : (isImmuneArchonHeavy ? '1.55s' : isImmuneArchonNormal ? '0.80s' : isErythrocyteColossusNormal ? '1.25s' : isErythrocyteColossusHeavy ? '0.90s' : isHyperglycemicMutantNormal ? '0.80s' : isHyperglycemicMutantHeavy ? '0.95s' : isAnemiaShadeNormal ? '1.25s' : `${spriteDuration}s`),
+                animationTimingFunction: isHydraNormal
                   ? `steps(${currentTotalFrames - 1})`
-                  : (isKetoacidosisColossusHeavy || isKetoacidosisColossusNormal || isAntigenTitanHeavy || isAntigenTitanNormal || isImmuneArchonNormal)
+                  : isHydraHeavy
                     ? `steps(${currentTotalFrames - 1})`
-                    : isReaperGlintSprite
-                      ? `steps(5)`
-                      : (isHyperglycemicMutantNormal || isHyperglycemicMutantHeavy || isAnemiaShadeNormal || isImmuneArchonHeavy)
-                        ? "step-end"
-                        : `steps(${currentTotalFrames})`,
-              animationIterationCount: (isGramPositiveHeavy || isStaphSentinelHeavy) ? 2 : (isAttacking ? 1 : "infinite"),
-              animationFillMode: (isHydraNormal || isHydraHeavy || isReaperGlintSprite || isHyperglycemicMutantNormal || isHyperglycemicMutantHeavy || isKetoacidosisColossusHeavy || isKetoacidosisColossusNormal || isAntigenTitanHeavy || isAntigenTitanNormal || isAnemiaShadeNormal || isImmuneArchonHeavy || isImmuneArchonNormal) ? "forwards" : "none",
-            }}
-          />
+                    : (isKetoacidosisColossusHeavy || isKetoacidosisColossusNormal || isAntigenTitanHeavy || isAntigenTitanNormal || isImmuneArchonNormal || isErythrocyteColossusHeavy)
+                      ? `steps(${currentTotalFrames - 1})`
+                      : isReaperGlintSprite
+                        ? `steps(5)`
+                        : (isHyperglycemicMutantNormal || isHyperglycemicMutantHeavy || isAnemiaShadeNormal || isImmuneArchonHeavy || isErythrocyteColossusNormal)
+                          ? "step-end"
+                          : `steps(${currentTotalFrames})`,
+                animationIterationCount: (isGramPositiveHeavy || isStaphSentinelHeavy) ? 2 : (isAttacking ? 1 : "infinite"),
+                animationFillMode: (isHydraNormal || isHydraHeavy || isReaperGlintSprite || isHyperglycemicMutantNormal || isHyperglycemicMutantHeavy || isKetoacidosisColossusHeavy || isKetoacidosisColossusNormal || isAntigenTitanHeavy || isAntigenTitanNormal || isAnemiaShadeNormal || isImmuneArchonHeavy || isImmuneArchonNormal || isErythrocyteColossusNormal || isErythrocyteColossusHeavy) ? "forwards" : "none",
+              }}
+            />
+          )}
         </div>
       )}
 
@@ -1298,6 +1394,41 @@ export function BossSpriteAnimator({
           }
           100% {
             transform: translateX(calc(-100% + 100% / 11));
+          }
+        }
+
+        @keyframes bossErythrocyteNormalSpriteAnim {
+          0.00% { transform: translateX(calc(-0 * 100% / 22)); }
+          4.55% { transform: translateX(calc(-1 * 100% / 22)); }
+          9.09% { transform: translateX(calc(-2 * 100% / 22)); }
+          13.64% { transform: translateX(calc(-3 * 100% / 22)); }
+          18.18% { transform: translateX(calc(-4 * 100% / 22)); }
+          22.73% { transform: translateX(calc(-5 * 100% / 22)); }
+          27.27% { transform: translateX(calc(-6 * 100% / 22)); }
+          31.82% { transform: translateX(calc(-7 * 100% / 22)); }
+          36.36% { transform: translateX(calc(-8 * 100% / 22)); }
+          40.91% { transform: translateX(calc(-9 * 100% / 22)); }
+          45.45% { transform: translateX(calc(-10 * 100% / 22)); }
+          50.00% { transform: translateX(calc(-11 * 100% / 22)); }
+          54.55% { transform: translateX(calc(-12 * 100% / 22)); }
+          59.09% { transform: translateX(calc(-13 * 100% / 22)); }
+          63.64% { transform: translateX(calc(-14 * 100% / 22)); }
+          68.18% { transform: translateX(calc(-15 * 100% / 22)); }
+          72.73% { transform: translateX(calc(-16 * 100% / 22)); }
+          77.27% { transform: translateX(calc(-17 * 100% / 22)); }
+          81.82% { transform: translateX(calc(-18 * 100% / 22)); }
+          86.36% { transform: translateX(calc(-19 * 100% / 22)); }
+          90.91% { transform: translateX(calc(-20 * 100% / 22)); }
+          95.45% { transform: translateX(calc(-21 * 100% / 22)); }
+          100% { transform: translateX(calc(-21 * 100% / 22)); }
+        }
+
+        @keyframes bossErythrocyteHeavySpriteAnim {
+          0% {
+            transform: translateX(0px);
+          }
+          100% {
+            transform: translateX(calc(-100% + 100% / 14));
           }
         }
 
@@ -1934,6 +2065,36 @@ export function BossSpriteAnimator({
           }
         }
 
+        @keyframes bossErythrocyteColossusLunge {
+          0% {
+            /* Start at home position */
+            transform: translate(0px, 0px) scale(1);
+            animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+          }
+          6% {
+            /* Dash immediately in front of the player */
+            transform: translate(min(-45px, calc(-100cqw + 400px)), 6px) scale(1.1);
+          }
+          84% {
+            /* Stay in front of player while normal animation renders, then stop for a second */
+            transform: translate(min(-45px, calc(-100cqw + 400px)), 6px) scale(1.1);
+            animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+          }
+          100% {
+            /* Slide smoothly back to home position */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossErythrocyteColossusHeavyLunge {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          100% {
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
         @keyframes bossLymphocyteLunge {
           0% {
             transform: translate(0px, 0px) scale(1);
@@ -2453,6 +2614,36 @@ export function BossSpriteAnimator({
             }
           }
 
+          @keyframes bossErythrocyteColossusLunge {
+            0% {
+              /* Start at home position */
+              transform: translate(0px, 0px) scale(1);
+              animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+            }
+            6% {
+              /* Dash immediately in front of the player */
+              transform: translate(calc(-100cqw + 520px), 6px) scale(1.1);
+            }
+            84% {
+              /* Stay in front of player while normal animation renders, then stop for a second */
+              transform: translate(calc(-100cqw + 520px), 6px) scale(1.1);
+              animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+            }
+            100% {
+              /* Slide smoothly back to home position */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          @keyframes bossErythrocyteColossusHeavyLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            100% {
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
           @keyframes bossLymphocyteLunge {
             0% {
               transform: translate(0px, 0px) scale(1);
@@ -2633,6 +2824,14 @@ export function BossSpriteAnimator({
 
         .animate-boss-immune-archon-heavy-lunge {
           animation-name: bossImmuneArchonHeavyLunge;
+        }
+
+        .animate-boss-erythrocyte-colossus-lunge {
+          animation-name: bossErythrocyteColossusLunge;
+        }
+
+        .animate-boss-erythrocyte-colossus-heavy-lunge {
+          animation-name: bossErythrocyteColossusHeavyLunge;
         }
 
         .animate-boss-lymphocyte-lunge {

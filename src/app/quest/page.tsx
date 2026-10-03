@@ -55,6 +55,7 @@ import { JudicialHammerAnimator } from '@/components/game/JudicialHammerAnimator
 import { UndergroundBlastAnimator } from '@/components/game/UndergroundBlastAnimator';
 import { HydraLightningAnimator } from '@/components/game/HydraLightningAnimator';
 import { AnemiaSlashAnimator } from '@/components/game/AnemiaSlashAnimator';
+import { ColossusFistAnimator } from '@/components/game/ColossusFistAnimator';
 
 const SUBJECT_METADATA: Record<string, {
   name: string;
@@ -474,6 +475,8 @@ export default function LearningQuest() {
     miniBossAttackFrameHeight?: number;
     miniBossHeavyFrameHeight?: number;
     miniBossIdleDuration?: number;
+    heavyAttackFistUrl?: string;
+    heavyAttackFistFrames?: number;
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
@@ -547,6 +550,8 @@ export default function LearningQuest() {
       undergroundBlastFrames?: number;
       lightningAttackUrl?: string | null;
       lightningAttackFrames?: number;
+      heavyAttackFistUrl?: string | null;
+      heavyAttackFistFrames?: number;
       idleFrames: number;
       attackFrames: number;
       heavyAttackFrames: number;
@@ -757,6 +762,21 @@ export default function LearningQuest() {
         miniBossIcon: '👻',
         bossName: 'Erythrocyte Colossus',
         bossIcon: '👑',
+        idleSpriteUrl: '/images/bosses/hematology_chapterOneBoss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/hematology_chapterOneBoss_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/hematology_chapterOneBoss_heavyAttackGlintAnimation-1.png',
+        heavyAttackFistUrl: '/images/bosses/hematology_chapterOneBoss_heavyAttackFistAnimation-2.png',
+        idleFrames: 8,
+        attackFrames: 22,
+        heavyAttackFrames: 14,
+        heavyAttackFistFrames: 9,
+        idleFrameWidth: 128,
+        idleFrameHeight: 176,
+        attackFrameWidth: 208,
+        attackFrameHeight: 176,
+        heavyFrameWidth: 176,
+        heavyFrameHeight: 196,
+        idleDuration: 1.0,
         minionIdleSpriteUrl: '/images/bosses/hematology_chapterOneMinion_idleAnimation.png',
         minionAttackSpriteUrl: '/images/bosses/hematology_chapterOneMinion_normalAttackAnimation.png',
         minionHeavyAttackSpriteUrl: '/images/bosses/hematology_chapterOneMinion_heavyAttackAnimation.png',
@@ -1159,6 +1179,8 @@ export default function LearningQuest() {
         undergroundBlastFrames: waveBoss?.undergroundBlastFrames || wave3BossNode?.undergroundBlastFrames || 16,
         lightningAttackUrl: waveBoss?.lightningAttackUrl || wave3BossNode?.lightningAttackUrl || (subjectMeta as any)?.lightningAttackUrl || null,
         lightningAttackFrames: waveBoss?.lightningAttackFrames || wave3BossNode?.lightningAttackFrames || (subjectMeta as any)?.lightningAttackFrames || 12,
+        heavyAttackFistUrl: waveBoss?.heavyAttackFistUrl || wave3BossNode?.heavyAttackFistUrl || null,
+        heavyAttackFistFrames: waveBoss?.heavyAttackFistFrames || wave3BossNode?.heavyAttackFistFrames || 9,
         idleFrames: waveBoss?.idleFrames || wave3BossNode?.idleFrames || ch3Node?.idleFrames || subjectMeta?.idleFrames || 6,
         attackFrames: waveBoss?.attackFrames || wave3BossNode?.attackFrames || ch3Node?.attackFrames || subjectMeta?.attackFrames || 5,
         heavyAttackFrames: waveBoss?.heavyAttackFrames || wave3BossNode?.heavyAttackFrames || ch3Node?.heavyAttackFrames || subjectMeta?.heavyAttackFrames || 13,
@@ -2269,16 +2291,20 @@ export default function LearningQuest() {
 
     const isSickleCellMinion = Boolean(
       (currentEnemyName?.toLowerCase().includes('sickle cell') && !currentEnemyName?.toLowerCase().includes('reaper')) ||
-      currentActiveNode?.minionName?.toLowerCase().includes('sickle cell') ||
-      currentActiveNode?.minionIdleSpriteUrl?.includes('hematology_chapterOneMinion') ||
-      (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : true))
+      ((quizMode === 'boss-battle' ? battleStage === 1 : quizMode === 'learning' ? currentWaveStage === 1 : false) && (
+        currentActiveNode?.minionName?.toLowerCase().includes('sickle cell') ||
+        currentActiveNode?.minionIdleSpriteUrl?.includes('hematology_chapterOneMinion') ||
+        (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1')
+      ))
     );
 
     const isAnemiaShade = Boolean(
       currentEnemyName?.toLowerCase().includes('anemia') ||
-      currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') ||
-      currentActiveNode?.miniBossIdleSpriteUrl?.includes('hematology_chapterOneMiniBoss') ||
-      (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false))
+      ((quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false) && (
+        currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') ||
+        currentActiveNode?.miniBossIdleSpriteUrl?.includes('hematology_chapterOneMiniBoss') ||
+        (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1')
+      ))
     );
 
     const isSickleCellReaper = !isSickleCellMinion && !isAnemiaShade && Boolean(
@@ -2352,9 +2378,9 @@ export default function LearningQuest() {
 
     const isKetoacidosisColossus = Boolean(
       currentEnemyName?.toLowerCase().includes('ketoacidosis') ||
-      currentEnemyName?.toLowerCase().includes('colossus') ||
+      (currentEnemyName?.toLowerCase().includes('colossus') && !currentEnemyName?.toLowerCase().includes('erythrocyte')) ||
       currentActiveNode?.bossName?.toLowerCase().includes('ketoacidosis') ||
-      currentActiveNode?.bossName?.toLowerCase().includes('colossus') ||
+      (currentActiveNode?.bossName?.toLowerCase().includes('colossus') && !currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte')) ||
       (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
     );
 
@@ -2374,7 +2400,13 @@ export default function LearningQuest() {
       )
     );
 
-    const shouldSuppressWrongSfx = isSpecterBoss || isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm || isHyperglycemicMutant || isHydraBoss || isKetoacidosisColossus || isLegalBeholder || isAntigenTitan || isAnemiaShade;
+    const isErythrocyteColossusBoss = !isSickleCellMinion && !isAnemiaShade && Boolean(
+      currentEnemyName?.toLowerCase().includes('erythrocyte') ||
+      currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') ||
+      currentActiveNode?.idleSpriteUrl?.includes('hematology_chapterOneBoss') ||
+      (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : true))
+    );
+    const shouldSuppressWrongSfx = isSpecterBoss || isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm || isHyperglycemicMutant || isHydraBoss || isKetoacidosisColossus || isLegalBeholder || isAntigenTitan || isAnemiaShade || isErythrocyteColossusBoss;
 
     if (isCorrect) {
       setScore(prev => prev + 1);
@@ -2805,11 +2837,17 @@ export default function LearningQuest() {
         );
         const isImmuneArchonHeavy = isImmuneArchonBoss && attackType === 'heavy_attack';
         const isImmuneArchonNormal = isImmuneArchonBoss && attackType === 'normal_attack';
+        const isErythrocyteColossusHeavy = isErythrocyteColossusBoss && attackType === 'heavy_attack';
+        const isErythrocyteColossusNormal = isErythrocyteColossusBoss && attackType === 'normal_attack';
 
 
         const resetDelay = isSpikes
           ? 1050
-          : isImmuneArchonHeavy
+          : isErythrocyteColossusHeavy
+            ? 1150
+            : isErythrocyteColossusNormal
+              ? 2600
+              : isImmuneArchonHeavy
             ? 2000
             : isImmuneArchonNormal
               ? 900
@@ -2883,7 +2921,11 @@ export default function LearningQuest() {
 
         const impactDelay = isSpikes
           ? 650
-          : isImmuneArchonHeavy
+          : isErythrocyteColossusHeavy
+            ? 460
+            : isErythrocyteColossusNormal
+              ? 1050
+              : isImmuneArchonHeavy
             ? 1050
             : isImmuneArchonNormal
               ? 380
@@ -2990,6 +3032,12 @@ export default function LearningQuest() {
             setHitEffectTarget('player');
             setHitEffectKey(k => k + 1);
           }, 380);
+        } else if (isErythrocyteColossusNormal) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 1050);
         }
         bossAttackResetDelay = resetDelay;
         setTimeout(() => setBossAnimState('idle'), resetDelay);
@@ -4341,7 +4389,7 @@ export default function LearningQuest() {
               const isCurrentKetoacidosisColossus = Boolean(
                 (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : false) && (
                   activeEnemyName?.toLowerCase().includes('ketoacidosis') ||
-                  activeEnemyName?.toLowerCase().includes('colossus') ||
+                  (activeEnemyName?.toLowerCase().includes('colossus') && !activeEnemyName?.toLowerCase().includes('erythrocyte')) ||
                   idleSprite?.includes('clinchem_chapterOneBoss') ||
                   currentActiveNode?.idleSpriteUrl?.includes('clinchem_chapterOneBoss') ||
                   (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1')
@@ -4358,7 +4406,16 @@ export default function LearningQuest() {
                 )
               );
 
-              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon;
+              const isCurrentErythrocyteColossus = Boolean(
+                (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : true) && (
+                  activeEnemyName?.toLowerCase().includes('erythrocyte') ||
+                  idleSprite?.includes('hematology_chapterOneBoss') ||
+                  currentActiveNode?.idleSpriteUrl?.includes('hematology_chapterOneBoss') ||
+                  (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : true))
+                )
+              );
+
+              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon || isCurrentErythrocyteColossus;
 
               return (
                 <div className={cn(
@@ -4400,7 +4457,8 @@ export default function LearningQuest() {
                       : "flex justify-end pr-2 md:pr-4 mt-2 relative items-center min-h-[96px]",
                     isCurrentAntigenTitan && "-translate-y-[44px] md:-translate-y-[48px]",
                     isCurrentKetoacidosisColossus && "-translate-y-[16px] md:-translate-y-[20px]",
-                    isCurrentImmuneArchon && "-translate-y-[20px] md:-translate-y-[24px]"
+                    isCurrentImmuneArchon && "-translate-y-[20px] md:-translate-y-[24px]",
+                    isCurrentErythrocyteColossus && "translate-y-[8px] md:translate-y-[12px]"
                   )}>
                     <div className={cn(
                       "relative inline-flex items-center justify-center transition-all duration-500 transform-gpu",
@@ -4726,6 +4784,42 @@ export default function LearningQuest() {
                   );
                 })()}
 
+
+                {/* Chapter 1 Hematology Boss (Erythrocyte Colossus): Heavy Attack Fist Overlay crushing Player's Body */}
+                {(() => {
+                  const isHematology = selectedSubject === 'Hematology' || (selectedSubject?.toLowerCase().includes('hematology') && !selectedSubject?.toLowerCase().includes('immuno'));
+                  if (!isHematology) return null;
+
+                  const activeNodes = getSubjectNodes(selectedSubject);
+                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
+
+                  // Strictly Chapter 1 Boss Stage 3 (Erythrocyte Colossus), NEVER Minion (Sickle Cell) or Mini-Boss (Anemia Shade) or Final Boss hem-3 (Sickle-Cell Reaper)
+                  const isErythrocyteActive = Boolean(
+                    quizMode === 'boss-battle'
+                      ? (battleStage === 3 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') || currentActiveNode?.idleSpriteUrl?.includes('hematology_chapterOneBoss')))
+                      : quizMode === 'learning'
+                        ? (waveState?.waveStage === 3 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') || waveState?.name?.toLowerCase().includes('erythrocyte') || waveState?.idleSprite?.includes('hematology_chapterOneBoss')))
+                        : (currentActiveNode?.id === 'hem-1' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte'))
+                  );
+
+                  if (!isErythrocyteActive) return null;
+
+                  const fistUrl = (quizMode === 'learning' ? (waveState as any)?.heavyAttackFistUrl : null) || (currentActiveNode as any)?.heavyAttackFistUrl || '/images/bosses/hematology_chapterOneBoss_heavyAttackFistAnimation-2.png';
+
+                  return (
+                    <ColossusFistAnimator
+                      isActive={bossAnimState === 'heavy_attack'}
+                      triggerKey={hitEffectKey}
+                      spriteUrl={fistUrl}
+                      frames={9}
+                      delayMs={220}
+                      durationMs={720}
+                      scale={2.5}
+                      className="bottom-0 sm:bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-30"
+                    />
+                  );
+                })()}
 
                 {/* Chapter 1 Hematology Mini-Boss (Anemia Shade): Heavy Attack Slash Overlay directly on Player's Body */}
                 {(() => {
