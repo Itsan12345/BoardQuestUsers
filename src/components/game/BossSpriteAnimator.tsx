@@ -223,6 +223,24 @@ export function BossSpriteAnimator({
     heavyAttackSpriteUrl?.includes('hematology_chapterOneBoss')
   );
 
+  const isParaffinGolemAttack = isAttacking && (
+    attackSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
+    heavyAttackSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
+    bossName?.toLowerCase().includes('paraffin')
+  );
+  const isParaffinGolemHeavy = isHeavy && isParaffinGolemAttack;
+  const isParaffinGolemNormal = !isHeavy && isParaffinGolemAttack;
+  const isParaffinGolemIdle = !isAttacking && (
+    idleSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
+    bossName?.toLowerCase().includes('paraffin')
+  );
+  const isParaffinGolem = (
+    bossName?.toLowerCase().includes('paraffin') ||
+    idleSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
+    attackSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
+    heavyAttackSpriteUrl?.includes('hispatho_chapterOneMiniBoss')
+  );
+
   const currentTotalFrames = isHydraHeavy
     ? 14
     : isHydraNormal
@@ -259,6 +277,12 @@ export function BossSpriteAnimator({
                                     ? 22
                                     : isErythrocyteColossusIdle
                                       ? 8
+                                : isParaffinGolemHeavy
+                                  ? 13
+                                  : isParaffinGolemNormal
+                                    ? 17
+                                    : isParaffinGolemIdle
+                                      ? 7
                                 : isHeavy
                       ? (heavyAttackFrames || 11)
                       : (isNormalAttack && hasProjectile)
@@ -292,6 +316,12 @@ export function BossSpriteAnimator({
                         : isErythrocyteColossusNormal
                           ? 208
                           : isErythrocyteColossusIdle
+                            ? 128
+                      : isParaffinGolemHeavy
+                        ? 128
+                        : isParaffinGolemNormal
+                          ? 160
+                          : isParaffinGolemIdle
                             ? 128
                       : isHeavy
                   ? (heavyFrameWidth || 176)
@@ -327,6 +357,12 @@ export function BossSpriteAnimator({
                           ? 176
                           : isErythrocyteColossusIdle
                             ? 176
+                      : isParaffinGolemHeavy
+                        ? 128
+                        : isParaffinGolemNormal
+                          ? 128
+                          : isParaffinGolemIdle
+                            ? 128
                       : isHeavy
                   ? (heavyFrameHeight || (heavyFrameWidth && heavyFrameWidth >= 300 ? 256 : 128))
                   : (isNormalAttack && hasProjectile)
@@ -395,7 +431,7 @@ export function BossSpriteAnimator({
     heavyAttackSpriteUrl?.includes('immunohema_chapterOneMiniBoss')
   );
 
-  const isWideBeam = isAttacking && currentFrameWidth >= 300 && !isReagentStripSlimeAttack && !isHydraAttack && !isKetoacidosisColossusAttack && !isAntigenTitanAttack && !isImmuneArchonAttack && !isErythrocyteColossusAttack;
+  const isWideBeam = isAttacking && currentFrameWidth >= 300 && !isReagentStripSlimeAttack && !isHydraAttack && !isKetoacidosisColossusAttack && !isAntigenTitanAttack && !isImmuneArchonAttack && !isErythrocyteColossusAttack && !isParaffinGolemAttack;
 
   const effectiveScale = isHyperglycemicMutant
     ? scale * 1.55
@@ -407,9 +443,11 @@ export function BossSpriteAnimator({
           ? scale * 1.35
           : isErythrocyteColossus
             ? scale * 0.90
-            : isReagentStripSlimeAttack
-            ? Math.min(scale, 1.0)
-            : scale;
+            : isParaffinGolem
+              ? scale * 1.50
+              : isReagentStripSlimeAttack
+              ? Math.min(scale, 1.0)
+              : scale;
 
   // Frame rates (fps) - Tuned for fast, immediate and punchy combat animations
   const fps = isHeavy
@@ -630,6 +668,12 @@ export function BossSpriteAnimator({
                                                                                                     ? 1.25
                                                                                                     : isErythrocyteColossusIdle
                                                                                                       ? (idleDuration || 1.0)
+                                                                                                      : isParaffinGolemHeavy
+                                                                                                        ? 1.15
+                                                                                                        : isParaffinGolemNormal
+                                                                                                          ? 1.25
+                                                                                                          : isParaffinGolemIdle
+                                                                                                            ? (idleDuration || 1.0)
                                                                                           : isBiohazardIdle
                                                                                             ? (idleDuration || (idleFps ? currentTotalFrames / idleFps : 1.05))
                                                                                             : Math.max(0.48, Math.min(0.62, currentTotalFrames / fps));
@@ -708,10 +752,14 @@ export function BossSpriteAnimator({
                                                                       ? 0.90
                                                                       : isErythrocyteColossusNormal
                                                                         ? 1.25
+                                                                        : isParaffinGolemHeavy
+                                                                          ? 1.15
+                                                                          : isParaffinGolemNormal
+                                                                            ? 1.25
                                                                 : spriteDuration;
 
   const lungeDuration = isAttacking
-    ? (hasProjectile ? 0.45 : isAnemiaShadeHeavy ? 1.55 : isAnemiaShadeNormal ? 1.25 : isReaperGlintNormal ? 1.05 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : isHydraHeavy ? 1.05 : isHydraNormal ? 1.85 : isHyperglycemicMutantHeavy ? 0.95 : isHyperglycemicMutantNormal ? 0.80 : isKetoacidosisColossusHeavy ? 0.85 : isKetoacidosisColossusNormal ? 0.70 : isAntigenTitanHeavy ? 0.85 : isAntigenTitanNormal ? 0.70 : isImmuneArchonHeavy ? 1.55 : isImmuneArchonNormal ? 0.90 : isErythrocyteColossusHeavy ? 0.90 : isErythrocyteColossusNormal ? 2.60 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : (isReagentStripSlimeAttack ? 0.08 : (isLymphocyteSwarmAttack ? 0.12 : 0.35)))))))
+    ? (hasProjectile ? 0.45 : isAnemiaShadeHeavy ? 1.55 : isAnemiaShadeNormal ? 1.25 : isReaperGlintNormal ? 1.05 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : isHydraHeavy ? 1.05 : isHydraNormal ? 1.85 : isHyperglycemicMutantHeavy ? 0.95 : isHyperglycemicMutantNormal ? 0.80 : isKetoacidosisColossusHeavy ? 0.85 : isKetoacidosisColossusNormal ? 0.70 : isAntigenTitanHeavy ? 0.85 : isAntigenTitanNormal ? 0.70 : isImmuneArchonHeavy ? 1.55 : isImmuneArchonNormal ? 0.90 : isErythrocyteColossusHeavy ? 0.90 : isErythrocyteColossusNormal ? 2.60 : isParaffinGolemHeavy ? 1.15 : isParaffinGolemNormal ? 2.60 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : (isReagentStripSlimeAttack ? 0.08 : (isLymphocyteSwarmAttack ? 0.12 : 0.35)))))))
     : spriteDuration;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
@@ -809,7 +857,7 @@ export function BossSpriteAnimator({
     if (isStaphSentinel) {
       preloadStaphSentinelSounds();
     }
-    if (isBiohazard || heavyAttackSfxUrl?.includes('Biohazard') || normalAttackSfxUrl?.includes('Biohazard')) {
+    if (isBiohazard || heavyAttackSfxUrl?.includes('Biohazard') || normalAttackSfxUrl?.includes('Biohazard') || isParaffinGolemNormal || attackSpriteUrl?.includes('hispatho_chapterOneMiniBoss') || isErythrocyteColossusNormal || attackSpriteUrl?.includes('hematology_chapterOneBoss')) {
       preloadBiohazardSounds();
     }
     if (isCrystalGolem || isAntigenTitan || isAntigenTitanAttack || heavyAttackSfxUrl?.includes('CrystalGolem') || normalAttackSfxUrl?.includes('CrystalGolem')) {
@@ -900,6 +948,22 @@ export function BossSpriteAnimator({
       setColossusNormalPhase('attack');
     }
   }, [isErythrocyteColossusNormal, animKey]);
+
+  const [paraffinNormalPhase, setParaffinNormalPhase] = useState<'attack' | 'idle'>('attack');
+
+  useEffect(() => {
+    if (isParaffinGolemNormal) {
+      setParaffinNormalPhase('attack');
+      const idleTimer = setTimeout(() => {
+        setParaffinNormalPhase('idle');
+      }, 1250);
+      return () => {
+        clearTimeout(idleTimer);
+      };
+    } else {
+      setParaffinNormalPhase('attack');
+    }
+  }, [isParaffinGolemNormal, animKey]);
 
   useEffect(() => {
     let sfxTimer: NodeJS.Timeout | null = null;
@@ -1031,13 +1095,23 @@ export function BossSpriteAnimator({
           // when hispatho_chapterThreeFinalBoss_normalAttackHammerAnimation-2.png is played.
           // Legal Beholder heavy underground blast attack sound is played by UndergroundBlastAnimator
           // when hispatho_chapterThreeFinalBoss_heavyAttackUndergroundBlastAnimation.png is played.
+        } else if (isParaffinGolemNormal || attackSpriteUrl?.includes('hispatho_chapterOneMiniBoss_normalAttackAnimation')) {
+          // Play BiohazardOverlordNormalAttack sound effect at the climax blade thrust frame (Frame 10-13, 750ms)
+          sfxTimer = setTimeout(() => {
+            playBiohazardAttack('normal');
+          }, 750);
+        } else if (isErythrocyteColossusNormal || attackSpriteUrl?.includes('hematology_chapterOneBoss_normalAttackAnimation')) {
+          // Play BiohazardOverlordNormalAttack sound effect at the 17th frame (Frame 16, ~909ms)
+          sfxTimer = setTimeout(() => {
+            playBiohazardAttack('normal');
+          }, 909);
         } else if (heavyAttackSfxUrl || normalAttackSfxUrl) {
           if (isHeavy) {
-            if (heavyAttackSfxUrl && !isHydraAttack && !isAntiSerumHydra && !isLegalBeholderAttack && !isImmuneArchonHeavy && !isErythrocyteColossus) {
+            if (heavyAttackSfxUrl && !isHydraAttack && !isAntiSerumHydra && !isLegalBeholderAttack && !isImmuneArchonHeavy && !isErythrocyteColossus && !isParaffinGolem) {
               playAudioFile(heavyAttackSfxUrl);
             }
           } else if (isNormalAttack) {
-            if (normalAttackSfxUrl && !isLegalBeholderAttack && !isImmuneArchonNormal && !isErythrocyteColossus) {
+            if (normalAttackSfxUrl && !isLegalBeholderAttack && !isImmuneArchonNormal && !isErythrocyteColossus && !isParaffinGolem) {
               playAudioFile(normalAttackSfxUrl);
             }
           }
@@ -1060,6 +1134,7 @@ export function BossSpriteAnimator({
   }, [animState, isAttacking, lungeDuration, isGramPositive, isGramPositiveAttack, isSickleCellMinion, isSickleCellMinionAttack, isAnemiaShade, isAnemiaShadeAttack, isStaphSentinel, isStaphSentinelAttack, isSickleCellReaper, isSickleCellReaperAttack, isMicrobeSwarm, isMicrobeSwarmAttack, isLymphocyteSwarm, isLymphocyteSwarmAttack, isHydraAttack, isAntiSerumHydra, isKetoacidosisColossus, isKetoacidosisColossusAttack, isAntigenTitan, isAntigenTitanAttack, isLegalBeholderAttack, isHyperglycemicMutant, isHyperglycemicMutantAttack, isImmuneArchon, isImmuneArchonAttack, isSpecter, isBiohazard, isBiohazardAttack, isCrystalGolem, isCrystalGolemAttack, isAcidSlime, isAcidSlimeAttack, isGmsFungalSpore, isGmsFungalSporeAttack, isReagentStripSlime, isReagentStripSlimeAttack, isHeavy, isNormalAttack, attackSpriteUrl, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl, bossName]);
 
   const isColossusNormalIdlePhase = isErythrocyteColossusNormal && colossusNormalPhase === 'idle';
+  const isParaffinNormalIdlePhase = isParaffinGolemNormal && paraffinNormalPhase === 'idle';
   const sheetWidth = currentFrameWidth * currentTotalFrames;
   const sheetHeight = currentFrameHeight * currentTotalFrames;
 
@@ -1209,8 +1284,10 @@ export function BossSpriteAnimator({
             isImmuneArchonNormal && "animate-boss-immune-archon-lunge",
             isErythrocyteColossusHeavy && "animate-boss-erythrocyte-colossus-heavy-lunge",
             isErythrocyteColossusNormal && "animate-boss-erythrocyte-colossus-lunge",
-            isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderHeavy && !isHydraHeavy && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantHeavy && !isKetoacidosisColossusHeavy && !isAntigenTitanHeavy && !isImmuneArchonHeavy && !isErythrocyteColossusHeavy && !isAnemiaShadeAttack && "animate-boss-heavy-lunge",
-            isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isReaperGlintNormal && !isSickleCellReaperNormal && !isGramPositiveAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderNormal && !isHydraNormal && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantNormal && !isKetoacidosisColossusNormal && !isAntigenTitanNormal && !isImmuneArchonNormal && !isErythrocyteColossusNormal && !isAnemiaShadeAttack && "animate-boss-lunge",
+            isParaffinGolemHeavy && "animate-boss-paraffin-golem-heavy-lunge",
+            isParaffinGolemNormal && "animate-boss-paraffin-golem-lunge",
+            isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderHeavy && !isHydraHeavy && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantHeavy && !isKetoacidosisColossusHeavy && !isAntigenTitanHeavy && !isImmuneArchonHeavy && !isErythrocyteColossusHeavy && !isParaffinGolemHeavy && !isAnemiaShadeAttack && "animate-boss-heavy-lunge",
+            isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isReaperGlintNormal && !isSickleCellReaperNormal && !isGramPositiveAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderNormal && !isHydraNormal && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantNormal && !isKetoacidosisColossusNormal && !isAntigenTitanNormal && !isImmuneArchonNormal && !isErythrocyteColossusNormal && !isParaffinGolemNormal && !isAnemiaShadeAttack && "animate-boss-lunge",
             isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
           )}
           style={{
@@ -1247,6 +1324,29 @@ export function BossSpriteAnimator({
                   backgroundSize: `${128 * 8 * effectiveScale}px ${176 * effectiveScale}px`,
                   imageRendering: "pixelated",
                   animation: "bossSpriteAnim 1.0s steps(8) infinite",
+                }}
+              />
+            </div>
+          ) : isParaffinNormalIdlePhase ? (
+            <div
+              key={`sprite-paraffin-idle-${animKey}`}
+              className="absolute top-0 overflow-hidden"
+              style={{
+                left: `${36 * effectiveScale}px`,
+                width: `${128 * effectiveScale}px`,
+                height: `${128 * effectiveScale}px`,
+              }}
+            >
+              <div
+                className="absolute top-0 left-0"
+                style={{
+                  width: `${128 * 7 * effectiveScale}px`,
+                  height: `${128 * effectiveScale}px`,
+                  backgroundImage: `url('${idleSpriteUrl || '/images/bosses/hispatho_chapterOneMiniBoss_idleAnimation.png'}')`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundSize: `${128 * 7 * effectiveScale}px ${128 * effectiveScale}px`,
+                  imageRendering: "pixelated",
+                  animation: "bossSpriteAnim 1.0s steps(7) infinite",
                 }}
               />
             </div>
@@ -1291,10 +1391,14 @@ export function BossSpriteAnimator({
                                           ? "bossErythrocyteHeavySpriteAnim"
                                           : isErythrocyteColossusNormal
                                             ? "bossErythrocyteNormalSpriteAnim"
+                                            : isParaffinGolemHeavy
+                                              ? "bossParaffinHeavySpriteAnim"
+                                              : isParaffinGolemNormal
+                                                ? "bossParaffinNormalSpriteAnim"
                                         : isAnemiaShadeNormal
                                           ? "bossAnemiaNormalSpriteAnim"
                                           : "bossSpriteAnim",
-                animationDuration: isHydraVerticalSprite ? `${idleDuration || 1.8}s` : (isImmuneArchonHeavy ? '1.55s' : isImmuneArchonNormal ? '0.80s' : isErythrocyteColossusNormal ? '1.25s' : isErythrocyteColossusHeavy ? '0.90s' : isHyperglycemicMutantNormal ? '0.80s' : isHyperglycemicMutantHeavy ? '0.95s' : isAnemiaShadeNormal ? '1.25s' : `${spriteDuration}s`),
+                animationDuration: isHydraVerticalSprite ? `${idleDuration || 1.8}s` : (isImmuneArchonHeavy ? '1.55s' : isImmuneArchonNormal ? '0.80s' : isErythrocyteColossusNormal ? '1.25s' : isErythrocyteColossusHeavy ? '0.90s' : isParaffinGolemNormal ? '1.25s' : isParaffinGolemHeavy ? '1.15s' : isHyperglycemicMutantNormal ? '0.80s' : isHyperglycemicMutantHeavy ? '0.95s' : isAnemiaShadeNormal ? '1.25s' : `${spriteDuration}s`),
                 animationTimingFunction: isHydraNormal
                   ? `steps(${currentTotalFrames - 1})`
                   : isHydraHeavy
@@ -1303,11 +1407,11 @@ export function BossSpriteAnimator({
                       ? `steps(${currentTotalFrames - 1})`
                       : isReaperGlintSprite
                         ? `steps(5)`
-                        : (isHyperglycemicMutantNormal || isHyperglycemicMutantHeavy || isAnemiaShadeNormal || isImmuneArchonHeavy || isErythrocyteColossusNormal)
+                        : (isHyperglycemicMutantNormal || isHyperglycemicMutantHeavy || isAnemiaShadeNormal || isImmuneArchonHeavy || isErythrocyteColossusNormal || isParaffinGolemNormal || isParaffinGolemHeavy)
                           ? "step-end"
                           : `steps(${currentTotalFrames})`,
                 animationIterationCount: (isGramPositiveHeavy || isStaphSentinelHeavy) ? 2 : (isAttacking ? 1 : "infinite"),
-                animationFillMode: (isHydraNormal || isHydraHeavy || isReaperGlintSprite || isHyperglycemicMutantNormal || isHyperglycemicMutantHeavy || isKetoacidosisColossusHeavy || isKetoacidosisColossusNormal || isAntigenTitanHeavy || isAntigenTitanNormal || isAnemiaShadeNormal || isImmuneArchonHeavy || isImmuneArchonNormal || isErythrocyteColossusNormal || isErythrocyteColossusHeavy) ? "forwards" : "none",
+                animationFillMode: (isHydraNormal || isHydraHeavy || isReaperGlintSprite || isHyperglycemicMutantNormal || isHyperglycemicMutantHeavy || isKetoacidosisColossusHeavy || isKetoacidosisColossusNormal || isAntigenTitanHeavy || isAntigenTitanNormal || isAnemiaShadeNormal || isImmuneArchonHeavy || isImmuneArchonNormal || isErythrocyteColossusNormal || isErythrocyteColossusHeavy || isParaffinGolemNormal || isParaffinGolemHeavy) ? "forwards" : "none",
               }}
             />
           )}
@@ -1430,6 +1534,44 @@ export function BossSpriteAnimator({
           100% {
             transform: translateX(calc(-100% + 100% / 14));
           }
+        }
+
+        @keyframes bossParaffinNormalSpriteAnim {
+          0.00% { transform: translateX(calc(-0 * 100% / 17)); }
+          5.88% { transform: translateX(calc(-1 * 100% / 17)); }
+          11.76% { transform: translateX(calc(-2 * 100% / 17)); }
+          17.65% { transform: translateX(calc(-3 * 100% / 17)); }
+          23.53% { transform: translateX(calc(-4 * 100% / 17)); }
+          29.41% { transform: translateX(calc(-5 * 100% / 17)); }
+          35.29% { transform: translateX(calc(-6 * 100% / 17)); }
+          41.18% { transform: translateX(calc(-7 * 100% / 17)); }
+          47.06% { transform: translateX(calc(-8 * 100% / 17)); }
+          52.94% { transform: translateX(calc(-9 * 100% / 17)); }
+          58.82% { transform: translateX(calc(-10 * 100% / 17)); }
+          64.71% { transform: translateX(calc(-11 * 100% / 17)); }
+          70.59% { transform: translateX(calc(-12 * 100% / 17)); }
+          76.47% { transform: translateX(calc(-13 * 100% / 17)); }
+          82.35% { transform: translateX(calc(-14 * 100% / 17)); }
+          88.24% { transform: translateX(calc(-15 * 100% / 17)); }
+          94.12% { transform: translateX(calc(-16 * 100% / 17)); }
+          100% { transform: translateX(calc(-16 * 100% / 17)); }
+        }
+
+        @keyframes bossParaffinHeavySpriteAnim {
+          0.00% { transform: translateX(calc(-0 * 100% / 13)); }
+          7.69% { transform: translateX(calc(-1 * 100% / 13)); }
+          15.38% { transform: translateX(calc(-2 * 100% / 13)); }
+          23.08% { transform: translateX(calc(-3 * 100% / 13)); }
+          30.77% { transform: translateX(calc(-4 * 100% / 13)); }
+          38.46% { transform: translateX(calc(-5 * 100% / 13)); }
+          46.15% { transform: translateX(calc(-6 * 100% / 13)); }
+          53.85% { transform: translateX(calc(-7 * 100% / 13)); }
+          61.54% { transform: translateX(calc(-8 * 100% / 13)); }
+          69.23% { transform: translateX(calc(-9 * 100% / 13)); }
+          76.92% { transform: translateX(calc(-10 * 100% / 13)); }
+          84.62% { transform: translateX(calc(-11 * 100% / 13)); }
+          92.31% { transform: translateX(calc(-12 * 100% / 13)); }
+          100% { transform: translateX(calc(-12 * 100% / 13)); }
         }
 
         @keyframes bossImmuneArchonHeavySpriteAnim {
@@ -2073,6 +2215,36 @@ export function BossSpriteAnimator({
           }
           6% {
             /* Dash immediately in front of the player */
+            transform: translate(min(-45px, calc(-100cqw + 310px)), 6px) scale(1.1);
+          }
+          84% {
+            /* Stay in front of player while normal animation renders, then stop for a second */
+            transform: translate(min(-45px, calc(-100cqw + 310px)), 6px) scale(1.1);
+            animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+          }
+          100% {
+            /* Slide smoothly back to home position */
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossErythrocyteColossusHeavyLunge {
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          100% {
+            transform: translate(0px, 0px) scale(1);
+          }
+        }
+
+        @keyframes bossParaffinGolemLunge {
+          0% {
+            /* Start at home position */
+            transform: translate(0px, 0px) scale(1);
+            animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+          }
+          6% {
+            /* Dash immediately in front of the player */
             transform: translate(min(-45px, calc(-100cqw + 400px)), 6px) scale(1.1);
           }
           84% {
@@ -2086,7 +2258,7 @@ export function BossSpriteAnimator({
           }
         }
 
-        @keyframes bossErythrocyteColossusHeavyLunge {
+        @keyframes bossParaffinGolemHeavyLunge {
           0% {
             transform: translate(0px, 0px) scale(1);
           }
@@ -2622,6 +2794,36 @@ export function BossSpriteAnimator({
             }
             6% {
               /* Dash immediately in front of the player */
+              transform: translate(calc(-100cqw + 420px), 6px) scale(1.1);
+            }
+            84% {
+              /* Stay in front of player while normal animation renders, then stop for a second */
+              transform: translate(calc(-100cqw + 420px), 6px) scale(1.1);
+              animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+            }
+            100% {
+              /* Slide smoothly back to home position */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          @keyframes bossErythrocyteColossusHeavyLunge {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            100% {
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          @keyframes bossParaffinGolemLunge {
+            0% {
+              /* Start at home position */
+              transform: translate(0px, 0px) scale(1);
+              animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+            }
+            6% {
+              /* Dash immediately in front of the player */
               transform: translate(calc(-100cqw + 520px), 6px) scale(1.1);
             }
             84% {
@@ -2635,7 +2837,7 @@ export function BossSpriteAnimator({
             }
           }
 
-          @keyframes bossErythrocyteColossusHeavyLunge {
+          @keyframes bossParaffinGolemHeavyLunge {
             0% {
               transform: translate(0px, 0px) scale(1);
             }
@@ -2832,6 +3034,14 @@ export function BossSpriteAnimator({
 
         .animate-boss-erythrocyte-colossus-heavy-lunge {
           animation-name: bossErythrocyteColossusHeavyLunge;
+        }
+
+        .animate-boss-paraffin-golem-lunge {
+          animation-name: bossParaffinGolemLunge;
+        }
+
+        .animate-boss-paraffin-golem-heavy-lunge {
+          animation-name: bossParaffinGolemHeavyLunge;
         }
 
         .animate-boss-lymphocyte-lunge {

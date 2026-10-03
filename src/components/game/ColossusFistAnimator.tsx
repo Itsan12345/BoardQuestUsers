@@ -2,11 +2,13 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { playErythrocyteColossusAttack, stopErythrocyteColossusAttack, preloadErythrocyteColossusSounds } from "@/lib/audio-manager";
 
 interface ColossusFistAnimatorProps {
   isActive: boolean;
   triggerKey?: number | string;
   spriteUrl?: string;
+  sfxUrl?: string;
   frames?: number;
   delayMs?: number;
   durationMs?: number;
@@ -19,6 +21,7 @@ export function ColossusFistAnimator({
   isActive,
   triggerKey,
   spriteUrl = "/images/bosses/hematology_chapterOneBoss_heavyAttackFistAnimation-2.png",
+  sfxUrl = "/SoundEffects/ErythrocyeColossusHeavyAttack.mp3",
   frames = 9,
   delayMs = 220,
   durationMs = 720,
@@ -32,8 +35,9 @@ export function ColossusFistAnimator({
   const [animId, setAnimId] = useState(0);
   const onCompleteRef = useRef(onComplete);
 
-  // Preload spritesheet immediately
+  // Preload sound and spritesheet immediately
   useEffect(() => {
+    preloadErythrocyteColossusSounds();
     if (spriteUrl && typeof window !== 'undefined') {
       const img = new window.Image();
       img.src = spriteUrl;
@@ -53,6 +57,7 @@ export function ColossusFistAnimator({
       const startTimer = setTimeout(() => {
         setIsVisible(true);
         setIsAnimating(true);
+        playErythrocyteColossusAttack('heavy');
       }, delayMs);
 
       // Step 2: Smooth fade out right before completion
@@ -65,6 +70,7 @@ export function ColossusFistAnimator({
         setIsVisible(false);
         setIsAnimating(false);
         setIsFading(false);
+        stopErythrocyteColossusAttack('heavy', 250);
         if (onCompleteRef.current) onCompleteRef.current();
       }, delayMs + durationMs + 80);
 
@@ -72,6 +78,7 @@ export function ColossusFistAnimator({
         clearTimeout(startTimer);
         clearTimeout(fadeTimer);
         clearTimeout(endTimer);
+        stopErythrocyteColossusAttack('heavy', 150);
       };
     } else {
       setIsVisible(false);

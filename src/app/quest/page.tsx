@@ -56,6 +56,7 @@ import { UndergroundBlastAnimator } from '@/components/game/UndergroundBlastAnim
 import { HydraLightningAnimator } from '@/components/game/HydraLightningAnimator';
 import { AnemiaSlashAnimator } from '@/components/game/AnemiaSlashAnimator';
 import { ColossusFistAnimator } from '@/components/game/ColossusFistAnimator';
+import { ParaffinBallsAnimator } from '@/components/game/ParaffinBallsAnimator';
 
 const SUBJECT_METADATA: Record<string, {
   name: string;
@@ -477,6 +478,8 @@ export default function LearningQuest() {
     miniBossIdleDuration?: number;
     heavyAttackFistUrl?: string;
     heavyAttackFistFrames?: number;
+    miniBossHeavyAttackBallsUrl?: string;
+    miniBossHeavyBallsFrames?: number;
   }
 
   const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
@@ -520,6 +523,7 @@ export default function LearningQuest() {
       attackSprite?: string | null;
       heavyAttackSprite?: string | null;
       slashSprite?: string | null;
+      heavyAttackBallsUrl?: string | null;
       idleFrames?: number;
       attackFrames?: number;
       heavyAttackFrames?: number;
@@ -766,6 +770,8 @@ export default function LearningQuest() {
         attackSpriteUrl: '/images/bosses/hematology_chapterOneBoss_normalAttackAnimation.png',
         heavyAttackSpriteUrl: '/images/bosses/hematology_chapterOneBoss_heavyAttackGlintAnimation-1.png',
         heavyAttackFistUrl: '/images/bosses/hematology_chapterOneBoss_heavyAttackFistAnimation-2.png',
+        normalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/ErythrocyeColossusHeavyAttack.mp3',
         idleFrames: 8,
         attackFrames: 22,
         heavyAttackFrames: 14,
@@ -980,6 +986,23 @@ export default function LearningQuest() {
         minionHeavyFrameWidth: 244,
         minionHeavyFrameHeight: 196,
         minionIdleDuration: 1.0,
+        miniBossIdleSpriteUrl: '/images/bosses/hispatho_chapterOneMiniBoss_idleAnimation.png',
+        miniBossAttackSpriteUrl: '/images/bosses/hispatho_chapterOneMiniBoss_normalAttackAnimation.png',
+        miniBossNormalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        miniBossHeavyAttackSpriteUrl: '/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackGlintAnimation-1.png',
+        miniBossHeavyAttackBallsUrl: '/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackBallsAnimation-2.png',
+        miniBossHeavyAttackSfxUrl: '/SoundEffects/LegalBeholderHeavyAttack.mp3',
+        miniBossIdleFrames: 7,
+        miniBossAttackFrames: 17,
+        miniBossHeavyAttackFrames: 13,
+        miniBossHeavyBallsFrames: 12,
+        miniBossIdleFrameWidth: 128,
+        miniBossIdleFrameHeight: 128,
+        miniBossAttackFrameWidth: 160,
+        miniBossAttackFrameHeight: 128,
+        miniBossHeavyFrameWidth: 128,
+        miniBossHeavyFrameHeight: 128,
+        miniBossIdleDuration: 1.0,
       },
       { id: 'hp-2', nodeNumber: 2, title: 'RA 5527 & MedTech Ethics', subtopic: 'Philippine Medical Technology Act of 1969', minionName: 'Statute Page', minionIcon: '📜', miniBossName: 'Legal Guardian', miniBossIcon: '🛡️', bossName: 'Jurisprudence Archon', bossIcon: '⚖️' },
       {
@@ -1144,15 +1167,16 @@ export default function LearningQuest() {
         attackSprite: waveEnforcer?.attackSprite !== undefined ? waveEnforcer.attackSprite : (currentActiveNode?.miniBossAttackSpriteUrl || ch1Node?.miniBossAttackSpriteUrl || null),
         heavyAttackSprite: waveEnforcer?.heavyAttackSprite !== undefined ? waveEnforcer.heavyAttackSprite : (currentActiveNode?.miniBossHeavyAttackSpriteUrl || ch1Node?.miniBossHeavyAttackSpriteUrl || null),
         slashSpriteUrl: waveEnforcer?.slashSprite || currentActiveNode?.miniBossSlashSpriteUrl || ch1Node?.miniBossSlashSpriteUrl || null,
+        heavyAttackBallsUrl: (waveEnforcer as any)?.heavyAttackBallsUrl || (currentActiveNode as any)?.miniBossHeavyAttackBallsUrl || (ch1Node as any)?.miniBossHeavyAttackBallsUrl || null,
         idleFrames: waveEnforcer?.idleFrames || currentActiveNode?.miniBossIdleFrames || ch1Node?.miniBossIdleFrames || 7,
-        attackFrames: waveEnforcer?.attackFrames || currentActiveNode?.miniBossAttackFrames || ch1Node?.miniBossAttackFrames || 8,
-        heavyAttackFrames: waveEnforcer?.heavyAttackFrames || currentActiveNode?.miniBossHeavyAttackFrames || ch1Node?.miniBossHeavyAttackFrames || 9,
+        attackFrames: waveEnforcer?.attackFrames || currentActiveNode?.miniBossAttackFrames || ch1Node?.miniBossAttackFrames || 17,
+        heavyAttackFrames: waveEnforcer?.heavyAttackFrames || currentActiveNode?.miniBossHeavyAttackFrames || ch1Node?.miniBossHeavyAttackFrames || 13,
         idleFrameWidth: waveEnforcer?.idleFrameWidth || currentActiveNode?.miniBossIdleFrameWidth || ch1Node?.miniBossIdleFrameWidth || 128,
         idleFrameHeight: waveEnforcer?.idleFrameHeight || currentActiveNode?.miniBossIdleFrameHeight || ch1Node?.miniBossIdleFrameHeight || 128,
-        attackFrameWidth: waveEnforcer?.attackFrameWidth || currentActiveNode?.miniBossAttackFrameWidth || ch1Node?.miniBossAttackFrameWidth || 128,
+        attackFrameWidth: waveEnforcer?.attackFrameWidth || currentActiveNode?.miniBossAttackFrameWidth || ch1Node?.miniBossAttackFrameWidth || 160,
         attackFrameHeight: waveEnforcer?.attackFrameHeight || currentActiveNode?.miniBossAttackFrameHeight || ch1Node?.miniBossAttackFrameHeight || 128,
-        heavyFrameWidth: waveEnforcer?.heavyFrameWidth || currentActiveNode?.miniBossHeavyFrameWidth || ch1Node?.miniBossHeavyFrameWidth || 183,
-        heavyFrameHeight: waveEnforcer?.heavyFrameHeight || currentActiveNode?.miniBossHeavyFrameHeight || ch1Node?.miniBossHeavyFrameHeight || 153,
+        heavyFrameWidth: waveEnforcer?.heavyFrameWidth || currentActiveNode?.miniBossHeavyFrameWidth || ch1Node?.miniBossHeavyFrameWidth || 128,
+        heavyFrameHeight: waveEnforcer?.heavyFrameHeight || currentActiveNode?.miniBossHeavyFrameHeight || ch1Node?.miniBossHeavyFrameHeight || 128,
         idleDuration: waveEnforcer?.idleDuration || currentActiveNode?.miniBossIdleDuration || ch1Node?.miniBossIdleDuration || 1.0,
         normalAttackSfxUrl: waveEnforcer?.normalAttackSfxUrl || currentActiveNode?.miniBossNormalAttackSfxUrl || ch1Node?.miniBossNormalAttackSfxUrl,
         heavyAttackSfxUrl: waveEnforcer?.heavyAttackSfxUrl || currentActiveNode?.miniBossHeavyAttackSfxUrl || ch1Node?.miniBossHeavyAttackSfxUrl,
@@ -2034,15 +2058,16 @@ export default function LearningQuest() {
             attackSprite: ch1Node?.miniBossAttackSpriteUrl || null,
             heavyAttackSprite: ch1Node?.miniBossHeavyAttackSpriteUrl || null,
             slashSprite: ch1Node?.miniBossSlashSpriteUrl || null,
+            heavyAttackBallsUrl: (ch1Node as any)?.miniBossHeavyAttackBallsUrl || null,
             idleFrames: ch1Node?.miniBossIdleFrames || 7,
-            attackFrames: ch1Node?.miniBossAttackFrames || 8,
-            heavyAttackFrames: ch1Node?.miniBossHeavyAttackFrames || 9,
+            attackFrames: ch1Node?.miniBossAttackFrames || 17,
+            heavyAttackFrames: ch1Node?.miniBossHeavyAttackFrames || 13,
             idleFrameWidth: ch1Node?.miniBossIdleFrameWidth || 128,
             idleFrameHeight: ch1Node?.miniBossIdleFrameHeight || 128,
-            attackFrameWidth: ch1Node?.miniBossAttackFrameWidth || 128,
+            attackFrameWidth: ch1Node?.miniBossAttackFrameWidth || 160,
             attackFrameHeight: ch1Node?.miniBossAttackFrameHeight || 128,
-            heavyFrameWidth: ch1Node?.miniBossHeavyFrameWidth || 183,
-            heavyFrameHeight: ch1Node?.miniBossHeavyFrameHeight || 153,
+            heavyFrameWidth: ch1Node?.miniBossHeavyFrameWidth || 128,
+            heavyFrameHeight: ch1Node?.miniBossHeavyFrameHeight || 128,
             idleDuration: ch1Node?.miniBossIdleDuration || 1.0,
             normalAttackSfxUrl: ch1Node?.miniBossNormalAttackSfxUrl,
             heavyAttackSfxUrl: ch1Node?.miniBossHeavyAttackSfxUrl,
@@ -2406,7 +2431,15 @@ export default function LearningQuest() {
       currentActiveNode?.idleSpriteUrl?.includes('hematology_chapterOneBoss') ||
       (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : true))
     );
-    const shouldSuppressWrongSfx = isSpecterBoss || isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm || isHyperglycemicMutant || isHydraBoss || isKetoacidosisColossus || isLegalBeholder || isAntigenTitan || isAnemiaShade || isErythrocyteColossusBoss;
+
+    const isParaffinGolem = !isGmsFungalSpore && !isLegalBeholder && Boolean(
+      currentEnemyName?.toLowerCase().includes('paraffin') ||
+      (currentEnemyName?.toLowerCase().includes('golem') && !currentEnemyName?.toLowerCase().includes('crystal')) ||
+      currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') ||
+      currentActiveNode?.miniBossIdleSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
+      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false))
+    );
+    const shouldSuppressWrongSfx = isSpecterBoss || isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm || isHyperglycemicMutant || isHydraBoss || isKetoacidosisColossus || isLegalBeholder || isAntigenTitan || isAnemiaShade || isErythrocyteColossusBoss || isParaffinGolem;
 
     if (isCorrect) {
       setScore(prev => prev + 1);
@@ -2839,10 +2872,16 @@ export default function LearningQuest() {
         const isImmuneArchonNormal = isImmuneArchonBoss && attackType === 'normal_attack';
         const isErythrocyteColossusHeavy = isErythrocyteColossusBoss && attackType === 'heavy_attack';
         const isErythrocyteColossusNormal = isErythrocyteColossusBoss && attackType === 'normal_attack';
+        const isParaffinGolemHeavy = isParaffinGolem && attackType === 'heavy_attack';
+        const isParaffinGolemNormal = isParaffinGolem && attackType === 'normal_attack';
 
 
         const resetDelay = isSpikes
           ? 1050
+          : isParaffinGolemHeavy
+            ? 1150
+            : isParaffinGolemNormal
+              ? 2600
           : isErythrocyteColossusHeavy
             ? 1150
             : isErythrocyteColossusNormal
@@ -2921,6 +2960,10 @@ export default function LearningQuest() {
 
         const impactDelay = isSpikes
           ? 650
+          : isParaffinGolemHeavy
+            ? 700
+            : isParaffinGolemNormal
+              ? 750
           : isErythrocyteColossusHeavy
             ? 460
             : isErythrocyteColossusNormal
@@ -3038,6 +3081,18 @@ export default function LearningQuest() {
             setHitEffectTarget('player');
             setHitEffectKey(k => k + 1);
           }, 1050);
+        } else if (isParaffinGolemNormal) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 750);
+        } else if (isParaffinGolemHeavy) {
+          setTimeout(() => {
+            setIsAnimating("player");
+            setHitEffectTarget('player');
+            setHitEffectKey(k => k + 1);
+          }, 700);
         }
         bossAttackResetDelay = resetDelay;
         setTimeout(() => setBossAnimState('idle'), resetDelay);
@@ -4415,7 +4470,16 @@ export default function LearningQuest() {
                 )
               );
 
-              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon || isCurrentErythrocyteColossus;
+              const isCurrentParaffinGolem = Boolean(
+                (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? waveState?.waveStage === 2 : false) && (
+                  activeEnemyName?.toLowerCase().includes('paraffin') ||
+                  idleSprite?.includes('hispatho_chapterOneMiniBoss') ||
+                  currentActiveNode?.miniBossIdleSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
+                  ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? waveState?.waveStage === 2 : false))
+                )
+              );
+
+              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon || isCurrentErythrocyteColossus || isCurrentParaffinGolem;
 
               return (
                 <div className={cn(
@@ -4458,7 +4522,8 @@ export default function LearningQuest() {
                     isCurrentAntigenTitan && "-translate-y-[44px] md:-translate-y-[48px]",
                     isCurrentKetoacidosisColossus && "-translate-y-[16px] md:-translate-y-[20px]",
                     isCurrentImmuneArchon && "-translate-y-[20px] md:-translate-y-[24px]",
-                    isCurrentErythrocyteColossus && "translate-y-[8px] md:translate-y-[12px]"
+                    isCurrentErythrocyteColossus && "translate-y-[8px] md:translate-y-[12px]",
+                    isCurrentParaffinGolem && "-translate-y-[8px] md:-translate-y-[12px]"
                   )}>
                     <div className={cn(
                       "relative inline-flex items-center justify-center transition-all duration-500 transform-gpu",
@@ -4784,6 +4849,40 @@ export default function LearningQuest() {
                   );
                 })()}
 
+                {/* Chapter 1 Histopathology Mini-Boss (Paraffin Golem): Heavy Attack Balls Overlay on Player Body */}
+                {(() => {
+                  const isHisto = selectedSubject?.toLowerCase().includes('histo') || selectedSubject?.toLowerCase().includes('law');
+                  if (!isHisto) return null;
+
+                  const activeNodes = getSubjectNodes(selectedSubject);
+                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
+
+                  // Strictly Chapter 1 Mini-Boss Stage 2 (Paraffin Golem), NEVER Minion (GMS Fungal Spore) or Final Boss hp-3 (Legal Beholder)
+                  const isParaffinActive = Boolean(
+                    quizMode === 'boss-battle'
+                      ? (battleStage === 2 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') || currentActiveNode?.miniBossIdleSpriteUrl?.includes('hispatho_chapterOneMiniBoss')))
+                      : quizMode === 'learning'
+                        ? (waveState?.waveStage === 2 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') || waveState?.name?.toLowerCase().includes('paraffin') || waveState?.idleSprite?.includes('hispatho_chapterOneMiniBoss')))
+                        : false
+                  );
+
+                  if (!isParaffinActive) return null;
+
+                  const ballsUrl = (quizMode === 'learning' ? (waveState as any)?.heavyAttackBallsUrl : null) || (currentActiveNode as any)?.miniBossHeavyAttackBallsUrl || '/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackBallsAnimation-2.png';
+
+                  return (
+                    <ParaffinBallsAnimator
+                      isActive={bossAnimState === 'heavy_attack'}
+                      spriteUrl={ballsUrl}
+                      frames={12}
+                      delayMs={240}
+                      durationMs={820}
+                      scale={2.0}
+                      className="-bottom-16 sm:-bottom-24 md:-bottom-[120px] left-1/2 sm:left-[52%] -translate-x-1/2 z-30"
+                    />
+                  );
+                })()}
 
                 {/* Chapter 1 Hematology Boss (Erythrocyte Colossus): Heavy Attack Fist Overlay crushing Player's Body */}
                 {(() => {
@@ -4812,6 +4911,7 @@ export default function LearningQuest() {
                       isActive={bossAnimState === 'heavy_attack'}
                       triggerKey={hitEffectKey}
                       spriteUrl={fistUrl}
+                      sfxUrl="/SoundEffects/ErythrocyeColossusHeavyAttack.mp3"
                       frames={9}
                       delayMs={220}
                       durationMs={720}

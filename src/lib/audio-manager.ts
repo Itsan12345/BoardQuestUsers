@@ -2090,6 +2090,116 @@ export function playHyperglycemicMutantAttack(type: 'normal' | 'heavy') {
   }
 }
 
+// Preloaded Audio instances for Erythrocyte Colossus attacks (Hematology Chapter 1 Boss)
+let erythrocyteColossusNormalAudio: HTMLAudioElement | null = null;
+let erythrocyteColossusHeavyAudio: HTMLAudioElement | null = null;
+let erythrocyteColossusFadeInterval: NodeJS.Timeout | null = null;
 
+export function preloadErythrocyteColossusSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!erythrocyteColossusNormalAudio) {
+      erythrocyteColossusNormalAudio = new Audio('/SoundEffects/BiohazardOverlordNormalAttack.mp3');
+      erythrocyteColossusNormalAudio.preload = 'auto';
+      erythrocyteColossusNormalAudio.playbackRate = 1.0;
+      erythrocyteColossusNormalAudio.defaultPlaybackRate = 1.0;
+      erythrocyteColossusNormalAudio.load();
+    }
+    if (!erythrocyteColossusHeavyAudio) {
+      erythrocyteColossusHeavyAudio = new Audio('/SoundEffects/ErythrocyeColossusHeavyAttack.mp3');
+      erythrocyteColossusHeavyAudio.preload = 'auto';
+      erythrocyteColossusHeavyAudio.playbackRate = 1.0;
+      erythrocyteColossusHeavyAudio.defaultPlaybackRate = 1.0;
+      erythrocyteColossusHeavyAudio.load();
+    }
+  } catch (e) { }
+}
 
+export function playErythrocyteColossusAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
 
+    if (erythrocyteColossusFadeInterval) {
+      clearInterval(erythrocyteColossusFadeInterval);
+      erythrocyteColossusFadeInterval = null;
+    }
+
+    if (type === 'normal') {
+      const src = '/SoundEffects/BiohazardOverlordNormalAttack.mp3';
+      const audio = erythrocyteColossusNormalAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Erythrocyte Colossus normal attack:', err);
+        });
+      }
+    } else {
+      const src = '/SoundEffects/ErythrocyeColossusHeavyAttack.mp3';
+      const audio = erythrocyteColossusHeavyAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Erythrocyte Colossus heavy attack:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to play Erythrocyte Colossus attack sound:', err);
+  }
+}
+
+export function stopErythrocyteColossusAttack(type?: 'normal' | 'heavy', fadeDurationMs = 250) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (erythrocyteColossusFadeInterval) {
+      clearInterval(erythrocyteColossusFadeInterval);
+      erythrocyteColossusFadeInterval = null;
+    }
+
+    const audios = type === 'normal'
+      ? [erythrocyteColossusNormalAudio]
+      : type === 'heavy'
+      ? [erythrocyteColossusHeavyAudio]
+      : [erythrocyteColossusNormalAudio, erythrocyteColossusHeavyAudio];
+
+    audios.forEach(audio => {
+      if (!audio || audio.paused) return;
+      if (fadeDurationMs <= 0) {
+        audio.pause();
+        audio.currentTime = 0;
+        return;
+      }
+      const initialVol = audio.volume;
+      const stepTime = 30;
+      const steps = Math.max(1, Math.floor(fadeDurationMs / stepTime));
+      let currentStep = 0;
+      erythrocyteColossusFadeInterval = setInterval(() => {
+        currentStep++;
+        const nextVol = initialVol * (1 - currentStep / steps);
+        if (currentStep >= steps || nextVol <= 0.02) {
+          if (erythrocyteColossusFadeInterval) {
+            clearInterval(erythrocyteColossusFadeInterval);
+            erythrocyteColossusFadeInterval = null;
+          }
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = initialVol;
+        } else {
+          audio.volume = nextVol;
+        }
+      }, stepTime);
+    });
+  } catch (err) {
+    console.warn('Failed to stop/fade Erythrocyte Colossus attack sound:', err);
+  }
+}

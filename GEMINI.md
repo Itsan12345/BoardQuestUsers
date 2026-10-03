@@ -30,15 +30,15 @@
   - `idleSpriteUrl`: `/images/bosses/hematology_chapterOneBoss_idleAnimation.png` (8 frames, 128x176, 1.0s loop)
   - `attackSpriteUrl`: `/images/bosses/hematology_chapterOneBoss_normalAttackAnimation.png` (22 frames, 208x176, 1.25s duration, `step-end` with 22 dedicated keyframes)
   - Normal Attack Sequence & Timing:
-    - 0–150ms: Swift dash in front of the player (`min(-45px, calc(-100cqw + 400px))` / `calc(-100cqw + 520px)`)
-    - 0–1250ms: Executes and renders all 22 frames of the normal attack in front of the player, with fist impact at 1050ms (`impactDelay = 1050ms`, hit spark, and shake)
+    - 0–150ms: Swift dash directly in front of the player (`min(-45px, calc(-100cqw + 310px))` / `calc(-100cqw + 420px)`)
+    - 0–1250ms: Executes and renders all 22 frames of the normal attack in front of the player, with `BiohazardOverlordNormalAttack.mp3` triggered at the 17th frame (~909ms) and fist impact at 1050ms (`impactDelay = 1050ms`, hit spark, and shake)
     - 1250ms–2184ms: Seamlessly transitions to `idleSpriteUrl` in a dedicated clipped 128x176 window at `left: 34 * effectiveScale px`, pausing for ~1 second in its Idle stance in front of the player
     - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
   - `heavyAttackSpriteUrl`: `/images/bosses/hematology_chapterOneBoss_heavyAttackGlintAnimation-1.png` (14 frames, 176x196, playing in place as warning glint)
-  - `heavyAttackFistUrl`: `/images/bosses/hematology_chapterOneBoss_heavyAttackFistAnimation-2.png` (9 frames, 176x196, scale 2.5 via `ColossusFistAnimator` on player body from 220ms to 940ms, impact at 460ms, reset at 1150ms)
+  - `heavyAttackFistUrl`: `/images/bosses/hematology_chapterOneBoss_heavyAttackFistAnimation-2.png` (9 frames, 176x196, scale 2.5 via `ColossusFistAnimator` on player body from 220ms to 940ms, impact at 460ms, reset at 1150ms) with `ErythrocyeColossusHeavyAttack.mp3` triggered at 220ms and smooth fade at end
   - Scale & Positioning: `effectiveScale = scale * 0.90` with vertical alignment `translate-y-[8px] md:translate-y-[12px]` in `src/app/quest/page.tsx` ensuring generous clearance below the Enemy HP bar
-  - Sound effects: Intentionally suppressed pending user audio asset provision.
-  - All animations, timings, scale, position, and components are permanently locked. Must NEVER leak into Chapter 2 or Chapter 3.
+  - Sound effects: `normalAttackSfxUrl: /SoundEffects/BiohazardOverlordNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/ErythrocyeColossusHeavyAttack.mp3`, with preloaded handlers via `preloadErythrocyteColossusSounds`, `playErythrocyteColossusAttack`, and `stopErythrocyteColossusAttack` permanently locked.
+  - All animations, timings, scale, position, sound effects, and components are permanently locked. Must NEVER leak into Chapter 2 or Chapter 3.
 - **Sickle-Cell Reaper (Ch 3 Final Boss - `hem-3`)**:
   - `idleSpriteUrl`: `/images/bosses/hematology_finalboss_idleAnimation.png` (6 frames, 128x128)
   - `attackSpriteUrl`: `/images/bosses/hematology_finalboss_normalAttackGlintAnimation.png` (6 frames, 128x128)
@@ -67,6 +67,12 @@
 
 ### Histopathology and Medtech Laws
 - **GMS Fungal Spore (Ch 1 Minion)**: Full animation sequence, lunges, and sound effects (`FungalSporeNormalAttack.mp3`, `FungalSporeHeavyAttack.mp3`) are permanently locked.
+- **Paraffin Golem (Ch 1 Mini-Boss)**:
+  - `miniBossIdleSpriteUrl`: `/images/bosses/hispatho_chapterOneMiniBoss_idleAnimation.png` (7 frames, 128x128, 1.0s loop)
+  - `miniBossAttackSpriteUrl`: `/images/bosses/hispatho_chapterOneMiniBoss_normalAttackAnimation.png` (17 frames, 160x128, 1.25s duration) with forward lunge sequence and `BiohazardOverlordNormalAttack.mp3` timed at 750ms matching impact and blade thrust frame
+  - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackGlintAnimation-1.png` (13 frames, 128x128) playing in place as warning glint animation (no lunge)
+  - `miniBossHeavyAttackBallsUrl`: `/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackBallsAnimation-2.png` (12 frames, 192x192 via `ParaffinBallsAnimator` at scale 2.0 positioned on player body from 240ms to 1060ms, piercing impact at frame 7 ~718ms with `LegalBeholderHeavyAttack.mp3`)
+  - All animations, timings, frame dimensions, delays, scales, positions, and sound effect bindings are permanently locked. Must NEVER leak into Chapter 2 or Chapter 3.
 - **Legal Beholder (Ch 3 Final Boss - `hp-3`)**:
   - `idleSpriteUrl`: `/images/bosses/hispatho_chapterThreeFinalBoss_idleAnimation.png` (6 frames, 160x140)
   - `attackSpriteUrl`: `/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackGlintAnimation-1.png` (12 frames, 160x140)
