@@ -19,9 +19,9 @@ interface ColossusFistAnimatorProps {
 
 export function ColossusFistAnimator({
   isActive,
-  triggerKey,
+  triggerKey: _triggerKey,
   spriteUrl = "/images/bosses/hematology_chapterOneBoss_heavyAttackFistAnimation-2.png",
-  sfxUrl = "/SoundEffects/ErythrocyeColossusHeavyAttack.mp3",
+  sfxUrl: _sfxUrl = "/SoundEffects/ErythrocyeColossusHeavyAttack.mp3",
   frames = 9,
   delayMs = 220,
   durationMs = 720,

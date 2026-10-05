@@ -1771,6 +1771,8 @@ export function stopHydraAttack(type?: 'normal' | 'heavy', fadeDurationMs = 300)
 // Preloaded Audio instances for Immune Archon attacks (Immunology & Serology Chapter 1 Boss)
 let immuneArchonNormalAudio: HTMLAudioElement | null = null;
 let immuneArchonHeavyAudio: HTMLAudioElement | null = null;
+let immuneArchonFadeInterval: NodeJS.Timeout | null = null;
+let lastImmuneArchonHeavyPlayTime = 0;
 
 export function preloadImmuneArchonSounds() {
   if (typeof window === 'undefined') return;
@@ -1785,8 +1787,8 @@ export function preloadImmuneArchonSounds() {
     if (!immuneArchonHeavyAudio) {
       immuneArchonHeavyAudio = new Audio('/SoundEffects/AntiSerumHydraHeavyAttack.mp3');
       immuneArchonHeavyAudio.preload = 'auto';
-      immuneArchonHeavyAudio.playbackRate = 1.0;
-      immuneArchonHeavyAudio.defaultPlaybackRate = 1.0;
+      immuneArchonHeavyAudio.playbackRate = 2.0;
+      immuneArchonHeavyAudio.defaultPlaybackRate = 2.0;
       immuneArchonHeavyAudio.load();
     }
   } catch (e) { }
@@ -1798,35 +1800,140 @@ export function playImmuneArchonAttack(type: 'normal' | 'heavy') {
     const masterVolume = getSfxVolume();
     if (masterVolume <= 0) return;
 
-    if (type === 'normal') {
-      const src = '/SoundEffects/ImmuneArchonNormalAttack.mp3';
-      const audio = immuneArchonNormalAudio || new Audio(src);
-      audio.currentTime = 0;
-      audio.playbackRate = 1.0;
-      audio.defaultPlaybackRate = 1.0;
-      audio.volume = Math.max(0, Math.min(1, masterVolume));
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          console.warn('Playback error for Immune Archon normal attack:', err);
-        });
+    if (immuneArchonFadeInterval) {
+      clearInterval(immuneArchonFadeInterval);
+      immuneArchonFadeInterval = null;
+    }
+
+    if (type === 'heavy') {
+      const now = Date.now();
+      if (now - lastImmuneArchonHeavyPlayTime < 400) {
+        return; // Debounce triggers within 400ms to avoid double sound
+      }
+      lastImmuneArchonHeavyPlayTime = now;
+
+      const src = '/SoundEffects/AntiSerumHydraHeavyAttack.mp3';
+      try {
+        if (immuneArchonHeavyAudio) {
+          try {
+            immuneArchonHeavyAudio.currentTime = 0;
+          } catch (e) { }
+          immuneArchonHeavyAudio.volume = Math.max(0, Math.min(1, masterVolume));
+          immuneArchonHeavyAudio.playbackRate = 2.0;
+          immuneArchonHeavyAudio.defaultPlaybackRate = 2.0;
+          const playPromise = immuneArchonHeavyAudio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {
+              // Preloaded Audio failed; smoothly fall back to fresh Audio instance in 2x speed
+              const freshAudio = new Audio(src);
+              freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+              freshAudio.playbackRate = 2.0;
+              freshAudio.defaultPlaybackRate = 2.0;
+              freshAudio.play().catch(err => {
+                console.warn('Fallback playback error for Immune Archon heavy attack:', err);
+              });
+            });
+          }
+        } else {
+          const freshAudio = new Audio(src);
+          freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+          freshAudio.playbackRate = 2.0;
+          freshAudio.defaultPlaybackRate = 2.0;
+          freshAudio.play().catch(err => {
+            console.warn('Playback error for Immune Archon heavy attack fresh audio:', err);
+          });
+        }
+      } catch {
+        const freshAudio = new Audio(src);
+        freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+        freshAudio.playbackRate = 2.0;
+        freshAudio.defaultPlaybackRate = 2.0;
+        freshAudio.play().catch(() => {});
       }
     } else {
-      const src = '/SoundEffects/AntiSerumHydraHeavyAttack.mp3';
-      const audio = immuneArchonHeavyAudio || new Audio(src);
-      audio.currentTime = 0;
-      audio.playbackRate = 1.0;
-      audio.defaultPlaybackRate = 1.0;
-      audio.volume = Math.max(0, Math.min(1, masterVolume));
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          console.warn('Playback error for Immune Archon heavy attack:', err);
-        });
+      const src = '/SoundEffects/ImmuneArchonNormalAttack.mp3';
+      try {
+        if (immuneArchonNormalAudio) {
+          try {
+            immuneArchonNormalAudio.currentTime = 0;
+          } catch (e) { }
+          immuneArchonNormalAudio.volume = Math.max(0, Math.min(1, masterVolume));
+          immuneArchonNormalAudio.playbackRate = 1.0;
+          immuneArchonNormalAudio.defaultPlaybackRate = 1.0;
+          const playPromise = immuneArchonNormalAudio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {
+              const freshAudio = new Audio(src);
+              freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+              freshAudio.playbackRate = 1.0;
+              freshAudio.play().catch(err => {
+                console.warn('Fallback playback error for Immune Archon normal attack:', err);
+              });
+            });
+          }
+        } else {
+          const freshAudio = new Audio(src);
+          freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+          freshAudio.playbackRate = 1.0;
+          freshAudio.play().catch(err => {
+            console.warn('Playback error for Immune Archon normal attack fresh audio:', err);
+          });
+        }
+      } catch {
+        const freshAudio = new Audio(src);
+        freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+        freshAudio.playbackRate = 1.0;
+        freshAudio.play().catch(() => {});
       }
     }
   } catch (err) {
     console.warn('Failed to play Immune Archon attack sound:', err);
+  }
+}
+
+export function stopImmuneArchonAttack(type?: 'normal' | 'heavy', fadeDurationMs = 300) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (immuneArchonFadeInterval) {
+      clearInterval(immuneArchonFadeInterval);
+      immuneArchonFadeInterval = null;
+    }
+
+    const audios = type === 'normal'
+      ? [immuneArchonNormalAudio]
+      : type === 'heavy'
+      ? [immuneArchonHeavyAudio]
+      : [immuneArchonNormalAudio, immuneArchonHeavyAudio];
+
+    audios.forEach(audio => {
+      if (!audio || audio.paused) return;
+      if (fadeDurationMs <= 0) {
+        audio.pause();
+        audio.currentTime = 0;
+        return;
+      }
+      const initialVol = audio.volume;
+      const stepTime = 30;
+      const steps = Math.max(1, Math.floor(fadeDurationMs / stepTime));
+      let currentStep = 0;
+      immuneArchonFadeInterval = setInterval(() => {
+        currentStep++;
+        const nextVol = initialVol * (1 - currentStep / steps);
+        if (currentStep >= steps || nextVol <= 0.02) {
+          if (immuneArchonFadeInterval) {
+            clearInterval(immuneArchonFadeInterval);
+            immuneArchonFadeInterval = null;
+          }
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = initialVol;
+        } else {
+          audio.volume = nextVol;
+        }
+      }, stepTime);
+    });
+  } catch (err) {
+    console.warn('Failed to stop/fade Immune Archon attack sound:', err);
   }
 }
 

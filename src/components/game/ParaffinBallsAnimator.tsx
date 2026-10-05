@@ -18,7 +18,7 @@ interface ParaffinBallsAnimatorProps {
 
 export function ParaffinBallsAnimator({
   isActive,
-  triggerKey,
+  triggerKey: _triggerKey,
   spriteUrl = "/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackBallsAnimation-2.png",
   frames = 12,
   delayMs = 240,

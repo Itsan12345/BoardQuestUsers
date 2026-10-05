@@ -492,11 +492,13 @@ export function BossSpriteAnimator({
     ? (currentTotalFrames <= 6 ? 9 : Math.max(18, currentTotalFrames))
     : (isNormalAttack && hasProjectile)
       ? 8
-      : (isNormalAttack && hasUndergroundSpikes)
-        ? 14
-        : isAttacking
-          ? Math.max(16, currentTotalFrames)
-          : 8;
+      : isErythrocyteColossusNormal
+        ? Math.max(16, currentTotalFrames)
+        : (isNormalAttack && hasUndergroundSpikes)
+          ? 14
+          : isAttacking
+            ? Math.max(16, currentTotalFrames)
+            : 8;
   const isBiohazardIdle = !isAttacking && (idleSpriteUrl?.includes('microbio_finalboss_idleAnimation') || idleFps !== undefined || idleDuration !== undefined);
 
   const isGramPositiveAttack = isAttacking && (
@@ -799,7 +801,7 @@ export function BossSpriteAnimator({
                                                                 : spriteDuration;
 
   const lungeDuration = isAttacking
-    ? (hasProjectile ? 0.45 : isAnemiaShadeHeavy ? 1.55 : isAnemiaShadeNormal ? 1.25 : isReaperGlintNormal ? 1.05 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : isHydraHeavy ? 1.05 : isHydraNormal ? 1.85 : isHyperglycemicMutantHeavy ? 0.95 : isHyperglycemicMutantNormal ? 0.80 : isKetoacidosisColossusHeavy ? 0.85 : isKetoacidosisColossusNormal ? 0.70 : isAntigenTitanHeavy ? 0.85 : isAntigenTitanNormal ? 0.70 : isImmuneArchonHeavy ? 1.55 : isImmuneArchonNormal ? 0.90 : isErythrocyteColossusHeavy ? 0.90 : isErythrocyteColossusNormal ? 2.60 : isParaffinGolemHeavy ? 1.15 : isParaffinGolemNormal ? 2.60 : isFixationOverlordHeavy ? 1.15 : isFixationOverlordNormal ? 2.60 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : (isReagentStripSlimeAttack ? 0.08 : (isLymphocyteSwarmAttack ? 0.12 : 0.35)))))))
+    ? (hasProjectile ? 0.45 : isAnemiaShadeHeavy ? 1.55 : isAnemiaShadeNormal ? 1.25 : isErythrocyteColossusHeavy ? 0.90 : isErythrocyteColossusNormal ? 2.60 : isParaffinGolemHeavy ? 1.15 : isParaffinGolemNormal ? 2.60 : isFixationOverlordHeavy ? 1.15 : isFixationOverlordNormal ? 2.60 : isReaperGlintNormal ? 1.05 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : isHydraHeavy ? 1.05 : isHydraNormal ? 1.85 : isHyperglycemicMutantHeavy ? 0.95 : isHyperglycemicMutantNormal ? 0.80 : isKetoacidosisColossusHeavy ? 0.85 : isKetoacidosisColossusNormal ? 0.70 : isAntigenTitanHeavy ? 0.85 : isAntigenTitanNormal ? 0.70 : isImmuneArchonHeavy ? 1.05 : isImmuneArchonNormal ? 0.90 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : (isReagentStripSlimeAttack ? 0.08 : (isLymphocyteSwarmAttack ? 0.12 : 0.35)))))))
     : spriteDuration;
 
   // Store callback in ref to prevent parent re-render reference changes from restarting timer
@@ -1063,8 +1065,11 @@ export function BossSpriteAnimator({
             sfxTimer = setTimeout(() => {
               playImmuneArchonAttack('normal');
             }, 380);
+          } else if (isHeavy) {
+            sfxTimer = setTimeout(() => {
+              playImmuneArchonAttack('heavy');
+            }, 250);
           }
-          // Note: Immune Archon heavy attack lightning sound is played smoothly by HydraLightningAnimator when the lightning animation strikes
         } else if (isSpecter) {
           if (isHeavy) {
             playSpecterAttack('heavy');
@@ -1190,7 +1195,7 @@ export function BossSpriteAnimator({
     } else {
       lastPlayedAnimRef.current = null;
     }
-  }, [animState, isAttacking, lungeDuration, isGramPositive, isGramPositiveAttack, isSickleCellMinion, isSickleCellMinionAttack, isAnemiaShade, isAnemiaShadeAttack, isStaphSentinel, isStaphSentinelAttack, isSickleCellReaper, isSickleCellReaperAttack, isMicrobeSwarm, isMicrobeSwarmAttack, isLymphocyteSwarm, isLymphocyteSwarmAttack, isHydraAttack, isAntiSerumHydra, isKetoacidosisColossus, isKetoacidosisColossusAttack, isAntigenTitan, isAntigenTitanAttack, isLegalBeholderAttack, isHyperglycemicMutant, isHyperglycemicMutantAttack, isImmuneArchon, isImmuneArchonAttack, isSpecter, isBiohazard, isBiohazardAttack, isCrystalGolem, isCrystalGolemAttack, isAcidSlime, isAcidSlimeAttack, isGmsFungalSpore, isGmsFungalSporeAttack, isReagentStripSlime, isReagentStripSlimeAttack, isHeavy, isNormalAttack, attackSpriteUrl, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl, bossName]);
+  }, [animState, isAttacking, lungeDuration, isGramPositive, isGramPositiveAttack, isSickleCellMinion, isSickleCellMinionAttack, isAnemiaShade, isAnemiaShadeAttack, isStaphSentinel, isStaphSentinelAttack, isSickleCellReaper, isSickleCellReaperAttack, isMicrobeSwarm, isMicrobeSwarmAttack, isLymphocyteSwarm, isLymphocyteSwarmAttack, isHydraAttack, isAntiSerumHydra, isKetoacidosisColossus, isKetoacidosisColossusAttack, isAntigenTitan, isAntigenTitanAttack, isLegalBeholderAttack, isHyperglycemicMutant, isHyperglycemicMutantAttack, isImmuneArchon, isImmuneArchonAttack, isImmuneArchonHeavy, isImmuneArchonNormal, isSpecter, isBiohazard, isBiohazardAttack, isCrystalGolem, isCrystalGolemAttack, isAcidSlime, isAcidSlimeAttack, isGmsFungalSpore, isGmsFungalSporeAttack, isReagentStripSlime, isReagentStripSlimeAttack, isParaffinGolem, isParaffinGolemNormal, isFixationOverlord, isFixationOverlordNormal, isErythrocyteColossus, isErythrocyteColossusNormal, isHeavy, isNormalAttack, attackSpriteUrl, heavyAttackSpriteUrl, heavyAttackSfxUrl, normalAttackSfxUrl, bossName]);
 
   const isColossusNormalIdlePhase = isErythrocyteColossusNormal && colossusNormalPhase === 'idle';
   const isParaffinNormalIdlePhase = isParaffinGolemNormal && paraffinNormalPhase === 'idle';

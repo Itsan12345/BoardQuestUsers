@@ -1,6 +1,6 @@
 # Strict Sprite & Boss Animation Protection Rules
 
-> **CRITICAL INVARIANT**: All sprite animations, attack effects, frame configurations, lunges, and sound effect bindings in BoardQuest have been fully tested, verified, and approved by the user. Under NO circumstances should any agent alter, revert, override, or degrade these sprite animation systems without explicit user instruction.
+> **CRITICAL INVARIANT**: All sprite animations, attack effects, frame configurations, lunges, reset delays, impact delays, and sound effect bindings in BoardQuest across **BOTH Boss-Battle Mode and Learning Mode** have been fully tested, verified, and approved by the user. Under NO circumstances should any agent alter, revert, override, cross-contaminate, or degrade these sprite animation systems in either game mode without explicit user instruction.
 
 ---
 
@@ -58,8 +58,13 @@
   - `idleSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_idleAnimation.png` (7 frames, 284x220)
   - `attackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_normalAttackAnimation.png` (11 frames, 252x177) with `ImmuneArchonNormalAttack.mp3`
   - `heavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackAnimation.png` (18 frames, 247x228) playing in-place as a warning glint animation (no lunge)
-  - `lightningAttackUrl`: `/images/bosses/immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png` (12 frames, 145x145 via `HydraLightningAnimator` with `soundType="archon"`, 960ms duration, and `AntiSerumHydraHeavyAttack.mp3` at 1.0x speed).
-  - **TEMPORARY PLACEHOLDER NOTICE**: The lightning attack animation (`immunohema_chapterThreeFinalBoss_heavyAttackLightningAnimation-2.png`) is temporarily borrowed while the custom-made Immune Archon lightning attack animation is being created. When the user provides the original custom lightning asset, seamlessly swap the asset URL, frame counts, and dimensions on node `is-1` and `HydraLightningAnimator`.
+  - `lightningAttackUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackThunderAnimation.png` (12 frames, 192x192 via `ArchonThunderAnimator`, scale 2.8, 720ms duration, and `AntiSerumHydraHeavyAttack.mp3` at 2.0x speed via `playImmuneArchonAttack`).
+  - Heavy Attack Sequence & Timing:
+    - 0–250ms: Immune Archon summons the thunder storm while executing its warning glint animation on its pedestal (no forward lunge).
+    - 250–970ms: Renders all 12 frames of the thunder animation directly centered over the aspirant's body with `AntiSerumHydraHeavyAttack.mp3` at 2.0x speed, impacting at 420ms (`impactDelay = 420ms`, hit spark, and shake).
+    - 970–1120ms: Frame 12 clears cleanly with a smooth fade-out settling at `resetDelay = 1120ms`.
+  - Sound effects: `normalAttackSfxUrl: /SoundEffects/ImmuneArchonNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/AntiSerumHydraHeavyAttack.mp3` (in 2x speed), with preloaded handlers permanently locked.
+  - All animations, timings, frame dimensions, delays, scales, positions, animator components (`ArchonThunderAnimator`), and sound effect bindings are permanently locked to not modify, alter, degrade, or cross-contaminate. Must NEVER leak into Chapter 2 or Chapter 3.
 
 ### Clinical Microscopy & Parasitology
 - **Reagent Strip Slime (Ch 1 Minion)**: Full animation sequence, lunges, and sound effects (`ReagentStripSlimeNormal&HeavyAttack.mp3`) are permanently locked.
@@ -90,7 +95,7 @@
     - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
   - `heavyAttackSpriteUrl`: `/images/bosses/hispatho_chapterOneBoss_heavtAttackGlintAnimation-1.png` (10 frames, 144x191, playing in place as warning glint animation with no lunge, outer container `overflow-visible`, inner container `overflow-hidden` at `bottom: 0`, `left: -6 * effectiveScale px`)
   - `heavyAttackNailedUrl`: `/images/bosses/hispatho_chapterOneBoss_heavtAttackNailedAnimation-2.png` (15 frames, 256x128 via `FixationNailedAnimator` at scale 2.2 positioned on player body from 240ms to 1200ms with piercing impact at frame 7 ~688ms, holding frame 14 until 1260ms, smooth fade-out from 1260ms to 1480ms, and `resetDelay = 1550ms`)
-  - Scale & Positioning: `effectiveScale = scale * 1.50` with vertical alignment `translate-y-[32px] md:translate-y-[40px]` in `src/app/quest/page.tsx` ensuring generous clearance below the Enemy HP bar and SHIELDED badge
+  - Scale & Positioning: `effectiveScale = scale * 1.50` with vertical alignment `translate-y-[52px] md:translate-y-[60px]` in `src/app/quest/page.tsx` ensuring generous clearance below the Enemy HP bar and SHIELDED badge
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/BiohazardOverlordNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/LegalBeholderHeavyAttack.mp3`
   - All animations, timings, frame dimensions, delays, scales, positions, and sound effect bindings are permanently locked to not modify, alter, degrade, or cross-contaminate. Must NEVER leak into Chapter 2 or Chapter 3.
 - **Legal Beholder (Ch 3 Final Boss - `hp-3`)**:
@@ -114,8 +119,9 @@
 
 ---
 
-## 4. Absolute Non-Interference with Approved Sprite Animations
-- **Permanent Lock**: All the above verified and approved enemy sprite animations, spritesheets, audio files, frame timings, lunges, delays, and overlays are **PERMANENTLY LOCKED**.
+## 4. Absolute Non-Interference with Approved Sprite Animations (Both Modes)
+- **Permanent Lock Across All Game Modes**: All the above verified and approved enemy sprite animations, spritesheets, audio files, frame timings, lunges, delays, and overlays are **PERMANENTLY LOCKED across both Boss-Battle Mode and Learning Mode**.
+- **Mode Parity Enforcement**: Sprite animations, forward lunges, sound effect timings, delays, and overlays in Learning Mode must look, sound, and behave 100% identically to Boss-Battle Mode. Under NO circumstances should any approved enemy configuration in either mode be modified, replaced, reverted, degraded, or cross-contaminated.
 - **Progressive Addition Only**: When adding new sprite animations for enemies that do not yet have them, all code changes must be strictly isolated. Under NO circumstances should any approved enemy configuration be modified, replaced, reverted, degraded, or cross-contaminated.
 
 ---
@@ -139,5 +145,29 @@
   - **Full Frame Playback**: Never rush or compress animation durations so short that intermediate frames are skipped, truncated, or blurred.
   - **Impact Synchronization**: Time hit sparks, player hit reactions, and screen shakes to sync precisely with the visual impact frame of the animation.
   - **Smooth Transitions**: Ensure multi-phase movements (lunges, glides, pauses, returns) use smooth easing curves and settle cleanly onto their starting pedestal.
+
+---
+
+## 7. Learning Mode & Boss-Battle Mode Absolute Parity & Wave Stage Isolation Rules
+- **Universal Mode Parity**: All approved sprite animations, lunges, frame counts, frame dimensions, audio bindings, impact delays, reset delays, and attack overlays verified in Boss-Battle Mode are **PERMANENTLY LOCKED in Learning Mode as well**.
+- **Mode-Identical Visual & Audio Behavior**: Under no circumstances should any enemy sprite animation behave differently, skip frames, truncate timings, rush lunges, alter scale, shift vertical alignment, or trigger mismatched sound effects in Learning Mode compared to Boss-Battle Mode. Both modes must render identical visual choreography and timing.
+- **Strict Wave Stage Isolation in Learning Mode**:
+  - **Wave 1 (Minion Stage)**: Strictly renders only approved Minion sprite animations and sound effects. Never leaks Mini-Boss, Boss, or Final Boss overlays or timings.
+  - **Wave 2 (Mini-Boss Stage)**: Strictly renders only approved Mini-Boss sprite animations and sound effects. Never leaks Minion, Boss, or Chapter 3 Final Boss overlays or timings.
+  - **Wave 3 (Boss / Final Boss Stage)**: Strictly renders only the dedicated Chapter Boss (e.g. `hp-1` Fixation Overlord, `hem-1` Erythrocyte Colossus) or Chapter 3 Final Boss (e.g. `hp-3` Legal Beholder, `hem-3` Sickle-Cell Reaper).
+  - **Zero Overlay Leakage**: Chapter 3 Final Boss overlay animators (`JudicialHammerAnimator`, `UndergroundBlastAnimator`, `UndergroundSpikesAnimator`, `HydraLightningAnimator`) MUST NEVER render during Chapter 1 or Chapter 2 Wave 3 boss encounters in Learning Mode.
+- **Zero Fallback Cross-Contamination**: Fallback logic (such as `|| ch3Node?.hammerAttackUrl`, `|| ch3Node?.undergroundBlastUrl`, `|| (quizMode === 'learning' && waveState?.waveStage === 3)`, or `|| (quizMode === 'learning' && currentWaveStage === 3)`) must NEVER inject Chapter 3 Final Boss attack assets, overlay animators, or spike timing into Chapter 1 or Chapter 2 enemies in Learning Mode.
+- **Permanent Lock Across Both Modes**: Every verified animation timing, forward lunge sequence, idle pause, glide return, and animator component is permanently locked and protected across both Boss-Battle Mode and Learning Mode without exception.
+
+---
+
+## 8. Test Mode Random Encounter & Full Mode Parity Rules (Option B)
+- **Random Candidate Selection**: When a player starts Test Mode for a chosen subject, the game constructs a candidate pool exclusively from that subject's approved elite roster:
+  1. **Mini-Boss** (`tier: 'mini-boss'`, e.g. Anemia Shade, Paraffin Golem, Staph Sentinel, Antigen Titan, Hyperglycemic Mutant)
+  2. **Chapter 1 Boss** (`tier: 'boss'`, e.g. Erythrocyte Colossus, Fixation Overlord, Gram Positive Overlord, Ketoacidosis Colossus, Immune Archon)
+  3. **Chapter 3 Final Boss** (`tier: 'final-boss'`, e.g. Sickle-Cell Reaper, Legal Beholder, Biohazard Overlord, Crystal Golem, Hyperglycemic Specter, Anti-Serum Hydra)
+- **Minion Exclusion**: Minions are strictly reserved for Wave 1 of Learning/Boss modes and are excluded from the Test Mode candidate pool.
+- **100% Identical Choreography, Timings & Sound Effects**: The chosen enemy runs with complete parity to Boss-Battle and Learning Mode: identical frame dimensions, step-end keyframes, golden standard 4-phase lunges (swift forward dash, full in-place attack execution, 1-second idle pause, smooth glide return), impact delays, reset delays, hit sparks, screen shakes, overlay animators (`JudicialHammerAnimator`, `UndergroundBlastAnimator`, `UndergroundSpikesAnimator`, `HydraLightningAnimator`, `ArchonThunderAnimator`, `ParaffinBallsAnimator`, `FixationNailedAnimator`, `ColossusFistAnimator`, `AnemiaSlashAnimator`), and dedicated sound effect bindings.
+- **Alternating Attack Variety**: On player mistakes in Test Mode, the enemy alternates between normal attack and heavy attack (`Math.random() < 0.5`), rendering the authentic animations, overlays, and sound effects for each attack tier.
 
 

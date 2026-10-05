@@ -17,7 +17,7 @@ interface FixationNailedAnimatorProps {
 
 export function FixationNailedAnimator({
   isActive,
-  triggerKey,
+  triggerKey: _triggerKey,
   spriteUrl = "/images/bosses/hispatho_chapterOneBoss_heavtAttackNailedAnimation-2.png",
   frames = 15,
   delayMs = 240,
