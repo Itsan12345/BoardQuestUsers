@@ -27,7 +27,7 @@ interface QuizInterfaceProps {
   onRequestExplanation?: (index: number) => void;
   isLoading: boolean;
   mode: 'learning' | 'test' | 'boss-battle';
-  battleStage?: 1 | 2 | 3;
+  battleStage?: 1 | 2 | 3 | 4;
   isFinalBoss?: boolean;
   bossShieldActive?: boolean;
   playerPoisoned?: boolean;
@@ -301,8 +301,8 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                  battleStage === 2 ? "bg-purple-500/15 text-purple-600 border-purple-500/40" :
                  "bg-red-500/15 text-red-600 border-red-500/40 animate-pulse"
                )}>
-                 <span>{isFinalBoss ? '👑' : battleStage === 1 ? '👾' : battleStage === 2 ? '👹' : '👑'}</span>
-                 <span>{isFinalBoss ? 'SOLO FINAL BOSS' : `STAGE ${battleStage} / 3`}</span>
+                 <span>{isFinalBoss || battleStage === 4 ? '👑' : battleStage === 1 ? '👾' : battleStage === 2 ? '👹' : '⚔️'}</span>
+                  <span>{isFinalBoss || battleStage === 4 ? 'SOLO FINAL BOSS' : battleStage === 1 ? 'STAGE 1: MINION' : battleStage === 2 ? 'STAGE 2: MINI-BOSS' : 'STAGE 3: CHAPTER BOSS'}</span>
                </Badge>
              )}
              {mode === 'learning' && (

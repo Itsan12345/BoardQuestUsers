@@ -413,6 +413,7 @@ export default function LearningQuest() {
   interface SubjectNodeConfig {
     id: string;
     nodeNumber: number;
+    tier?: 'minion' | 'mini-boss' | 'boss' | 'final-boss';
     title: string;
     subtopic: string;
     minionName?: string;
@@ -489,7 +490,7 @@ export default function LearningQuest() {
     heavyNailedFrameHeight?: number;
   }
 
-  const [battleStage, setBattleStage] = useState<1 | 2 | 3>(1);
+  const [battleStage, setBattleStage] = useState<1 | 2 | 3 | 4>(1);
   const [_learningStage, setLearningStage] = useState<1 | 2 | 3>(1);
   const [activeQuizIndex, setActiveQuizIndex] = useState(0);
   const [waveCharOffscreen, setWaveCharOffscreen] = useState(false);
@@ -638,44 +639,93 @@ export default function LearningQuest() {
       {
         id: 'cc-1',
         nodeNumber: 1,
-        title: 'Carbohydrates & Lipids',
-        subtopic: 'Glucose Metabolism, HbA1c & Lipoproteins',
+        tier: 'minion',
+        title: 'Acid Slime (Minion)',
+        subtopic: 'Glucose Metabolism, Fasting Glucose & HbA1c',
         minionName: 'Acid Slime',
         minionIcon: '🧪',
-        miniBossName: 'Hyperglycemic Mutant',
-        miniBossIcon: '🧬',
-        bossName: 'Ketoacidosis Colossus',
-        bossIcon: '⚗️',
+        bossName: 'Acid Slime',
+        bossIcon: '🧪',
+        idleSpriteUrl: '/images/bosses/clinchem_chapterOneMinion_IdleAnimation.png',
+        attackSpriteUrl: '/images/bosses/clinchem_chapterOneMinion_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/clinchem_chapterOneMinion_heavyAttackAnimation.png',
         minionIdleSpriteUrl: '/images/bosses/clinchem_chapterOneMinion_IdleAnimation.png',
         minionAttackSpriteUrl: '/images/bosses/clinchem_chapterOneMinion_normalAttackAnimation.png',
         minionHeavyAttackSpriteUrl: '/images/bosses/clinchem_chapterOneMinion_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3',
         minionNormalAttackSfxUrl: '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3',
         minionHeavyAttackSfxUrl: '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3',
+        idleFrames: 12,
+        attackFrames: 7,
+        heavyAttackFrames: 13,
         minionIdleFrames: 12,
         minionAttackFrames: 7,
         minionHeavyAttackFrames: 13,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 263,
+        attackFrameHeight: 210,
+        heavyFrameWidth: 263,
+        heavyFrameHeight: 210,
         minionIdleFrameWidth: 128,
         minionIdleFrameHeight: 128,
         minionAttackFrameWidth: 263,
         minionAttackFrameHeight: 210,
         minionHeavyFrameWidth: 263,
         minionHeavyFrameHeight: 210,
+        idleDuration: 2.8,
         minionIdleDuration: 2.8,
+      },
+      {
+        id: 'cc-2',
+        nodeNumber: 2,
+        tier: 'mini-boss',
+        title: 'Hyperglycemic Mutant (Mini-Boss)',
+        subtopic: 'Lipids, Lipoproteins & Ketone Bodies',
+        miniBossName: 'Hyperglycemic Mutant',
+        miniBossIcon: '🧬',
+        bossName: 'Hyperglycemic Mutant',
+        bossIcon: '🧬',
+        idleSpriteUrl: '/images/bosses/clinchem_chapterOneMiniBoss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/clinchem_chapterOneMiniBoss_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/clinchem_chapterOneMiniBoss_heavyAttackAnimation.png',
         miniBossIdleSpriteUrl: '/images/bosses/clinchem_chapterOneMiniBoss_idleAnimation.png',
         miniBossAttackSpriteUrl: '/images/bosses/clinchem_chapterOneMiniBoss_normalAttackAnimation.png',
         miniBossHeavyAttackSpriteUrl: '/images/bosses/clinchem_chapterOneMiniBoss_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/SickleCellNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3',
         miniBossNormalAttackSfxUrl: '/SoundEffects/SickleCellNormalAttack.mp3',
         miniBossHeavyAttackSfxUrl: '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3',
+        idleFrames: 9,
+        attackFrames: 8,
+        heavyAttackFrames: 8,
         miniBossIdleFrames: 9,
         miniBossAttackFrames: 8,
         miniBossHeavyAttackFrames: 8,
+        idleFrameWidth: 183,
+        idleFrameHeight: 194,
+        attackFrameWidth: 250,
+        attackFrameHeight: 210,
+        heavyFrameWidth: 190,
+        heavyFrameHeight: 154,
         miniBossIdleFrameWidth: 183,
         miniBossIdleFrameHeight: 194,
         miniBossAttackFrameWidth: 250,
         miniBossAttackFrameHeight: 210,
         miniBossHeavyFrameWidth: 190,
         miniBossHeavyFrameHeight: 154,
+        idleDuration: 1.2,
         miniBossIdleDuration: 1.2,
+      },
+      {
+        id: 'cc-3',
+        nodeNumber: 3,
+        tier: 'boss',
+        title: 'Ketoacidosis Colossus (Chapter Boss)',
+        subtopic: 'Electrolytes, Blood Gas & Acid-Base Balance',
+        bossName: 'Ketoacidosis Colossus',
+        bossIcon: '⚗️',
         idleSpriteUrl: '/images/bosses/clinchem_chapterOneBoss_idleAnimation.png',
         attackSpriteUrl: '/images/bosses/clinchem_chapterOneBoss_normalAttackAnimation.png',
         heavyAttackSpriteUrl: '/images/bosses/clinchem_chapterOneBoss_heavyAttackAnimation.png',
@@ -692,10 +742,10 @@ export default function LearningQuest() {
         heavyFrameHeight: 639,
         idleDuration: 1.0,
       },
-      { id: 'cc-2', nodeNumber: 2, title: 'Enzymology & Electrolytes', subtopic: 'Troponin, CK-MB, AST, Potassium & Blood pH', minionName: 'Kinase Swarm', minionIcon: '⚡', miniBossName: 'Ischemia Fiend', miniBossIcon: '🔥', bossName: 'Renal Behemoth', bossIcon: '💔' },
       {
-        id: 'cc-3',
-        nodeNumber: 3,
+        id: 'cc-4',
+        nodeNumber: 4,
+        tier: 'final-boss',
         title: '👑 Hyperglycemic Specter (FINAL BOSS)',
         subtopic: 'Comprehensive Clinical Chemistry Licensure Challenge',
         bossName: 'Hyperglycemic Specter',
@@ -722,48 +772,96 @@ export default function LearningQuest() {
       {
         id: 'mb-1',
         nodeNumber: 1,
-        title: 'Bacteriology & Gram Staining',
-        subtopic: 'Gram Positive & Negative Cocci & Bacilli',
+        tier: 'minion',
+        title: 'Microbe Swarm (Minion)',
+        subtopic: 'Gram Staining, Cell Wall & Bacterial Morphology',
         minionName: 'Microbe Swarm',
         minionIcon: '🦠',
-        miniBossName: 'Staph Sentinel',
-        miniBossIcon: '🧬',
-        bossName: 'Gram Positive Overlord',
-        bossIcon: '👾',
-        normalAttackSfxUrl: '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3',
-        heavyAttackSfxUrl: '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3',
-        minionNormalAttackSfxUrl: '/SoundEffects/MicrobeSwarmNormalAttack.mp3',
-        minionHeavyAttackSfxUrl: '/SoundEffects/MicrobeSwarmHeavyAttack.wav',
-        miniBossNormalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
-        miniBossHeavyAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        bossName: 'Microbe Swarm',
+        bossIcon: '🦠',
+        idleSpriteUrl: '/images/bosses/microbio_chapterOneMinion_IdleAnimation.png',
+        attackSpriteUrl: '/images/bosses/microbio_chapterOneMinion_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/microbio_chapterOneMinion_heavyAttackAnimation.png',
         minionIdleSpriteUrl: '/images/bosses/microbio_chapterOneMinion_IdleAnimation.png',
         minionAttackSpriteUrl: '/images/bosses/microbio_chapterOneMinion_normalAttackAnimation.png',
         minionHeavyAttackSpriteUrl: '/images/bosses/microbio_chapterOneMinion_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/MicrobeSwarmNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/MicrobeSwarmHeavyAttack.wav',
+        minionNormalAttackSfxUrl: '/SoundEffects/MicrobeSwarmNormalAttack.mp3',
+        minionHeavyAttackSfxUrl: '/SoundEffects/MicrobeSwarmHeavyAttack.wav',
+        idleFrames: 8,
+        attackFrames: 14,
+        heavyAttackFrames: 10,
         minionIdleFrames: 8,
         minionAttackFrames: 14,
         minionHeavyAttackFrames: 10,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 257,
+        attackFrameHeight: 218,
+        heavyFrameWidth: 257,
+        heavyFrameHeight: 218,
         minionIdleFrameWidth: 128,
         minionIdleFrameHeight: 128,
         minionAttackFrameWidth: 257,
         minionAttackFrameHeight: 218,
         minionHeavyFrameWidth: 257,
         minionHeavyFrameHeight: 218,
+      },
+      {
+        id: 'mb-2',
+        nodeNumber: 2,
+        tier: 'mini-boss',
+        title: 'Staph Sentinel (Mini-Boss)',
+        subtopic: 'Gram-Positive Cocci, Catalase & Coagulase Tests',
+        miniBossName: 'Staph Sentinel',
+        miniBossIcon: '🧬',
+        bossName: 'Staph Sentinel',
+        bossIcon: '🧬',
+        idleSpriteUrl: '/images/bosses/microbio_chapterOneMiniBoss_IdleAnimation.png',
+        attackSpriteUrl: '/images/bosses/microbio_chapterOneMiniBoss_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/microbio_chapterOneMiniBoss_normalAttackAnimation.png',
         miniBossIdleSpriteUrl: '/images/bosses/microbio_chapterOneMiniBoss_IdleAnimation.png',
         miniBossAttackSpriteUrl: '/images/bosses/microbio_chapterOneMiniBoss_normalAttackAnimation.png',
         miniBossHeavyAttackSpriteUrl: '/images/bosses/microbio_chapterOneMiniBoss_normalAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        miniBossNormalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        miniBossHeavyAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        idleFrames: 7,
+        attackFrames: 9,
+        heavyAttackFrames: 9,
         miniBossIdleFrames: 7,
         miniBossAttackFrames: 9,
         miniBossHeavyAttackFrames: 9,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 160,
+        attackFrameHeight: 157,
+        heavyFrameWidth: 160,
+        heavyFrameHeight: 157,
         miniBossIdleFrameWidth: 128,
         miniBossIdleFrameHeight: 128,
         miniBossAttackFrameWidth: 160,
         miniBossAttackFrameHeight: 157,
         miniBossHeavyFrameWidth: 160,
         miniBossHeavyFrameHeight: 157,
+        idleDuration: 1.0,
         miniBossIdleDuration: 1.0,
+      },
+      {
+        id: 'mb-3',
+        nodeNumber: 3,
+        tier: 'boss',
+        title: 'Gram Positive Overlord (Chapter Boss)',
+        subtopic: 'Streptococcus, Enterococcus & Spore-Forming Bacilli',
+        bossName: 'Gram Positive Overlord',
+        bossIcon: '👾',
         idleSpriteUrl: '/images/bosses/microbio_chapterOneBoss_IdleAnimation.png',
         attackSpriteUrl: '/images/bosses/microbio_chapterOneBoss_normalAttackAnimation.png',
         heavyAttackSpriteUrl: '/images/bosses/microbio_chapterOneBoss_normalAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3',
         idleFrames: 7,
         attackFrames: 13,
         heavyAttackFrames: 13,
@@ -775,10 +873,10 @@ export default function LearningQuest() {
         heavyFrameHeight: 189,
         idleDuration: 1.05,
       },
-      { id: 'mb-2', nodeNumber: 2, title: 'Mycology, Virology & Parasitology', subtopic: 'Fungi, Viral Replication, Antigens & Protozoa', minionName: 'Spore Cloud', minionIcon: '🍄', miniBossName: 'Retrovirus Fiend', miniBossIcon: '💥', bossName: 'Viral Apex Lord', bossIcon: '🐉' },
       {
-        id: 'mb-3',
-        nodeNumber: 3,
+        id: 'mb-4',
+        nodeNumber: 4,
+        tier: 'final-boss',
         title: '👑 Biohazard Overlord (FINAL BOSS)',
         subtopic: 'Antimicrobial Resistance & Comprehensive Microbiology',
         bossName: 'Biohazard Overlord',
@@ -804,12 +902,92 @@ export default function LearningQuest() {
       {
         id: 'hem-1',
         nodeNumber: 1,
-        title: 'RBC Anomalies & Anemias',
-        subtopic: 'Hemoglobin Synthesis & Microcytic Anemias',
+        tier: 'minion',
+        title: 'Sickle Cell (Minion)',
+        subtopic: 'RBC Morphology, Indices & Poikilocytosis',
         minionName: 'Sickle Cell',
         minionIcon: '🩸',
+        bossName: 'Sickle Cell',
+        bossIcon: '🩸',
+        idleSpriteUrl: '/images/bosses/hematology_chapterOneMinion_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/hematology_chapterOneMinion_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/hematology_chapterOneMinion_heavyAttackAnimation.png',
+        minionIdleSpriteUrl: '/images/bosses/hematology_chapterOneMinion_idleAnimation.png',
+        minionAttackSpriteUrl: '/images/bosses/hematology_chapterOneMinion_normalAttackAnimation.png',
+        minionHeavyAttackSpriteUrl: '/images/bosses/hematology_chapterOneMinion_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/SickleCellNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/SickleCellHeavyAttack.mp3',
+        minionNormalAttackSfxUrl: '/SoundEffects/SickleCellNormalAttack.mp3',
+        minionHeavyAttackSfxUrl: '/SoundEffects/SickleCellHeavyAttack.mp3',
+        idleFrames: 7,
+        attackFrames: 14,
+        heavyAttackFrames: 15,
+        minionIdleFrames: 7,
+        minionAttackFrames: 14,
+        minionHeavyAttackFrames: 15,
+        idleFrameWidth: 165,
+        idleFrameHeight: 157,
+        attackFrameWidth: 494,
+        attackFrameHeight: 434,
+        heavyFrameWidth: 339,
+        heavyFrameHeight: 292,
+        minionIdleFrameWidth: 165,
+        minionIdleFrameHeight: 157,
+        minionAttackFrameWidth: 494,
+        minionAttackFrameHeight: 434,
+        minionHeavyFrameWidth: 339,
+        minionHeavyFrameHeight: 292,
+        idleDuration: 1.3,
+        minionIdleDuration: 1.3,
+      },
+      {
+        id: 'hem-2',
+        nodeNumber: 2,
+        tier: 'mini-boss',
+        title: 'Anemia Shade (Mini-Boss)',
+        subtopic: 'Microcytic & Hypochromic Anemias',
         miniBossName: 'Anemia Shade',
         miniBossIcon: '👻',
+        bossName: 'Anemia Shade',
+        bossIcon: '👻',
+        idleSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_DashAnimation.png',
+        miniBossSlashSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_SlashAnimation.png',
+        miniBossIdleSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_idleAnimation.png',
+        miniBossAttackSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_normalAttackAnimation.png',
+        miniBossHeavyAttackSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_DashAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/SickleCellNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/SickleCellHeavyAttack.mp3',
+        miniBossNormalAttackSfxUrl: '/SoundEffects/SickleCellNormalAttack.mp3',
+        miniBossHeavyAttackSfxUrl: '/SoundEffects/SickleCellHeavyAttack.mp3',
+        idleFrames: 7,
+        attackFrames: 18,
+        heavyAttackFrames: 15,
+        miniBossIdleFrames: 7,
+        miniBossAttackFrames: 18,
+        miniBossHeavyAttackFrames: 15,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 128,
+        attackFrameHeight: 128,
+        heavyFrameWidth: 128,
+        heavyFrameHeight: 128,
+        miniBossIdleFrameWidth: 128,
+        miniBossIdleFrameHeight: 128,
+        miniBossAttackFrameWidth: 128,
+        miniBossAttackFrameHeight: 128,
+        miniBossHeavyFrameWidth: 128,
+        miniBossHeavyFrameHeight: 128,
+        idleDuration: 1.0,
+        miniBossIdleDuration: 1.0,
+      },
+      {
+        id: 'hem-3',
+        nodeNumber: 3,
+        tier: 'boss',
+        title: 'Erythrocyte Colossus (Chapter Boss)',
+        subtopic: 'Hemoglobin Synthesis & Hemoglobinopathies',
         bossName: 'Erythrocyte Colossus',
         bossIcon: '👑',
         idleSpriteUrl: '/images/bosses/hematology_chapterOneBoss_idleAnimation.png',
@@ -829,42 +1007,11 @@ export default function LearningQuest() {
         heavyFrameWidth: 176,
         heavyFrameHeight: 196,
         idleDuration: 1.0,
-        minionIdleSpriteUrl: '/images/bosses/hematology_chapterOneMinion_idleAnimation.png',
-        minionAttackSpriteUrl: '/images/bosses/hematology_chapterOneMinion_normalAttackAnimation.png',
-        minionHeavyAttackSpriteUrl: '/images/bosses/hematology_chapterOneMinion_heavyAttackAnimation.png',
-        minionNormalAttackSfxUrl: '/SoundEffects/SickleCellNormalAttack.mp3',
-        minionHeavyAttackSfxUrl: '/SoundEffects/SickleCellHeavyAttack.mp3',
-        minionIdleFrames: 7,
-        minionAttackFrames: 14,
-        minionHeavyAttackFrames: 15,
-        minionIdleFrameWidth: 165,
-        minionIdleFrameHeight: 157,
-        minionAttackFrameWidth: 494,
-        minionAttackFrameHeight: 434,
-        minionHeavyFrameWidth: 339,
-        minionHeavyFrameHeight: 292,
-        minionIdleDuration: 1.3,
-        miniBossIdleSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_idleAnimation.png',
-        miniBossAttackSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_normalAttackAnimation.png',
-        miniBossHeavyAttackSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_DashAnimation.png',
-        miniBossSlashSpriteUrl: '/images/bosses/hematology_chapterOneMiniBoss_heavyAttack_SlashAnimation.png',
-        miniBossNormalAttackSfxUrl: '/SoundEffects/SickleCellNormalAttack.mp3',
-        miniBossHeavyAttackSfxUrl: '/SoundEffects/SickleCellHeavyAttack.mp3',
-        miniBossIdleFrames: 7,
-        miniBossAttackFrames: 18,
-        miniBossHeavyAttackFrames: 15,
-        miniBossIdleFrameWidth: 128,
-        miniBossIdleFrameHeight: 128,
-        miniBossAttackFrameWidth: 128,
-        miniBossAttackFrameHeight: 128,
-        miniBossHeavyFrameWidth: 128,
-        miniBossHeavyFrameHeight: 128,
-        miniBossIdleDuration: 1.0,
       },
-      { id: 'hem-2', nodeNumber: 2, title: 'WBC Disorders & Leukemias', subtopic: 'Neutrophils, Acute/Chronic Leukemias & Bone Marrow', minionName: 'Blast Cell', minionIcon: '💥', miniBossName: 'Leukemic Fiend', miniBossIcon: '⚡', bossName: 'White Cell Warlord', bossIcon: '🗡️' },
       {
-        id: 'hem-3',
-        nodeNumber: 3,
+        id: 'hem-4',
+        nodeNumber: 4,
+        tier: 'final-boss',
         title: '👑 Sickle-Cell Reaper (FINAL BOSS)',
         subtopic: 'Hemostasis, Coagulation Cascades & Comprehensive Exam',
         bossName: 'Sickle-Cell Reaper',
@@ -891,47 +1038,98 @@ export default function LearningQuest() {
       {
         id: 'is-1',
         nodeNumber: 1,
-        title: 'Immunity & Serological Testing',
-        subtopic: 'Innate/Adaptive Immunity, ELISA & Agglutination',
+        tier: 'minion',
+        title: 'Lymphocyte Swarm (Minion)',
+        subtopic: 'Innate & Adaptive Immunity, B & T Cells',
         minionName: 'Lymphocyte Swarm',
         minionIcon: '🛡️',
-        miniBossName: 'Antigen Titan',
-        miniBossIcon: '🧬',
-        bossName: 'Immune Archon',
-        bossIcon: '👑',
+        bossName: 'Lymphocyte Swarm',
+        bossIcon: '🛡️',
+        idleSpriteUrl: '/images/bosses/immunohema_chapterOneMinion_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/immunohema_chapterOneMinion_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/immunohema_chapterOneMinion_heavyAttackAnimation.png',
         minionIdleSpriteUrl: '/images/bosses/immunohema_chapterOneMinion_idleAnimation.png',
         minionAttackSpriteUrl: '/images/bosses/immunohema_chapterOneMinion_normalAttackAnimation.png',
         minionHeavyAttackSpriteUrl: '/images/bosses/immunohema_chapterOneMinion_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/MicrobeSwarmNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/MicrobeSwarmHeavyAttack.wav',
         minionNormalAttackSfxUrl: '/SoundEffects/MicrobeSwarmNormalAttack.mp3',
         minionHeavyAttackSfxUrl: '/SoundEffects/MicrobeSwarmHeavyAttack.wav',
+        idleFrames: 11,
+        attackFrames: 14,
+        heavyAttackFrames: 10,
         minionIdleFrames: 11,
         minionAttackFrames: 14,
         minionHeavyAttackFrames: 10,
+        idleFrameWidth: 257,
+        idleFrameHeight: 218,
+        attackFrameWidth: 257,
+        attackFrameHeight: 218,
+        heavyFrameWidth: 257,
+        heavyFrameHeight: 218,
         minionIdleFrameWidth: 257,
         minionIdleFrameHeight: 218,
         minionAttackFrameWidth: 257,
         minionAttackFrameHeight: 218,
         minionHeavyFrameWidth: 257,
         minionHeavyFrameHeight: 218,
+        idleDuration: 1.2,
         minionIdleDuration: 1.2,
+      },
+      {
+        id: 'is-2',
+        nodeNumber: 2,
+        tier: 'mini-boss',
+        title: 'Antigen Titan (Mini-Boss)',
+        subtopic: 'Antigen-Antibody Binding & Agglutination Tests',
+        miniBossName: 'Antigen Titan',
+        miniBossIcon: '🧬',
+        bossName: 'Antigen Titan',
+        bossIcon: '🧬',
+        idleSpriteUrl: '/images/bosses/immunohema_chapterOneMiniBoss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/immunohema_chapterOneMiniBoss_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/immunohema_chapterOneMiniBoss_heavyAttackAnimation.png',
         miniBossIdleSpriteUrl: '/images/bosses/immunohema_chapterOneMiniBoss_idleAnimation.png',
         miniBossAttackSpriteUrl: '/images/bosses/immunohema_chapterOneMiniBoss_normalAttackAnimation.png',
         miniBossHeavyAttackSpriteUrl: '/images/bosses/immunohema_chapterOneMiniBoss_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/KetoacidosisColossusNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/CrystalGolemNormalAttack.mp3',
         miniBossNormalAttackSfxUrl: '/SoundEffects/KetoacidosisColossusNormalAttack.mp3',
         miniBossHeavyAttackSfxUrl: '/SoundEffects/CrystalGolemNormalAttack.mp3',
+        idleFrames: 7,
+        attackFrames: 8,
+        heavyAttackFrames: 9,
         miniBossIdleFrames: 7,
         miniBossAttackFrames: 8,
         miniBossHeavyAttackFrames: 9,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 128,
+        attackFrameHeight: 128,
+        heavyFrameWidth: 183,
+        heavyFrameHeight: 153,
         miniBossIdleFrameWidth: 128,
         miniBossIdleFrameHeight: 128,
         miniBossAttackFrameWidth: 128,
         miniBossAttackFrameHeight: 128,
         miniBossHeavyFrameWidth: 183,
         miniBossHeavyFrameHeight: 153,
+        idleDuration: 1.0,
         miniBossIdleDuration: 1.0,
+      },
+      {
+        id: 'is-3',
+        nodeNumber: 3,
+        tier: 'boss',
+        title: 'Immune Archon (Chapter Boss)',
+        subtopic: 'ELISA, Western Blot & Autoimmune Serology',
+        bossName: 'Immune Archon',
+        bossIcon: '👑',
         idleSpriteUrl: '/images/bosses/immunohema_chapterOneBoss_idleAnimation.png',
         attackSpriteUrl: '/images/bosses/immunohema_chapterOneBoss_normalAttackAnimation.png',
         heavyAttackSpriteUrl: '/images/bosses/immunohema_chapterOneBoss_heavyAttackAnimation.png',
+        lightningAttackUrl: '/images/bosses/immunohema_chapterOneBoss_heavyAttackThunderAnimation.png',
+        lightningAttackFrames: 12,
         normalAttackSfxUrl: '/SoundEffects/ImmuneArchonNormalAttack.mp3',
         heavyAttackSfxUrl: '/SoundEffects/AntiSerumHydraHeavyAttack.mp3',
         idleFrames: 7,
@@ -943,14 +1141,12 @@ export default function LearningQuest() {
         attackFrameHeight: 177,
         heavyFrameWidth: 247,
         heavyFrameHeight: 228,
-        lightningAttackUrl: '/images/bosses/immunohema_chapterOneBoss_heavyAttackThunderAnimation.png',
-        lightningAttackFrames: 12,
         idleDuration: 1.05,
       },
-      { id: 'is-2', nodeNumber: 2, title: 'ABO & Rh Blood Group System', subtopic: 'Blood Group Antigens, Antibodies & Rh Discrepancies', minionName: 'ABO Antigen', minionIcon: '🩸', miniBossName: 'Rh Aggressive Golem', miniBossIcon: '🪨', bossName: 'Immunohematology Colossus', bossIcon: '👑' },
       {
-        id: 'is-3',
-        nodeNumber: 3,
+        id: 'is-4',
+        nodeNumber: 4,
+        tier: 'final-boss',
         title: '👑 Anti-Serum Hydra (FINAL BOSS)',
         subtopic: 'Transfusion Reactions, Crossmatching & Blood Bank',
         bossName: 'Anti-Serum Hydra',
@@ -978,81 +1174,187 @@ export default function LearningQuest() {
       {
         id: 'cm-1',
         nodeNumber: 1,
-        title: 'Urinalysis Physical & Chemical Exam',
-        subtopic: 'Color, Clarity, Specific Gravity & Reagents',
+        tier: 'minion',
+        title: 'Reagent Strip Slime (Minion)',
+        subtopic: 'Urinalysis Physical & Chemical Examination',
         minionName: 'Reagent Strip Slime',
         minionIcon: '🧪',
-        miniBossName: 'Nitrite Spectre',
-        miniBossIcon: '👻',
-        bossName: 'Urochrome Titan',
-        bossIcon: '👑',
+        bossName: 'Reagent Strip Slime',
+        bossIcon: '🧪',
+        idleSpriteUrl: '/images/bosses/clinmicro_chapterOneMinion_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/clinmicro_chapterOneMinion_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/clinmicro_chapterOneMinion_heavyAttackAnimation.png',
         minionIdleSpriteUrl: '/images/bosses/clinmicro_chapterOneMinion_idleAnimation.png',
         minionAttackSpriteUrl: '/images/bosses/clinmicro_chapterOneMinion_normalAttackAnimation.png',
         minionHeavyAttackSpriteUrl: '/images/bosses/clinmicro_chapterOneMinion_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3',
+        minionNormalAttackSfxUrl: '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3',
+        minionHeavyAttackSfxUrl: '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3',
+        idleFrames: 6,
+        attackFrames: 21,
+        heavyAttackFrames: 31,
         minionIdleFrames: 6,
         minionAttackFrames: 21,
         minionHeavyAttackFrames: 31,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 348,
+        attackFrameHeight: 401,
+        heavyFrameWidth: 348,
+        heavyFrameHeight: 401,
         minionIdleFrameWidth: 128,
         minionIdleFrameHeight: 128,
         minionAttackFrameWidth: 348,
         minionAttackFrameHeight: 401,
         minionHeavyFrameWidth: 348,
         minionHeavyFrameHeight: 401,
+        idleDuration: 1.0,
         minionIdleDuration: 1.0,
-        minionNormalAttackSfxUrl: '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3',
-        minionHeavyAttackSfxUrl: '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3',
       },
-      { id: 'cm-2', nodeNumber: 2, title: 'Microscopic Sediments & Body Fluids', subtopic: 'Casts, Crystals, Synovial, Serous & CSF Analysis', minionName: 'Hyaline Cast', minionIcon: '💧', miniBossName: 'Oxalate Golem', miniBossIcon: '🪨', bossName: 'Sediment Colossus', bossIcon: '🩸' },
-      { id: 'cm-3', nodeNumber: 3, title: '👑 Crystal Golem (FINAL BOSS)', subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam', bossName: 'Crystal Golem', bossIcon: '👑', idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png", attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png", heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png", normalAttackSfxUrl: "/SoundEffects/CrystalGolemNormalAttack.mp3", heavyAttackSfxUrl: "/SoundEffects/CrystalGolemHeavyAttack.mp3", idleFrames: 7, attackFrames: 17, heavyAttackFrames: 11, idleFrameWidth: 128, idleFrameHeight: 128, attackFrameWidth: 128, attackFrameHeight: 128, heavyFrameWidth: 176, heavyFrameHeight: 128 },
+      {
+        id: 'cm-2',
+        nodeNumber: 2,
+        tier: 'mini-boss',
+        title: 'Nitrite Spectre (Mini-Boss)',
+        subtopic: 'Microscopic Urinalysis, Crystals & Casts',
+        miniBossName: 'Nitrite Spectre',
+        miniBossIcon: '👻',
+        bossName: 'Nitrite Spectre',
+        bossIcon: '👻',
+      },
+      {
+        id: 'cm-3',
+        nodeNumber: 3,
+        tier: 'boss',
+        title: 'Urochrome Titan (Chapter Boss)',
+        subtopic: 'CSF, Synovial & Serous Fluid Analysis',
+        bossName: 'Urochrome Titan',
+        bossIcon: '👑',
+      },
+      {
+        id: 'cm-4',
+        nodeNumber: 4,
+        tier: 'final-boss',
+        title: '👑 Crystal Golem (FINAL BOSS)',
+        subtopic: 'Intestinal Parasites, Helminths & Comprehensive Board Exam',
+        bossName: 'Crystal Golem',
+        bossIcon: '👑',
+        idleSpriteUrl: "/images/bosses/clinmicro_finalboss_idleAnimation.png",
+        attackSpriteUrl: "/images/bosses/clinmicro_finalboss_normalAttackAnimation.png",
+        heavyAttackSpriteUrl: "/images/bosses/clinmicro_finalboss_heavyAttackAnimation.png",
+        normalAttackSfxUrl: "/SoundEffects/CrystalGolemNormalAttack.mp3",
+        heavyAttackSfxUrl: "/SoundEffects/CrystalGolemHeavyAttack.mp3",
+        idleFrames: 7,
+        attackFrames: 17,
+        heavyAttackFrames: 11,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 128,
+        attackFrameHeight: 128,
+        heavyFrameWidth: 176,
+        heavyFrameHeight: 128,
+      },
     ],
     "Histopathology and Medtech Laws": [
       {
         id: 'hp-1',
         nodeNumber: 1,
-        title: 'Tissue Processing, Microtomy & Staining',
-        subtopic: 'Formalin Fixation, Sectioning & Special Fungal Stains',
+        tier: 'minion',
+        title: 'GMS Fungal Spore (Minion)',
+        subtopic: 'Tissue Processing, Fixation & Special Fungal Stains',
         minionName: 'GMS Fungal Spore',
         minionIcon: '🍄',
-        miniBossName: 'Paraffin Golem',
-        miniBossIcon: '🪨',
-        bossName: 'Fixation Overlord',
-        bossIcon: '👑',
+        bossName: 'GMS Fungal Spore',
+        bossIcon: '🍄',
+        idleSpriteUrl: '/images/bosses/hispatho_chapterOneMinion_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/hispatho_chapterOneMinion_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/hispatho_chapterOneMinion_heavyAttackAnimation.png',
         minionIdleSpriteUrl: '/images/bosses/hispatho_chapterOneMinion_idleAnimation.png',
         minionAttackSpriteUrl: '/images/bosses/hispatho_chapterOneMinion_normalAttackAnimation.png',
         minionHeavyAttackSpriteUrl: '/images/bosses/hispatho_chapterOneMinion_heavyAttackAnimation.png',
+        normalAttackSfxUrl: '/SoundEffects/FungalSporeNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/FungalSporeHeavyAttack.mp3',
         minionNormalAttackSfxUrl: '/SoundEffects/FungalSporeNormalAttack.mp3',
         minionHeavyAttackSfxUrl: '/SoundEffects/FungalSporeHeavyAttack.mp3',
+        idleFrames: 5,
+        attackFrames: 10,
+        heavyAttackFrames: 13,
         minionIdleFrames: 5,
         minionAttackFrames: 10,
         minionHeavyAttackFrames: 13,
+        idleFrameWidth: 128,
+        idleFrameHeight: 127,
+        attackFrameWidth: 244,
+        attackFrameHeight: 196,
+        heavyFrameWidth: 244,
+        heavyFrameHeight: 196,
         minionIdleFrameWidth: 128,
         minionIdleFrameHeight: 127,
         minionAttackFrameWidth: 244,
         minionAttackFrameHeight: 196,
         minionHeavyFrameWidth: 244,
         minionHeavyFrameHeight: 196,
+        idleDuration: 1.0,
         minionIdleDuration: 1.0,
+      },
+      {
+        id: 'hp-2',
+        nodeNumber: 2,
+        tier: 'mini-boss',
+        title: 'Paraffin Golem (Mini-Boss)',
+        subtopic: 'Infiltration, Embedding, Microtomy & Sectioning',
+        miniBossName: 'Paraffin Golem',
+        miniBossIcon: '🪨',
+        bossName: 'Paraffin Golem',
+        bossIcon: '🪨',
+        idleSpriteUrl: '/images/bosses/hispatho_chapterOneMiniBoss_idleAnimation.png',
+        attackSpriteUrl: '/images/bosses/hispatho_chapterOneMiniBoss_normalAttackAnimation.png',
+        heavyAttackSpriteUrl: '/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackGlintAnimation-1.png',
+        miniBossHeavyAttackBallsUrl: '/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackBallsAnimation-2.png',
         miniBossIdleSpriteUrl: '/images/bosses/hispatho_chapterOneMiniBoss_idleAnimation.png',
         miniBossAttackSpriteUrl: '/images/bosses/hispatho_chapterOneMiniBoss_normalAttackAnimation.png',
-        miniBossNormalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
         miniBossHeavyAttackSpriteUrl: '/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackGlintAnimation-1.png',
-        miniBossHeavyAttackBallsUrl: '/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackBallsAnimation-2.png',
+        normalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/LegalBeholderHeavyAttack.mp3',
+        miniBossNormalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
         miniBossHeavyAttackSfxUrl: '/SoundEffects/LegalBeholderHeavyAttack.mp3',
+        idleFrames: 7,
+        attackFrames: 17,
+        heavyAttackFrames: 13,
+        miniBossHeavyBallsFrames: 12,
         miniBossIdleFrames: 7,
         miniBossAttackFrames: 17,
         miniBossHeavyAttackFrames: 13,
-        miniBossHeavyBallsFrames: 12,
+        idleFrameWidth: 128,
+        idleFrameHeight: 128,
+        attackFrameWidth: 160,
+        attackFrameHeight: 128,
+        heavyFrameWidth: 128,
+        heavyFrameHeight: 128,
         miniBossIdleFrameWidth: 128,
         miniBossIdleFrameHeight: 128,
         miniBossAttackFrameWidth: 160,
         miniBossAttackFrameHeight: 128,
         miniBossHeavyFrameWidth: 128,
         miniBossHeavyFrameHeight: 128,
+        idleDuration: 1.0,
         miniBossIdleDuration: 1.0,
+      },
+      {
+        id: 'hp-3',
+        nodeNumber: 3,
+        tier: 'boss',
+        title: 'Fixation Overlord (Chapter Boss)',
+        subtopic: 'Formalin Fixation, Routine H&E & Section Mounting',
+        bossName: 'Fixation Overlord',
+        bossIcon: '👑',
         idleSpriteUrl: '/images/bosses/hispatho_chapterOneBoss_idleAnimation.png',
         attackSpriteUrl: '/images/bosses/hispatho_chapterOneBoss_normalAttackAnimation.png',
         heavyAttackSpriteUrl: '/images/bosses/hispatho_chapterOneBoss_heavtAttackGlintAnimation-1.png',
         heavyAttackNailedUrl: '/images/bosses/hispatho_chapterOneBoss_heavtAttackNailedAnimation-2.png',
+        normalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
+        heavyAttackSfxUrl: '/SoundEffects/LegalBeholderHeavyAttack.mp3',
         idleFrames: 8,
         attackFrames: 15,
         heavyAttackFrames: 10,
@@ -1066,15 +1368,13 @@ export default function LearningQuest() {
         heavyNailedFrameWidth: 256,
         heavyNailedFrameHeight: 128,
         idleDuration: 1.0,
-        normalAttackSfxUrl: '/SoundEffects/BiohazardOverlordNormalAttack.mp3',
-        heavyAttackSfxUrl: '/SoundEffects/LegalBeholderHeavyAttack.mp3',
       },
-      { id: 'hp-2', nodeNumber: 2, title: 'RA 5527 & MedTech Ethics', subtopic: 'Philippine Medical Technology Act of 1969', minionName: 'Statute Page', minionIcon: '📜', miniBossName: 'Legal Guardian', miniBossIcon: '🛡️', bossName: 'Jurisprudence Archon', bossIcon: '⚖️' },
       {
-        id: 'hp-3',
-        nodeNumber: 3,
+        id: 'hp-4',
+        nodeNumber: 4,
+        tier: 'final-boss',
         title: '👑 Legal Beholder (FINAL BOSS)',
-        subtopic: 'Biosafety, Lab Quality Assurance & Comprehensive Challenge',
+        subtopic: 'RA 5527, Biosafety & Comprehensive Board Exam',
         bossName: 'Legal Beholder',
         bossIcon: '👑',
         idleSpriteUrl: '/images/bosses/hispatho_chapterThreeFinalBoss_idleAnimation.png',
@@ -1105,9 +1405,10 @@ export default function LearningQuest() {
       return CHAPTER_NODES_PER_SUBJECT["Histopathology and Medtech Laws"];
     }
     return CHAPTER_NODES_PER_SUBJECT[subject] || [
-      { id: `${subject}-1`, nodeNumber: 1, title: `${subject} Foundations`, subtopic: 'Core Diagnostic Principles', minionName: 'Lab Minion', minionIcon: '🧪', miniBossName: 'Diagnostic Spectre', miniBossIcon: '👻', bossName: `${subject} Overlord`, bossIcon: '👑' },
-      { id: `${subject}-2`, nodeNumber: 2, title: `${subject} Advanced Concepts`, subtopic: 'Pathology & Testing Methodologies', minionName: 'Reagent Swarm', minionIcon: '💧', miniBossName: 'Assay Golem', miniBossIcon: '🪨', bossName: `${subject} Titan`, bossIcon: '⚡' },
-      { id: `${subject}-3`, nodeNumber: 3, title: `👑 ${subject} Sovereign (FINAL BOSS)`, subtopic: 'Comprehensive Licensure Board Challenge', bossName: `Master ${subject} Colossus`, bossIcon: '👑' },
+      { id: `${subject}-1`, nodeNumber: 1, tier: 'minion', title: `${subject} Minion Encounter`, subtopic: 'Core Diagnostic Principles', bossName: `${subject} Minion`, bossIcon: '👾' },
+      { id: `${subject}-2`, nodeNumber: 2, tier: 'mini-boss', title: `${subject} Mini-Boss Trial`, subtopic: 'Intermediate Pathologies', bossName: `${subject} Spectre`, bossIcon: '👹' },
+      { id: `${subject}-3`, nodeNumber: 3, tier: 'boss', title: `${subject} Chapter Boss`, subtopic: 'Pathology & Testing Methodologies', bossName: `${subject} Overlord`, bossIcon: '👑' },
+      { id: `${subject}-4`, nodeNumber: 4, tier: 'final-boss', title: `👑 ${subject} Sovereign (FINAL BOSS)`, subtopic: 'Comprehensive Licensure Board Challenge', bossName: `Master ${subject} Colossus`, bossIcon: '👑' },
     ];
   };
 
@@ -1121,12 +1422,12 @@ export default function LearningQuest() {
   ) => {
     const activeNodes = getSubjectNodes(subject || selectedSubject);
     const ch1Node = activeNodes.find(n => n.nodeNumber === 1) || activeNodes[0];
-    const ch3Node = activeNodes.find(n => n.nodeNumber === 3) || activeNodes[activeNodes.length - 1];
+    const ch4Node = activeNodes.find(n => n.nodeNumber === 4 || n.tier === 'final-boss') || activeNodes[activeNodes.length - 1];
+    const ch3Node = ch4Node;
+    const ch3BossNode = activeNodes.find(n => n.nodeNumber === 3 || n.tier === 'boss') || ch1Node;
     const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || ch1Node;
     const subjectMeta = getSubjectMeta(subject || selectedSubject);
-    const wave3BossNode = (currentActiveNode?.nodeNumber === 1 && ch1Node?.idleSpriteUrl)
-      ? ch1Node
-      : (currentActiveNode?.nodeNumber === 3 ? ch3Node : (currentActiveNode?.idleSpriteUrl ? currentActiveNode : ch3Node));
+    const wave3BossNode = (currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4) ? ch4Node : ch3BossNode;
 
     const waveMinion = waveEnemies?.minion;
     const waveEnforcer = waveEnemies?.enforcer;
@@ -1250,7 +1551,7 @@ export default function LearningQuest() {
       return {
         waveStage: 3,
         name: waveBoss?.name || wave3BossNode?.bossName || subjectMeta.enemy,
-        badge: wave3BossNode?.nodeNumber === 3 ? 'FINAL BOSS 👑' : 'BOSS 👑',
+        badge: (wave3BossNode?.nodeNumber === 4 || wave3BossNode?.tier === 'final-boss') ? 'FINAL BOSS 👑' : 'BOSS 👑',
         icon: waveBoss?.icon || wave3BossNode?.bossIcon || '👑',
         hp: effectiveHp,
         maxHp: 100,
@@ -1262,10 +1563,10 @@ export default function LearningQuest() {
         attackProjectileFrames: waveBoss?.attackProjectileFrames || wave3BossNode?.attackProjectileFrames || 5,
         undergroundSpikesUrl: waveBoss?.undergroundSpikesUrl || wave3BossNode?.undergroundSpikesUrl || null,
         undergroundSpikesFrames: waveBoss?.undergroundSpikesFrames || wave3BossNode?.undergroundSpikesFrames || 8,
-        hammerAttackUrl: waveBoss?.hammerAttackUrl || (wave3BossNode?.nodeNumber === 3 ? wave3BossNode?.hammerAttackUrl : null),
-        hammerAttackFrames: waveBoss?.hammerAttackFrames || (wave3BossNode?.nodeNumber === 3 ? wave3BossNode?.hammerAttackFrames : 11),
-        undergroundBlastUrl: waveBoss?.undergroundBlastUrl || (wave3BossNode?.nodeNumber === 3 ? wave3BossNode?.undergroundBlastUrl : null),
-        undergroundBlastFrames: waveBoss?.undergroundBlastFrames || (wave3BossNode?.nodeNumber === 3 ? wave3BossNode?.undergroundBlastFrames : 16),
+        hammerAttackUrl: waveBoss?.hammerAttackUrl || ((wave3BossNode?.nodeNumber === 4 || wave3BossNode?.tier === 'final-boss') ? wave3BossNode?.hammerAttackUrl : null),
+        hammerAttackFrames: waveBoss?.hammerAttackFrames || ((wave3BossNode?.nodeNumber === 4 || wave3BossNode?.tier === 'final-boss') ? wave3BossNode?.hammerAttackFrames : 11),
+        undergroundBlastUrl: waveBoss?.undergroundBlastUrl || ((wave3BossNode?.nodeNumber === 4 || wave3BossNode?.tier === 'final-boss') ? wave3BossNode?.undergroundBlastUrl : null),
+        undergroundBlastFrames: waveBoss?.undergroundBlastFrames || ((wave3BossNode?.nodeNumber === 4 || wave3BossNode?.tier === 'final-boss') ? wave3BossNode?.undergroundBlastFrames : 16),
         lightningAttackUrl: waveBoss?.lightningAttackUrl || wave3BossNode?.lightningAttackUrl || (subjectMeta as any)?.lightningAttackUrl || null,
         lightningAttackFrames: waveBoss?.lightningAttackFrames || wave3BossNode?.lightningAttackFrames || (subjectMeta as any)?.lightningAttackFrames || 12,
         heavyAttackFistUrl: waveBoss?.heavyAttackFistUrl || wave3BossNode?.heavyAttackFistUrl || null,
@@ -1295,13 +1596,17 @@ export default function LearningQuest() {
     return hasShield ? base + 20 : base;
   };
 
-  const calculateEnemyStageHp = (stage: 1 | 2 | 3, level: number, difficulty: string) => {
+  const calculateEnemyStageHp = (stage: 1 | 2 | 3 | 4, level: number, difficulty: string) => {
     const safeLevel = Math.max(1, level);
     const playerStats = calculatePlayerStats(safeLevel, 0, null);
 
     // Number of base correct hits needed to defeat enemy
-    const turnsToDefeat = stage === 1 ? 5 : stage === 2 ? 8 : 12;
-    const modeMul = difficulty === 'EASY' ? 0.75 : difficulty === 'HARD' ? 1.4 : 1.0;
+    // Stage 1 (Minion): 12 turns (~11 on Easy, 12 on Medium, 16 on Hard) ensuring Minion requires 10+ questions
+    // Stage 2 (Mini-Boss): 15 turns
+    // Stage 3 (Chapter Boss): 18 turns
+    // Stage 4 (Final Boss): 22 turns
+    const turnsToDefeat = stage === 1 ? 12 : stage === 2 ? 15 : stage === 3 ? 18 : 22;
+    const modeMul = difficulty === 'EASY' ? 0.9 : difficulty === 'HARD' ? 1.3 : 1.0;
 
     return Math.round(playerStats.totalDamage * turnsToDefeat * modeMul);
   };
@@ -1617,12 +1922,12 @@ export default function LearningQuest() {
     <Dialog open={inventoryDialogOpen} onOpenChange={setInventoryDialogOpen}>
       <DialogContent
         container={isFullscreen ? (fullscreenRef.current || undefined) : undefined}
-        className="w-[95vw] max-w-[340px] min-[375px]:max-w-[380px] sm:max-w-[460px] bg-transparent border-none p-0 text-white shadow-2xl z-[100] font-bytebounce flex items-center justify-center select-none [&>button]:hidden"
+        className="w-[96vw] max-w-[420px] sm:max-w-[580px] md:max-w-[680px] lg:max-w-[740px] bg-transparent border-none p-0 text-white shadow-2xl z-[100] font-bytebounce flex items-center justify-center select-none [&>button]:hidden"
       >
         <DialogTitle className="sr-only">Inventory</DialogTitle>
 
-        {/* Parchment / Leather Frame Container - Naturally scaled to fit content on all screens */}
-        <div className="relative w-full p-2.5 min-[360px]:p-3 sm:p-5 flex flex-col gap-1.5 sm:gap-2.5 overflow-hidden rounded-xl bg-[#2b1408] border-2 border-[#5c2a1a] shadow-2xl">
+        {/* Parchment / Leather Frame Container - Sized generously for maximum readability */}
+        <div className="relative w-full p-3 sm:p-5 md:p-6 flex flex-col gap-2 sm:gap-3 md:gap-3.5 overflow-hidden rounded-xl bg-[#2b1408] border-2 border-[#5c2a1a] shadow-2xl">
           {/* Main Inventory Background */}
           <Image
             src="/ui/Inventory_bg.png"
@@ -1638,32 +1943,32 @@ export default function LearningQuest() {
           <button
             onClick={() => setInventoryDialogOpen(false)}
             aria-label="Close Inventory"
-            className="absolute top-2 right-2 sm:top-3 sm:right-3 w-5.5 h-5.5 min-[360px]:w-6 min-[360px]:h-6 sm:w-7 sm:h-7 bg-[#3d1a16] text-[#e8b298] hover:bg-red-700 hover:text-white rounded border border-[#693327] flex items-center justify-center font-bold text-[10px] sm:text-xs z-30 transition-colors active:scale-95 shadow-md"
+            className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 md:top-4 md:right-4 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 bg-[#3d1a16] text-[#e8b298] hover:bg-red-700 hover:text-white rounded-md border-2 border-[#693327] flex items-center justify-center font-bold text-xs sm:text-sm z-30 transition-colors active:scale-95 shadow-md cursor-pointer"
           >
-            <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 stroke-[2.5]" />
           </button>
 
           {/* Top Header Section */}
           <div className="relative z-10 pt-0.5">
-            <div className="flex items-center justify-between gap-1.5 pr-6 sm:pr-8">
+            <div className="flex items-center justify-between gap-2 pr-9 sm:pr-12">
               {/* Left: Satchel Icon + INVENTORY Title */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Image
                   src="/ui/Inventory_icon.png"
                   alt="Inventory Icon"
-                  width={28}
-                  height={28}
-                  className="w-5 h-5 sm:w-7 sm:h-7 object-contain shrink-0"
+                  width={36}
+                  height={36}
+                  className="w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 object-contain shrink-0"
                   style={{ imageRendering: 'pixelated' }}
                   unoptimized
                 />
-                <h2 className="font-bytebounce text-xl min-[360px]:text-2xl sm:text-4xl text-[#3d1a16] tracking-wider leading-none drop-shadow-[1px_1px_0_#f4cfbd]">
+                <h2 className="font-bytebounce text-2xl sm:text-3xl md:text-4xl lg:text-[44px] text-[#3d1a16] tracking-wider leading-none drop-shadow-[2px_2px_0_#f4cfbd]">
                   INVENTORY
                 </h2>
               </div>
 
               {/* Right: Available XP Pill */}
-              <div className="relative h-5.5 min-[360px]:h-6 sm:h-7.5 px-2 sm:px-2.5 flex items-center justify-center shrink-0">
+              <div className="relative h-6.5 sm:h-8 md:h-9 px-2.5 sm:px-3.5 md:px-4 flex items-center justify-center shrink-0">
                 <Image
                   src="/ui/Inventory_available_exp.png"
                   alt="Available EXP"
@@ -1672,18 +1977,18 @@ export default function LearningQuest() {
                   style={{ imageRendering: 'pixelated' }}
                   unoptimized
                 />
-                <span className="relative z-10 font-bytebounce text-amber-300 text-[10px] min-[360px]:text-[11px] sm:text-sm font-bold flex items-center gap-0.5 tracking-wider leading-none drop-shadow-[1px_1px_0_#000]">
+                <span className="relative z-10 font-bytebounce text-amber-300 text-xs sm:text-sm md:text-base font-bold flex items-center gap-1 tracking-wider leading-none drop-shadow-[1px_1px_0_#000]">
                   ⚡ {userXp} XP
                 </span>
               </div>
             </div>
 
             {/* Top Divider */}
-            <div className="w-full h-[1.5px] sm:h-[2px] bg-[#3d1a16] mt-1 sm:mt-1.5 opacity-90" />
+            <div className="w-full h-[2px] sm:h-[2.5px] bg-[#3d1a16] mt-1.5 sm:mt-2 opacity-90" />
           </div>
 
           {/* Top Weekly Supply Banner */}
-          <div className="relative z-10 w-full h-6 min-[360px]:h-6.5 sm:h-7.5 px-2 sm:px-2.5 flex items-center justify-between shrink-0">
+          <div className="relative z-10 w-full h-7 sm:h-8.5 md:h-9.5 px-2.5 sm:px-4 md:px-5 flex items-center justify-between shrink-0">
             <Image
               src="/ui/Inventory_weekly_bg.png"
               alt="Weekly Supply Banner"
@@ -1692,19 +1997,19 @@ export default function LearningQuest() {
               style={{ imageRendering: 'pixelated' }}
               unoptimized
             />
-            <div className="relative z-10 flex items-center justify-between w-full text-white font-bytebounce text-[8.5px] min-[360px]:text-[9.5px] sm:text-xs px-0.5 leading-none">
-              <span className="text-amber-100 flex items-center gap-1">
-                Weekly Drop: <span className="text-emerald-400 font-bold">+1 Free Charge</span>
+            <div className="relative z-10 flex items-center justify-between w-full text-white font-bytebounce text-[10.5px] sm:text-xs md:text-sm lg:text-[15px] px-1 leading-none">
+              <span className="text-amber-100 flex items-center gap-1.5 tracking-wide">
+                Weekly Drop: <span className="text-emerald-400 font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">+1 Free Charge</span>
               </span>
-              <span className="text-amber-300/90 font-mono text-[7.5px] min-[360px]:text-[8.5px] sm:text-[10px]">
-                Restock: <span className="text-amber-200 font-bold">{restockCountdown || 'Calculating...'}</span>
+              <span className="text-amber-300 font-mono text-[9.5px] sm:text-[11px] md:text-xs tracking-wider">
+                Restock: <span className="text-amber-100 font-bold font-mono">{restockCountdown || 'Calculating...'}</span>
               </span>
             </div>
           </div>
 
           {/* 6x3 Inventory Slot Grid (18 Slots) */}
           <div className="relative z-10">
-            <div className="grid grid-cols-6 gap-1 min-[360px]:gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-6 gap-1.5 sm:gap-2.5 md:gap-3">
               {/* Consumable Item Slots */}
               {CONSUMABLE_ITEMS_LIST.map((item) => {
                 const count = inventory[item.id] || 0;
@@ -1733,21 +2038,21 @@ export default function LearningQuest() {
                     {/* Item Icon */}
                     <span
                       className={cn(
-                        "relative z-20 text-base min-[360px]:text-lg sm:text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] transition-transform",
-                        isSelected && "scale-110 drop-shadow-[0_0_6px_rgba(251,191,36,0.85)]"
+                        "relative z-20 text-xl sm:text-2xl md:text-3xl lg:text-4xl drop-shadow-[0_2px_5px_rgba(0,0,0,0.9)] transition-transform",
+                        isSelected && "scale-110 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]"
                       )}
                     >
                       {item.icon}
                     </span>
 
                     {/* Stack Count Badge */}
-                    <span className="absolute bottom-0.5 right-0.5 sm:right-1 z-30 font-bytebounce text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs font-bold text-amber-200 drop-shadow-[1px_1px_0_#000] leading-none">
+                    <span className="absolute bottom-0.5 right-0.5 sm:bottom-1 sm:right-1.5 z-30 font-bytebounce text-[9.5px] sm:text-xs md:text-sm font-bold text-amber-200 drop-shadow-[1px_1px_0_#000] leading-none">
                       {count}/{MAX_REAGENT_CAP}
                     </span>
 
                     {/* Equipped Badge */}
                     {isEquipped && (
-                      <span className="absolute top-0.5 left-0.5 z-30 bg-emerald-500 text-black text-[5.5px] min-[360px]:text-[6px] sm:text-[7px] font-black uppercase px-0.5 rounded border border-black animate-pulse leading-none">
+                      <span className="absolute top-0.5 left-0.5 sm:top-1 sm:left-1 z-30 bg-emerald-500 text-black text-[7px] sm:text-[8.5px] md:text-[10px] font-black uppercase px-1 py-0.5 rounded border border-black animate-pulse leading-none shadow">
                         EQ
                       </span>
                     )}
@@ -1756,16 +2061,16 @@ export default function LearningQuest() {
                     {isSelected && (
                       <>
                         {/* Top-Left Bracket */}
-                        <div className="absolute -top-0.5 -left-0.5 z-40 w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 border-t-2 border-l-2 border-yellow-200 shadow-[0_0_4px_#f59e0b]" />
+                        <div className="absolute -top-0.5 -left-0.5 z-40 w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 border-t-2 border-l-2 border-yellow-200 shadow-[0_0_5px_#f59e0b]" />
                         {/* Top-Right Bracket */}
-                        <div className="absolute -top-0.5 -right-0.5 z-40 w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 border-t-2 border-r-2 border-yellow-200 shadow-[0_0_4px_#f59e0b]" />
+                        <div className="absolute -top-0.5 -right-0.5 z-40 w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 border-t-2 border-r-2 border-yellow-200 shadow-[0_0_5px_#f59e0b]" />
                         {/* Bottom-Left Bracket */}
-                        <div className="absolute -bottom-0.5 -left-0.5 z-40 w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 border-b-2 border-l-2 border-yellow-200 shadow-[0_0_4px_#f59e0b]" />
+                        <div className="absolute -bottom-0.5 -left-0.5 z-40 w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 border-b-2 border-l-2 border-yellow-200 shadow-[0_0_5px_#f59e0b]" />
                         {/* Bottom-Right Bracket */}
-                        <div className="absolute -bottom-0.5 -right-0.5 z-40 w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 border-b-2 border-r-2 border-yellow-200 shadow-[0_0_4px_#f59e0b]" />
+                        <div className="absolute -bottom-0.5 -right-0.5 z-40 w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 border-b-2 border-r-2 border-yellow-200 shadow-[0_0_5px_#f59e0b]" />
 
                         {/* Floating Retro RPG Cursor Triangle pointer above slot */}
-                        <div className="absolute -top-2 sm:-top-2.5 left-1/2 -translate-x-1/2 z-40 text-yellow-300 text-[7px] min-[360px]:text-[8px] sm:text-[10px] animate-bounce leading-none drop-shadow-[0_0_5px_#f59e0b] select-none pointer-events-none font-sans font-bold">
+                        <div className="absolute -top-2.5 sm:-top-3 md:-top-3.5 left-1/2 -translate-x-1/2 z-40 text-yellow-300 text-[8px] sm:text-[10px] md:text-xs animate-bounce leading-none drop-shadow-[0_0_6px_#f59e0b] select-none pointer-events-none font-sans font-bold">
                           ▼
                         </div>
                       </>
@@ -1788,7 +2093,7 @@ export default function LearningQuest() {
                     style={{ imageRendering: 'pixelated' }}
                     unoptimized
                   />
-                  <span className="relative z-10 text-amber-900/30 text-[8px] sm:text-xs font-mono select-none">
+                  <span className="relative z-10 text-amber-900/40 text-[10px] sm:text-xs md:text-sm font-mono font-bold select-none">
                     +
                   </span>
                 </div>
@@ -1797,10 +2102,10 @@ export default function LearningQuest() {
           </div>
 
           {/* Bottom Divider */}
-          <div className="relative z-10 w-full h-[1.5px] sm:h-[2px] bg-[#3d1a16] opacity-90" />
+          <div className="relative z-10 w-full h-[2px] sm:h-[2.5px] bg-[#3d1a16] opacity-90" />
 
           {/* Bottom Selected Item / Shop Action Panel */}
-          <div className="relative z-10 w-full min-h-[58px] min-[360px]:min-h-[64px] sm:min-h-[78px] p-1.5 min-[360px]:p-2 sm:p-2.5 flex items-center shrink-0">
+          <div className="relative z-10 w-full min-h-[72px] sm:min-h-[88px] md:min-h-[104px] p-2 sm:p-3 md:p-3.5 flex items-center shrink-0 rounded-lg">
             <Image
               src="/ui/Inventory_shop_bg.png"
               alt="Inventory Shop Panel"
@@ -1810,37 +2115,37 @@ export default function LearningQuest() {
               unoptimized
             />
             {activeSelectedItem ? (
-              <div className="relative z-10 flex items-center justify-between gap-1.5 sm:gap-2.5 w-full">
+              <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3 md:gap-4 w-full">
                 {/* Left details */}
-                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
-                  <span className="text-xl min-[360px]:text-2xl sm:text-3xl shrink-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <span className="text-2xl sm:text-3xl md:text-4xl shrink-0 drop-shadow-[0_2px_5px_rgba(0,0,0,0.85)]">
                     {activeSelectedItem.icon}
                   </span>
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                      <h4 className="font-bold text-amber-300 font-bytebounce text-[11px] min-[360px]:text-xs sm:text-base tracking-wide leading-tight truncate">
+                  <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <h4 className="font-bold text-amber-300 font-bytebounce text-sm sm:text-base md:text-lg lg:text-xl tracking-wide leading-tight drop-shadow-[1px_1px_0_#000] truncate">
                         {activeSelectedItem.name}
                       </h4>
-                      <span className="text-[6.5px] min-[360px]:text-[7.5px] sm:text-[8.5px] font-black uppercase tracking-wider bg-black/40 px-1 py-0.5 rounded text-amber-200 border border-amber-500/30 leading-none">
+                      <span className="text-[7.5px] sm:text-[9.5px] md:text-[11px] font-bold uppercase tracking-wider bg-black/60 px-1.5 py-0.5 rounded text-amber-200 border border-amber-500/40 leading-none">
                         Stock: {inventory[activeSelectedItem.id] || 0}/{MAX_REAGENT_CAP}
                       </span>
                       {equippedItem === activeSelectedItem.id && (
-                        <span className="text-[6.5px] min-[360px]:text-[7.5px] sm:text-[8.5px] font-black uppercase tracking-wider bg-emerald-500 text-black px-1 py-0.5 rounded border border-black leading-none animate-pulse">
+                        <span className="text-[7.5px] sm:text-[9.5px] md:text-[11px] font-black uppercase tracking-wider bg-emerald-500 text-black px-1.5 py-0.5 rounded border border-black leading-none animate-pulse">
                           EQUIPPED
                         </span>
                       )}
                     </div>
-                    <p className="text-[7.5px] min-[360px]:text-[8.5px] sm:text-[10px] text-amber-100/90 font-sans leading-tight line-clamp-1">
+                    <p className="text-[10px] sm:text-xs md:text-[13px] text-amber-100 font-sans leading-snug line-clamp-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
                       {activeSelectedItem.desc}
                     </p>
-                    <p className="text-[7px] min-[360px]:text-[8px] sm:text-[9.5px] font-bold text-amber-300 leading-tight truncate">
+                    <p className="text-[10px] sm:text-xs md:text-[13px] font-bold text-amber-300 leading-snug drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] truncate">
                       ✨ {activeSelectedItem.effect}
                     </p>
                   </div>
                 </div>
 
                 {/* Right Action buttons */}
-                <div className="flex flex-col gap-1 sm:gap-1.5 shrink-0">
+                <div className="flex flex-col gap-1 sm:gap-1.5 md:gap-2 shrink-0">
                   {equippedItem === activeSelectedItem.id ? (
                     <Button
                       size="sm"
@@ -1850,7 +2155,7 @@ export default function LearningQuest() {
                         const newMax = calculatePlayerMaxHp(userLevel, false);
                         setPlayerHealth(prev => Math.min(prev, newMax));
                       }}
-                      className="bg-red-600 hover:bg-red-700 text-white font-bytebounce text-[9px] min-[360px]:text-[10px] sm:text-xs uppercase tracking-wider h-5.5 min-[360px]:h-6 sm:h-7 px-1.5 sm:px-2.5 border border-red-400 shadow-md whitespace-nowrap active:scale-95 leading-none"
+                      className="bg-red-600 hover:bg-red-700 text-white font-bytebounce text-xs sm:text-sm md:text-base font-bold uppercase tracking-wider h-6.5 sm:h-8 md:h-9 px-2.5 sm:px-3.5 md:px-4.5 border border-red-400 shadow-md whitespace-nowrap active:scale-95 leading-none rounded cursor-pointer"
                     >
                       Unequip
                     </Button>
@@ -1859,7 +2164,7 @@ export default function LearningQuest() {
                       size="sm"
                       disabled={(inventory[activeSelectedItem.id] || 0) <= 0}
                       onClick={() => setEquippedItem(activeSelectedItem.id)}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-black font-bytebounce text-[9px] min-[360px]:text-[10px] sm:text-xs uppercase tracking-wider h-5.5 min-[360px]:h-6 sm:h-7 px-1.5 sm:px-2.5 border border-emerald-300 disabled:opacity-30 shadow-md whitespace-nowrap active:scale-95 leading-none"
+                      className="bg-emerald-500 hover:bg-emerald-600 text-black font-bytebounce text-xs sm:text-sm md:text-base font-bold uppercase tracking-wider h-6.5 sm:h-8 md:h-9 px-2.5 sm:px-3.5 md:px-4.5 border border-emerald-300 disabled:opacity-30 shadow-md whitespace-nowrap active:scale-95 leading-none rounded cursor-pointer"
                     >
                       Equip
                     </Button>
@@ -1869,7 +2174,7 @@ export default function LearningQuest() {
                     size="sm"
                     disabled={(inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP}
                     onClick={() => handleBuyReagent(activeSelectedItem.id, activeSelectedItem.name, activeSelectedItem.cost)}
-                    className="bg-amber-500 hover:bg-amber-600 text-black font-bytebounce text-[9px] min-[360px]:text-[10px] sm:text-xs uppercase tracking-wider h-5.5 min-[360px]:h-6 sm:h-7 px-1.5 sm:px-2.5 border border-amber-300 shadow-md flex items-center justify-center gap-0.5 whitespace-nowrap disabled:opacity-40 active:scale-95 leading-none"
+                    className="bg-amber-500 hover:bg-amber-600 text-black font-bytebounce text-xs sm:text-sm md:text-base font-bold uppercase tracking-wider h-6.5 sm:h-8 md:h-9 px-2.5 sm:px-3.5 md:px-4.5 border border-amber-300 shadow-md flex items-center justify-center gap-1 whitespace-nowrap disabled:opacity-40 active:scale-95 leading-none rounded cursor-pointer"
                   >
                     {(inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP ? (
                       `MAX (5/5)`
@@ -2095,198 +2400,199 @@ export default function LearningQuest() {
       if (quizMode === 'boss-battle') {
         const activeNodes = getSubjectNodes(selectedSubject);
         const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-        const isChapter3FinalBoss = currentActiveNode.nodeNumber === 3;
+        const initialStage = (currentActiveNode.nodeNumber as 1 | 2 | 3 | 4) || 1;
 
-        const initialStage = isChapter3FinalBoss ? 3 : 1;
         setBattleStage(initialStage);
         bossStartingHp = calculateEnemyStageHp(initialStage, currentLevelForBattle, specificDifficulty || 'MEDIUM');
       } else if (quizMode === 'learning') {
         setLearningStage(1);
         const activeNodes = getSubjectNodes(selectedSubject);
-        const ch1Node = activeNodes.find(n => n.nodeNumber === 1) || activeNodes[0];
-        const ch3Node = activeNodes.find(n => n.nodeNumber === 3) || activeNodes[activeNodes.length - 1];
-        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || ch1Node;
+        const minionNode = activeNodes.find(n => n.tier === 'minion' || n.nodeNumber === 1) || activeNodes[0];
+        const miniBossNode = activeNodes.find(n => n.tier === 'mini-boss' || n.nodeNumber === 2) || activeNodes[1] || activeNodes[0];
+        const ch1BossNode = activeNodes.find(n => n.tier === 'boss' || n.nodeNumber === 3) || activeNodes[2] || activeNodes[0];
+        const finalBossNode = activeNodes.find(n => n.tier === 'final-boss' || n.nodeNumber === 4) || activeNodes[activeNodes.length - 1];
+        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || minionNode;
         const subjectMeta = getSubjectMeta(selectedSubject);
-        const wave3BossNode = (currentActiveNode?.nodeNumber === 1 && ch1Node?.idleSpriteUrl) ? ch1Node : ch3Node;
+        const wave3BossNode = (currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4) ? finalBossNode : ch1BossNode;
 
         setLearningWaveEnemies({
           minion: {
-            name: ch1Node?.minionName || 'Lab Minion',
-            icon: ch1Node?.minionIcon || '🧪',
+            name: minionNode?.bossName || minionNode?.minionName || 'Lab Minion',
+            icon: minionNode?.bossIcon || minionNode?.minionIcon || '🧪',
             badge: 'MINION 👾',
-            idleSprite: ch1Node?.minionIdleSpriteUrl || null,
-            attackSprite: ch1Node?.minionAttackSpriteUrl || null,
-            heavyAttackSprite: ch1Node?.minionHeavyAttackSpriteUrl || null,
-            idleFrames: ch1Node?.minionIdleFrames || 8,
-            attackFrames: ch1Node?.minionAttackFrames || 14,
-            heavyAttackFrames: ch1Node?.minionHeavyAttackFrames || 10,
-            idleFrameWidth: ch1Node?.minionIdleFrameWidth || 128,
-            idleFrameHeight: ch1Node?.minionIdleFrameHeight || 128,
-            attackFrameWidth: ch1Node?.minionAttackFrameWidth || 257,
-            attackFrameHeight: ch1Node?.minionAttackFrameHeight || 218,
-            heavyFrameWidth: ch1Node?.minionHeavyFrameWidth || 257,
-            heavyFrameHeight: ch1Node?.minionHeavyFrameHeight || 218,
-            idleDuration: ch1Node?.minionIdleDuration || 1.2,
-            normalAttackSfxUrl: ch1Node?.minionNormalAttackSfxUrl,
-            heavyAttackSfxUrl: ch1Node?.minionHeavyAttackSfxUrl,
+            idleSprite: minionNode?.idleSpriteUrl || minionNode?.minionIdleSpriteUrl || null,
+            attackSprite: minionNode?.attackSpriteUrl || minionNode?.minionAttackSpriteUrl || null,
+            heavyAttackSprite: minionNode?.heavyAttackSpriteUrl || minionNode?.minionHeavyAttackSpriteUrl || null,
+            idleFrames: minionNode?.idleFrames || minionNode?.minionIdleFrames || 8,
+            attackFrames: minionNode?.attackFrames || minionNode?.minionAttackFrames || 14,
+            heavyAttackFrames: minionNode?.heavyAttackFrames || minionNode?.minionHeavyAttackFrames || 10,
+            idleFrameWidth: minionNode?.idleFrameWidth || minionNode?.minionIdleFrameWidth || 128,
+            idleFrameHeight: minionNode?.idleFrameHeight || minionNode?.minionIdleFrameHeight || 128,
+            attackFrameWidth: minionNode?.attackFrameWidth || minionNode?.minionAttackFrameWidth || 257,
+            attackFrameHeight: minionNode?.attackFrameHeight || minionNode?.minionAttackFrameHeight || 218,
+            heavyFrameWidth: minionNode?.heavyFrameWidth || minionNode?.minionHeavyFrameWidth || 257,
+            heavyFrameHeight: minionNode?.heavyFrameHeight || minionNode?.minionHeavyFrameHeight || 218,
+            idleDuration: minionNode?.idleDuration || minionNode?.minionIdleDuration || 1.2,
+            normalAttackSfxUrl: minionNode?.normalAttackSfxUrl || minionNode?.minionNormalAttackSfxUrl,
+            heavyAttackSfxUrl: minionNode?.heavyAttackSfxUrl || minionNode?.minionHeavyAttackSfxUrl,
           },
           enforcer: {
-            name: ch1Node?.miniBossName || 'Diagnostic Spectre',
-            icon: ch1Node?.miniBossIcon || '👻',
+            name: miniBossNode?.bossName || miniBossNode?.miniBossName || 'Diagnostic Spectre',
+            icon: miniBossNode?.bossIcon || miniBossNode?.miniBossIcon || '👻',
             badge: 'MINI-BOSS 👹',
-            idleSprite: ch1Node?.miniBossIdleSpriteUrl || null,
-            attackSprite: ch1Node?.miniBossAttackSpriteUrl || null,
-            heavyAttackSprite: ch1Node?.miniBossHeavyAttackSpriteUrl || null,
-            slashSprite: ch1Node?.miniBossSlashSpriteUrl || null,
-            heavyAttackBallsUrl: (ch1Node as any)?.miniBossHeavyAttackBallsUrl || null,
-            idleFrames: ch1Node?.miniBossIdleFrames || 7,
-            attackFrames: ch1Node?.miniBossAttackFrames || 17,
-            heavyAttackFrames: ch1Node?.miniBossHeavyAttackFrames || 13,
-            idleFrameWidth: ch1Node?.miniBossIdleFrameWidth || 128,
-            idleFrameHeight: ch1Node?.miniBossIdleFrameHeight || 128,
-            attackFrameWidth: ch1Node?.miniBossAttackFrameWidth || 160,
-            attackFrameHeight: ch1Node?.miniBossAttackFrameHeight || 128,
-            heavyFrameWidth: ch1Node?.miniBossHeavyFrameWidth || 128,
-            heavyFrameHeight: ch1Node?.miniBossHeavyFrameHeight || 128,
-            idleDuration: ch1Node?.miniBossIdleDuration || 1.0,
-            normalAttackSfxUrl: ch1Node?.miniBossNormalAttackSfxUrl,
-            heavyAttackSfxUrl: ch1Node?.miniBossHeavyAttackSfxUrl,
+            idleSprite: miniBossNode?.idleSpriteUrl || miniBossNode?.miniBossIdleSpriteUrl || null,
+            attackSprite: miniBossNode?.attackSpriteUrl || miniBossNode?.miniBossAttackSpriteUrl || null,
+            heavyAttackSprite: miniBossNode?.heavyAttackSpriteUrl || miniBossNode?.miniBossHeavyAttackSpriteUrl || null,
+            slashSprite: miniBossNode?.miniBossSlashSpriteUrl || null,
+            heavyAttackBallsUrl: (miniBossNode as any)?.miniBossHeavyAttackBallsUrl || null,
+            idleFrames: miniBossNode?.idleFrames || miniBossNode?.miniBossIdleFrames || 7,
+            attackFrames: miniBossNode?.attackFrames || miniBossNode?.miniBossAttackFrames || 17,
+            heavyAttackFrames: miniBossNode?.heavyAttackFrames || miniBossNode?.miniBossHeavyAttackFrames || 13,
+            idleFrameWidth: miniBossNode?.idleFrameWidth || miniBossNode?.miniBossIdleFrameWidth || 128,
+            idleFrameHeight: miniBossNode?.idleFrameHeight || miniBossNode?.miniBossIdleFrameHeight || 128,
+            attackFrameWidth: miniBossNode?.attackFrameWidth || miniBossNode?.miniBossAttackFrameWidth || 160,
+            attackFrameHeight: miniBossNode?.attackFrameHeight || miniBossNode?.miniBossAttackFrameHeight || 128,
+            heavyFrameWidth: miniBossNode?.heavyFrameWidth || miniBossNode?.miniBossHeavyFrameWidth || 128,
+            heavyFrameHeight: miniBossNode?.heavyFrameHeight || miniBossNode?.miniBossHeavyFrameHeight || 128,
+            idleDuration: miniBossNode?.idleDuration || miniBossNode?.miniBossIdleDuration || 1.0,
+            normalAttackSfxUrl: miniBossNode?.normalAttackSfxUrl || miniBossNode?.miniBossNormalAttackSfxUrl,
+            heavyAttackSfxUrl: miniBossNode?.heavyAttackSfxUrl || miniBossNode?.miniBossHeavyAttackSfxUrl,
           },
           boss: {
             name: wave3BossNode?.bossName || subjectMeta.enemy,
             icon: wave3BossNode?.bossIcon || '👑',
-            badge: wave3BossNode?.nodeNumber === 3 ? 'FINAL BOSS 👑' : 'BOSS 👑',
+            badge: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? 'FINAL BOSS 👑' : 'BOSS 👑',
             idleSprite: wave3BossNode?.idleSpriteUrl || subjectMeta?.idleSpriteUrl || null,
             attackSprite: wave3BossNode?.attackSpriteUrl || subjectMeta?.attackSpriteUrl || null,
             heavyAttackSprite: wave3BossNode?.heavyAttackSpriteUrl || subjectMeta?.heavyAttackSpriteUrl || null,
-            attackProjectileUrl: wave3BossNode?.nodeNumber === 3 ? (wave3BossNode?.attackProjectileUrl || ch3Node?.attackProjectileUrl || null) : (wave3BossNode?.attackProjectileUrl || null),
-            attackProjectileFrames: wave3BossNode?.nodeNumber === 3 ? (wave3BossNode?.attackProjectileFrames || ch3Node?.attackProjectileFrames || 5) : (wave3BossNode?.attackProjectileFrames || 5),
-            undergroundSpikesUrl: wave3BossNode?.nodeNumber === 3 ? (wave3BossNode?.undergroundSpikesUrl || ch3Node?.undergroundSpikesUrl || null) : (wave3BossNode?.undergroundSpikesUrl || null),
-            undergroundSpikesFrames: wave3BossNode?.nodeNumber === 3 ? (wave3BossNode?.undergroundSpikesFrames || ch3Node?.undergroundSpikesFrames || 8) : (wave3BossNode?.undergroundSpikesFrames || 8),
-            hammerAttackUrl: wave3BossNode?.nodeNumber === 3 ? (wave3BossNode?.hammerAttackUrl || ch3Node?.hammerAttackUrl || null) : null,
-            hammerAttackFrames: wave3BossNode?.nodeNumber === 3 ? (wave3BossNode?.hammerAttackFrames || ch3Node?.hammerAttackFrames || 11) : 11,
-            undergroundBlastUrl: wave3BossNode?.nodeNumber === 3 ? (wave3BossNode?.undergroundBlastUrl || ch3Node?.undergroundBlastUrl || null) : null,
-            undergroundBlastFrames: wave3BossNode?.nodeNumber === 3 ? (wave3BossNode?.undergroundBlastFrames || ch3Node?.undergroundBlastFrames || 16) : 16,
-            lightningAttackUrl: (wave3BossNode?.nodeNumber === 3 || wave3BossNode?.id === 'is-1') ? (wave3BossNode?.lightningAttackUrl || ch3Node?.lightningAttackUrl || null) : null,
-            lightningAttackFrames: (wave3BossNode?.nodeNumber === 3 || wave3BossNode?.id === 'is-1') ? (wave3BossNode?.lightningAttackFrames || ch3Node?.lightningAttackFrames || 12) : 12,
+            attackProjectileUrl: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? (wave3BossNode?.attackProjectileUrl || finalBossNode?.attackProjectileUrl || null) : (wave3BossNode?.attackProjectileUrl || null),
+            attackProjectileFrames: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? (wave3BossNode?.attackProjectileFrames || finalBossNode?.attackProjectileFrames || 5) : (wave3BossNode?.attackProjectileFrames || 5),
+            undergroundSpikesUrl: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? (wave3BossNode?.undergroundSpikesUrl || finalBossNode?.undergroundSpikesUrl || null) : (wave3BossNode?.undergroundSpikesUrl || null),
+            undergroundSpikesFrames: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? (wave3BossNode?.undergroundSpikesFrames || finalBossNode?.undergroundSpikesFrames || 8) : (wave3BossNode?.undergroundSpikesFrames || 8),
+            hammerAttackUrl: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? (wave3BossNode?.hammerAttackUrl || finalBossNode?.hammerAttackUrl || null) : null,
+            hammerAttackFrames: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? (wave3BossNode?.hammerAttackFrames || finalBossNode?.hammerAttackFrames || 11) : 11,
+            undergroundBlastUrl: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? (wave3BossNode?.undergroundBlastUrl || finalBossNode?.undergroundBlastUrl || null) : null,
+            undergroundBlastFrames: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? (wave3BossNode?.undergroundBlastFrames || finalBossNode?.undergroundBlastFrames || 16) : 16,
+            lightningAttackUrl: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4 || wave3BossNode?.id === 'is-3') ? (wave3BossNode?.lightningAttackUrl || finalBossNode?.lightningAttackUrl || null) : null,
+            lightningAttackFrames: (wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4 || wave3BossNode?.id === 'is-3') ? (wave3BossNode?.lightningAttackFrames || finalBossNode?.lightningAttackFrames || 12) : 12,
             heavyAttackNailedUrl: wave3BossNode?.heavyAttackNailedUrl || null,
             heavyAttackNailedFrames: wave3BossNode?.heavyAttackNailedFrames || 15,
-            idleFrames: wave3BossNode?.idleFrames || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.idleFrames : undefined) || subjectMeta?.idleFrames || 6,
-            attackFrames: wave3BossNode?.attackFrames || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.attackFrames : undefined) || subjectMeta?.attackFrames || 5,
-            heavyAttackFrames: wave3BossNode?.heavyAttackFrames || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.heavyAttackFrames : undefined) || subjectMeta?.heavyAttackFrames || 13,
-            idleFrameWidth: wave3BossNode?.idleFrameWidth || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.idleFrameWidth : undefined) || subjectMeta?.idleFrameWidth || 128,
-            attackFrameWidth: wave3BossNode?.attackFrameWidth || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.attackFrameWidth : undefined) || subjectMeta?.attackFrameWidth || 128,
-            heavyFrameWidth: wave3BossNode?.heavyFrameWidth || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.heavyFrameWidth : undefined) || subjectMeta?.heavyFrameWidth || 480,
-            idleFrameHeight: wave3BossNode?.idleFrameHeight || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.idleFrameHeight : undefined) || subjectMeta?.idleFrameHeight || 128,
-            attackFrameHeight: wave3BossNode?.attackFrameHeight || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.attackFrameHeight : undefined) || subjectMeta?.attackFrameHeight || 128,
-            heavyFrameHeight: wave3BossNode?.heavyFrameHeight || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.heavyFrameHeight : undefined) || subjectMeta?.heavyFrameHeight || 256,
-            idleDuration: wave3BossNode?.idleDuration || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.idleDuration : undefined) || subjectMeta?.idleDuration || undefined,
-            idleFps: wave3BossNode?.idleFps || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.idleFps : undefined) || subjectMeta?.idleFps || undefined,
-            normalAttackSfxUrl: wave3BossNode?.normalAttackSfxUrl || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.normalAttackSfxUrl : undefined) || subjectMeta?.normalAttackSfxUrl,
-            heavyAttackSfxUrl: wave3BossNode?.heavyAttackSfxUrl || (wave3BossNode?.nodeNumber === 3 ? ch3Node?.heavyAttackSfxUrl : undefined) || subjectMeta?.heavyAttackSfxUrl,
+            idleFrames: wave3BossNode?.idleFrames || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.idleFrames : undefined) || subjectMeta?.idleFrames || 6,
+            attackFrames: wave3BossNode?.attackFrames || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.attackFrames : undefined) || subjectMeta?.attackFrames || 5,
+            heavyAttackFrames: wave3BossNode?.heavyAttackFrames || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.heavyAttackFrames : undefined) || subjectMeta?.heavyAttackFrames || 13,
+            idleFrameWidth: wave3BossNode?.idleFrameWidth || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.idleFrameWidth : undefined) || subjectMeta?.idleFrameWidth || 128,
+            attackFrameWidth: wave3BossNode?.attackFrameWidth || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.attackFrameWidth : undefined) || subjectMeta?.attackFrameWidth || 128,
+            heavyFrameWidth: wave3BossNode?.heavyFrameWidth || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.heavyFrameWidth : undefined) || subjectMeta?.heavyFrameWidth || 480,
+            idleFrameHeight: wave3BossNode?.idleFrameHeight || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.idleFrameHeight : undefined) || subjectMeta?.idleFrameHeight || 128,
+            attackFrameHeight: wave3BossNode?.attackFrameHeight || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.attackFrameHeight : undefined) || subjectMeta?.attackFrameHeight || 128,
+            heavyFrameHeight: wave3BossNode?.heavyFrameHeight || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.heavyFrameHeight : undefined) || subjectMeta?.heavyFrameHeight || 256,
+            idleDuration: wave3BossNode?.idleDuration || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.idleDuration : undefined) || subjectMeta?.idleDuration || undefined,
+            idleFps: wave3BossNode?.idleFps || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.idleFps : undefined) || subjectMeta?.idleFps || undefined,
+            normalAttackSfxUrl: wave3BossNode?.normalAttackSfxUrl || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.normalAttackSfxUrl : undefined) || subjectMeta?.normalAttackSfxUrl,
+            heavyAttackSfxUrl: wave3BossNode?.heavyAttackSfxUrl || ((wave3BossNode?.tier === 'final-boss' || wave3BossNode?.nodeNumber === 4) ? finalBossNode?.heavyAttackSfxUrl : undefined) || subjectMeta?.heavyAttackSfxUrl,
           },
         });
       } else if (quizMode === 'test') {
         const activeNodes = getSubjectNodes(selectedSubject);
-        const ch1Node = activeNodes.find(n => n.nodeNumber === 1) || activeNodes[0];
-        const ch3Node = activeNodes.find(n => n.nodeNumber === 3) || activeNodes[activeNodes.length - 1];
+        const miniBossNode = activeNodes.find(n => n.tier === 'mini-boss' || n.nodeNumber === 2) || activeNodes[1];
+        const ch1BossNode = activeNodes.find(n => n.tier === 'boss' || n.nodeNumber === 3) || activeNodes[2];
+        const finalBossNode = activeNodes.find(n => n.tier === 'final-boss' || n.nodeNumber === 4) || activeNodes[activeNodes.length - 1];
         const subjectMeta = getSubjectMeta(selectedSubject);
 
         type TestCandidate = NonNullable<typeof testModeEnemy>;
         const candidates: TestCandidate[] = [];
 
         // 1. Mini-Boss Candidate
-        if (ch1Node?.miniBossIdleSpriteUrl) {
+        if (miniBossNode?.idleSpriteUrl || miniBossNode?.miniBossIdleSpriteUrl) {
           candidates.push({
             tier: 'mini-boss',
-            nodeId: ch1Node.id,
-            name: ch1Node.miniBossName || 'Diagnostic Spectre',
-            icon: ch1Node.miniBossIcon || '👻',
+            nodeId: miniBossNode.id,
+            name: miniBossNode.bossName || miniBossNode.miniBossName || 'Diagnostic Spectre',
+            icon: miniBossNode.bossIcon || miniBossNode.miniBossIcon || '👻',
             badge: 'MINI-BOSS 👹',
-            idleSprite: ch1Node.miniBossIdleSpriteUrl,
-            attackSprite: ch1Node.miniBossAttackSpriteUrl || ch1Node.miniBossIdleSpriteUrl,
-            heavyAttackSprite: ch1Node.miniBossHeavyAttackSpriteUrl || ch1Node.miniBossAttackSpriteUrl || ch1Node.miniBossIdleSpriteUrl,
-            slashSprite: ch1Node.miniBossSlashSpriteUrl || null,
-            heavyAttackBallsUrl: (ch1Node as any)?.miniBossHeavyAttackBallsUrl || null,
-            idleFrames: ch1Node.miniBossIdleFrames || 7,
-            attackFrames: ch1Node.miniBossAttackFrames || 17,
-            heavyAttackFrames: ch1Node.miniBossHeavyAttackFrames || 13,
-            idleFrameWidth: ch1Node.miniBossIdleFrameWidth || 128,
-            idleFrameHeight: ch1Node.miniBossIdleFrameHeight || 128,
-            attackFrameWidth: ch1Node.miniBossAttackFrameWidth || 160,
-            attackFrameHeight: ch1Node.miniBossAttackFrameHeight || 128,
-            heavyFrameWidth: ch1Node.miniBossHeavyFrameWidth || 128,
-            heavyFrameHeight: ch1Node.miniBossHeavyFrameHeight || 128,
-            idleDuration: ch1Node.miniBossIdleDuration || 1.0,
-            normalAttackSfxUrl: ch1Node.miniBossNormalAttackSfxUrl,
-            heavyAttackSfxUrl: ch1Node.miniBossHeavyAttackSfxUrl,
+            idleSprite: miniBossNode.idleSpriteUrl || miniBossNode.miniBossIdleSpriteUrl!,
+            attackSprite: miniBossNode.attackSpriteUrl || miniBossNode.miniBossAttackSpriteUrl || miniBossNode.idleSpriteUrl || miniBossNode.miniBossIdleSpriteUrl!,
+            heavyAttackSprite: miniBossNode.heavyAttackSpriteUrl || miniBossNode.miniBossHeavyAttackSpriteUrl || miniBossNode.attackSpriteUrl || miniBossNode.idleSpriteUrl!,
+            slashSprite: miniBossNode.miniBossSlashSpriteUrl || null,
+            heavyAttackBallsUrl: (miniBossNode as any)?.miniBossHeavyAttackBallsUrl || null,
+            idleFrames: miniBossNode.idleFrames || miniBossNode.miniBossIdleFrames || 7,
+            attackFrames: miniBossNode.attackFrames || miniBossNode.miniBossAttackFrames || 17,
+            heavyAttackFrames: miniBossNode.heavyAttackFrames || miniBossNode.miniBossHeavyAttackFrames || 13,
+            idleFrameWidth: miniBossNode.idleFrameWidth || miniBossNode.miniBossIdleFrameWidth || 128,
+            idleFrameHeight: miniBossNode.idleFrameHeight || miniBossNode.miniBossIdleFrameHeight || 128,
+            attackFrameWidth: miniBossNode.attackFrameWidth || miniBossNode.miniBossAttackFrameWidth || 160,
+            attackFrameHeight: miniBossNode.attackFrameHeight || miniBossNode.miniBossAttackFrameHeight || 128,
+            heavyFrameWidth: miniBossNode.heavyFrameWidth || miniBossNode.miniBossHeavyFrameWidth || 128,
+            heavyFrameHeight: miniBossNode.heavyFrameHeight || miniBossNode.miniBossHeavyFrameHeight || 128,
+            idleDuration: miniBossNode.idleDuration || miniBossNode.miniBossIdleDuration || 1.0,
+            normalAttackSfxUrl: miniBossNode.normalAttackSfxUrl || miniBossNode.miniBossNormalAttackSfxUrl,
+            heavyAttackSfxUrl: miniBossNode.heavyAttackSfxUrl || miniBossNode.miniBossHeavyAttackSfxUrl,
           });
         }
 
         // 2. Chapter 1 Boss Candidate
-        if (ch1Node?.idleSpriteUrl) {
+        if (ch1BossNode?.idleSpriteUrl) {
           candidates.push({
             tier: 'boss',
-            nodeId: ch1Node.id,
-            name: ch1Node.bossName || subjectMeta.enemy,
-            icon: ch1Node.bossIcon || '👑',
+            nodeId: ch1BossNode.id,
+            name: ch1BossNode.bossName || subjectMeta.enemy,
+            icon: ch1BossNode.bossIcon || '👑',
             badge: 'BOSS 👑',
-            idleSprite: ch1Node.idleSpriteUrl,
-            attackSprite: ch1Node.attackSpriteUrl || ch1Node.idleSpriteUrl,
-            heavyAttackSprite: ch1Node.heavyAttackSpriteUrl || ch1Node.attackSpriteUrl || ch1Node.idleSpriteUrl,
-            heavyAttackFistUrl: ch1Node.heavyAttackFistUrl || null,
-            heavyAttackNailedUrl: ch1Node.heavyAttackNailedUrl || null,
-            lightningAttackUrl: (ch1Node as any).lightningAttackUrl || null,
-            lightningAttackFrames: (ch1Node as any).lightningAttackFrames || 12,
-            idleFrames: ch1Node.idleFrames || 8,
-            attackFrames: ch1Node.attackFrames || 15,
-            heavyAttackFrames: ch1Node.heavyAttackFrames || 10,
-            idleFrameWidth: ch1Node.idleFrameWidth || 128,
-            idleFrameHeight: ch1Node.idleFrameHeight || 128,
-            attackFrameWidth: ch1Node.attackFrameWidth || 256,
-            attackFrameHeight: ch1Node.attackFrameHeight || 176,
-            heavyFrameWidth: ch1Node.heavyFrameWidth || 144,
-            heavyFrameHeight: ch1Node.heavyFrameHeight || 191,
-            idleDuration: ch1Node.idleDuration || 1.0,
-            normalAttackSfxUrl: ch1Node.normalAttackSfxUrl,
-            heavyAttackSfxUrl: ch1Node.heavyAttackSfxUrl,
+            idleSprite: ch1BossNode.idleSpriteUrl,
+            attackSprite: ch1BossNode.attackSpriteUrl || ch1BossNode.idleSpriteUrl,
+            heavyAttackSprite: ch1BossNode.heavyAttackSpriteUrl || ch1BossNode.attackSpriteUrl || ch1BossNode.idleSpriteUrl,
+            heavyAttackFistUrl: ch1BossNode.heavyAttackFistUrl || null,
+            heavyAttackNailedUrl: ch1BossNode.heavyAttackNailedUrl || null,
+            lightningAttackUrl: (ch1BossNode as any).lightningAttackUrl || null,
+            lightningAttackFrames: (ch1BossNode as any).lightningAttackFrames || 12,
+            idleFrames: ch1BossNode.idleFrames || 8,
+            attackFrames: ch1BossNode.attackFrames || 15,
+            heavyAttackFrames: ch1BossNode.heavyAttackFrames || 10,
+            idleFrameWidth: ch1BossNode.idleFrameWidth || 128,
+            idleFrameHeight: ch1BossNode.idleFrameHeight || 128,
+            attackFrameWidth: ch1BossNode.attackFrameWidth || 256,
+            attackFrameHeight: ch1BossNode.attackFrameHeight || 176,
+            heavyFrameWidth: ch1BossNode.heavyFrameWidth || 144,
+            heavyFrameHeight: ch1BossNode.heavyFrameHeight || 191,
+            idleDuration: ch1BossNode.idleDuration || 1.0,
+            normalAttackSfxUrl: ch1BossNode.normalAttackSfxUrl,
+            heavyAttackSfxUrl: ch1BossNode.heavyAttackSfxUrl,
           });
         }
 
         // 3. Chapter 3 Final Boss Candidate
-        if (ch3Node?.idleSpriteUrl) {
+        if (finalBossNode?.idleSpriteUrl) {
           candidates.push({
             tier: 'final-boss',
-            nodeId: ch3Node.id,
-            name: ch3Node.bossName || subjectMeta.enemy,
-            icon: ch3Node.bossIcon || '👑',
+            nodeId: finalBossNode.id,
+            name: finalBossNode.bossName || subjectMeta.enemy,
+            icon: finalBossNode.bossIcon || '👑',
             badge: 'FINAL BOSS 👑',
-            idleSprite: ch3Node.idleSpriteUrl,
-            attackSprite: ch3Node.attackSpriteUrl || ch3Node.idleSpriteUrl,
-            heavyAttackSprite: ch3Node.heavyAttackSpriteUrl || ch3Node.attackSpriteUrl || ch3Node.idleSpriteUrl,
-            attackProjectileUrl: ch3Node.attackProjectileUrl || null,
-            attackProjectileFrames: ch3Node.attackProjectileFrames || 5,
-            undergroundSpikesUrl: ch3Node.undergroundSpikesUrl || null,
-            undergroundSpikesFrames: ch3Node.undergroundSpikesFrames || 8,
-            hammerAttackUrl: ch3Node.hammerAttackUrl || null,
-            hammerAttackFrames: ch3Node.hammerAttackFrames || 11,
-            undergroundBlastUrl: ch3Node.undergroundBlastUrl || null,
-            undergroundBlastFrames: ch3Node.undergroundBlastFrames || 16,
-            lightningAttackUrl: ch3Node.lightningAttackUrl || null,
-            lightningAttackFrames: ch3Node.lightningAttackFrames || 12,
-            idleFrames: ch3Node.idleFrames || 6,
-            attackFrames: ch3Node.attackFrames || 6,
-            heavyAttackFrames: ch3Node.heavyAttackFrames || 8,
-            idleFrameWidth: ch3Node.idleFrameWidth || 128,
-            idleFrameHeight: ch3Node.idleFrameHeight || 128,
-            attackFrameWidth: ch3Node.attackFrameWidth || 128,
-            attackFrameHeight: ch3Node.attackFrameHeight || 128,
-            heavyFrameWidth: ch3Node.heavyFrameWidth || 192,
-            heavyFrameHeight: ch3Node.heavyFrameHeight || 160,
-            idleDuration: ch3Node.idleDuration,
-            idleFps: ch3Node.idleFps,
-            normalAttackSfxUrl: ch3Node.normalAttackSfxUrl,
-            heavyAttackSfxUrl: ch3Node.heavyAttackSfxUrl,
+            idleSprite: finalBossNode.idleSpriteUrl,
+            attackSprite: finalBossNode.attackSpriteUrl || finalBossNode.idleSpriteUrl,
+            heavyAttackSprite: finalBossNode.heavyAttackSpriteUrl || finalBossNode.attackSpriteUrl || finalBossNode.idleSpriteUrl,
+            attackProjectileUrl: finalBossNode.attackProjectileUrl || null,
+            attackProjectileFrames: finalBossNode.attackProjectileFrames || 5,
+            undergroundSpikesUrl: finalBossNode.undergroundSpikesUrl || null,
+            undergroundSpikesFrames: finalBossNode.undergroundSpikesFrames || 8,
+            hammerAttackUrl: finalBossNode.hammerAttackUrl || null,
+            hammerAttackFrames: finalBossNode.hammerAttackFrames || 11,
+            undergroundBlastUrl: finalBossNode.undergroundBlastUrl || null,
+            undergroundBlastFrames: finalBossNode.undergroundBlastFrames || 16,
+            lightningAttackUrl: finalBossNode.lightningAttackUrl || null,
+            lightningAttackFrames: finalBossNode.lightningAttackFrames || 12,
+            idleFrames: finalBossNode.idleFrames || 6,
+            attackFrames: finalBossNode.attackFrames || 6,
+            heavyAttackFrames: finalBossNode.heavyAttackFrames || 8,
+            idleFrameWidth: finalBossNode.idleFrameWidth || 128,
+            idleFrameHeight: finalBossNode.idleFrameHeight || 128,
+            attackFrameWidth: finalBossNode.attackFrameWidth || 128,
+            attackFrameHeight: finalBossNode.attackFrameHeight || 128,
+            heavyFrameWidth: finalBossNode.heavyFrameWidth || 192,
+            heavyFrameHeight: finalBossNode.heavyFrameHeight || 160,
+            idleDuration: finalBossNode.idleDuration || 1.05,
+            normalAttackSfxUrl: finalBossNode.normalAttackSfxUrl,
+            heavyAttackSfxUrl: finalBossNode.heavyAttackSfxUrl,
           });
         }
 
@@ -2296,7 +2602,7 @@ export default function LearningQuest() {
           setSelectedNodeId(chosen.nodeId);
         } else {
           setTestModeEnemy(null);
-          setSelectedNodeId(ch1Node.id);
+          setSelectedNodeId(activeNodes[0].id);
         }
       }
       setEnemyHealth(bossStartingHp);
@@ -2433,7 +2739,7 @@ export default function LearningQuest() {
 
     const activeNodes = getSubjectNodes(selectedSubject);
     const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-    const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
+    const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4;
     const subjectMeta = getSubjectMeta(selectedSubject);
     let bossAttackResetDelay = 1000;
 
@@ -2443,11 +2749,7 @@ export default function LearningQuest() {
       : null;
 
     if (quizMode === 'boss-battle') {
-      if (isChapter3FinalBoss) {
-        currentEnemyName = currentActiveNode.bossName;
-      } else {
-        currentEnemyName = battleStage === 1 ? (currentActiveNode.minionName || 'Minion') : battleStage === 2 ? (currentActiveNode.miniBossName || 'Mini-Boss') : currentActiveNode.bossName;
-      }
+      currentEnemyName = currentActiveNode.bossName;
     } else if (quizMode === 'learning') {
       const waveState = getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex);
       currentEnemyName = waveState.name;
@@ -2479,7 +2781,7 @@ export default function LearningQuest() {
       (selectedSubject === 'Clinical Chemistry' && (
         isChapter3FinalBoss ||
         (quizMode === 'boss-battle' && isChapter3FinalBoss) ||
-        (quizMode === 'learning' && currentWaveStage === 3 && (currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'cc-3' || currentEnemyName?.toLowerCase().includes('specter')))
+        (quizMode === 'learning' && currentWaveStage === 3 && (currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4 || currentActiveNode?.id === 'cc-4' || currentEnemyName?.toLowerCase().includes('specter')))
       ))
     );
 
@@ -2522,25 +2824,25 @@ export default function LearningQuest() {
       ((quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false) && (
         currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') ||
         currentActiveNode?.miniBossIdleSpriteUrl?.includes('hematology_chapterOneMiniBoss') ||
-        (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1')
+        (selectedSubject === 'Hematology' && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-2'))
       ))
     );
 
     const isSickleCellReaper = !isSickleCellMinion && !isAnemiaShade && Boolean(
       currentEnemyName?.toLowerCase().includes('reaper') ||
       (currentEnemyName?.toLowerCase().includes('sickle') && !currentEnemyName?.toLowerCase().includes('sickle cell')) ||
-      currentActiveNode?.bossName?.toLowerCase().includes('sickle') ||
-      currentActiveNode?.id === 'hem-3' ||
+      currentActiveNode?.bossName?.toLowerCase().includes('reaper') ||
+      currentActiveNode?.id === 'hem-4' ||
       currentActiveNode?.idleSpriteUrl?.includes('hematology_finalboss') ||
       currentActiveNode?.attackSpriteUrl?.includes('hematology_finalboss') ||
       currentActiveNode?.heavyAttackSpriteUrl?.includes('hematology_finalboss') ||
-      (selectedSubject === 'Hematology' && (currentActiveNode?.id === 'hem-3' || (quizMode === 'learning' && currentWaveStage === 3)))
+      (selectedSubject === 'Hematology' && (currentActiveNode?.id === 'hem-4' || currentActiveNode?.tier === 'final-boss') && (quizMode === 'learning' ? currentWaveStage === 3 : true))
     );
 
     const isStaphSentinel = Boolean(
       currentEnemyName?.toLowerCase().includes('staph') ||
       currentActiveNode?.miniBossName?.toLowerCase().includes('staph') ||
-      ((quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false) && currentActiveNode?.id === 'mb-1')
+      ((quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false) && (currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-2'))
     );
 
     const isReagentStripSlime = Boolean(
@@ -2572,7 +2874,7 @@ export default function LearningQuest() {
     const isGramPositiveBoss = Boolean(
       currentEnemyName?.toLowerCase().includes('gram positive') ||
       currentActiveNode?.bossName?.toLowerCase().includes('gram positive') ||
-      ((quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false) && currentActiveNode?.id === 'mb-1')
+      ((quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false) && (currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-3'))
     );
 
     const isLymphocyteSwarm = Boolean(
@@ -2588,13 +2890,13 @@ export default function LearningQuest() {
       currentEnemyName?.toLowerCase().includes('hyperglycemic mutant') ||
       currentActiveNode?.miniBossName?.toLowerCase().includes('mutant') ||
       currentActiveNode?.miniBossIdleSpriteUrl?.includes('clinchem_chapterOneMiniBoss') ||
-      (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false))
+      (selectedSubject === 'Clinical Chemistry' && (currentActiveNode?.id === 'cc-1' || currentActiveNode?.id === 'cc-2') && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false))
     );
 
     const isHydraBoss = Boolean(
       currentEnemyName?.toLowerCase().includes('hydra') ||
       currentActiveNode?.bossName?.toLowerCase().includes('hydra') ||
-      ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && (currentActiveNode?.id === 'is-3' || currentActiveNode?.nodeNumber === 3) && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
+      ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && (currentActiveNode?.id === 'is-4' || currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4) && (quizMode === 'boss-battle' ? (battleStage === 3 || battleStage === 4) : quizMode === 'learning' ? currentWaveStage === 3 : false))
     );
 
     const isKetoacidosisColossus = Boolean(
@@ -2602,13 +2904,13 @@ export default function LearningQuest() {
       (currentEnemyName?.toLowerCase().includes('colossus') && !currentEnemyName?.toLowerCase().includes('erythrocyte')) ||
       currentActiveNode?.bossName?.toLowerCase().includes('ketoacidosis') ||
       (currentActiveNode?.bossName?.toLowerCase().includes('colossus') && !currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte')) ||
-      (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
+      (selectedSubject === 'Clinical Chemistry' && (currentActiveNode?.id === 'cc-1' || currentActiveNode?.id === 'cc-3') && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
     );
 
     const isLegalBeholder = Boolean(
       currentEnemyName?.toLowerCase().includes('legal beholder') ||
       currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') ||
-      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && (currentActiveNode?.id === 'hp-3' || currentActiveNode?.nodeNumber === 3) && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
+      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && (currentActiveNode?.id === 'hp-4' || currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4) && (quizMode === 'boss-battle' ? (battleStage === 3 || battleStage === 4) : quizMode === 'learning' ? currentWaveStage === 3 : false))
     );
 
     const isAntigenTitan = !isLymphocyteSwarm && Boolean(
@@ -2616,15 +2918,15 @@ export default function LearningQuest() {
       ((quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : (quizMode === 'test' ? testModeEnemy?.tier === 'mini-boss' : false)) && (
         currentActiveNode?.miniBossName?.toLowerCase().includes('antigen') ||
         currentActiveNode?.miniBossIdleSpriteUrl?.includes('immunohema_chapterOneMiniBoss') ||
-        ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && currentActiveNode?.id === 'is-1')
+        ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && (currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-2'))
       ))
     );
 
-    const isErythrocyteColossusBoss = !isSickleCellMinion && !isAnemiaShade && Boolean(
+    const isErythrocyteColossusBoss = !isSickleCellMinion && !isAnemiaShade && !isSickleCellReaper && Boolean(
       currentEnemyName?.toLowerCase().includes('erythrocyte') ||
       currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') ||
       currentActiveNode?.idleSpriteUrl?.includes('hematology_chapterOneBoss') ||
-      (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
+      (selectedSubject === 'Hematology' && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-3') && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
     );
 
     const isParaffinGolem = !isGmsFungalSpore && !isLegalBeholder && Boolean(
@@ -2632,14 +2934,14 @@ export default function LearningQuest() {
       (currentEnemyName?.toLowerCase().includes('golem') && !currentEnemyName?.toLowerCase().includes('crystal')) ||
       currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') ||
       currentActiveNode?.miniBossIdleSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
-      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false))
+      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-2') && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : false))
     );
 
     const isFixationOverlord = !isGmsFungalSpore && !isParaffinGolem && !isLegalBeholder && Boolean(
       currentEnemyName?.toLowerCase().includes('fixation') ||
       currentActiveNode?.bossName?.toLowerCase().includes('fixation') ||
       currentActiveNode?.idleSpriteUrl?.includes('hispatho_chapterOneBoss') ||
-      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
+      ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-3') && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
     );
     const shouldSuppressWrongSfx = isSpecterBoss || isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm || isHyperglycemicMutant || isHydraBoss || isKetoacidosisColossus || isLegalBeholder || isAntigenTitan || isAnemiaShade || isErythrocyteColossusBoss || isParaffinGolem || isFixationOverlord;
 
@@ -2700,10 +3002,10 @@ export default function LearningQuest() {
         } else {
           // normal
           if (isCorrect) {
-            if (!bossShieldActive || battleStage !== 3) {
+            if (!bossShieldActive || (battleStage !== 3 && battleStage !== 4)) {
               enemyDmg = playerStats.totalDamage * critMultiplier;
             } else {
-              // Shield absorbed the hit (Only Chapter Boss at Stage 3 has shield!)
+              // Shield absorbed the hit (Stage 3 Chapter Boss and Stage 4 Final Boss have shields!)
               enemyDmg = 0;
               toast({ title: "Shield Absorbed Attack! 🛡️", description: "Normal attacks deal 0 damage while the Boss shield is active. Use Heavy Attack to shatter it!", variant: "destructive" });
             }
@@ -2715,7 +3017,7 @@ export default function LearningQuest() {
         // Aggressive & Enraged Phase Multipliers:
         // Boss <= 60% HP and > 20% HP -> 1.5x damage on player mistake
         // Boss <= 20% HP (Enraged) -> 2.0x damage on player mistake (Enemies NEVER heal HP!)
-        if (battleStage === 3 && !isCorrect) {
+        if ((battleStage === 3 || battleStage === 4) && !isCorrect) {
           if (enemyHealth <= 20 && enemyHealth > 0) {
             playerDmg *= 2.0;
           } else if (enemyHealth <= 60 && enemyHealth > 20) {
@@ -2734,7 +3036,9 @@ export default function LearningQuest() {
             title: "POISONED! ☠️",
             description: battleStage === 2
               ? "The Mini-Boss inflicted a toxic debuff! Use Defend to cure it."
-              : "The Chapter Boss inflicted a toxic debuff! Use Defend to cure it.",
+              : battleStage === 4
+                ? "The Final Boss inflicted a toxic debuff! Use Defend to cure it."
+                : "The Chapter Boss inflicted a toxic debuff! Use Defend to cure it.",
             variant: "destructive"
           });
         }
@@ -2754,11 +3058,17 @@ export default function LearningQuest() {
           }
         }
 
-        // Shield Mechanics: ONLY the Stage 3 Chapter Boss casts shield! (Every 4 turns, and NOT when defeated!)
-        if (battleStage === 3 && (turnCount + 1) % 4 === 0 && !willEnemyBeDefeated && enemyHealth > 0) {
+        // Shield Mechanics: Stage 3 Chapter Boss and Stage 4 Final Boss cast shield! (Every 4 turns, and NOT when defeated!)
+        if ((battleStage === 3 || battleStage === 4) && (turnCount + 1) % 4 === 0 && !willEnemyBeDefeated && enemyHealth > 0) {
           newShieldState = true;
-          toast({ title: "Boss Casts Shield! 🛡️", description: "The Chapter Boss puts up a magical shield. Only Heavy attacks can shatter it!", variant: "destructive" });
-        } else if (battleStage < 3 || willEnemyBeDefeated) {
+          toast({
+            title: "Boss Casts Shield! 🛡️",
+            description: battleStage === 4
+              ? "The Final Boss puts up an impervious shield. Only Heavy attacks can shatter it!"
+              : "The Chapter Boss puts up a magical shield. Only Heavy attacks can shatter it!",
+            variant: "destructive"
+          });
+        } else if ((battleStage < 3 && battleStage !== 4) || willEnemyBeDefeated) {
           newShieldState = false;
         }
 
@@ -2815,45 +3125,15 @@ export default function LearningQuest() {
         const nextHp = Math.max(0, enemyHealth - enemyDmg);
 
         if (quizMode === 'boss-battle' && nextHp <= 0) {
-          const activeNodes = getSubjectNodes(selectedSubject);
-          const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-          const isChapter3FinalBoss = currentActiveNode.nodeNumber === 3;
-
-          if (isChapter3FinalBoss || battleStage === 3) {
-            setEnemyHealth(0);
-            setBossShieldActive(false);
-            setPlayerPoisoned(false);
-            const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
-            // Allow player's winning attack animation (1200ms) to complete smoothly before Victory displays!
-            setTimeout(() => {
-              playBossBattleMusic('victory');
-              handleFinish(currentScore, 'victory');
-            }, 800);
-          } else if (battleStage === 1) {
-            setBattleStage(2);
-            setBossShieldActive(false);
-            setBossAnimState('idle');
-            setPlayerAnimState('idle');
-            const stage2Hp = calculateEnemyStageHp(2, userLevel, bossDifficulty || 'MEDIUM');
-            setEnemyHealth(stage2Hp);
-            addFloatingText('enemy', '👾 MINION DEFEATED! 👹 MINI-BOSS ENTERS!', 'text-amber-300');
-            toast({
-              title: "👾 Stage 1 Clear!",
-              description: "You defeated the Minion! Prepare to face the Mini-Boss!",
-            });
-          } else if (battleStage === 2) {
-            setBattleStage(3);
-            setBossShieldActive(false);
-            setBossAnimState('idle');
-            setPlayerAnimState('idle');
-            const stage3Hp = calculateEnemyStageHp(3, userLevel, bossDifficulty || 'MEDIUM');
-            setEnemyHealth(stage3Hp);
-            addFloatingText('enemy', '👹 MINI-BOSS DEFEATED! 👑 CHAPTER BOSS APPEARS!', 'text-red-400');
-            toast({
-              title: "👹 Stage 2 Clear!",
-              description: "The Mini-Boss has fallen! The Chapter Boss enters the arena!",
-            });
-          }
+          setEnemyHealth(0);
+          setBossShieldActive(false);
+          setPlayerPoisoned(false);
+          const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
+          // Allow player's winning attack animation (1200ms) to complete smoothly before Victory displays!
+          setTimeout(() => {
+            playBossBattleMusic('victory');
+            handleFinish(currentScore, 'victory');
+          }, 800);
         } else if (quizMode === 'learning' && nextHp <= 0) {
           setEnemyHealth(0);
           setIsAnimating("enemy");
@@ -2969,39 +3249,39 @@ export default function LearningQuest() {
         const subjectMeta = getSubjectMeta(selectedSubject);
         const isSpikesAttack = !isSickleCellMinion && !isAnemiaShade && Boolean(
           currentEnemyName?.toLowerCase().includes('reaper') ||
-          (quizMode !== 'test' && currentActiveNode?.nodeNumber === 3 && (currentActiveNode?.undergroundSpikesUrl || subjectMeta?.undergroundSpikesUrl)) ||
+          (quizMode !== 'test' && (currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4 || currentActiveNode?.id === 'hem-4' || currentActiveNode?.bossName?.toLowerCase().includes('reaper')) && (currentActiveNode?.undergroundSpikesUrl || subjectMeta?.undergroundSpikesUrl)) ||
           (quizMode === 'test' && testModeEnemy?.tier === 'final-boss' && selectedSubject === 'Hematology') ||
-          (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-3')
+          (selectedSubject === 'Hematology' && (currentActiveNode?.id === 'hem-4' || currentActiveNode?.tier === 'final-boss'))
         );
         const isGramPositiveBoss = Boolean(
           currentEnemyName?.toLowerCase().includes('gram positive') ||
-          (quizMode === 'boss-battle' && battleStage === 3 && currentActiveNode?.id === 'mb-1') ||
-          (quizMode === 'learning' && currentWaveStage === 3 && currentActiveNode?.id === 'mb-1')
+          (quizMode === 'boss-battle' && battleStage === 3 && (currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-3')) ||
+          (quizMode === 'learning' && currentWaveStage === 3 && (currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-3'))
         );
         const isStaphSentinel = Boolean(
           currentEnemyName?.toLowerCase().includes('staph') ||
-          (quizMode === 'boss-battle' && battleStage === 2 && currentActiveNode?.id === 'mb-1') ||
-          (quizMode === 'learning' && currentWaveStage === 2 && currentActiveNode?.id === 'mb-1')
+          (quizMode === 'boss-battle' && battleStage === 2 && (currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-2')) ||
+          (quizMode === 'learning' && currentWaveStage === 2 && (currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-2'))
         );
         const isBiohazardBoss = Boolean(
           currentEnemyName?.toLowerCase().includes('biohazard') ||
-          ((quizMode === 'boss-battle' || quizMode === 'learning') && (currentActiveNode?.id === 'mb-3' || currentActiveNode?.nodeNumber === 3))
+          ((quizMode === 'boss-battle' || quizMode === 'learning') && (currentActiveNode?.id === 'mb-4' || currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4))
         );
         const isCrystalGolemBoss = Boolean(
           currentEnemyName?.toLowerCase().includes('crystal golem') ||
-          ((quizMode === 'boss-battle' || quizMode === 'learning') && (currentActiveNode?.id === 'cm-3' || (currentActiveNode?.nodeNumber === 3 && (selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit')))))
+          ((quizMode === 'boss-battle' || quizMode === 'learning') && (currentActiveNode?.id === 'cm-4' || currentActiveNode?.tier === 'final-boss' || (currentActiveNode?.nodeNumber === 4 && (selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit')))))
         );
         const isLegalBeholderBoss = Boolean(
           currentEnemyName?.toLowerCase().includes('legal beholder') ||
-          ((quizMode === 'boss-battle' || quizMode === 'learning') && (currentActiveNode?.id === 'hp-3' || (currentActiveNode?.nodeNumber === 3 && (selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')))))
+          ((quizMode === 'boss-battle' || quizMode === 'learning') && (currentActiveNode?.id === 'hp-4' || currentActiveNode?.tier === 'final-boss' || (currentActiveNode?.nodeNumber === 4 && (selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')))))
         );
         const isHydraBoss = Boolean(
           currentEnemyName?.toLowerCase().includes('hydra') ||
           (
             (selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) &&
-            (currentActiveNode?.id === 'is-3' || currentActiveNode?.nodeNumber === 3 || currentActiveNode?.bossName?.toLowerCase().includes('hydra')) &&
+            (currentActiveNode?.id === 'is-4' || currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4 || currentActiveNode?.bossName?.toLowerCase().includes('hydra')) &&
             (quizMode === 'boss-battle'
-              ? (battleStage === 3 || isChapter3FinalBoss)
+              ? (battleStage === 3 || battleStage === 4 || isChapter3FinalBoss)
               : quizMode === 'learning'
                 ? (currentWaveStage === 3 || isChapter3FinalBoss)
                 : isChapter3FinalBoss)
@@ -3045,7 +3325,7 @@ export default function LearningQuest() {
           ((quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : (quizMode === 'test' ? testModeEnemy?.tier === 'mini-boss' : false)) && (
             currentActiveNode?.miniBossName?.toLowerCase().includes('antigen') ||
             currentActiveNode?.miniBossIdleSpriteUrl?.includes('immunohema_chapterOneMiniBoss') ||
-            ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && currentActiveNode?.id === 'is-1')
+            ((selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) && (currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-2'))
           ))
         );
         const isAntigenTitanHeavy = isAntigen && attackType === 'heavy_attack';
@@ -3055,19 +3335,19 @@ export default function LearningQuest() {
           ((quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? currentWaveStage === 2 : (quizMode === 'test' ? testModeEnemy?.tier === 'mini-boss' : false)) && (
             currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') ||
             currentActiveNode?.miniBossIdleSpriteUrl?.includes('hematology_chapterOneMiniBoss') ||
-            (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1')
+            (selectedSubject === 'Hematology' && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-2'))
           ))
         );
         const isAnemiaShadeHeavy = isAnemia && attackType === 'heavy_attack';
         const isAnemiaShadeNormal = isAnemia && attackType === 'normal_attack';
-        const isImmuneArchonBoss = !isLymphocyteSwarm && Boolean(
+        const isImmuneArchonBoss = !isLymphocyteSwarm && !isHydraBoss && Boolean(
           currentEnemyName?.toLowerCase().includes('immune archon') ||
           (currentEnemyName?.toLowerCase().includes('archon') && !currentEnemyName?.toLowerCase().includes('hydra')) ||
           currentActiveNode?.bossName?.toLowerCase().includes('immune archon') ||
           currentActiveNode?.idleSpriteUrl?.includes('immunohema_chapterOneBoss') ||
           (
             (selectedSubject.toLowerCase().includes('immuno') || selectedSubject.toLowerCase().includes('serology')) &&
-            currentActiveNode?.id === 'is-1' &&
+            (currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-3') &&
             (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : true)
           )
         );
@@ -4507,7 +4787,7 @@ export default function LearningQuest() {
             {(() => {
               const activeNodes = getSubjectNodes(selectedSubject);
               const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-              const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3;
+              const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4;
 
               const currentQ = questions[Math.min(questions.length - 1, userAnswers.length)] || questions[0];
               const _currentDiff = String(currentQ?.difficulty || 'EASY').toUpperCase();
@@ -4572,8 +4852,9 @@ export default function LearningQuest() {
               }
 
               const ch1Node = activeNodes.find(n => n.nodeNumber === 1) || activeNodes[0];
-              const ch3Node = activeNodes.find(n => n.nodeNumber === 3) || activeNodes[activeNodes.length - 1];
-              const wave3BossNode = (currentActiveNode?.nodeNumber === 1 && ch1Node?.idleSpriteUrl) ? ch1Node : ch3Node;
+              const ch4Node = activeNodes.find(n => n.nodeNumber === 4 || n.tier === 'final-boss') || activeNodes[activeNodes.length - 1];
+              const ch3Node = activeNodes.find(n => n.nodeNumber === 3 || n.tier === 'boss') || activeNodes[2] || activeNodes[0];
+              const wave3BossNode = (currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4) ? ch4Node : ch3Node;
               const isMinionStageWithSprite = ((quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 1) || (quizMode === 'learning' && waveState?.waveStage === 1)) && !!(idleSprite || currentActiveNode?.minionIdleSpriteUrl || ch1Node?.minionIdleSpriteUrl);
               const isMiniBossStageWithSprite = ((quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 2) || (quizMode === 'learning' && waveState?.waveStage === 2) || (quizMode === 'test' && testModeEnemy?.tier === 'mini-boss')) && !!(idleSprite || currentActiveNode?.miniBossIdleSpriteUrl || ch1Node?.miniBossIdleSpriteUrl);
 
@@ -4668,7 +4949,7 @@ export default function LearningQuest() {
                   activeEnemyName?.toLowerCase().includes('hyperglycemic mutant') ||
                   idleSprite?.includes('clinchem_chapterOneMiniBoss') ||
                   currentActiveNode?.miniBossIdleSpriteUrl?.includes('clinchem_chapterOneMiniBoss') ||
-                  (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1')
+                  (selectedSubject === 'Clinical Chemistry' && (currentActiveNode?.id === 'cc-1' || currentActiveNode?.id === 'cc-2'))
                 )
               );
 
@@ -4689,7 +4970,7 @@ export default function LearningQuest() {
                   activeEnemyName?.toLowerCase().includes('antigen') ||
                   activeEnemyName?.toLowerCase().includes('antigen titan') ||
                   idleSprite?.includes('immunohema_chapterOneMiniBoss') ||
-                  (selectedSubject === 'Immunology & Serology and Immunohematology' && currentActiveNode?.id === 'is-1')
+                  (selectedSubject === 'Immunology & Serology and Immunohematology' && (currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-2'))
                 )
               );
 
@@ -4699,7 +4980,7 @@ export default function LearningQuest() {
                   (activeEnemyName?.toLowerCase().includes('colossus') && !activeEnemyName?.toLowerCase().includes('erythrocyte')) ||
                   idleSprite?.includes('clinchem_chapterOneBoss') ||
                   currentActiveNode?.idleSpriteUrl?.includes('clinchem_chapterOneBoss') ||
-                  (selectedSubject === 'Clinical Chemistry' && currentActiveNode?.id === 'cc-1')
+                  (selectedSubject === 'Clinical Chemistry' && (currentActiveNode?.id === 'cc-1' || currentActiveNode?.id === 'cc-3'))
                 )
               );
 
@@ -4709,7 +4990,7 @@ export default function LearningQuest() {
                   (activeEnemyName?.toLowerCase().includes('archon') && !activeEnemyName?.toLowerCase().includes('hydra')) ||
                   idleSprite?.includes('immunohema_chapterOneBoss') ||
                   currentActiveNode?.idleSpriteUrl?.includes('immunohema_chapterOneBoss') ||
-                  (selectedSubject === 'Immunology & Serology and Immunohematology' && currentActiveNode?.id === 'is-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : true))
+                  (selectedSubject === 'Immunology & Serology and Immunohematology' && (currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-3') && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : true))
                 )
               );
 
@@ -4718,7 +4999,7 @@ export default function LearningQuest() {
                   activeEnemyName?.toLowerCase().includes('erythrocyte') ||
                   idleSprite?.includes('hematology_chapterOneBoss') ||
                   currentActiveNode?.idleSpriteUrl?.includes('hematology_chapterOneBoss') ||
-                  (selectedSubject === 'Hematology' && currentActiveNode?.id === 'hem-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : true))
+                  (selectedSubject === 'Hematology' && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-3') && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : true))
                 )
               );
 
@@ -4727,7 +5008,7 @@ export default function LearningQuest() {
                   activeEnemyName?.toLowerCase().includes('paraffin') ||
                   idleSprite?.includes('hispatho_chapterOneMiniBoss') ||
                   currentActiveNode?.miniBossIdleSpriteUrl?.includes('hispatho_chapterOneMiniBoss') ||
-                  ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? waveState?.waveStage === 2 : false))
+                  ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-2') && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? waveState?.waveStage === 2 : false))
                 )
               );
 
@@ -4736,7 +5017,7 @@ export default function LearningQuest() {
                   activeEnemyName?.toLowerCase().includes('fixation') ||
                   idleSprite?.includes('hispatho_chapterOneBoss') ||
                   currentActiveNode?.idleSpriteUrl?.includes('hispatho_chapterOneBoss') ||
-                  ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && currentActiveNode?.id === 'hp-1' && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : false))
+                  ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-3') && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : false))
                 )
               );
 
@@ -4800,17 +5081,17 @@ export default function LearningQuest() {
                               : (waveState?.normalAttackSfxUrl ||
                                 (activeEnemyName?.toLowerCase().includes('specter')
                                   ? '/SoundEffects/HyperglemicSpecterNormalAttack.mp3'
-                                  : (activeEnemyName?.toLowerCase().includes('mutant') || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
+                                  : (activeEnemyName?.toLowerCase().includes('mutant') || ((currentActiveNode?.id === 'cc-1' || currentActiveNode?.id === 'cc-2') && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                     ? '/SoundEffects/SickleCellNormalAttack.mp3'
                                     : (activeEnemyName?.toLowerCase().includes('acid slime') || (activeEnemyName?.toLowerCase().includes('slime') && !activeEnemyName?.toLowerCase().includes('reagent')) || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge?.includes('MINION') || (quizMode === 'boss-battle' && battleStage === 1))))
                                       ? '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3'
                                       : (activeEnemyName?.toLowerCase().includes('reagent') || attackSprite?.includes('clinmicro_chapterOneMinion') || (currentActiveNode?.id === 'cm-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
                                         ? '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3'
-                                        : activeEnemyName?.toLowerCase().includes('gram positive') || (currentActiveNode?.id === 'mb-1' && (activeEnemyBadge === 'BOSS' || battleStage === 3))
+                                        : (activeEnemyName?.toLowerCase().includes('gram positive') || ((currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-3') && (activeEnemyBadge === 'BOSS' || battleStage === 3)))
                                           ? '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3'
                                           : activeEnemyName?.toLowerCase().includes('staph')
                                             ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
-                                            : (activeEnemyName?.toLowerCase().includes('reaper') || currentActiveNode?.id === 'hem-3' || attackSprite?.includes('hematology_finalboss'))
+                                            : (activeEnemyName?.toLowerCase().includes('reaper') || currentActiveNode?.id === 'hem-4' || attackSprite?.includes('hematology_finalboss'))
                                               ? '/SoundEffects/SickleCellReaperNormalAttack.mp3'
                                               : ((activeEnemyName?.toLowerCase().includes('sickle cell') && !activeEnemyName?.toLowerCase().includes('reaper')) || currentActiveNode?.id === 'hem-1')
                                                 ? '/SoundEffects/SickleCellNormalAttack.mp3'
@@ -4820,13 +5101,13 @@ export default function LearningQuest() {
                                                     ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
                                                     : (activeEnemyName?.toLowerCase().includes('lymphocyte') || attackSprite?.includes('immunohema_chapterOneMinion') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
                                                       ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
-                                                      : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-3')
+                                                      : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-4')
                                                         ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
-                                                        : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-3')
+                                                        : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-4')
                                                           ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
-                                                          : (activeEnemyName?.toLowerCase().includes('antigen') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
+                                                          : (activeEnemyName?.toLowerCase().includes('antigen') || ((currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-2') && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                                             ? '/SoundEffects/KetoacidosisColossusNormalAttack.mp3'
-                                                            : (activeEnemyName?.toLowerCase().includes('archon') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('BOSS') || (quizMode === 'boss-battle' && battleStage === 3))))
+                                                            : (activeEnemyName?.toLowerCase().includes('archon') || ((currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-3') && (activeEnemyBadge?.includes('BOSS') || (quizMode === 'boss-battle' && battleStage === 3))))
                                                               ? '/SoundEffects/ImmuneArchonNormalAttack.mp3'
                                                               : (currentActiveNode?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl)))
                           }
@@ -4836,17 +5117,17 @@ export default function LearningQuest() {
                               : (waveState?.heavyAttackSfxUrl ||
                                 (activeEnemyName?.toLowerCase().includes('specter')
                                   ? '/SoundEffects/HyperglemicSpecterHeavyAttack.mp3'
-                                  : (activeEnemyName?.toLowerCase().includes('mutant') || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
+                                  : (activeEnemyName?.toLowerCase().includes('mutant') || ((currentActiveNode?.id === 'cc-1' || currentActiveNode?.id === 'cc-2') && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                     ? '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3'
                                     : (activeEnemyName?.toLowerCase().includes('acid slime') || (activeEnemyName?.toLowerCase().includes('slime') && !activeEnemyName?.toLowerCase().includes('reagent')) || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge?.includes('MINION') || (quizMode === 'boss-battle' && battleStage === 1))))
                                       ? '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3'
                                       : (activeEnemyName?.toLowerCase().includes('reagent') || heavyAttackSprite?.includes('clinmicro_chapterOneMinion') || (currentActiveNode?.id === 'cm-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
                                         ? '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3'
-                                        : activeEnemyName?.toLowerCase().includes('gram positive') || (currentActiveNode?.id === 'mb-1' && (activeEnemyBadge === 'BOSS' || battleStage === 3))
+                                        : (activeEnemyName?.toLowerCase().includes('gram positive') || ((currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-3') && (activeEnemyBadge === 'BOSS' || battleStage === 3)))
                                           ? '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3'
                                           : activeEnemyName?.toLowerCase().includes('staph')
                                             ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
-                                            : (activeEnemyName?.toLowerCase().includes('reaper') || currentActiveNode?.id === 'hem-3' || heavyAttackSprite?.includes('hematology_finalboss'))
+                                            : (activeEnemyName?.toLowerCase().includes('reaper') || currentActiveNode?.id === 'hem-4' || heavyAttackSprite?.includes('hematology_finalboss'))
                                               ? '/SoundEffects/SickleCellReaperHeavyAttack.mp3'
                                               : ((activeEnemyName?.toLowerCase().includes('sickle cell') && !activeEnemyName?.toLowerCase().includes('reaper')) || currentActiveNode?.id === 'hem-1')
                                                 ? '/SoundEffects/SickleCellHeavyAttack.mp3'
@@ -4856,15 +5137,15 @@ export default function LearningQuest() {
                                                     ? '/SoundEffects/MicrobeSwarmHeavyAttack.wav'
                                                     : (activeEnemyName?.toLowerCase().includes('lymphocyte') || heavyAttackSprite?.includes('immunohema_chapterOneMinion') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
                                                       ? '/SoundEffects/MicrobeSwarmHeavyAttack.wav'
-                                                      : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-3')
+                                                      : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-4')
                                                         ? '/SoundEffects/BiohazardOverlordHeavyAttack.mp3'
-                                                        : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-3')
+                                                        : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-4')
                                                           ? '/SoundEffects/CrystalGolemHeavyAttack.mp3'
-                                                          : (activeEnemyName?.toLowerCase().includes('antigen') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
+                                                          : (activeEnemyName?.toLowerCase().includes('antigen') || ((currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-2') && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                                             ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
-                                                              : (activeEnemyName?.toLowerCase().includes('archon') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge?.includes('BOSS') || (quizMode === 'boss-battle' && battleStage === 3))))
-                                                                ? '/SoundEffects/AntiSerumHydraHeavyAttack.mp3'
-                                                                : (currentActiveNode?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl)))
+                                                            : (activeEnemyName?.toLowerCase().includes('archon') || ((currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-3') && (activeEnemyBadge?.includes('BOSS') || (quizMode === 'boss-battle' && battleStage === 3))))
+                                                              ? '/SoundEffects/AntiSerumHydraHeavyAttack.mp3'
+                                                              : (currentActiveNode?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl)))
                           }
                           idleSpriteUrl={idleSprite}
                           attackSpriteUrl={attackSprite}
@@ -4873,7 +5154,7 @@ export default function LearningQuest() {
                           attackProjectileUrl={waveState?.attackProjectileUrl || (quizMode === 'test' ? (testModeEnemy?.attackProjectileUrl || undefined) : undefined) || currentActiveNode?.attackProjectileUrl || subjectMeta?.attackProjectileUrl || undefined}
                           attackProjectileFrames={waveState?.attackProjectileFrames || (quizMode === 'test' ? (testModeEnemy?.attackProjectileFrames || 5) : null) || currentActiveNode?.attackProjectileFrames || subjectMeta?.attackProjectileFrames || 5}
                           undergroundSpikesUrl={
-                            (isMinionStageWithSprite || isMiniBossStageWithSprite || (quizMode !== 'test' && !isChapter3FinalBoss && (activeEnemyName?.toLowerCase().includes('sickle cell') || activeEnemyName?.toLowerCase().includes('erythrocyte') || currentActiveNode?.id === 'hem-1' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte'))))
+                            (isMinionStageWithSprite || isMiniBossStageWithSprite || (quizMode !== 'test' && !isChapter3FinalBoss && (activeEnemyName?.toLowerCase().includes('sickle cell') || activeEnemyName?.toLowerCase().includes('erythrocyte') || currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-3' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte'))))
                               ? undefined
                               : (attackSprite?.includes('hematology_finalboss_normalAttackGlintAnimation')
                                 ? (currentActiveNode?.undergroundSpikesUrl || subjectMeta?.undergroundSpikesUrl || '/images/bosses/hematology_finalboss_normalAttackUndergroundSpikesAnimation.png')
@@ -4881,7 +5162,7 @@ export default function LearningQuest() {
                               )
                           }
                           undergroundSpikesFrames={
-                            (isMinionStageWithSprite || isMiniBossStageWithSprite || (quizMode !== 'test' && !isChapter3FinalBoss && (activeEnemyName?.toLowerCase().includes('sickle cell') || activeEnemyName?.toLowerCase().includes('erythrocyte') || currentActiveNode?.id === 'hem-1' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte'))))
+                            (isMinionStageWithSprite || isMiniBossStageWithSprite || (quizMode !== 'test' && !isChapter3FinalBoss && (activeEnemyName?.toLowerCase().includes('sickle cell') || activeEnemyName?.toLowerCase().includes('erythrocyte') || currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-3' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte'))))
                               ? undefined
                               : (attackSprite?.includes('hematology_finalboss_normalAttackGlintAnimation')
                                 ? (currentActiveNode?.undergroundSpikesFrames || subjectMeta?.undergroundSpikesFrames || 8)
@@ -4947,15 +5228,15 @@ export default function LearningQuest() {
                 {(() => {
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-                  const isChapter3FinalBoss = currentActiveNode.nodeNumber === 3 || currentActiveNode?.id === 'hem-3';
+                  const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4 || currentActiveNode?.id === 'hem-4';
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
                   const isMinionWithSprite = (quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl) || (quizMode === 'learning' && waveState?.waveStage === 1);
                   const isMiniBossWithSprite = (quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 2 && !!currentActiveNode?.miniBossIdleSpriteUrl) || (quizMode === 'learning' && waveState?.waveStage === 2);
                   if (isMinionWithSprite || isMiniBossWithSprite) return null;
 
-                  // Strictly Chapter 3 Sickle-Cell Reaper (hem-3 / Chapter 3 Final Boss).
-                  // NEVER Chapter 1 (Sickle Cell Minion, Anemia Shade, or Erythrocyte Colossus) or Chapter 2!
-                  if (currentActiveNode?.id === 'hem-1' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') || waveState?.name?.toLowerCase().includes('erythrocyte') || waveState?.idleSprite?.includes('hematology_chapterOneBoss')) {
+                  // Strictly Final Boss Sickle-Cell Reaper (hem-4 / Final Boss).
+                  // NEVER Minion (hem-1 Sickle Cell), Mini-Boss (hem-2 Anemia Shade), or Chapter Boss (hem-3 Erythrocyte Colossus)!
+                  if (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-2' || currentActiveNode?.id === 'hem-3' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') || waveState?.name?.toLowerCase().includes('erythrocyte') || waveState?.idleSprite?.includes('hematology_chapterOneBoss')) {
                     return null;
                   }
 
@@ -5017,20 +5298,20 @@ export default function LearningQuest() {
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
-                  // Strictly Chapter 3 Legal Beholder (hp-3 or nodeNumber === 3). NEVER Chapter 1 Fixation Overlord (hp-1) or Chapter 2
+                  // Strictly Chapter 3 Final Boss Legal Beholder (hp-4). NEVER Minion (hp-1), Mini-Boss (hp-2), or Chapter Boss (hp-3)
                   if (quizMode === 'test') {
                     if (testModeEnemy?.tier !== 'final-boss' || testModeEnemy?.name?.toLowerCase().includes('fixation') || testModeEnemy?.name?.toLowerCase().includes('paraffin')) {
                       return null;
                     }
-                  } else if (currentActiveNode?.id === 'hp-1' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || waveState?.name?.toLowerCase().includes('fixation') || waveState?.idleSprite?.includes('hispatho_chapterOneBoss')) {
+                  } else if (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-2' || currentActiveNode?.id === 'hp-3' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') || waveState?.name?.toLowerCase().includes('fixation') || waveState?.name?.toLowerCase().includes('paraffin') || waveState?.idleSprite?.includes('hispatho_chapterOneBoss')) {
                     return null;
                   }
 
-                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'hp-3';
+                  const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4 || currentActiveNode?.id === 'hp-4';
                   const isLegalBeholder = isChapter3FinalBoss || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') || Boolean(waveState?.name?.toLowerCase().includes('legal beholder')) || (quizMode === 'test' && testModeEnemy?.tier === 'final-boss');
 
                   const isLegalBeholderActive = quizMode === 'boss-battle'
-                    ? (isLegalBeholder && (battleStage === 3 || isChapter3FinalBoss))
+                    ? (isLegalBeholder && (battleStage === 3 || battleStage === 4 || isChapter3FinalBoss))
                     : quizMode === 'learning'
                       ? (waveState?.waveStage === 3 && isLegalBeholder)
                       : quizMode === 'test'
@@ -5063,20 +5344,20 @@ export default function LearningQuest() {
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
-                  // Strictly Chapter 3 Legal Beholder (hp-3 or nodeNumber === 3). NEVER Chapter 1 Fixation Overlord (hp-1) or Chapter 2
+                  // Strictly Chapter 3 Final Boss Legal Beholder (hp-4). NEVER Minion (hp-1), Mini-Boss (hp-2), or Chapter Boss (hp-3)
                   if (quizMode === 'test') {
                     if (testModeEnemy?.tier !== 'final-boss' || testModeEnemy?.name?.toLowerCase().includes('fixation') || testModeEnemy?.name?.toLowerCase().includes('paraffin')) {
                       return null;
                     }
-                  } else if (currentActiveNode?.id === 'hp-1' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || waveState?.name?.toLowerCase().includes('fixation') || waveState?.idleSprite?.includes('hispatho_chapterOneBoss')) {
+                  } else if (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-2' || currentActiveNode?.id === 'hp-3' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') || waveState?.name?.toLowerCase().includes('fixation') || waveState?.name?.toLowerCase().includes('paraffin') || waveState?.idleSprite?.includes('hispatho_chapterOneBoss')) {
                     return null;
                   }
 
-                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'hp-3';
+                  const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4 || currentActiveNode?.id === 'hp-4';
                   const isLegalBeholder = isChapter3FinalBoss || currentActiveNode?.bossName?.toLowerCase().includes('legal beholder') || Boolean(waveState?.name?.toLowerCase().includes('legal beholder')) || (quizMode === 'test' && testModeEnemy?.tier === 'final-boss');
 
                   const isLegalBeholderActive = quizMode === 'boss-battle'
-                    ? (isLegalBeholder && (battleStage === 3 || isChapter3FinalBoss))
+                    ? (isLegalBeholder && (battleStage === 3 || battleStage === 4 || isChapter3FinalBoss))
                     : quizMode === 'learning'
                       ? (waveState?.waveStage === 3 && isLegalBeholder)
                       : quizMode === 'test'
@@ -5107,15 +5388,15 @@ export default function LearningQuest() {
 
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-                  const isChapter3FinalBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.id === 'is-3';
+                  const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4 || currentActiveNode?.id === 'is-4';
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
                   const isHydraActive = quizMode === 'boss-battle'
-                    ? (isChapter3FinalBoss && battleStage === 3)
+                    ? (isChapter3FinalBoss && (battleStage === 3 || battleStage === 4))
                     : quizMode === 'learning'
                       ? (isChapter3FinalBoss && waveState?.waveStage === 3)
                       : quizMode === 'test'
-                        ? (testModeEnemy?.tier === 'final-boss' && (Boolean(testModeEnemy?.name?.toLowerCase().includes('hydra')) || testModeEnemy?.nodeId === 'is-3'))
+                        ? (testModeEnemy?.tier === 'final-boss' && (Boolean(testModeEnemy?.name?.toLowerCase().includes('hydra')) || testModeEnemy?.nodeId === 'is-4' || testModeEnemy?.nodeId === 'is-3'))
                         : false;
 
                   if (!isHydraActive) return null;
@@ -5135,15 +5416,15 @@ export default function LearningQuest() {
 
                   const activeNodes = getSubjectNodes(selectedSubject);
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
-                  const isChapter1Boss = currentActiveNode?.nodeNumber === 1 || currentActiveNode?.id === 'is-1';
+                  const isChapterBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.tier === 'boss' || currentActiveNode?.id === 'is-3' || currentActiveNode?.id === 'is-1';
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
                   const isArchonActive = quizMode === 'boss-battle'
-                    ? ((isChapter1Boss || Boolean(currentActiveNode?.bossName?.toLowerCase().includes('archon'))) && battleStage === 3)
+                    ? ((isChapterBoss || Boolean(currentActiveNode?.bossName?.toLowerCase().includes('archon'))) && (battleStage === 3 || battleStage === 4))
                     : quizMode === 'learning'
-                      ? ((isChapter1Boss || Boolean(waveState?.name?.toLowerCase().includes('archon'))) && waveState?.waveStage === 3)
+                      ? ((isChapterBoss || Boolean(waveState?.name?.toLowerCase().includes('archon'))) && waveState?.waveStage === 3 && !waveState?.name?.toLowerCase().includes('hydra'))
                       : quizMode === 'test'
-                        ? (testModeEnemy?.tier === 'boss' && (Boolean(testModeEnemy?.name?.toLowerCase().includes('archon')) || testModeEnemy?.nodeId === 'is-1'))
+                        ? (testModeEnemy?.tier === 'boss' && (Boolean(testModeEnemy?.name?.toLowerCase().includes('archon')) || testModeEnemy?.nodeId === 'is-3' || testModeEnemy?.nodeId === 'is-1'))
                         : false;
 
                   if (!isArchonActive) return null;
@@ -5165,12 +5446,12 @@ export default function LearningQuest() {
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
-                  // Strictly Chapter 1 Mini-Boss Stage 2 (Paraffin Golem), NEVER Minion (GMS Fungal Spore) or Final Boss hp-3 (Legal Beholder)
+                  // Strictly Chapter 1 Mini-Boss Stage 2 (Paraffin Golem), NEVER Minion (GMS Fungal Spore) or Final Boss hp-4 (Legal Beholder)
                   const isParaffinActive = Boolean(
                     quizMode === 'boss-battle'
-                      ? (battleStage === 2 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') || currentActiveNode?.miniBossIdleSpriteUrl?.includes('hispatho_chapterOneMiniBoss')))
+                      ? (battleStage === 2 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-2' || currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') || currentActiveNode?.miniBossIdleSpriteUrl?.includes('hispatho_chapterOneMiniBoss')))
                       : quizMode === 'learning'
-                        ? (waveState?.waveStage === 2 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') || waveState?.name?.toLowerCase().includes('paraffin') || waveState?.idleSprite?.includes('hispatho_chapterOneMiniBoss')))
+                        ? (waveState?.waveStage === 2 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-2' || currentActiveNode?.miniBossName?.toLowerCase().includes('paraffin') || waveState?.name?.toLowerCase().includes('paraffin') || waveState?.idleSprite?.includes('hispatho_chapterOneMiniBoss')))
                         : quizMode === 'test'
                           ? (testModeEnemy?.tier === 'mini-boss' && (testModeEnemy?.name?.toLowerCase().includes('paraffin') || Boolean(testModeEnemy?.heavyAttackBallsUrl)))
                           : false
@@ -5202,15 +5483,15 @@ export default function LearningQuest() {
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
-                  // Strictly Chapter 1 Boss Stage 3 (Fixation Overlord), NEVER Minion (GMS Fungal Spore), Mini-Boss (Paraffin Golem), or Final Boss hp-3 (Legal Beholder)
+                  // Strictly Chapter 1 Boss Stage 3 (Fixation Overlord), NEVER Minion (GMS Fungal Spore), Mini-Boss (Paraffin Golem), or Final Boss hp-4 (Legal Beholder)
                   const isFixationActive = Boolean(
                     quizMode === 'boss-battle'
-                      ? (battleStage === 3 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || currentActiveNode?.idleSpriteUrl?.includes('hispatho_chapterOneBoss')))
+                      ? (battleStage === 3 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-3' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || currentActiveNode?.idleSpriteUrl?.includes('hispatho_chapterOneBoss')))
                       : quizMode === 'learning'
-                        ? (waveState?.waveStage === 3 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || waveState?.name?.toLowerCase().includes('fixation') || waveState?.idleSprite?.includes('hispatho_chapterOneBoss')))
+                        ? (waveState?.waveStage === 3 && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-3' || currentActiveNode?.bossName?.toLowerCase().includes('fixation') || waveState?.name?.toLowerCase().includes('fixation') || waveState?.idleSprite?.includes('hispatho_chapterOneBoss')))
                         : quizMode === 'test'
                           ? (testModeEnemy?.tier === 'boss' && (testModeEnemy?.name?.toLowerCase().includes('fixation') || Boolean(testModeEnemy?.heavyAttackNailedUrl)))
-                          : (currentActiveNode?.id === 'hp-1' || currentActiveNode?.bossName?.toLowerCase().includes('fixation'))
+                          : (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-3' || currentActiveNode?.bossName?.toLowerCase().includes('fixation'))
                   );
 
                   if (!isFixationActive) return null;
@@ -5240,15 +5521,15 @@ export default function LearningQuest() {
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
-                  // Strictly Chapter 1 Boss Stage 3 (Erythrocyte Colossus), NEVER Minion (Sickle Cell) or Mini-Boss (Anemia Shade) or Final Boss hem-3 (Sickle-Cell Reaper)
+                  // Strictly Chapter 1 Boss Stage 3 (Erythrocyte Colossus), NEVER Minion (Sickle Cell) or Mini-Boss (Anemia Shade) or Final Boss hem-4 (Sickle-Cell Reaper)
                   const isErythrocyteActive = Boolean(
                     quizMode === 'boss-battle'
-                      ? (battleStage === 3 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') || currentActiveNode?.idleSpriteUrl?.includes('hematology_chapterOneBoss')))
+                      ? (battleStage === 3 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-3' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') || currentActiveNode?.idleSpriteUrl?.includes('hematology_chapterOneBoss')))
                       : quizMode === 'learning'
-                        ? (waveState?.waveStage === 3 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') || waveState?.name?.toLowerCase().includes('erythrocyte') || waveState?.idleSprite?.includes('hematology_chapterOneBoss')))
+                        ? (waveState?.waveStage === 3 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-3' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte') || waveState?.name?.toLowerCase().includes('erythrocyte') || waveState?.idleSprite?.includes('hematology_chapterOneBoss')))
                         : quizMode === 'test'
                           ? (testModeEnemy?.tier === 'boss' && (testModeEnemy?.name?.toLowerCase().includes('erythrocyte') || Boolean(testModeEnemy?.heavyAttackFistUrl)))
-                          : (currentActiveNode?.id === 'hem-1' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte'))
+                          : (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-3' || currentActiveNode?.bossName?.toLowerCase().includes('erythrocyte'))
                   );
 
                   if (!isErythrocyteActive) return null;
@@ -5279,12 +5560,12 @@ export default function LearningQuest() {
                   const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
-                  // Strictly Stage 2 Mini-Boss (Anemia Shade), NEVER Stage 1 (Sickle Cell) or Stage 3 (Colossus/Reaper), and NEVER Antigen Titan
+                  // Strictly Stage 2 Mini-Boss (Anemia Shade), NEVER Stage 1 (Sickle Cell) or Stage 3 (Colossus) or Stage 4 (Reaper), and NEVER Antigen Titan
                   const isAnemiaActive = Boolean(
                     quizMode === 'boss-battle'
-                      ? (battleStage === 2 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.miniBossName?.toLowerCase().includes('anemia')))
+                      ? (battleStage === 2 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-2' || currentActiveNode?.miniBossName?.toLowerCase().includes('anemia')))
                       : quizMode === 'learning'
-                        ? (waveState?.waveStage === 2 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') || waveState?.name?.toLowerCase().includes('anemia') || waveState?.idleSprite?.includes('hematology_chapterOneMiniBoss')))
+                        ? (waveState?.waveStage === 2 && (currentActiveNode?.id === 'hem-1' || currentActiveNode?.id === 'hem-2' || currentActiveNode?.miniBossName?.toLowerCase().includes('anemia') || waveState?.name?.toLowerCase().includes('anemia') || waveState?.idleSprite?.includes('hematology_chapterOneMiniBoss')))
                         : quizMode === 'test'
                           ? (testModeEnemy?.tier === 'mini-boss' && (testModeEnemy?.name?.toLowerCase().includes('anemia') || Boolean(testModeEnemy?.slashSprite)))
                           : false
@@ -5386,7 +5667,7 @@ export default function LearningQuest() {
               isLoading={isLoading}
               mode={quizMode}
               battleStage={battleStage}
-              isFinalBoss={quizMode === 'boss-battle' && getSubjectNodes(selectedSubject).find(n => n.id === selectedNodeId)?.nodeNumber === 3}
+              isFinalBoss={quizMode === 'boss-battle' && (getSubjectNodes(selectedSubject).find(n => n.id === selectedNodeId)?.tier === 'final-boss' || getSubjectNodes(selectedSubject).find(n => n.id === selectedNodeId)?.nodeNumber === 4)}
               bossShieldActive={bossShieldActive}
               playerPoisoned={playerPoisoned}
               streak={streak}

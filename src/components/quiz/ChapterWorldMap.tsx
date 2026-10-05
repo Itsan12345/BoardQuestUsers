@@ -10,6 +10,7 @@ import { X, Lock } from 'lucide-react';
 export interface ChapterNode {
   id: string;
   nodeNumber: number;
+  tier?: 'minion' | 'mini-boss' | 'boss' | 'final-boss';
   title: string;
   subtopic: string;
   minionName?: string;
@@ -101,7 +102,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
             {selectedSubject} Overworld Trail
           </h2>
           <p className="text-[8.5px] min-[360px]:text-[10px] sm:text-xs md:text-sm text-amber-200/80 font-sans mt-0.5 leading-tight truncate sm:whitespace-normal">
-            Defeat Easy ➔ Medium ➔ Hard in Chapter 1 to unlock Chapter 2 along the path!
+            Defeat Easy ➔ Medium ➔ Hard to unlock the next encounter along the path!
           </p>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -182,7 +183,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
               {/* Shadow Path */}
               <path
-                d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
+                d="M 0 84 L 10 82 L 36 73 L 64 69 L 88 76 L 100 76"
                 fill="none"
                 stroke={trailShadow}
                 strokeWidth="5"
@@ -190,7 +191,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
               />
               {/* Border Path */}
               <path
-                d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
+                d="M 0 84 L 10 82 L 36 73 L 64 69 L 88 76 L 100 76"
                 fill="none"
                 stroke={trailBorder}
                 strokeWidth="3.5"
@@ -198,7 +199,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
               />
               {/* Main Glowing Trail */}
               <path
-                d="M 0 83 L 6 83 L 48 70 L 81 76 L 100 76"
+                d="M 0 84 L 10 82 L 36 73 L 64 69 L 88 76 L 100 76"
                 fill="none"
                 stroke={trailColor}
                 strokeWidth="2.2"
@@ -226,12 +227,13 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
             const isMicrobio = s.includes('microb') && !isMicroscopy;
             const isHema = s.includes('hema') && !isImmuno;
 
-            // Responsive Diagonal Positions placed down on the meadow ground
+            // Responsive Diagonal Positions placed down on the meadow ground (4-Stage Layout)
             const nodeCoords = [
-              { left: '6%', top: '83%' },
-              { left: '48%', top: '70%' },
-              { left: '81%', top: '76%' },
-            ][index] || { left: `${(index + 1) * 25}%`, top: '75%' };
+              { left: '10%', top: '82%' },
+              { left: '36%', top: '73%' },
+              { left: '64%', top: '69%' },
+              { left: '88%', top: '76%' },
+            ][index] || { left: `${(index + 1) * 20}%`, top: '75%' };
 
             return (
               <div
@@ -332,39 +334,51 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                   )}
                 </div>
 
-                {/* Bottom Node Chapter Label */}
-                <p
-                  className={cn(
-                    "text-[7px] min-[360px]:text-[8px] sm:text-xs font-mono font-bold mt-0.5 sm:mt-1 text-center bg-black/70 px-1 min-[360px]:px-1.5 py-0.5 rounded border transition-colors shadow",
-                    isSelected
-                      ? isChem
-                        ? "text-pink-300 border-pink-400/60"
-                        : isImmuno
-                          ? "text-cyan-300 border-cyan-400/60"
-                          : isHisto
-                            ? "text-emerald-300 border-emerald-400/60"
-                            : isMicrobio
-                              ? "text-lime-300 border-lime-400/60"
-                              : isHema
-                                ? "text-red-300 border-red-400/60"
-                                : "text-amber-300 border-amber-400/60"
-                      : unlocked
-                        ? isChem
-                          ? "text-pink-100/90 border-white/10"
-                          : isImmuno
-                            ? "text-cyan-100/90 border-white/10"
-                            : isHisto
-                              ? "text-emerald-100/90 border-white/10"
-                              : isMicrobio
-                                ? "text-lime-100/90 border-white/10"
-                                : isHema
-                                  ? "text-red-100/90 border-white/10"
-                                  : "text-amber-100/90 border-white/10"
-                        : "text-slate-500 border-white/10"
-                  )}
-                >
-                  Ch.{node.nodeNumber}
-                </p>
+                {/* Bottom Node Stage Label */}
+                {(() => {
+                  const stageLabel = node.tier === 'minion' || index === 0
+                    ? 'Minion'
+                    : node.tier === 'mini-boss' || index === 1
+                      ? 'Mini-Boss'
+                      : node.tier === 'boss' || index === 2
+                        ? 'Boss'
+                        : 'Final Boss';
+
+                  return (
+                    <p
+                      className={cn(
+                        "text-[7px] min-[360px]:text-[8px] sm:text-xs font-mono font-bold mt-0.5 sm:mt-1 text-center bg-black/70 px-1 min-[360px]:px-1.5 py-0.5 rounded border transition-colors shadow whitespace-nowrap",
+                        isSelected
+                          ? isChem
+                            ? "text-pink-300 border-pink-400/60"
+                            : isImmuno
+                              ? "text-cyan-300 border-cyan-400/60"
+                              : isHisto
+                                ? "text-emerald-300 border-emerald-400/60"
+                                : isMicrobio
+                                  ? "text-lime-300 border-lime-400/60"
+                                  : isHema
+                                    ? "text-red-300 border-red-400/60"
+                                    : "text-amber-300 border-amber-400/60"
+                          : unlocked
+                            ? isChem
+                              ? "text-pink-100/90 border-white/10"
+                              : isImmuno
+                                ? "text-cyan-100/90 border-white/10"
+                                : isHisto
+                                  ? "text-emerald-100/90 border-white/10"
+                                  : isMicrobio
+                                    ? "text-lime-100/90 border-white/10"
+                                    : isHema
+                                      ? "text-red-100/90 border-white/10"
+                                      : "text-amber-100/90 border-white/10"
+                            : "text-slate-500 border-white/10"
+                      )}
+                    >
+                      {node.nodeNumber}. {stageLabel}
+                    </p>
+                  );
+                })()}
               </div>
             );
           })}
@@ -378,15 +392,26 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
           {/* Left Details Panel */}
           <div className="space-y-1 sm:space-y-1.5 flex-1 min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-[8px] min-[360px]:text-[9px] sm:text-xs font-mono font-bold uppercase px-1.5 sm:px-2 py-0.5",
-                  isSelectedUnlocked ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-red-950/40 text-red-400 border-red-800/40"
-                )}
-              >
-                {isSelectedUnlocked ? `CHAPTER #${selectedNode.nodeNumber} UNLOCKED` : `🔒 CH.${selectedNode.nodeNumber} LOCKED`}
-              </Badge>
+              {(() => {
+                const stageName = selectedNode.tier === 'minion' || selectedNode.nodeNumber === 1
+                  ? 'MINION'
+                  : selectedNode.tier === 'mini-boss' || selectedNode.nodeNumber === 2
+                    ? 'MINI-BOSS'
+                    : selectedNode.tier === 'boss' || selectedNode.nodeNumber === 3
+                      ? 'CHAPTER BOSS'
+                      : 'FINAL BOSS';
+                return (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[8px] min-[360px]:text-[9px] sm:text-xs font-mono font-bold uppercase px-1.5 sm:px-2 py-0.5",
+                      isSelectedUnlocked ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-red-950/40 text-red-400 border-red-800/40"
+                    )}
+                  >
+                    {isSelectedUnlocked ? `STAGE #${selectedNode.nodeNumber} (${stageName}) UNLOCKED` : `🔒 STAGE #${selectedNode.nodeNumber} (${stageName}) LOCKED`}
+                  </Badge>
+                );
+              })()}
               <h3 className="text-xs min-[360px]:text-sm sm:text-lg md:text-xl font-bold text-amber-400 tracking-wider leading-tight truncate">{selectedNode.title}</h3>
               <div className="flex items-center gap-0.5">
                 {[1, 2, 3].map((s) => (
@@ -399,21 +424,29 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
 
             <p className="text-[8.5px] min-[360px]:text-[9.5px] sm:text-xs text-amber-100/90 font-sans leading-snug line-clamp-1 sm:line-clamp-none">{selectedNode.subtopic}</p>
 
-            {selectedNode.nodeNumber === 3 ? (
-              <div className="flex items-center gap-1 sm:gap-2 text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs text-amber-300 font-mono pt-0.5 overflow-x-auto no-scrollbar whitespace-nowrap">
-                <span className="bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-red-500/25 px-2 sm:px-2.5 py-0.5 rounded-md border border-amber-400/50 text-amber-300 font-bold shrink-0 flex items-center gap-1.5 shadow-sm animate-pulse">
-                  👑 {selectedNode.bossName} <span className="text-[7.5px] sm:text-[9px] uppercase tracking-wider bg-amber-400 text-black px-1.5 py-0.2 rounded font-black">SOLO FINAL BOSS</span>
+            <div className="flex items-center gap-1 sm:gap-2 text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs text-amber-300 font-mono pt-0.5 overflow-x-auto no-scrollbar whitespace-nowrap">
+              <span className={cn(
+                "px-2 sm:px-2.5 py-0.5 rounded-md border font-bold shrink-0 flex items-center gap-1.5 shadow-sm",
+                selectedNode.tier === 'final-boss' || selectedNode.nodeNumber === 4
+                  ? "bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-red-500/25 border-amber-400/50 text-amber-300 animate-pulse"
+                  : selectedNode.tier === 'boss' || selectedNode.nodeNumber === 3
+                    ? "bg-red-950/40 border-red-500/40 text-red-300"
+                    : selectedNode.tier === 'mini-boss' || selectedNode.nodeNumber === 2
+                      ? "bg-orange-950/40 border-orange-500/40 text-orange-300"
+                      : "bg-amber-950/40 border-amber-500/40 text-amber-300"
+              )}>
+                {selectedNode.bossIcon || (selectedNode.nodeNumber === 4 ? '👑' : selectedNode.nodeNumber === 3 ? '⚔️' : selectedNode.nodeNumber === 2 ? '👹' : '👾')} {selectedNode.bossName}
+                <span className="text-[7.5px] sm:text-[9px] uppercase tracking-wider bg-amber-400 text-black px-1.5 py-0.2 rounded font-black">
+                  {selectedNode.tier === 'final-boss' || selectedNode.nodeNumber === 4
+                    ? 'SOLO FINAL BOSS'
+                    : selectedNode.tier === 'boss' || selectedNode.nodeNumber === 3
+                      ? 'CHAPTER BOSS'
+                      : selectedNode.tier === 'mini-boss' || selectedNode.nodeNumber === 2
+                        ? 'MINI-BOSS'
+                        : 'MINION'}
                 </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 sm:gap-2 text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs text-amber-300/80 font-mono pt-0.5 overflow-x-auto no-scrollbar whitespace-nowrap">
-                <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10 shrink-0">👾 {selectedNode.minionName}</span>
-                <span className="shrink-0">➔</span>
-                <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-white/10 shrink-0">👹 {selectedNode.miniBossName}</span>
-                <span className="shrink-0">➔</span>
-                <span className="bg-black/50 px-1.5 sm:px-2 py-0.5 rounded border border-amber-500/40 text-amber-300 font-bold shrink-0">👑 {selectedNode.bossName}</span>
-              </div>
-            )}
+              </span>
+            </div>
           </div>
 
           {/* Difficulty Selector & Launch Action */}
@@ -460,7 +493,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
               )}
             >
               {!isSelectedUnlocked
-                ? `🔒 LOCKED (Clear Ch.${selectedNode.nodeNumber - 1} First)`
+                ? `🔒 LOCKED (Clear Stage ${selectedNode.nodeNumber - 1} First)`
                 : !isCurrentDiffUnlocked
                   ? `🔒 ${selectedDifficulty} LOCKED`
                   : `LAUNCH ${selectedDifficulty} EXPEDITION ⚔️`}
