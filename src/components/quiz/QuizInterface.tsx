@@ -193,15 +193,21 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
         }
       }, transitionDelay);
     } else {
-      // Test Mode: Brief visual feedback before transition
+      // Test Mode: Immediate feedback & synchronized animation transition
       const finalIsCorrect = isCorrect; 
       const newScore = finalIsCorrect ? score + 1 : score;
       setScore(newScore);
       setIsTransitioning(true);
 
-      setTimeout(() => {
-        if (onAnswer) onAnswer(finalIsCorrect, currentQuestionIndex, letter, undefined, currentQuestion);
+      // Trigger the battle animation (player attack or enemy counter-attack) IMMEDIATELY upon answering!
+      if (onAnswer) onAnswer(finalIsCorrect, currentQuestionIndex, letter, undefined, currentQuestion);
 
+      // Allow animations to play out smoothly before transitioning to next question:
+      // Correct answer: 1400ms (player strike, hit reaction & floating damage text)
+      // Incorrect answer: 2300ms (enemy lunge/strike, player hit reaction, idle pause & return glide)
+      const transitionDelay = finalIsCorrect ? 1400 : 2300;
+
+      setTimeout(() => {
         if (currentIndex < questions.length - 1) {
           // CAT Logic: Adapt difficulty
           const currentDiff = String(currentQuestion.difficulty || 'MEDIUM').toUpperCase();
@@ -234,13 +240,10 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
           setIsAnswered(false);
           setIsTransitioning(false);
         } else {
-          // Allow the attack animation for the last question to play first (1300ms) before onFinish shows Victory/Defeat!
-          setTimeout(() => {
-            onFinish(newScore);
-            setIsTransitioning(false);
-          }, 1300);
+          onFinish(newScore);
+          setIsTransitioning(false);
         }
-      }, 1000);
+      }, transitionDelay);
     }
   };
 
