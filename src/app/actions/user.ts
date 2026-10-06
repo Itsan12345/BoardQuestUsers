@@ -202,14 +202,24 @@ export async function getUserStats(): Promise<any> {
       }
     });
 
-    const todayExamResults = await prisma.examResult.findMany({
-      where: {
-        userId,
-        timestamp: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
-      },
-      select: { total: true }
-    });
-    const todayQuestions = todayExamResults.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+    const [todayExamResults, todayAttemptsCount] = await Promise.all([
+      prisma.examResult.findMany({
+        where: {
+          userId,
+          timestamp: { gte: todayStart }
+        },
+        select: { total: true }
+      }),
+      (prisma as any).userQuestionAttempt.count({
+        where: {
+          userId,
+          lastAttempt: { gte: todayStart }
+        }
+      }).catch(() => 0)
+    ]);
+    const todayExamTotal = todayExamResults.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const todayQuestions = Math.max(todayExamTotal, todayAttemptsCount || 0);
 
     const parsedUser = JSON.parse(JSON.stringify(user));
     if (parsedUser._count) {
@@ -299,14 +309,24 @@ export async function getUserProfile() {
     const rankingPercentage = Math.round(((totalUsers - usersWithHigherXp) / totalUsers) * 100);
 
     // Calculate today's completed questions
-    const todayExamResults = await prisma.examResult.findMany({
-      where: {
-        userId,
-        timestamp: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
-      },
-      select: { total: true }
-    });
-    const todayQuestions = todayExamResults.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+    const [todayExamResults, todayAttemptsCount] = await Promise.all([
+      prisma.examResult.findMany({
+        where: {
+          userId,
+          timestamp: { gte: todayStart }
+        },
+        select: { total: true }
+      }),
+      (prisma as any).userQuestionAttempt.count({
+        where: {
+          userId,
+          lastAttempt: { gte: todayStart }
+        }
+      }).catch(() => 0)
+    ]);
+    const todayExamTotal = todayExamResults.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const todayQuestions = Math.max(todayExamTotal, todayAttemptsCount || 0);
 
     // Calculate class year from createdAt (year - 1)
     const classYear = new Date(user.createdAt).getFullYear() - 1;

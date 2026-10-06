@@ -307,6 +307,10 @@ function ProfileContent() {
 
   async function handleLogout() {
     try {
+      try {
+        localStorage.removeItem('bq_today_quest_date');
+        localStorage.removeItem('bq_today_questions_count');
+      } catch (e) {}
       await logout();
       toast({
         title: "Logged Out",

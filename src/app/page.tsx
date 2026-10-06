@@ -20,6 +20,7 @@ import { DailyLoginRewardModal } from '@/components/dashboard/DailyLoginRewardMo
 import { ActiveGuidanceBanner } from '@/components/guidance/ActiveGuidanceBanner';
 import { getUserLessonCompletions, getCategories, getLearningModules } from '@/app/actions/study';
 import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
+import { getLocalTodayDateString } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 
 function DashboardContent() {
@@ -703,51 +704,64 @@ function DashboardContent() {
 
           {/* Daily Question Target Meter */}
           {/* Daily Target Card */}
-          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
-            <CardHeader className="p-4 sm:p-6 pb-3 border-b border-border flex flex-row items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
-                <Link href="/profile?openSettings=true&tab=goals">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
-                    title="Edit Daily Goals"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                </Link>
-              </div>
-              <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5">
-                {user?.todayQuestions || 0} / {dailyQuota} Qs
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6 space-y-3">
-              {(() => {
-                const todayDone = user?.todayQuestions || 0;
-                const percent = Math.min(100, Math.round((todayDone / (dailyQuota || 1)) * 100));
-                return (
-                  <>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Today's Progress</span>
-                      <span className="font-semibold text-foreground">{percent}% Completed</span>
-                    </div>
-                    <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border/60">
-                      <div
-                        className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-700"
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      {percent >= 100
-                        ? '🎉 Daily question goal achieved! Excellent discipline.'
-                        : `${Math.max(0, dailyQuota - todayDone)} questions remaining to hit today's study target.`}
-                    </p>
-                  </>
-                );
-              })()}
-            </CardContent>
-          </Card>
+          {(() => {
+            const localToday = getLocalTodayDateString();
+            let localQuestQuestions = 0;
+            try {
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('bq_today_quest_date');
+                localStorage.removeItem('bq_today_questions_count');
+                if (user?.id) {
+                  const savedQuestDate = localStorage.getItem(`bq_today_date_${user.id}`);
+                  if (savedQuestDate === localToday) {
+                    localQuestQuestions = parseInt(localStorage.getItem(`bq_today_questions_${user.id}`) || '0', 10);
+                  }
+                }
+              }
+            } catch (e) {}
+            const todayDone = Math.max(user?.todayQuestions || 0, localQuestQuestions);
+            const percent = Math.min(100, Math.round((todayDone / (dailyQuota || 1)) * 100));
+
+            return (
+              <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
+                <CardHeader className="p-4 sm:p-6 pb-3 border-b border-border flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
+                    <Link href="/profile?openSettings=true&tab=goals">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        title="Edit Daily Goals"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                  <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5">
+                    {todayDone} / {dailyQuota} Qs
+                  </Badge>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Today's Progress</span>
+                    <span className="font-semibold text-foreground">{percent}% Completed</span>
+                  </div>
+                  <div className="w-full h-3 bg-muted rounded-full overflow-hidden border border-border/60">
+                    <div
+                      className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-700"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {percent >= 100
+                      ? '🎉 Daily question goal achieved! Excellent discipline.'
+                      : `${Math.max(0, dailyQuota - todayDone)} questions remaining to hit today's study target.`}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Student Daily Login Attendance & Streak Widget */}
           {dailyLoginStatus && (

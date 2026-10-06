@@ -30,6 +30,13 @@ export interface AppNotification {
   guidanceStatus?: string;
 }
 
+export function getLocalTodayDateString(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function getHoursUntilMidnight(): number {
   const now = new Date();
   const midnight = new Date();
@@ -139,7 +146,24 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
   const streakAlertsEnabled = localStorage.getItem('bq_pref_streak_alerts') !== 'false';
   const countdownAlertsEnabled = localStorage.getItem('bq_pref_countdown_alerts') !== 'false';
   const dailyQuota = parseInt(localStorage.getItem('bq_pref_daily_quota') || '50', 10);
-  const todayQuestions = user?.todayQuestions || 0;
+
+  // Dynamically resolve today's completed/answered questions from server profile and Quest Arena activity
+  const localToday = getLocalTodayDateString();
+  let localQuestQuestions = 0;
+  try {
+    // Purge legacy unscoped keys that leak across different user accounts on same machine
+    localStorage.removeItem('bq_today_quest_date');
+    localStorage.removeItem('bq_today_questions_count');
+
+    if (user?.id) {
+      const savedQuestDate = localStorage.getItem(`bq_today_date_${user.id}`);
+      if (savedQuestDate === localToday) {
+        localQuestQuestions = parseInt(localStorage.getItem(`bq_today_questions_${user.id}`) || '0', 10);
+      }
+    }
+  } catch (e) {}
+
+  const todayQuestions = Math.max(user?.todayQuestions || 0, localQuestQuestions);
   const userStreak = user?.streak || 0;
   const hoursLeft = getHoursUntilMidnight();
 
@@ -151,11 +175,13 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
   const questAchievements = (user?.achievements || []).filter(
     (a: any) => a.type === 'quest' && a.subject !== 'Daily Attendance'
   );
-  const hasStudyHistory = questAchievements.length > 0 || (user?.todayQuestions || 0) > 0 || (user?.totalQuestions || 0) > 0;
+  const hasStudyHistory = questAchievements.length > 0 || todayQuestions > 0 || (user?.totalQuestions || 0) > 0;
 
-  // 1. 🔥 Daily Streak Protection Alert (Only if study history exists, streak > 0, and user hasn't played today)
-  if (streakAlertsEnabled && hasStudyHistory && userStreak > 0 && todayQuestions === 0) {
-    const streakId = `streak_warning_${new Date().toISOString().slice(0, 10)}`;
+  // 1. 🔥 Daily Streak Protection Alert
+  // A streak is only truly at risk if study history exists, streak > 0, no questions completed today, AND the day is ending soon (<= 6 hours left)
+  const isDayEndingSoon = hoursLeft <= 6;
+  if (streakAlertsEnabled && hasStudyHistory && userStreak > 0 && todayQuestions === 0 && isDayEndingSoon) {
+    const streakId = `streak_warning_${localToday}`;
     notifications.push({
       id: streakId,
       type: 'streak_warning',
@@ -171,7 +197,7 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
 
   // 1b. 💔 Daily Streak Lost / Broken Alert (When streak is broken, previous study history exists, and user hasn't played today)
   if (streakAlertsEnabled && hasStudyHistory && userStreak === 0 && todayQuestions === 0 && user?.streakBroken && (user?.previousStreak || 0) > 0) {
-    const streakLostId = `streak_lost_${new Date().toISOString().slice(0, 10)}`;
+    const streakLostId = `streak_lost_${localToday}`;
     const prevMsg = `Your ${user.previousStreak}-day study streak was lost because no review quest was completed yesterday.`;
 
     notifications.push({
@@ -189,7 +215,7 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
 
   // 2. 🎯 Daily Question Target Progress or Achievement
   if (todayQuestions >= dailyQuota) {
-    const goalId = `daily_goal_achieved_${new Date().toISOString().slice(0, 10)}`;
+    const goalId = `daily_goal_achieved_${localToday}`;
     notifications.push({
       id: goalId,
       type: 'daily_goal',
@@ -201,8 +227,8 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
       isUrgent: false,
       read: readIds.includes(goalId),
     });
-  } else {
-    const goalId = `daily_goal_progress_${new Date().toISOString().slice(0, 10)}`;
+  } else if (todayQuestions > 0) {
+    const goalId = `daily_goal_progress_${localToday}`;
     const remaining = dailyQuota - todayQuestions;
     notifications.push({
       id: goalId,
@@ -212,6 +238,19 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
       timestamp: 'Today',
       link: '/quest',
       actionLabel: 'Continue Quest',
+      isUrgent: false,
+      read: readIds.includes(goalId),
+    });
+  } else {
+    const goalId = `daily_goal_start_${localToday}`;
+    notifications.push({
+      id: goalId,
+      type: 'daily_goal',
+      title: '🎯 Daily Study Target',
+      message: `Start today's review! Complete ${dailyQuota} questions in Quest Arena to build discipline and prepare for the MTLE.`,
+      timestamp: 'Today',
+      link: '/quest',
+      actionLabel: 'Start Quest',
       isUrgent: false,
       read: readIds.includes(goalId),
     });

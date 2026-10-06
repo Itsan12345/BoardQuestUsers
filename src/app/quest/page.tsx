@@ -44,7 +44,8 @@ import { getQuestQuestions } from '@/app/actions/arena';
 import { completeQuest, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
 import { getCategories } from '@/app/actions/study';
 import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction } from '@/app/actions/user';
-import { calculateEarnedBadges, getLevelFromXp, type Badge as BadgeType } from '@/lib/badge-system';
+import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
+import { getLocalTodayDateString } from '@/lib/notifications';
 import { playSfx, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -449,6 +450,10 @@ export default function LearningQuest() {
   const [userLevel, setUserLevel] = useState<number>(1);
   const [userLastName, setUserLastName] = useState<string>('Aspirant');
   const [streak, setStreak] = useState(0);
+  const [earnedQuestXp, setEarnedQuestXp] = useState<number | null>(null);
+  const [leveledUpDetails, setLeveledUpDetails] = useState<{ oldLevel: number; newLevel: number } | null>(null);
+  const [showLevelUpPopup, setShowLevelUpPopup] = useState<boolean>(false);
+  const currentUserIdRef = useRef<string | null>(null);
   const [bossAnimState, setBossAnimState] = useState<BossAnimState>('idle');
   const [playerAnimState, setPlayerAnimState] = useState<'idle' | 'attack'>('idle');
 
@@ -2279,6 +2284,7 @@ export default function LearningQuest() {
   const fetchUser = useCallback(async () => {
     try {
       const profile = await getUserProfile();
+      if (profile?.id) currentUserIdRef.current = profile.id;
       if (profile?.level) setUserLevel(profile.level);
       if (profile?.xp !== undefined) {
         setUserXp(profile.xp);
@@ -2566,6 +2572,7 @@ export default function LearningQuest() {
       let currentLevelForBattle = userLevel;
       try {
         const freshProfile = await getUserProfile();
+        if (freshProfile?.id) currentUserIdRef.current = freshProfile.id;
         if (freshProfile?.level) {
           currentLevelForBattle = freshProfile.level;
           setUserLevel(freshProfile.level);
@@ -2813,6 +2820,9 @@ export default function LearningQuest() {
       setPlayerPoisoned(false);
       setBattleOutcome(null);
       setShowBattleLog(false);
+      setEarnedQuestXp(null);
+      setLeveledUpDetails(null);
+      setShowLevelUpPopup(false);
 
       const activeBg = getSubjectMeta(selectedSubject)?.arenaBackgroundUrl || getSubjectMeta(selectedSubject)?.backgroundUrl;
       if (quizMode === 'boss-battle' && activeBg) {
@@ -2915,29 +2925,7 @@ export default function LearningQuest() {
       difficulty: questionData?.difficulty
     }]);
 
-    // Dynamically calculate and reflect XP and level up immediately in battle simulation
-    if (isCorrect) {
-      const qDifficulty = (questionData?.difficulty || 'MEDIUM').toUpperCase();
-      const gainedXp = qDifficulty === 'HARD' ? 100 : qDifficulty === 'EASY' ? 25 : 50;
-      const currentBaseXp = userXpRef.current ?? userXp;
-      const nextXp = currentBaseXp + gainedXp;
-      userXpRef.current = nextXp;
-      setUserXp(nextXp);
-      try {
-        localStorage.setItem('boardquest_user_xp', nextXp.toString());
-      } catch (e) {}
-
-      const calculatedLevel = getLevelFromXp(nextXp);
-      if (calculatedLevel > userLevel) {
-        setUserLevel(calculatedLevel);
-        setPlayerHealth(prevHp => prevHp + 15);
-        addFloatingText('player', `LEVEL UP! LVL ${calculatedLevel} ⭐`, 'text-yellow-300 font-bytebounce text-xl font-black animate-bounce');
-        toast({
-          title: `⭐ LEVEL UP!`,
-          description: `You reached Level ${calculatedLevel} in the heat of battle!`,
-        });
-      }
-    }
+    // All XP, streaks, badges, and level-ups are strictly awarded upon completed quests via completeQuest
 
     const activeNodes = getSubjectNodes(selectedSubject);
     const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
@@ -4084,11 +4072,20 @@ export default function LearningQuest() {
       });
 
       if (result.success) {
+        if (result.totalXp !== undefined) {
+          setEarnedQuestXp(result.totalXp);
+        }
+
         // Immediately sync and reflect the Player's level and XP dynamically
+        let didLevelUp = false;
         if (result.newLevel) {
           const prevLevel = userLevel;
           setUserLevel(result.newLevel);
           if (result.newLevel > prevLevel) {
+            didLevelUp = true;
+            setLeveledUpDetails({ oldLevel: prevLevel, newLevel: result.newLevel });
+            setShowLevelUpPopup(true);
+            playSfx('victory');
             toast({
               title: `🎉 LEVEL UP! Level ${result.newLevel}!`,
               description: `Congratulations, Aspirant! You advanced from Level ${prevLevel} to Level ${result.newLevel}!`,
@@ -4114,11 +4111,28 @@ export default function LearningQuest() {
         });
         setEarnedBadges(updatedBadges);
 
-        // Open thank you dialog strictly once after a short delay
+        // Open thank you dialog strictly once after a short delay (or after dismissing Level Up popup)
         if (!hasShownThankYouRef.current) {
           hasShownThankYouRef.current = true;
-          setTimeout(() => setThankYouDialogOpen(true), 200);
+          if (!didLevelUp) {
+            setTimeout(() => setThankYouDialogOpen(true), 200);
+          }
         }
+
+        try {
+          localStorage.removeItem('bq_today_quest_date');
+          localStorage.removeItem('bq_today_questions_count');
+          const todayKey = getLocalTodayDateString();
+          const targetUserId = currentUserIdRef.current;
+          if (targetUserId) {
+            const savedDate = localStorage.getItem(`bq_today_date_${targetUserId}`);
+            const currentCount = (savedDate === todayKey) ? parseInt(localStorage.getItem(`bq_today_questions_${targetUserId}`) || '0', 10) : 0;
+            const questCount = questions.length || userAnswers.length || 1;
+            const nextCount = Math.max(currentCount, questCount);
+            localStorage.setItem(`bq_today_date_${targetUserId}`, todayKey);
+            localStorage.setItem(`bq_today_questions_${targetUserId}`, nextCount.toString());
+          }
+        } catch (e) {}
 
         window.dispatchEvent(new CustomEvent('bq_stats_updated'));
 
@@ -4184,7 +4198,7 @@ export default function LearningQuest() {
                 </div>
                 <div className="h-8 sm:h-10 md:h-12 w-px bg-border" />
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-accent">+{score * XP_PER_QUESTION}</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-accent">+{earnedQuestXp !== null ? earnedQuestXp : (score * XP_PER_QUESTION)}</div>
                   <div className="text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">XP Earned</div>
                 </div>
               </div>
@@ -4223,7 +4237,7 @@ export default function LearningQuest() {
                 </div>
                 <div className="h-8 sm:h-10 md:h-12 w-px bg-border" />
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-accent">+{score * XP_PER_QUESTION}</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-black font-headline text-accent">+{earnedQuestXp !== null ? earnedQuestXp : (score * XP_PER_QUESTION)}</div>
                   <div className="text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">XP Earned</div>
                 </div>
               </div>
@@ -4430,6 +4444,86 @@ export default function LearningQuest() {
             </DialogContent>
           </Dialog>
 
+          {/* Dedicated Big Gamified RPG Level Up Celebration Display (Strictly Borderless, No Card Box) */}
+          {showLevelUpPopup && leveledUpDetails && (
+            <div
+              onClick={() => {
+                setShowLevelUpPopup(false);
+                setTimeout(() => setThankYouDialogOpen(true), 250);
+              }}
+              className="fixed inset-0 z-[150] flex flex-col items-center justify-center p-4 cursor-pointer select-none bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+            >
+              {/* Free-Floating Gamified RPG Typography - Strictly Borderless, No Card */}
+              <div className="relative z-10 flex flex-col items-center text-center max-w-3xl animate-in zoom-in-75 duration-500 space-y-4 sm:space-y-6">
+                
+                {/* Decorative Glowing Arcade Stars (Stationary) */}
+                <div className="flex items-center justify-center gap-3 sm:gap-4 text-amber-300 text-xl sm:text-3xl drop-shadow-[0_0_15px_rgba(252,211,77,0.8)]">
+                  <span>★</span>
+                  <span className="text-3xl sm:text-4xl text-yellow-200">★</span>
+                  <span>★</span>
+                </div>
+
+                {/* Massive RPG "LEVEL UP!" Title */}
+                <h1
+                  className="text-6xl sm:text-8xl md:text-9xl font-black font-bytebounce tracking-[0.12em] text-transparent bg-clip-text bg-gradient-to-b from-yellow-100 via-amber-300 to-amber-500 uppercase select-none drop-shadow-[0_0_35px_rgba(245,158,11,0.9)]"
+                  style={{
+                    textShadow: '0 0 25px rgba(251, 191, 36, 0.8), 0 0 50px rgba(245, 158, 11, 0.5)',
+                  }}
+                >
+                  LEVEL UP!
+                </h1>
+
+                {/* Giant Level Transition (LV. Old ➔ LV. New) */}
+                <div className="flex items-center justify-center gap-5 sm:gap-12 my-2 sm:my-4 font-bytebounce select-none">
+                  <div className="flex flex-col items-center">
+                    <span className="text-[10px] sm:text-xs font-bold tracking-widest text-muted-foreground uppercase">Previous</span>
+                    <span className="text-4xl sm:text-6xl md:text-7xl font-black text-white/40 drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
+                      LV.{leveledUpDetails.oldLevel}
+                    </span>
+                  </div>
+
+                  {/* Pulsing RPG Golden Arrow */}
+                  <div className="text-3xl sm:text-5xl md:text-6xl text-amber-400 animate-pulse font-black drop-shadow-[0_0_25px_rgba(251,191,36,1)]">
+                    ➔
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <span className="text-[10px] sm:text-xs font-bold tracking-widest text-amber-400 uppercase drop-shadow">New Rank</span>
+                    <span className="text-6xl sm:text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-yellow-200 to-amber-400 drop-shadow-[0_0_45px_rgba(250,204,21,1)] transform scale-110">
+                      LV.{leveledUpDetails.newLevel}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Floating Gamified Stat Increases (No Box/Card) */}
+                <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 pt-2 text-sm sm:text-base md:text-lg font-bold font-bytebounce tracking-wider select-none">
+                  <span className="flex items-center gap-1.5 text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]">
+                    <span>▲</span> +15 MAX HP BOOSTED
+                  </span>
+                  {earnedQuestXp !== null && earnedQuestXp > 0 && (
+                    <>
+                      <span className="text-white/30">•</span>
+                      <span className="flex items-center gap-1.5 text-amber-300 drop-shadow-[0_0_12px_rgba(252,211,77,0.8)]">
+                        <span>⚡</span> +{earnedQuestXp} XP GAINED
+                      </span>
+                    </>
+                  )}
+                  <span className="text-white/30">•</span>
+                  <span className="flex items-center gap-1.5 text-sky-400 drop-shadow-[0_0_12px_rgba(56,189,248,0.8)]">
+                    <span>⚔️</span> POWER LEVEL INCREASED
+                  </span>
+                </div>
+
+                {/* Retro Click Anywhere to Dismiss Prompt */}
+                <div className="pt-8 sm:pt-14 flex flex-col items-center">
+                  <span className="text-xs sm:text-sm text-white/50 tracking-[0.25em] uppercase font-bytebounce animate-pulse">
+                    Click anywhere to dismiss
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
 
           {/* AI Tutor Summary (Only show if not in Boss-Battle, or if reviewing the log) */}
           {(quizMode !== 'boss-battle' || showBattleLog) && (
@@ -4559,6 +4653,8 @@ export default function LearningQuest() {
                 setIsStarted(false);
                 setIsFinished(false);
                 setShowBattleLog(false);
+                setEarnedQuestXp(null);
+                setLeveledUpDetails(null);
                 fetchUser();
               }}
               className="flex-1 h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-primary hover:bg-primary/90 text-primary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
