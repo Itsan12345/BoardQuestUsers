@@ -150,8 +150,6 @@ const SUBJECT_METADATA: Record<string, {
     enemy: "Crystal Golem",
     imageUrl: "/images/ClinMicro256.png",
     backgroundUrl: "/images/ClinMicro256_bg.webp",
-    normalAttackSfxUrl: "/SoundEffects/CrystalGolemNormalAttack.mp3",
-    heavyAttackSfxUrl: "/SoundEffects/CrystalGolemHeavyAttack.mp3",
     difficulty: 2,
     biome: "Amber Sediment Cliffs",
     description: "Examine the smallest details that reveal the greatest truths.",
@@ -287,6 +285,8 @@ export default function LearningQuest() {
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>('Clinical Chemistry');
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Fetch dynamic categories directly from MongoDB Category collection
   useEffect(() => {
@@ -348,14 +348,33 @@ export default function LearningQuest() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullscreenRef = useRef<HTMLDivElement>(null);
 
-  // Sync fullscreen state with native browser events (e.g. hitting ESC)
+  const isCurrentlyFullscreen = () => {
+    if (typeof document === 'undefined') return false;
+    return !!(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement
+    );
+  };
+
+  // Sync fullscreen state with native browser events (e.g. hitting ESC, vendor events)
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      setIsFullscreen(isCurrentlyFullscreen());
     };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    const events = [
+      'fullscreenchange',
+      'webkitfullscreenchange',
+      'mozfullscreenchange',
+      'MSFullscreenChange'
+    ];
+
+    events.forEach(evt => document.addEventListener(evt, handleFullscreenChange));
+
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      events.forEach(evt => document.removeEventListener(evt, handleFullscreenChange));
       stopBossBattleMusic();
       stopFinalBossMusic();
       stopLearningModeMusic();
@@ -364,14 +383,38 @@ export default function LearningQuest() {
   }, []);
 
   const toggleFullscreen = async () => {
-    if (!document.fullscreenElement) {
-      await fullscreenRef.current?.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable fullscreen: ${err.message}`);
-      });
-    } else {
-      if (document.exitFullscreen) {
-        await document.exitFullscreen();
+    try {
+      const activeFs = isCurrentlyFullscreen();
+      if (!activeFs) {
+        const el = fullscreenRef.current || document.documentElement;
+        if (el.requestFullscreen) {
+          await el.requestFullscreen();
+        } else if ((el as any).webkitRequestFullscreen) {
+          await (el as any).webkitRequestFullscreen();
+        } else if ((el as any).mozRequestFullScreen) {
+          await (el as any).mozRequestFullScreen();
+        } else if ((el as any).msRequestFullscreen) {
+          await (el as any).msRequestFullscreen();
+        } else {
+          // Native fullscreen not supported by browser/device - fallback to CSS fullscreen
+          setIsFullscreen(true);
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          await (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen();
+        } else {
+          setIsFullscreen(false);
+        }
       }
+    } catch (err: any) {
+      console.warn("Native fullscreen toggle error, falling back to CSS fullscreen:", err);
+      setIsFullscreen(prev => !prev);
     }
   };
 
@@ -1222,6 +1265,36 @@ export default function LearningQuest() {
         miniBossIcon: '👻',
         bossName: 'Nitrite Spectre',
         bossIcon: '👻',
+        idleSpriteUrl: "/images/bosses/clinmicro_chapterOneMinionBoss_idleAnimation.png",
+        attackSpriteUrl: "/images/bosses/clinmicro_chapterOneMinionBoss_normalAttackAnimation.png",
+        heavyAttackSpriteUrl: "/images/bosses/clinmicro_chapterOneMinionBoss_heavyAttackAnimation.png",
+        miniBossIdleSpriteUrl: "/images/bosses/clinmicro_chapterOneMinionBoss_idleAnimation.png",
+        miniBossAttackSpriteUrl: "/images/bosses/clinmicro_chapterOneMinionBoss_normalAttackAnimation.png",
+        miniBossHeavyAttackSpriteUrl: "/images/bosses/clinmicro_chapterOneMinionBoss_heavyAttackAnimation.png",
+        idleFrames: 9,
+        attackFrames: 9,
+        heavyAttackFrames: 11,
+        miniBossIdleFrames: 9,
+        miniBossAttackFrames: 9,
+        miniBossHeavyAttackFrames: 11,
+        idleFrameWidth: 155,
+        idleFrameHeight: 161,
+        attackFrameWidth: 260,
+        attackFrameHeight: 231,
+        heavyFrameWidth: 370,
+        heavyFrameHeight: 279,
+        miniBossIdleFrameWidth: 155,
+        miniBossIdleFrameHeight: 161,
+        miniBossAttackFrameWidth: 260,
+        miniBossAttackFrameHeight: 231,
+        miniBossHeavyFrameWidth: 370,
+        miniBossHeavyFrameHeight: 279,
+        idleDuration: 1.4,
+        miniBossIdleDuration: 1.4,
+        normalAttackSfxUrl: "/SoundEffects/KetoacidosisColossusNormalAttack.mp3",
+        heavyAttackSfxUrl: "/SoundEffects/FungalSporeNormalAttack.mp3",
+        miniBossNormalAttackSfxUrl: "/SoundEffects/KetoacidosisColossusNormalAttack.mp3",
+        miniBossHeavyAttackSfxUrl: "/SoundEffects/FungalSporeNormalAttack.mp3",
       },
       {
         id: 'cm-3',
@@ -2301,24 +2374,153 @@ export default function LearningQuest() {
     }
   }, [introPhase, isStarted]);
 
-  // Scroll selected item into view naturally from the left
+  // Update left/right scroll indicator visibility
+  const updateScrollIndicators = useCallback(() => {
+    const carousel = carouselRef.current;
+    if (!carousel) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+    const { scrollLeft, scrollWidth, clientWidth } = carousel;
+    // Tolerance to account for subpixel rendering and padding
+    const hasOverflow = scrollWidth > clientWidth + 10;
+
+    if (!hasOverflow) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+
+    setCanScrollLeft(scrollLeft > 15);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 15);
+  }, []);
+
+  const scrollLeftIsland = useCallback(() => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+    const carouselRect = carousel.getBoundingClientRect();
+    const carouselCenter = carouselRect.left + carouselRect.width / 2;
+    const buttons = Array.from(carousel.querySelectorAll('button[data-subject]'));
+    let closestIdx = dynamicCategories.indexOf(selectedSubject);
+    let minDistance = Infinity;
+
+    buttons.forEach((btn, idx) => {
+      const rect = btn.getBoundingClientRect();
+      const btnCenter = rect.left + rect.width / 2;
+      const dist = Math.abs(carouselCenter - btnCenter);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestIdx = idx;
+      }
+    });
+
+    if (closestIdx > 0) {
+      setSelectedSubject(dynamicCategories[closestIdx - 1]);
+    } else {
+      carousel.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  }, [dynamicCategories, selectedSubject]);
+
+  const scrollRightIsland = useCallback(() => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+    const carouselRect = carousel.getBoundingClientRect();
+    const carouselCenter = carouselRect.left + carouselRect.width / 2;
+    const buttons = Array.from(carousel.querySelectorAll('button[data-subject]'));
+    let closestIdx = dynamicCategories.indexOf(selectedSubject);
+    let minDistance = Infinity;
+
+    buttons.forEach((btn, idx) => {
+      const rect = btn.getBoundingClientRect();
+      const btnCenter = rect.left + rect.width / 2;
+      const dist = Math.abs(carouselCenter - btnCenter);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestIdx = idx;
+      }
+    });
+
+    if (closestIdx >= 0 && closestIdx < dynamicCategories.length - 1) {
+      setSelectedSubject(dynamicCategories[closestIdx + 1]);
+    } else {
+      carousel.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  }, [dynamicCategories, selectedSubject]);
+
+  // Scroll selected item into view centered
   useEffect(() => {
     if (carouselRef.current) {
       const selectedIdx = dynamicCategories.indexOf(selectedSubject);
       const selectedButton = carouselRef.current.querySelector(`button:nth-child(${selectedIdx + 1})`) as HTMLElement;
       if (selectedButton) {
-        if (selectedIdx === 0) {
-          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-        } else {
-          selectedButton.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'nearest'
-          });
-        }
+        selectedButton.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
       }
+      const timer = setTimeout(updateScrollIndicators, 350);
+      return () => clearTimeout(timer);
     }
-  }, [selectedSubject, dynamicCategories]);
+  }, [selectedSubject, dynamicCategories, updateScrollIndicators]);
+
+  // Sync selectedSubject when user swipes or scrolls through the carousel & update scroll indicators
+  useEffect(() => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    let timeoutId: NodeJS.Timeout;
+
+    const handleScroll = () => {
+      updateScrollIndicators();
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (!carousel) return;
+        const carouselRect = carousel.getBoundingClientRect();
+        const carouselCenter = carouselRect.left + carouselRect.width / 2;
+        const buttons = carousel.querySelectorAll('button[data-subject]');
+        let closestSubject = selectedSubject;
+        let minDistance = Infinity;
+
+        buttons.forEach((btn) => {
+          const rect = btn.getBoundingClientRect();
+          const btnCenter = rect.left + rect.width / 2;
+          const dist = Math.abs(carouselCenter - btnCenter);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestSubject = btn.getAttribute('data-subject') || closestSubject;
+          }
+        });
+
+        if (closestSubject && closestSubject !== selectedSubject) {
+          setSelectedSubject(closestSubject);
+        }
+      }, 100);
+    };
+
+    updateScrollIndicators();
+    carousel.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', updateScrollIndicators);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        updateScrollIndicators();
+      });
+      resizeObserver.observe(carousel);
+    }
+
+    const timer = setTimeout(updateScrollIndicators, 300);
+
+    return () => {
+      carousel.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', updateScrollIndicators);
+      if (resizeObserver) resizeObserver.disconnect();
+      clearTimeout(timeoutId);
+      clearTimeout(timer);
+    };
+  }, [dynamicCategories, selectedSubject, updateScrollIndicators]);
 
   const startQuest = async (limit: number = 50, specificDifficulty?: string) => {
     stopBossBattleMusic();
@@ -2772,7 +2974,7 @@ export default function LearningQuest() {
       ))
     );
 
-    const isSpecterBoss = Boolean(
+    const isSpecterBoss = !currentEnemyName?.toLowerCase().includes('nitrite') && Boolean(
       currentEnemyName?.toLowerCase().includes('specter') ||
       currentActiveNode?.bossName?.toLowerCase().includes('specter') ||
       currentActiveNode?.id === 'cc-3' ||
@@ -2943,7 +3145,14 @@ export default function LearningQuest() {
       currentActiveNode?.idleSpriteUrl?.includes('hispatho_chapterOneBoss') ||
       ((selectedSubject.toLowerCase().includes('histo') || selectedSubject.toLowerCase().includes('law')) && (currentActiveNode?.id === 'hp-1' || currentActiveNode?.id === 'hp-3') && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? currentWaveStage === 3 : false))
     );
-    const shouldSuppressWrongSfx = isSpecterBoss || isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm || isHyperglycemicMutant || isHydraBoss || isKetoacidosisColossus || isLegalBeholder || isAntigenTitan || isAnemiaShade || isErythrocyteColossusBoss || isParaffinGolem || isFixationOverlord;
+
+    const isNitriteSpectreBoss = Boolean(
+      currentEnemyName?.toLowerCase().includes('nitrite') ||
+      currentActiveNode?.miniBossName?.toLowerCase().includes('nitrite') ||
+      currentActiveNode?.bossName?.toLowerCase().includes('nitrite') ||
+      currentActiveNode?.id === 'cm-2'
+    );
+    const shouldSuppressWrongSfx = isSpecterBoss || isSpecterNormalAttack || isBiohazardOverlord || isCrystalGolemBoss || isMicrobeSwarm || isSickleCellMinion || isSickleCellReaper || isStaphSentinel || isAcidSlime || isGramPositiveBoss || isGmsFungalSpore || isLymphocyteSwarm || isHyperglycemicMutant || isHydraBoss || isKetoacidosisColossus || isLegalBeholder || isAntigenTitan || isAnemiaShade || isErythrocyteColossusBoss || isParaffinGolem || isFixationOverlord || isNitriteSpectreBoss;
 
     if (isCorrect) {
       setScore(prev => prev + 1);
@@ -3359,10 +3568,16 @@ export default function LearningQuest() {
         const isParaffinGolemNormal = isParaffinGolem && attackType === 'normal_attack';
         const isFixationOverlordHeavy = isFixationOverlord && attackType === 'heavy_attack';
         const isFixationOverlordNormal = isFixationOverlord && attackType === 'normal_attack';
+        const isNitriteSpectreHeavy = isNitriteSpectreBoss && attackType === 'heavy_attack';
+        const isNitriteSpectreNormal = isNitriteSpectreBoss && attackType === 'normal_attack';
 
 
         const resetDelay = isSpikes
           ? 1050
+          : isNitriteSpectreHeavy
+            ? 2700
+            : isNitriteSpectreNormal
+              ? 2600
           : isFixationOverlordHeavy
             ? 1550
             : isFixationOverlordNormal
@@ -3449,6 +3664,10 @@ export default function LearningQuest() {
 
         const impactDelay = isSpikes
           ? 650
+          : isNitriteSpectreHeavy
+            ? 550
+            : isNitriteSpectreNormal
+              ? 600
           : isFixationOverlordHeavy
             ? 660
             : isFixationOverlordNormal
@@ -4776,7 +4995,19 @@ export default function LearningQuest() {
                     )}
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="rounded-full text-white hover:bg-white/20 h-8 w-8" title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFullscreen();
+                  }}
+                  className="rounded-full text-white hover:bg-white/20 h-8 w-8 cursor-pointer pointer-events-auto"
+                  title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                  aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                >
                   {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                 </Button>
               </div>
@@ -5021,7 +5252,14 @@ export default function LearningQuest() {
                 )
               );
 
-              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon || isCurrentErythrocyteColossus || isCurrentParaffinGolem || isCurrentFixationOverlord;
+              const isCurrentNitriteSpectre = Boolean(
+                activeEnemyName?.toLowerCase().includes('nitrite') ||
+                idleSprite?.includes('clinmicro_chapterOneMinionBoss') ||
+                currentActiveNode?.miniBossIdleSpriteUrl?.includes('clinmicro_chapterOneMinionBoss') ||
+                ((selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit')) && currentActiveNode?.id === 'cm-2' && (quizMode === 'boss-battle' ? battleStage === 2 : quizMode === 'learning' ? waveState?.waveStage === 2 : false))
+              );
+
+              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon || isCurrentErythrocyteColossus || isCurrentParaffinGolem || isCurrentFixationOverlord || isCurrentNitriteSpectre;
 
               return (
                 <div className={cn(
@@ -5031,30 +5269,30 @@ export default function LearningQuest() {
                   isAnimating === "enemy" && "animate-shake scale-110"
                 )}>
                   <div className={cn(
-                    "bg-black/40 backdrop-blur-md border border-white/10 p-2 md:p-3 rounded-lg shadow-2xl min-w-[120px] md:min-w-[160px]",
+                    "bg-black/60 backdrop-blur-md border border-white/15 p-1.5 sm:p-2 md:p-3 rounded-[4px] md:rounded-lg shadow-2xl w-[136px] sm:w-[155px] md:min-w-[160px] md:w-auto",
                     isSpecialCenteredBoss && "shrink-0 pointer-events-auto"
                   )}>
-                    <div className="flex justify-between items-center mb-1 gap-2">
-                      <span className="text-[8px] md:text-[10px] font-black text-white uppercase truncate">{activeEnemyName}</span>
-                      <div className="flex items-center gap-1">
-                        {bossShieldActive && <span className="text-[7px] md:text-[8px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="Immune to Normal Attacks">SHIELDED</span>}
+                    <div className="flex justify-between items-center mb-0.5 md:mb-1 gap-1 md:gap-2">
+                      <span className="text-[7.5px] sm:text-[8.5px] md:text-[10px] font-black text-white uppercase truncate max-w-[70px] sm:max-w-[85px] md:max-w-none">{activeEnemyName}</span>
+                      <div className="flex items-center gap-0.5 md:gap-1">
+                        {bossShieldActive && <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-blue-500 text-white px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0 animate-pulse" title="Immune to Normal Attacks">SHIELDED</span>}
                         {quizMode === 'boss-battle' && enemyHealth <= 20 && enemyHealth > 0 ? (
-                          <span className="text-[7px] md:text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="2.0x damage on player mistakes!">ENRAGED</span>
+                          <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-red-600 text-white px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0 animate-pulse" title="2.0x damage on player mistakes!">ENRAGED</span>
                         ) : quizMode === 'boss-battle' && enemyHealth <= 60 && enemyHealth > 0 ? (
-                          <span className="text-[7px] md:text-[8px] bg-orange-500 text-white px-1.5 py-0.5 rounded font-black shrink-0" title="Double damage on player mistakes!">AGGRESSIVE</span>
+                          <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-orange-500 text-white px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0" title="Double damage on player mistakes!">AGGRESSIVE</span>
                         ) : null}
                         {displayEnemyHp <= 0 && (
-                          <span className="text-[7px] md:text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse">DEFEATED ☠️</span>
+                          <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-red-600 text-white px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0 animate-pulse">DEFEATED ☠️</span>
                         )}
-                        <span className="text-[7px] md:text-[8px] bg-primary text-white px-1.5 py-0.5 rounded font-black shrink-0">{activeEnemyBadge}</span>
+                        <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-primary text-white px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0">{activeEnemyBadge}</span>
                       </div>
                     </div>
                     <div className="flex justify-between items-center mb-0.5 px-0.5 mt-0.5">
                       <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase">HP</span>
-                      <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(displayEnemyHp)} / {stageMaxHp}</span>
+                      <span className="text-[7.5px] sm:text-[8.5px] md:text-[9.5px] font-black text-white">{Math.ceil(displayEnemyHp)} / {stageMaxHp}</span>
                     </div>
-                    <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-full overflow-hidden border border-white/10">
-                      <div className="h-full bg-primary transition-all duration-500" style={{ width: `${Math.min(100, (displayEnemyHp / stageMaxHp) * 100)}%` }} />
+                    <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-[2px] md:rounded-full overflow-hidden border border-white/10">
+                      <div className="h-full bg-primary transition-all duration-500 rounded-[2px] md:rounded-full" style={{ width: `${Math.min(100, (displayEnemyHp / stageMaxHp) * 100)}%` }} />
                     </div>
                   </div>
                   <div className={cn(
@@ -5066,7 +5304,8 @@ export default function LearningQuest() {
                     isCurrentImmuneArchon && "-translate-y-[20px] md:-translate-y-[24px]",
                     isCurrentErythrocyteColossus && "translate-y-[8px] md:translate-y-[12px]",
                     isCurrentParaffinGolem && "-translate-y-[8px] md:-translate-y-[12px]",
-                    isCurrentFixationOverlord && "translate-y-[52px] md:translate-y-[60px]"
+                    isCurrentFixationOverlord && "translate-y-[52px] md:translate-y-[60px]",
+                    isCurrentNitriteSpectre && "-translate-y-[8px] md:-translate-y-[12px]"
                   )}>
                     <div className={cn(
                       "relative inline-flex items-center justify-center transition-all duration-500 transform-gpu",
@@ -5076,46 +5315,50 @@ export default function LearningQuest() {
                         <BossSpriteAnimator
                           bossName={activeEnemyName || currentActiveNode?.bossName}
                           normalAttackSfxUrl={
-                            (quizMode === 'test' && testModeEnemy?.normalAttackSfxUrl)
-                              ? testModeEnemy.normalAttackSfxUrl
-                              : (waveState?.normalAttackSfxUrl ||
-                                (activeEnemyName?.toLowerCase().includes('specter')
-                                  ? '/SoundEffects/HyperglemicSpecterNormalAttack.mp3'
-                                  : (activeEnemyName?.toLowerCase().includes('mutant') || ((currentActiveNode?.id === 'cc-1' || currentActiveNode?.id === 'cc-2') && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
-                                    ? '/SoundEffects/SickleCellNormalAttack.mp3'
-                                    : (activeEnemyName?.toLowerCase().includes('acid slime') || (activeEnemyName?.toLowerCase().includes('slime') && !activeEnemyName?.toLowerCase().includes('reagent')) || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge?.includes('MINION') || (quizMode === 'boss-battle' && battleStage === 1))))
-                                      ? '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3'
-                                      : (activeEnemyName?.toLowerCase().includes('reagent') || attackSprite?.includes('clinmicro_chapterOneMinion') || (currentActiveNode?.id === 'cm-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
-                                        ? '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3'
-                                        : (activeEnemyName?.toLowerCase().includes('gram positive') || ((currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-3') && (activeEnemyBadge === 'BOSS' || battleStage === 3)))
-                                          ? '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3'
-                                          : activeEnemyName?.toLowerCase().includes('staph')
-                                            ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
-                                            : (activeEnemyName?.toLowerCase().includes('reaper') || currentActiveNode?.id === 'hem-4' || attackSprite?.includes('hematology_finalboss'))
-                                              ? '/SoundEffects/SickleCellReaperNormalAttack.mp3'
-                                              : ((activeEnemyName?.toLowerCase().includes('sickle cell') && !activeEnemyName?.toLowerCase().includes('reaper')) || currentActiveNode?.id === 'hem-1')
-                                                ? '/SoundEffects/SickleCellNormalAttack.mp3'
-                                                : (activeEnemyName?.toLowerCase().includes('fungal spore') || activeEnemyName?.toLowerCase().includes('gms') || attackSprite?.includes('hispatho_chapterOneMinion') || (currentActiveNode?.id === 'hp-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
-                                                  ? '/SoundEffects/FungalSporeNormalAttack.mp3'
-                                                  : activeEnemyName?.toLowerCase().includes('microbe swarm')
-                                                    ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
-                                                    : (activeEnemyName?.toLowerCase().includes('lymphocyte') || attackSprite?.includes('immunohema_chapterOneMinion') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
+                            (activeEnemyName?.toLowerCase().includes('nitrite') || currentActiveNode?.id === 'cm-2')
+                              ? '/SoundEffects/KetoacidosisColossusNormalAttack.mp3'
+                              : (quizMode === 'test' && testModeEnemy?.normalAttackSfxUrl)
+                                ? testModeEnemy.normalAttackSfxUrl
+                                : (waveState?.normalAttackSfxUrl ||
+                                  (activeEnemyName?.toLowerCase().includes('specter') && !activeEnemyName?.toLowerCase().includes('nitrite')
+                                    ? '/SoundEffects/HyperglemicSpecterNormalAttack.mp3'
+                                    : (activeEnemyName?.toLowerCase().includes('mutant') || ((currentActiveNode?.id === 'cc-1' || currentActiveNode?.id === 'cc-2') && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
+                                      ? '/SoundEffects/SickleCellNormalAttack.mp3'
+                                      : (activeEnemyName?.toLowerCase().includes('acid slime') || (activeEnemyName?.toLowerCase().includes('slime') && !activeEnemyName?.toLowerCase().includes('reagent')) || (currentActiveNode?.id === 'cc-1' && (activeEnemyBadge?.includes('MINION') || (quizMode === 'boss-battle' && battleStage === 1))))
+                                        ? '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3'
+                                        : (activeEnemyName?.toLowerCase().includes('reagent') || attackSprite?.includes('clinmicro_chapterOneMinion') || (currentActiveNode?.id === 'cm-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
+                                          ? '/SoundEffects/ReagentStripSlimeNormal&HeavyAttack.mp3'
+                                          : (activeEnemyName?.toLowerCase().includes('gram positive') || ((currentActiveNode?.id === 'mb-1' || currentActiveNode?.id === 'mb-3') && (activeEnemyBadge === 'BOSS' || battleStage === 3)))
+                                            ? '/SoundEffects/GramPositiveNormal&HeavyAttack.mp3'
+                                            : activeEnemyName?.toLowerCase().includes('staph')
+                                              ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
+                                              : (activeEnemyName?.toLowerCase().includes('reaper') || currentActiveNode?.id === 'hem-4' || attackSprite?.includes('hematology_finalboss'))
+                                                ? '/SoundEffects/SickleCellReaperNormalAttack.mp3'
+                                                : ((activeEnemyName?.toLowerCase().includes('sickle cell') && !activeEnemyName?.toLowerCase().includes('reaper')) || currentActiveNode?.id === 'hem-1')
+                                                  ? '/SoundEffects/SickleCellNormalAttack.mp3'
+                                                  : (activeEnemyName?.toLowerCase().includes('fungal spore') || activeEnemyName?.toLowerCase().includes('gms') || attackSprite?.includes('hispatho_chapterOneMinion') || (currentActiveNode?.id === 'hp-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
+                                                    ? '/SoundEffects/FungalSporeNormalAttack.mp3'
+                                                    : activeEnemyName?.toLowerCase().includes('microbe swarm')
                                                       ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
-                                                      : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-4')
-                                                        ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
-                                                        : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-4')
-                                                          ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
-                                                          : (activeEnemyName?.toLowerCase().includes('antigen') || ((currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-2') && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
-                                                            ? '/SoundEffects/KetoacidosisColossusNormalAttack.mp3'
-                                                            : (activeEnemyName?.toLowerCase().includes('archon') || ((currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-3') && (activeEnemyBadge?.includes('BOSS') || (quizMode === 'boss-battle' && battleStage === 3))))
-                                                              ? '/SoundEffects/ImmuneArchonNormalAttack.mp3'
-                                                              : (currentActiveNode?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl)))
+                                                      : (activeEnemyName?.toLowerCase().includes('lymphocyte') || attackSprite?.includes('immunohema_chapterOneMinion') || (currentActiveNode?.id === 'is-1' && (activeEnemyBadge === 'MINION' || quizMode !== 'boss-battle')))
+                                                        ? '/SoundEffects/MicrobeSwarmNormalAttack.mp3'
+                                                        : (activeEnemyName?.toLowerCase().includes('biohazard') || currentActiveNode?.id === 'mb-4')
+                                                          ? '/SoundEffects/BiohazardOverlordNormalAttack.mp3'
+                                                          : (activeEnemyName?.toLowerCase().includes('crystal golem') || currentActiveNode?.id === 'cm-4')
+                                                            ? '/SoundEffects/CrystalGolemNormalAttack.mp3'
+                                                            : (activeEnemyName?.toLowerCase().includes('antigen') || ((currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-2') && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
+                                                              ? '/SoundEffects/KetoacidosisColossusNormalAttack.mp3'
+                                                              : (activeEnemyName?.toLowerCase().includes('archon') || ((currentActiveNode?.id === 'is-1' || currentActiveNode?.id === 'is-3') && (activeEnemyBadge?.includes('BOSS') || (quizMode === 'boss-battle' && battleStage === 3))))
+                                                                ? '/SoundEffects/ImmuneArchonNormalAttack.mp3'
+                                                                : (currentActiveNode?.normalAttackSfxUrl || subjectMeta?.normalAttackSfxUrl)))
                           }
                           heavyAttackSfxUrl={
-                            (quizMode === 'test' && testModeEnemy?.heavyAttackSfxUrl)
-                              ? testModeEnemy.heavyAttackSfxUrl
-                              : (waveState?.heavyAttackSfxUrl ||
-                                (activeEnemyName?.toLowerCase().includes('specter')
+                            (activeEnemyName?.toLowerCase().includes('nitrite') || currentActiveNode?.id === 'cm-2')
+                              ? '/SoundEffects/FungalSporeNormalAttack.mp3'
+                              : (quizMode === 'test' && testModeEnemy?.heavyAttackSfxUrl)
+                                ? testModeEnemy.heavyAttackSfxUrl
+                                : (waveState?.heavyAttackSfxUrl ||
+                                (activeEnemyName?.toLowerCase().includes('specter') && !activeEnemyName?.toLowerCase().includes('nitrite')
                                   ? '/SoundEffects/HyperglemicSpecterHeavyAttack.mp3'
                                   : (activeEnemyName?.toLowerCase().includes('mutant') || ((currentActiveNode?.id === 'cc-1' || currentActiveNode?.id === 'cc-2') && (activeEnemyBadge?.includes('MINI-BOSS') || (quizMode === 'boss-battle' && battleStage === 2))))
                                     ? '/SoundEffects/AcidSlimeNormal&HeavyAttack.mp3'
@@ -5211,14 +5454,14 @@ export default function LearningQuest() {
 
             {/* Player Character Sprite & Info Card */}
             <div className={cn(
-              "absolute bottom-0 left-0 transition-all duration-1000 ease-out z-30 flex items-end gap-2 md:gap-3",
+              "absolute bottom-0 left-0 transition-all duration-1000 ease-out z-30 flex flex-col md:flex-row items-start md:items-end gap-1 md:gap-3",
               (introPhase === 'cutscene' || introPhase === 'hidden' || waveCharOffscreen) ? '-translate-x-[150%]' : 'translate-x-0',
               isAnimating === "player" && "animate-shake scale-105",
               isFleeing && "-translate-x-full opacity-0 duration-700 pointer-events-none"
             )}>
               {/* Standalone Foreground Player Character Sprite - Completely flush to bottom-left */}
               <div className={cn(
-                "relative flex flex-col items-center justify-end shrink-0 -mb-4 md:-mb-6 -ml-2 md:-ml-4 transition-all transform-gpu z-20",
+                "relative flex flex-col items-center justify-end shrink-0 -mb-4 md:-mb-6 -ml-2 md:-ml-4 transition-all transform-gpu z-20 order-2 md:order-1",
                 playerAnimState === 'attack' && !judgementText && !battleOutcome && !isFinished && "animate-player-lunge"
               )}>
                 {/* Ground Shadow for Player Character */}
@@ -5622,28 +5865,28 @@ export default function LearningQuest() {
                 const maxPlayerHp = getPlayerMaxHp();
 
                 return (
-                  <div className="bg-black/50 backdrop-blur-md border border-white/15 p-2 md:p-3 rounded-lg shadow-2xl min-w-[120px] md:min-w-[170px] relative mb-3 ml-1">
+                  <div className="order-1 md:order-2 bg-black/60 backdrop-blur-md border border-white/15 p-1.5 sm:p-2 md:p-3 rounded-[4px] md:rounded-lg shadow-2xl w-[136px] sm:w-[155px] md:min-w-[170px] md:w-auto relative mb-0 md:mb-3 ml-2 md:ml-1 z-20">
                     {streak >= 2 && (
-                      <div className="absolute -top-3.5 -right-2 z-30 animate-bounce">
-                        <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 border border-yellow-300 text-white font-bytebounce text-xs md:text-sm px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.8)] flex items-center gap-1 whitespace-nowrap">
-                          <Flame className="w-3 h-3 text-yellow-200 fill-yellow-200 animate-pulse" />
+                      <div className="absolute -top-2.5 -right-1.5 md:-top-3.5 md:-right-2 z-30 animate-bounce">
+                        <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 border border-yellow-300 text-white font-bytebounce text-[8px] sm:text-[9px] md:text-sm px-1.5 md:px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.8)] flex items-center gap-0.5 md:gap-1 whitespace-nowrap">
+                          <Flame className="w-2.5 h-2.5 md:w-3 md:h-3 text-yellow-200 fill-yellow-200 animate-pulse" />
                           {streak}x COMBO
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between items-center mb-1 gap-2">
-                      <span className="text-[7px] md:text-[8px] font-black text-white uppercase">Aspirant {userLastName}</span>
-                      <div className="flex items-center gap-1">
-                        {playerPoisoned && <span className="text-[7px] md:text-[8px] bg-green-500 text-white px-1.5 py-0.5 rounded font-black shrink-0 animate-pulse" title="Taking damage every turn! Defend to cure.">POISONED</span>}
-                        <span className="text-[7px] md:text-[8px] bg-background text-primary px-1.5 py-0.5 rounded font-black shrink-0">LVL {userLevel}</span>
+                    <div className="flex justify-between items-center mb-0.5 md:mb-1 gap-1 md:gap-2">
+                      <span className="text-[7.5px] sm:text-[8.5px] md:text-[8px] font-black text-white uppercase truncate max-w-[75px] sm:max-w-[95px] md:max-w-none">Aspirant {userLastName}</span>
+                      <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
+                        {playerPoisoned && <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-green-500 text-white px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0 animate-pulse" title="Taking damage every turn! Defend to cure.">POISONED</span>}
+                        <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-background text-primary px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0">LVL {userLevel}</span>
                       </div>
                     </div>
                     <div className="flex justify-between items-center mb-0.5 px-0.5 mt-0.5">
                       <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase">HP</span>
-                      <span className="text-[7.5px] md:text-[9.5px] font-black text-white">{Math.ceil(Math.min(playerHealth, maxPlayerHp))} / {maxPlayerHp}</span>
+                      <span className="text-[7.5px] sm:text-[8.5px] md:text-[9.5px] font-black text-white">{Math.ceil(Math.min(playerHealth, maxPlayerHp))} / {maxPlayerHp}</span>
                     </div>
-                    <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-full overflow-hidden border border-white/10">
-                      <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min(100, (Math.min(playerHealth, maxPlayerHp) / maxPlayerHp) * 100)}%` }} />
+                    <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-[2px] md:rounded-full overflow-hidden border border-white/10">
+                      <div className="h-full bg-emerald-500 transition-all duration-500 rounded-[2px] md:rounded-full" style={{ width: `${Math.min(100, (Math.min(playerHealth, maxPlayerHp) / maxPlayerHp) * 100)}%` }} />
                     </div>
                   </div>
                 );
@@ -5687,8 +5930,8 @@ export default function LearningQuest() {
     <div
       ref={fullscreenRef}
       className={cn(
-        "min-h-full flex flex-col pb-20 md:pb-12 overflow-hidden relative bg-[#0a0705]",
-        isFullscreen ? "h-screen w-screen" : ""
+        "min-h-full flex flex-col pb-8 sm:pb-12 md:pb-16 overflow-y-auto overflow-x-hidden relative bg-[#0a0705] no-scrollbar",
+        isFullscreen ? "fixed inset-0 z-[100] h-screen w-screen overflow-y-auto overflow-x-hidden" : ""
       )}
     >
       {/* High-Performance Smooth Cross-Fading Backgrounds */}
@@ -5721,22 +5964,28 @@ export default function LearningQuest() {
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-[6px] transition-all duration-600 pointer-events-none z-[1]" />
 
-      <header id="tour-quest-header" className="px-6 md:px-8 pt-6 md:pt-8 pb-4 space-y-1 relative z-10">
-        <div className="absolute top-6 right-6 md:top-8 md:right-8 z-50">
+      <header id="tour-quest-header" className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-2 sm:pb-3 space-y-1 relative z-10 shrink-0">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-8 z-50 pointer-events-auto">
           <Button
+            type="button"
             variant="outline"
             size="icon"
-            className="bg-black/40 border-white/20 text-white hover:bg-black/60 backdrop-blur-md transition-all shadow-lg"
-            onClick={toggleFullscreen}
+            className="bg-black/50 border-white/30 text-white hover:bg-black/70 hover:border-white/50 backdrop-blur-md transition-all shadow-xl cursor-pointer pointer-events-auto h-9 w-9 sm:h-10 sm:w-10 rounded-xl"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleFullscreen();
+            }}
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+            aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
-            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+            {isFullscreen ? <Minimize className="w-4 h-4 sm:w-5 sm:h-5" /> : <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />}
           </Button>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-0 mb-6 pr-12">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 sm:gap-4 md:gap-0 mb-3 sm:mb-4 md:mb-6 pr-14 sm:pr-16">
           <div className="flex-1">
-            <h1 className="text-3xl md:text-5xl font-black font-headline leading-tight tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black font-headline leading-tight tracking-tight text-white">
               Select Your <br />
               <span className="text-primary" style={{
                 textShadow: '2px 2px 0 #ffffff, -2px -2px 0 #8B0000, 2px -2px 0 #8B0000, -2px 2px 0 #8B0000',
@@ -5749,112 +5998,141 @@ export default function LearningQuest() {
           </div>
         </div>
 
-        <p className="text-[11px] font-bold text-slate-200 uppercase tracking-[0.15em]">
+        <p className="text-[10px] sm:text-[11px] font-bold text-slate-200 uppercase tracking-[0.15em]">
           MASTER EACH LABORATORY SCIENCE
         </p>
       </header>
 
-      <div id="tour-quest-map" className={cn(
-        "flex-1 flex flex-col justify-center py-6 md:py-10 relative z-10 overflow-hidden",
-        isFullscreen && (!categoriesLoading && dynamicCategories.length === 0) ? "my-auto items-center" : ""
+      <div className={cn(
+        "flex-1 w-full min-w-0 max-w-full flex flex-col justify-center items-center py-1 sm:py-3 md:py-4 relative z-10 overflow-visible",
+        isFullscreen && (!categoriesLoading && dynamicCategories.length === 0) ? "my-auto" : ""
       )}>
-        {categoriesLoading ? (
-          <div className="flex flex-col items-center justify-center min-h-[400px] md:min-h-[500px] space-y-3">
-            <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="text-white font-bytebounce text-lg tracking-widest uppercase">
-              Loading Quest Regions...
-            </p>
-          </div>
-        ) : dynamicCategories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[400px] md:min-h-[500px] px-6 text-center max-w-xl mx-auto my-auto space-y-4">
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-black/80 border-2 border-amber-500/60 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.25)]">
-              <Compass className="w-8 h-8 md:w-10 md:h-10 text-amber-400" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl md:text-2xl font-bytebounce text-amber-400 tracking-widest uppercase font-bold" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
-                NO QUEST REGIONS DISCOVERED
-              </h3>
-              <p className="text-xs md:text-sm text-slate-300 font-sans max-w-sm md:max-w-md mx-auto leading-relaxed opacity-90 font-medium">
-                There are currently no active subject domains configured in the database. Please contact your Review Center Administrator or check your connection.
+        <div id="tour-quest-map" className="w-full min-w-0 max-w-full flex flex-col justify-center items-center overflow-visible">
+          {categoriesLoading ? (
+            <div className="flex flex-col items-center justify-center min-h-[240px] sm:min-h-[300px] md:min-h-[380px] space-y-3">
+              <Loader2 className="w-10 h-10 text-primary animate-spin" />
+              <p className="text-white font-bytebounce text-lg tracking-widest uppercase">
+                Loading Quest Regions...
               </p>
             </div>
-            <Button
-              onClick={handleRescan}
-              disabled={categoriesLoading}
-              className="mt-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold text-xs uppercase tracking-wider px-6 py-2.5 md:px-8 md:py-3 rounded-full shadow-lg border border-amber-400/40 flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
-            >
-              <RotateCw className={cn("w-4 h-4 text-white", categoriesLoading && "animate-spin")} />
-              Re-Scan Laboratory Realms
-            </Button>
-          </div>
-        ) : (
-          <div ref={carouselRef} className="flex overflow-x-auto gap-4 md:gap-8 px-8 md:px-12 no-scrollbar snap-x snap-mandatory items-center min-h-[400px] md:min-h-[500px]">
-            {dynamicCategories.map((subject) => {
-              const meta = getSubjectMeta(subject);
-              const isSelected = selectedSubject === subject;
-              const Icon = meta.icon;
-
-              return (
+          ) : dynamicCategories.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[240px] sm:min-h-[300px] md:min-h-[380px] px-6 text-center max-w-xl mx-auto my-auto space-y-4">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-black/80 border-2 border-amber-500/60 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.25)]">
+                <Compass className="w-8 h-8 md:w-10 md:h-10 text-amber-400" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl md:text-2xl font-bytebounce text-amber-400 tracking-widest uppercase font-bold" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
+                  NO QUEST REGIONS DISCOVERED
+                </h3>
+                <p className="text-xs md:text-sm text-slate-300 font-sans max-w-sm md:max-w-md mx-auto leading-relaxed opacity-90 font-medium">
+                  There are currently no active subject domains configured in the database. Please contact your Review Center Administrator or check your connection.
+                </p>
+              </div>
+              <Button
+                onClick={handleRescan}
+                disabled={categoriesLoading}
+                className="mt-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold text-xs uppercase tracking-wider px-6 py-2.5 md:px-8 md:py-3 rounded-full shadow-lg border border-amber-400/40 flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
+              >
+                <RotateCw className={cn("w-4 h-4 text-white", categoriesLoading && "animate-spin")} />
+                Re-Scan Laboratory Realms
+              </Button>
+            </div>
+          ) : (
+            <div className="relative w-full min-w-0 max-w-full flex items-center">
+              {canScrollLeft && (
                 <button
-                  key={subject}
-                  onClick={() => setSelectedSubject(subject)}
-                  className={cn(
-                    "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center",
-                    isSelected ? "scale-100 w-64 md:w-80" : "scale-75 w-48 md:w-56 opacity-35"
-                  )}
+                  type="button"
+                  onClick={scrollLeftIsland}
+                  aria-label="Previous laboratory realm"
+                  className="absolute left-1 sm:left-3 md:left-6 top-[38%] sm:top-[40%] -translate-y-1/2 z-30 p-2 sm:p-2.5 md:p-3 rounded-full bg-black/20 hover:bg-black/45 active:bg-black/70 text-white/90 hover:text-white backdrop-blur-sm border border-white/25 hover:border-white/50 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer pointer-events-auto animate-in fade-in"
                 >
-                  <div className="relative w-full flex flex-col items-center">
-                    <div className={cn(
-                      "relative w-full aspect-square transition-all duration-500",
-                      isSelected ? "animate-float" : ""
-                    )}>
-                      {meta.imageUrl ? (
-                        <div className="relative w-full h-full transform hover:scale-105 transition-transform">
-                          <Image src={meta.imageUrl} alt={subject} fill className="object-contain" priority={isSelected} />
-                        </div>
-                      ) : (
-                        <div className={cn("w-full h-full rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 flex flex-col items-center justify-center text-white shadow-2xl relative overflow-hidden group border-4 border-white/50", meta.color)}>
-                          <Icon className="w-10 h-10 md:w-12 md:h-12" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className={cn("mt-2 text-center space-y-3 md:space-y-2 transition-all", isSelected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}>
-                      <div className="space-y-1 w-full px-2">
-                        <p className="text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80" style={{ fontFamily: "'Poppins', sans-serif" }}>{meta.biome}</p>
-                        <h3 className="text-3xl sm:text-4xl md:text-[3rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
-                      </div>
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className={cn("w-3 h-3 md:w-4 md:h-4", i < meta.difficulty ? "text-primary fill-primary" : "text-white/30")} />
-                          ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-1 flex items-center gap-1 text-[8px] md:text-[10px]">
-                            <Target className="w-2.5 h-2.5 md:w-3 md:h-3" /> {meta.enemy}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
                 </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              )}
 
-      {!categoriesLoading && dynamicCategories.length > 0 && (
-        <div id="tour-quest-inventory" className="px-6 md:px-8 mt-6 md:mt-10 relative z-20">
-          <div className="flex justify-center w-full mt-4">
+              <div
+                ref={carouselRef}
+                className="w-full min-w-0 max-w-full flex overflow-x-auto gap-4 md:gap-8 px-10 sm:px-16 md:px-24 no-scrollbar snap-x snap-mandatory items-center touch-pan-x min-h-[240px] sm:min-h-[300px] md:min-h-[380px] select-none"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+              >
+                {dynamicCategories.map((subject) => {
+                  const meta = getSubjectMeta(subject);
+                  const isSelected = selectedSubject === subject;
+                  const Icon = meta.icon;
+
+                  return (
+                    <button
+                      key={subject}
+                      data-subject={subject}
+                      onClick={() => setSelectedSubject(subject)}
+                      className={cn(
+                        "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center cursor-pointer",
+                        isSelected ? "scale-100 w-48 sm:w-60 md:w-72 lg:w-80" : "scale-75 w-36 sm:w-44 md:w-52 lg:w-56 opacity-35"
+                      )}
+                    >
+                      <div className="relative w-full flex flex-col items-center">
+                        <div className={cn(
+                          "relative w-full aspect-square max-h-[160px] sm:max-h-[220px] md:max-h-[280px] transition-all duration-500",
+                          isSelected ? "animate-float" : ""
+                        )}>
+                          {meta.imageUrl ? (
+                            <div className="relative w-full h-full transform hover:scale-105 transition-transform pointer-events-none">
+                              <Image src={meta.imageUrl} alt={subject} fill className="object-contain pointer-events-none select-none" priority={isSelected} draggable={false} />
+                            </div>
+                          ) : (
+                            <div className={cn("w-full h-full rounded-[2rem] md:rounded-[3rem] p-6 md:p-8 flex flex-col items-center justify-center text-white shadow-2xl relative overflow-hidden group border-4 border-white/50", meta.color)}>
+                              <Icon className="w-10 h-10 md:w-12 md:h-12" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className={cn("mt-1 sm:mt-2 text-center space-y-1.5 sm:space-y-2 md:space-y-2 transition-all", isSelected ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}>
+                          <div className="space-y-0.5 sm:space-y-1 w-full px-2">
+                            <p className="text-[7px] sm:text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80" style={{ fontFamily: "'Poppins', sans-serif" }}>{meta.biome}</p>
+                            <h3 className="text-2xl sm:text-3xl md:text-[2.6rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
+                          </div>
+                          <div className="flex flex-col items-center gap-1.5 sm:gap-2 md:gap-3">
+                            <div className="flex items-center gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star key={i} className={cn("w-3 h-3 md:w-4 md:h-4", i < meta.difficulty ? "text-primary fill-primary" : "text-white/30")} />
+                              ))}
+                            </div>
+                            <div className="flex gap-2">
+                              <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-0.5 md:py-1 flex items-center gap-1 text-[7px] sm:text-[8px] md:text-[10px]">
+                                <Target className="w-2.5 h-2.5 md:w-3 md:h-3" /> {meta.enemy}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {canScrollRight && (
+                <button
+                  type="button"
+                  onClick={scrollRightIsland}
+                  aria-label="Next laboratory realm"
+                  className="absolute right-1 sm:right-3 md:right-6 top-[38%] sm:top-[40%] -translate-y-1/2 z-30 p-2 sm:p-2.5 md:p-3 rounded-full bg-black/20 hover:bg-black/45 active:bg-black/70 text-white/90 hover:text-white backdrop-blur-sm border border-white/25 hover:border-white/50 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer pointer-events-auto animate-in fade-in"
+                >
+                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {!categoriesLoading && dynamicCategories.length > 0 && (
+          <div id="tour-quest-inventory" className="px-4 sm:px-6 md:px-8 mt-5 sm:mt-6 md:mt-8 relative z-20 shrink-0 w-full flex justify-center">
             <button
               onClick={() => {
                 setSetupStep('mode');
                 setModeSelectDialogOpen(true);
               }}
               disabled={isLoading}
-              className="relative w-full max-w-md md:max-w-2xl h-24 md:h-36 group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
+              className="relative w-full max-w-[280px] sm:max-w-md md:max-w-xl h-20 sm:h-26 md:h-32 group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
             >
               <Image
                 src="/ui/btn-enterArena.png"
@@ -5871,8 +6149,8 @@ export default function LearningQuest() {
               </div>
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Mode Selection Dialog */}
       <Dialog open={modeSelectDialogOpen} onOpenChange={setModeSelectDialogOpen}>

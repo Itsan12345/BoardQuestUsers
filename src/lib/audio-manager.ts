@@ -2310,3 +2310,151 @@ export function stopErythrocyteColossusAttack(type?: 'normal' | 'heavy', fadeDur
     console.warn('Failed to stop/fade Erythrocyte Colossus attack sound:', err);
   }
 }
+
+// Preloaded Audio instances for Nitrite Spectre attacks (Clinical Microscopy Chapter 1 Mini-Boss)
+let nitriteSpectreNormalAudio: HTMLAudioElement | null = null;
+let nitriteSpectreHeavyAudio: HTMLAudioElement | null = null;
+let nitriteSpectreFadeInterval: NodeJS.Timeout | null = null;
+let nitriteSpectreHeavyTimeout: NodeJS.Timeout | null = null;
+
+export function preloadNitriteSpectreSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!nitriteSpectreNormalAudio) {
+      nitriteSpectreNormalAudio = new Audio('/SoundEffects/KetoacidosisColossusNormalAttack.mp3');
+      nitriteSpectreNormalAudio.preload = 'auto';
+      nitriteSpectreNormalAudio.playbackRate = 1.0;
+      nitriteSpectreNormalAudio.defaultPlaybackRate = 1.0;
+      nitriteSpectreNormalAudio.load();
+    }
+    if (!nitriteSpectreHeavyAudio) {
+      nitriteSpectreHeavyAudio = new Audio('/SoundEffects/FungalSporeNormalAttack.mp3');
+      nitriteSpectreHeavyAudio.preload = 'auto';
+      nitriteSpectreHeavyAudio.playbackRate = 0.46;
+      nitriteSpectreHeavyAudio.defaultPlaybackRate = 0.46;
+      nitriteSpectreHeavyAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playNitriteSpectreAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    if (nitriteSpectreFadeInterval) {
+      clearInterval(nitriteSpectreFadeInterval);
+      nitriteSpectreFadeInterval = null;
+    }
+    if (nitriteSpectreHeavyTimeout) {
+      clearTimeout(nitriteSpectreHeavyTimeout);
+      nitriteSpectreHeavyTimeout = null;
+    }
+
+    if (type === 'normal') {
+      const src = '/SoundEffects/KetoacidosisColossusNormalAttack.mp3';
+      try {
+        const audio = nitriteSpectreNormalAudio || new Audio(src);
+        try {
+          audio.currentTime = 0;
+        } catch (e) { }
+        audio.loop = false;
+        audio.volume = Math.max(0, Math.min(1, masterVolume));
+        audio.playbackRate = 1.0;
+        audio.defaultPlaybackRate = 1.0;
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            const freshAudio = new Audio(src);
+            freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+            freshAudio.play().catch(() => {});
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to play Nitrite Spectre normal attack sound:', err);
+      }
+    } else if (type === 'heavy') {
+      const src = '/SoundEffects/FungalSporeNormalAttack.mp3';
+      try {
+        const audio = nitriteSpectreHeavyAudio || new Audio(src);
+        try {
+          audio.currentTime = 0;
+        } catch (e) { }
+        // Single playback (no loop/duplicate) stretched smoothly to ~1.36s matching the 1.35s animation
+        audio.loop = false;
+        audio.playbackRate = 0.46;
+        audio.defaultPlaybackRate = 0.46;
+        audio.volume = Math.max(0, Math.min(1, masterVolume));
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            const freshAudio = new Audio(src);
+            freshAudio.loop = false;
+            freshAudio.playbackRate = 0.46;
+            freshAudio.defaultPlaybackRate = 0.46;
+            freshAudio.volume = Math.max(0, Math.min(1, masterVolume));
+            freshAudio.play().catch(() => {});
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to play Nitrite Spectre heavy attack sound:', err);
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to play Nitrite Spectre attack sound:', err);
+  }
+}
+
+export function stopNitriteSpectreAttack(type?: 'normal' | 'heavy', fadeDurationMs = 250) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (nitriteSpectreFadeInterval) {
+      clearInterval(nitriteSpectreFadeInterval);
+      nitriteSpectreFadeInterval = null;
+    }
+    if (nitriteSpectreHeavyTimeout) {
+      clearTimeout(nitriteSpectreHeavyTimeout);
+      nitriteSpectreHeavyTimeout = null;
+    }
+
+    const audios = type === 'normal'
+      ? [nitriteSpectreNormalAudio]
+      : type === 'heavy'
+      ? [nitriteSpectreHeavyAudio]
+      : [nitriteSpectreNormalAudio, nitriteSpectreHeavyAudio];
+
+    audios.forEach(audio => {
+      if (!audio || audio.paused) return;
+      if (fadeDurationMs <= 0) {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.loop = false;
+        return;
+      }
+      const initialVol = audio.volume;
+      const stepTime = 30;
+      const steps = Math.max(1, Math.floor(fadeDurationMs / stepTime));
+      let currentStep = 0;
+      nitriteSpectreFadeInterval = setInterval(() => {
+        currentStep++;
+        const nextVol = initialVol * (1 - currentStep / steps);
+        if (currentStep >= steps || nextVol <= 0.02) {
+          if (nitriteSpectreFadeInterval) {
+            clearInterval(nitriteSpectreFadeInterval);
+            nitriteSpectreFadeInterval = null;
+          }
+          audio.pause();
+          audio.currentTime = 0;
+          audio.loop = false;
+          audio.volume = initialVol;
+        } else {
+          audio.volume = nextVol;
+        }
+      }, stepTime);
+    });
+  } catch (err) {
+    console.warn('Failed to stop/fade Nitrite Spectre attack sound:', err);
+  }
+}
+
