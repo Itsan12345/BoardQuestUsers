@@ -376,6 +376,13 @@ export async function getUserProfile() {
       console.error('Error fetching review center candidate in getUserProfile:', rcErr);
     }
 
+    let userSettings = null;
+    try {
+      const client = await clientPromise;
+      const db = client.db();
+      userSettings = await db.collection('UserSettings').findOne({ userId: user.id });
+    } catch {}
+
     const result = {
       ...user,
       streak: streakResult.streak,
@@ -385,6 +392,10 @@ export async function getUserProfile() {
       userRank,
       rankingPercentage,
       reviewCenterEnrollment,
+      arenaNickname: userSettings?.arenaNickname || '',
+      avatarGender: userSettings?.avatarGender || 'male',
+      hasCompletedArenaOnboarding: !!userSettings?.hasCompletedArenaOnboarding,
+      dailyQuota: userSettings?.dailyQuota ?? null,
     };
 
     return JSON.parse(JSON.stringify(result));
@@ -830,6 +841,8 @@ export async function getUserSettingsAction() {
       streakAlerts: true,
       countdownAlerts: true,
       achievementAlerts: true,
+      arenaNickname: '',
+      avatarGender: 'male',
     };
   } catch (error) {
     console.error('Failed to get user settings from MongoDB:', error);
@@ -863,6 +876,44 @@ export async function saveUserSettingsAction(settingsData: any) {
   } catch (error) {
     console.error('Failed to save user settings to MongoDB:', error);
     return { success: false, error: 'Failed to save settings' };
+  }
+}
+
+export async function saveArenaOnboardingAction(data: {
+  nickname: string;
+  avatarGender: 'male' | 'female';
+  dailyQuota: number;
+}) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+    if (!userId) return { success: false, error: 'Not authenticated' };
+
+    const client = await clientPromise;
+    const db = client.db();
+
+    await db.collection('UserSettings').updateOne(
+      { userId },
+      {
+        $set: {
+          arenaNickname: data.nickname.trim(),
+          avatarGender: data.avatarGender,
+          dailyQuota: data.dailyQuota,
+          hasCompletedArenaOnboarding: true,
+          userId,
+          updatedAt: new Date()
+        }
+      },
+      { upsert: true }
+    );
+
+    revalidatePath('/quest');
+    revalidatePath('/profile');
+    revalidatePath('/');
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save arena onboarding:', error);
+    return { success: false, error: 'Failed to complete character setup' };
   }
 }
 

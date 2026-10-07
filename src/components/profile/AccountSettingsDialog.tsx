@@ -50,6 +50,7 @@ import {
   Trash2,
   GraduationCap,
   Pencil,
+  Swords,
 } from 'lucide-react';
 import { getActiveSessionsAction, terminateSessionAction, type ActiveSessionRecord } from '@/app/actions/session';
 import { useTheme } from 'next-themes';
@@ -83,6 +84,7 @@ interface AccountSettingsDialogProps {
     streak: number;
     location: string;
     classString: string;
+    arenaNickname?: string;
   };
   onProfileUpdated: (updatedUser: any) => void;
   initialTab?: string;
@@ -110,6 +112,8 @@ export function AccountSettingsDialog({
   const [calendarOpen, setCalendarOpen] = useState(autoOpenTargetExamCalendar);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [arenaNickname, setArenaNickname] = useState(userProfile.arenaNickname || '');
+  const [isEditingArenaNickname, setIsEditingArenaNickname] = useState(false);
 
   // Form states - Study Goals
   const [dailyQuota, setDailyQuota] = useState('50');
@@ -224,6 +228,8 @@ export function AccountSettingsDialog({
         }
 
         if (dbSettings) {
+          if (dbSettings.arenaNickname) setArenaNickname(dbSettings.arenaNickname);
+          else if (userProfile.arenaNickname) setArenaNickname(userProfile.arenaNickname);
           if (dbSettings.dailyQuota) setDailyQuota(String(dbSettings.dailyQuota));
           if (dbSettings.focusSubject) setFocusSubject(dbSettings.focusSubject);
           else setFocusSubject('none');
@@ -244,6 +250,10 @@ export function AccountSettingsDialog({
           else setTargetExamDate(null);
         } else {
           // Fallback to client localStorage
+          const cachedNickname = userProfile?.id && typeof window !== 'undefined' ? localStorage.getItem(`bq_arena_nickname_${userProfile.id}`) : null;
+          if (cachedNickname) setArenaNickname(cachedNickname);
+          else if (userProfile.arenaNickname) setArenaNickname(userProfile.arenaNickname);
+
           const savedQuota = localStorage.getItem('bq_pref_daily_quota');
           if (savedQuota) setDailyQuota(savedQuota);
 
@@ -368,15 +378,23 @@ export function AccountSettingsDialog({
         school,
         targetBatch,
         targetExamDate: dateIso,
+        arenaNickname: arenaNickname.trim(),
       });
 
+      if (userProfile?.id && arenaNickname.trim()) {
+        try {
+          localStorage.setItem(`bq_arena_nickname_${userProfile.id}`, arenaNickname.trim());
+        } catch (e) {}
+      }
+
       window.dispatchEvent(new CustomEvent('bq_settings_updated', {
-        detail: { school, targetBatch, targetExamDate: dateIso }
+        detail: { school, targetBatch, targetExamDate: dateIso, arenaNickname: arenaNickname.trim() }
       }));
+      window.dispatchEvent(new CustomEvent('bq_stats_updated'));
 
       toast({
         title: 'Profile Updated',
-        description: 'Your academic credentials and target exam schedule have been saved.',
+        description: 'Your academic credentials and arena nickname have been saved.',
       });
 
       if (res.user) {
@@ -847,11 +865,14 @@ export function AccountSettingsDialog({
                   </div>
                 )}
 
-                {/* Row 1: Full Name & Registered Email Address */}
+                {/* Row 1: Full Legal Name & Quest Arena Nickname */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 w-full max-w-full min-w-0">
                   <div className="space-y-1 w-full min-w-0">
                     <Label htmlFor="name" className="text-[11px] sm:text-xs font-semibold flex items-center justify-between">
-                      <span>Full Name</span>
+                      <span className="flex items-center gap-1 truncate">
+                        <User className="w-3.5 h-3.5 text-primary shrink-0" />
+                        Full Legal Name
+                      </span>
                       {isEditingName && (
                         <span className="text-[10px] text-primary font-bold animate-pulse">Editing Enabled</span>
                       )}
@@ -891,6 +912,54 @@ export function AccountSettingsDialog({
                   </div>
 
                   <div className="space-y-1 w-full min-w-0">
+                    <Label htmlFor="arenaNickname" className="text-[11px] sm:text-xs font-semibold flex items-center justify-between gap-1">
+                      <span className="flex items-center gap-1 truncate">
+                        <Swords className="w-3.5 h-3.5 text-primary shrink-0" />
+                        Quest Arena Nickname
+                      </span>
+                      {isEditingArenaNickname && (
+                        <span className="text-[10px] text-primary font-bold animate-pulse">Editing Enabled</span>
+                      )}
+                    </Label>
+                    <div className="relative flex items-center">
+                      <Input
+                        id="arenaNickname"
+                        value={arenaNickname}
+                        disabled={!isEditingArenaNickname}
+                        maxLength={16}
+                        onChange={e => setArenaNickname(e.target.value.slice(0, 16))}
+                        placeholder="e.g. Lupin"
+                        className={cn(
+                          "rounded-xl h-9 sm:h-10 text-xs sm:text-sm w-full min-w-0 pr-9 transition-all font-bold",
+                          !isEditingArenaNickname
+                            ? "bg-muted/50 text-foreground cursor-not-allowed border-border/60"
+                            : "bg-background text-foreground ring-2 ring-primary/40 border-primary"
+                        )}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextState = !isEditingArenaNickname;
+                          setIsEditingArenaNickname(nextState);
+                          if (nextState) {
+                            setTimeout(() => document.getElementById('arenaNickname')?.focus(), 50);
+                          }
+                        }}
+                        className={cn(
+                          "absolute right-2 text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg",
+                          isEditingArenaNickname && "text-primary bg-primary/10"
+                        )}
+                        title={isEditingArenaNickname ? "Click to lock nickname editing" : "Click edit icon to change arena nickname"}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2: Registered Email & Review Center */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
+                  <div className="space-y-1 w-full min-w-0">
                     <Label htmlFor="email" className="text-[11px] sm:text-xs font-semibold">
                       Registered Email Address
                     </Label>
@@ -898,13 +967,10 @@ export function AccountSettingsDialog({
                       id="email"
                       value={userProfile.email}
                       disabled
-                      className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted text-muted-foreground cursor-not-allowed w-full min-w-0 truncate"
+                      className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted text-muted-foreground cursor-not-allowed w-full min-w-0 truncate border-border/60"
                     />
                   </div>
-                </div>
 
-                {/* Row 2: Review Center & Target MTLE Board Schedule */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
                   <div className="space-y-1 w-full min-w-0">
                     <Label htmlFor="school" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1 truncate">
                       <School className="w-3.5 h-3.5 text-primary shrink-0" /> Review Center
@@ -921,6 +987,10 @@ export function AccountSettingsDialog({
                       className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted/50 text-muted-foreground cursor-not-allowed w-full min-w-0 truncate border-border/60"
                     />
                   </div>
+                </div>
+
+                {/* Row 3: Target MTLE Board Schedule & Regional Testing Hub */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
                   <div id="tour-profile-target-exam" className="space-y-1.5 w-full min-w-0">
                     <div className="flex items-center justify-between min-w-0 gap-1">
                       <Label className="text-xs font-semibold flex items-center gap-1 truncate">
@@ -971,10 +1041,9 @@ export function AccountSettingsDialog({
                       </PopoverContent>
                     </Popover>
                   </div>
-                </div>
 
-                {/* Row 3: Regional Testing Hub / City */}
-                <div className="space-y-1 w-full min-w-0">
+                  {/* Column 2: Regional Testing Hub / City */}
+                  <div className="space-y-1 w-full min-w-0">
                   <Label htmlFor="location" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-primary shrink-0" /> Regional Testing Hub / City
                   </Label>
@@ -985,6 +1054,7 @@ export function AccountSettingsDialog({
                     placeholder="Philippines"
                     className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted/50 text-muted-foreground cursor-not-allowed w-full min-w-0 border-border/60"
                   />
+                  </div>
                 </div>
                 </div>
 

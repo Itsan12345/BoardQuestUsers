@@ -29,9 +29,12 @@ import {
   RotateCw,
   X,
   Lock,
-  AlertTriangle
+  AlertTriangle,
+  Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -43,7 +46,8 @@ import { provideExamFeedback } from '@/ai/flows/provide-exam-feedback';
 import { getQuestQuestions } from '@/app/actions/arena';
 import { completeQuest, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
 import { getCategories } from '@/app/actions/study';
-import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction } from '@/app/actions/user';
+import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction, saveArenaOnboardingAction } from '@/app/actions/user';
+import { QuestArenaOnboardingModal } from '@/components/quest/QuestArenaOnboardingModal';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
 import { getLocalTodayDateString } from '@/lib/notifications';
 import { playSfx, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds } from '@/lib/audio-manager';
@@ -453,6 +457,11 @@ export default function LearningQuest() {
   const [earnedQuestXp, setEarnedQuestXp] = useState<number | null>(null);
   const [leveledUpDetails, setLeveledUpDetails] = useState<{ oldLevel: number; newLevel: number } | null>(null);
   const [showLevelUpPopup, setShowLevelUpPopup] = useState<boolean>(false);
+  const [showArenaOnboarding, setShowArenaOnboarding] = useState<boolean>(false);
+  const [initialProfileName, setInitialProfileName] = useState<string>('');
+  const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
+  const [renameInput, setRenameInput] = useState<string>('');
+  const [isRenaming, setIsRenaming] = useState<boolean>(false);
   const currentUserIdRef = useRef<string | null>(null);
   const [bossAnimState, setBossAnimState] = useState<BossAnimState>('idle');
   const [playerAnimState, setPlayerAnimState] = useState<'idle' | 'attack'>('idle');
@@ -2269,6 +2278,100 @@ export default function LearningQuest() {
     </Dialog>
   );
 
+  const renameDialogJSX = (
+    <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+      <DialogContent
+        container={isFullscreen ? (fullscreenRef.current || undefined) : undefined}
+        className="max-w-md w-full bg-card/95 border-2 border-primary/40 rounded-3xl p-6 shadow-2xl backdrop-blur-xl z-[120]"
+      >
+        <DialogHeader>
+          <DialogTitle className="text-xl sm:text-2xl font-black font-headline text-foreground tracking-tight flex items-center gap-2">
+            <Swords className="w-5 h-5 text-primary" />
+            Rename in Quest Arena
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            Update your call-sign for combat simulation and arena encounters.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const cleanNick = renameInput.trim();
+            if (cleanNick.length < 2) return;
+            setIsRenaming(true);
+            try {
+              setUserLastName(cleanNick);
+              if (currentUserIdRef.current) {
+                try {
+                  localStorage.setItem(`bq_arena_nickname_${currentUserIdRef.current}`, cleanNick);
+                } catch (err) {}
+              }
+              const quota = typeof window !== 'undefined' ? parseInt(localStorage.getItem('bq_pref_daily_quota') || '50', 10) : 50;
+              await saveArenaOnboardingAction({
+                nickname: cleanNick,
+                avatarGender: 'male',
+                dailyQuota: quota,
+              });
+              window.dispatchEvent(new CustomEvent('bq_settings_updated'));
+              window.dispatchEvent(new CustomEvent('bq_stats_updated'));
+              setShowRenameDialog(false);
+              toast({
+                title: "Aspirant Renamed!",
+                description: `Your Arena call-sign has been updated to "${cleanNick}".`,
+              });
+            } catch (err) {
+              console.error("Failed to rename:", err);
+              toast({
+                variant: "destructive",
+                title: "Rename Failed",
+                description: "Could not update your arena nickname.",
+              });
+            } finally {
+              setIsRenaming(false);
+            }
+          }}
+          className="space-y-4 pt-2"
+        >
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-muted-foreground">Arena Nickname</Label>
+            <Input
+              value={renameInput}
+              onChange={(e) => setRenameInput(e.target.value.slice(0, 16))}
+              placeholder="Enter new nickname"
+              maxLength={16}
+              autoFocus
+              className="h-11 rounded-xl bg-muted/30 border-2 font-bold text-foreground text-sm"
+            />
+            <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
+              <span>2–16 characters</span>
+              <span>{renameInput.trim().length}/16</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowRenameDialog(false)}
+              className="h-10 rounded-xl px-4 text-xs font-bold"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={renameInput.trim().length < 2 || isRenaming}
+              className="h-10 rounded-xl px-5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-md"
+            >
+              {isRenaming ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              Save Nickname
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+
   const handleUseClarity = () => {
     if (clarityUsedThisBattle || (inventory.pipette_clarity || 0) <= 0) return;
     setClarityUsedThisBattle(true);
@@ -2285,6 +2388,16 @@ export default function LearningQuest() {
     try {
       const profile = await getUserProfile();
       if (profile?.id) currentUserIdRef.current = profile.id;
+      if (profile?.name) setInitialProfileName(profile.name);
+      const cachedNickname = profile?.id && typeof window !== 'undefined' ? localStorage.getItem(`bq_arena_nickname_${profile.id}`) : null;
+      if (profile?.arenaNickname) {
+        setUserLastName(profile.arenaNickname);
+      } else if (cachedNickname) {
+        setUserLastName(cachedNickname);
+      } else if (profile?.name) {
+        const parts = profile.name.trim().split(/\s+/);
+        setUserLastName(parts[parts.length - 1]);
+      }
       if (profile?.level) setUserLevel(profile.level);
       if (profile?.xp !== undefined) {
         setUserXp(profile.xp);
@@ -2293,9 +2406,13 @@ export default function LearningQuest() {
           localStorage.setItem('boardquest_user_xp', profile.xp.toString());
         } catch (e) { }
       }
-      if (profile?.name) {
-        const parts = profile.name.trim().split(/\s+/);
-        setUserLastName(parts[parts.length - 1]);
+
+      // Trigger 3-Step Character Setup Onboarding for first-time visitors
+      if (profile?.id) {
+        const localCompleted = typeof window !== 'undefined' ? localStorage.getItem(`bq_arena_onboarding_completed_${profile.id}`) === 'true' : false;
+        if (!profile.hasCompletedArenaOnboarding && !localCompleted) {
+          setShowArenaOnboarding(true);
+        }
       }
       return profile;
     } catch (e) {
@@ -2319,10 +2436,12 @@ export default function LearningQuest() {
       }
     };
     window.addEventListener('bq_stats_updated', handleStatsUpdate);
+    window.addEventListener('bq_settings_updated', handleStatsUpdate);
     window.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', handleStatsUpdate);
     return () => {
       window.removeEventListener('bq_stats_updated', handleStatsUpdate);
+      window.removeEventListener('bq_settings_updated', handleStatsUpdate);
       window.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', handleStatsUpdate);
     };
@@ -2573,6 +2692,15 @@ export default function LearningQuest() {
       try {
         const freshProfile = await getUserProfile();
         if (freshProfile?.id) currentUserIdRef.current = freshProfile.id;
+        const cachedNickname = freshProfile?.id && typeof window !== 'undefined' ? localStorage.getItem(`bq_arena_nickname_${freshProfile.id}`) : null;
+        if (freshProfile?.arenaNickname) {
+          setUserLastName(freshProfile.arenaNickname);
+        } else if (cachedNickname) {
+          setUserLastName(cachedNickname);
+        } else if (freshProfile?.name) {
+          const parts = freshProfile.name.trim().split(/\s+/);
+          setUserLastName(parts[parts.length - 1]);
+        }
         if (freshProfile?.level) {
           currentLevelForBattle = freshProfile.level;
           setUserLevel(freshProfile.level);
@@ -2583,10 +2711,6 @@ export default function LearningQuest() {
           try {
             localStorage.setItem('boardquest_user_xp', freshProfile.xp.toString());
           } catch (e) { }
-        }
-        if (freshProfile?.name) {
-          const parts = freshProfile.name.trim().split(/\s+/);
-          setUserLastName(parts[parts.length - 1]);
         }
       } catch (e) {
         console.warn("Failed to load user profile on startQuest", e);
@@ -4668,6 +4792,7 @@ export default function LearningQuest() {
             </Link>
           </div>
         </div>
+        {renameDialogJSX}
       </div>
     );
   }
@@ -5971,7 +6096,22 @@ export default function LearningQuest() {
                       </div>
                     )}
                     <div className="flex justify-between items-center mb-0.5 md:mb-1 gap-1 md:gap-2">
-                      <span className="text-[7.5px] sm:text-[8.5px] md:text-[8px] font-black text-white uppercase truncate max-w-[75px] sm:max-w-[95px] md:max-w-none">Aspirant {userLastName}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setRenameInput(userLastName?.replace(/^aspirant\s+/i, '') || '');
+                          setShowRenameDialog(true);
+                        }}
+                        className="group flex items-center gap-1 max-w-[75px] sm:max-w-[95px] md:max-w-none text-left cursor-pointer transition-transform active:scale-95 pointer-events-auto"
+                        title="Click to rename in Quest Arena"
+                      >
+                        <span className="text-[7.5px] sm:text-[8.5px] md:text-[10px] font-black text-white uppercase truncate group-hover:text-amber-300 transition-colors">
+                          {userLastName?.replace(/^aspirant\s+/i, '') || 'Player'}
+                        </span>
+                        <Pencil className="w-2.5 h-2.5 text-amber-300/80 group-hover:text-amber-300 transition-colors shrink-0" />
+                      </button>
                       <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
                         {playerPoisoned && <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-green-500 text-white px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0 animate-pulse" title="Taking damage every turn! Defend to cure.">POISONED</span>}
                         <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-background text-primary px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0">LVL {userLevel}</span>
@@ -6017,6 +6157,7 @@ export default function LearningQuest() {
             />
           </div>
         </main>
+        {renameDialogJSX}
         {inventoryDialogJSX}
       </div>
     );
@@ -6622,6 +6763,39 @@ export default function LearningQuest() {
           />
         </DialogContent>
       </Dialog>
+      <QuestArenaOnboardingModal
+        isOpen={showArenaOnboarding}
+        initialName={initialProfileName || userLastName}
+        onComplete={async (data) => {
+          setUserLastName(data.nickname);
+          if (currentUserIdRef.current) {
+            try {
+              localStorage.setItem(`bq_arena_nickname_${currentUserIdRef.current}`, data.nickname);
+              localStorage.setItem(`bq_arena_onboarding_completed_${currentUserIdRef.current}`, 'true');
+              localStorage.setItem('bq_pref_daily_quota', data.dailyQuota.toString());
+            } catch (e) {}
+          }
+          const res = await saveArenaOnboardingAction(data);
+          if (res.success) {
+            setUserLastName(data.nickname);
+            window.dispatchEvent(new CustomEvent('bq_settings_updated'));
+            window.dispatchEvent(new CustomEvent('bq_stats_updated'));
+            setShowArenaOnboarding(false);
+            toast({
+              title: "Aspirant Character Ready!",
+              description: `Welcome to Quest Arena, ${data.nickname}! Your daily goal of ${data.dailyQuota} questions/day is set.`,
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Setup Failed",
+              description: res.error || "Failed to save character profile",
+            });
+          }
+        }}
+      />
+
+      {renameDialogJSX}
       {inventoryDialogJSX}
     </div>
   );
