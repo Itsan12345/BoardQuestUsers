@@ -12,7 +12,6 @@ import {
   ShieldAlert,
   ChevronLeft,
   ChevronRight,
-  Star,
   Target,
   Loader2,
   Sparkles,
@@ -30,12 +29,17 @@ import {
   X,
   Lock,
   AlertTriangle,
-  Pencil,
+  Check,
+  Settings,
+  Volume2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -46,7 +50,7 @@ import { provideExamFeedback } from '@/ai/flows/provide-exam-feedback';
 import { getQuestQuestions } from '@/app/actions/arena';
 import { completeQuest, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
 import { getCategories } from '@/app/actions/study';
-import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction, saveArenaOnboardingAction } from '@/app/actions/user';
+import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction, saveUserSettingsAction, saveArenaOnboardingAction } from '@/app/actions/user';
 import { QuestArenaOnboardingModal } from '@/components/quest/QuestArenaOnboardingModal';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
 import { getLocalTodayDateString } from '@/lib/notifications';
@@ -459,9 +463,16 @@ export default function LearningQuest() {
   const [showLevelUpPopup, setShowLevelUpPopup] = useState<boolean>(false);
   const [showArenaOnboarding, setShowArenaOnboarding] = useState<boolean>(false);
   const [initialProfileName, setInitialProfileName] = useState<string>('');
-  const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
+  const [showArenaSettingsDialog, setShowArenaSettingsDialog] = useState<boolean>(false);
+  const [arenaSettingsTab, setArenaSettingsTab] = useState<'character' | 'audio'>('character');
   const [renameInput, setRenameInput] = useState<string>('');
-  const [isRenaming, setIsRenaming] = useState<boolean>(false);
+  const [avatarGender, setAvatarGender] = useState<'male' | 'female'>('male');
+  const [renameGender, setRenameGender] = useState<'male' | 'female'>('male');
+  const [isSavingSettings, setIsSavingSettings] = useState<boolean>(false);
+  const [sfxVolume, setSfxVolume] = useState<number[]>([80]);
+  const [ambientMusic, setAmbientMusic] = useState<boolean>(true);
+  const [floatingDamageText, setFloatingDamageText] = useState<boolean>(true);
+  const [hitScreenFlash, setHitScreenFlash] = useState<boolean>(true);
   const currentUserIdRef = useRef<string | null>(null);
   const [bossAnimState, setBossAnimState] = useState<BossAnimState>('idle');
   const [playerAnimState, setPlayerAnimState] = useState<'idle' | 'attack'>('idle');
@@ -2278,93 +2289,243 @@ export default function LearningQuest() {
     </Dialog>
   );
 
-  const renameDialogJSX = (
-    <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+  const openArenaSettings = (tab: 'character' | 'audio' = 'character') => {
+    setRenameInput(userLastName?.replace(/^aspirant\s+/i, '') || '');
+    setRenameGender(avatarGender);
+    setArenaSettingsTab(tab);
+    setShowArenaSettingsDialog(true);
+  };
+
+  const handleSaveArenaSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanNick = renameInput.trim();
+    if (cleanNick.length < 2) return;
+    setIsSavingSettings(true);
+    try {
+      setUserLastName(cleanNick);
+      setAvatarGender(renameGender);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bq_pref_sfx_vol', String(sfxVolume[0]));
+        localStorage.setItem('bq_pref_ambient_music', String(ambientMusic));
+        localStorage.setItem('bq_pref_floating_damage', String(floatingDamageText));
+        localStorage.setItem('bq_pref_hit_flash', String(hitScreenFlash));
+        if (currentUserIdRef.current) {
+          localStorage.setItem(`bq_arena_nickname_${currentUserIdRef.current}`, cleanNick);
+          localStorage.setItem(`bq_arena_gender_${currentUserIdRef.current}`, renameGender);
+        }
+      }
+
+      const quota = typeof window !== 'undefined' ? parseInt(localStorage.getItem('bq_pref_daily_quota') || '50', 10) : 50;
+
+      await Promise.all([
+        saveArenaOnboardingAction({
+          nickname: cleanNick,
+          avatarGender: renameGender,
+          dailyQuota: quota,
+        }),
+        saveUserSettingsAction({
+          arenaNickname: cleanNick,
+          avatarGender: renameGender,
+          sfxVolume: sfxVolume[0],
+          ambientMusic,
+          floatingDamageText,
+          hitScreenFlash,
+        })
+      ]);
+
+      window.dispatchEvent(new CustomEvent('bq_settings_updated', {
+        detail: {
+          arenaNickname: cleanNick,
+          avatarGender: renameGender,
+          sfxVolume: sfxVolume[0],
+          ambientMusic,
+          floatingDamageText,
+          hitScreenFlash
+        }
+      }));
+      window.dispatchEvent(new CustomEvent('bq_stats_updated'));
+      setShowArenaSettingsDialog(false);
+
+      toast({
+        title: "Arena Settings Saved!",
+        description: `Your call-sign, avatar, and audio preferences have been updated.`,
+      });
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save arena settings.",
+      });
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const arenaSettingsDialogJSX = (
+    <Dialog open={showArenaSettingsDialog} onOpenChange={setShowArenaSettingsDialog}>
       <DialogContent
         container={isFullscreen ? (fullscreenRef.current || undefined) : undefined}
         className="max-w-md w-full bg-card/95 border-2 border-primary/40 rounded-3xl p-6 shadow-2xl backdrop-blur-xl z-[120]"
       >
-        <DialogHeader>
+        <DialogHeader className="pb-1">
           <DialogTitle className="text-xl sm:text-2xl font-black font-headline text-foreground tracking-tight flex items-center gap-2">
-            <Swords className="w-5 h-5 text-primary" />
-            Rename in Quest Arena
+            <Settings className="w-5 h-5 text-primary" />
+            Arena Settings
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Update your call-sign for combat simulation and arena encounters.
+            Customize your combat persona, avatar, and in-game audio.
           </DialogDescription>
         </DialogHeader>
 
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const cleanNick = renameInput.trim();
-            if (cleanNick.length < 2) return;
-            setIsRenaming(true);
-            try {
-              setUserLastName(cleanNick);
-              if (currentUserIdRef.current) {
-                try {
-                  localStorage.setItem(`bq_arena_nickname_${currentUserIdRef.current}`, cleanNick);
-                } catch (err) {}
-              }
-              const quota = typeof window !== 'undefined' ? parseInt(localStorage.getItem('bq_pref_daily_quota') || '50', 10) : 50;
-              await saveArenaOnboardingAction({
-                nickname: cleanNick,
-                avatarGender: 'male',
-                dailyQuota: quota,
-              });
-              window.dispatchEvent(new CustomEvent('bq_settings_updated'));
-              window.dispatchEvent(new CustomEvent('bq_stats_updated'));
-              setShowRenameDialog(false);
-              toast({
-                title: "Aspirant Renamed!",
-                description: `Your Arena call-sign has been updated to "${cleanNick}".`,
-              });
-            } catch (err) {
-              console.error("Failed to rename:", err);
-              toast({
-                variant: "destructive",
-                title: "Rename Failed",
-                description: "Could not update your arena nickname.",
-              });
-            } finally {
-              setIsRenaming(false);
-            }
-          }}
-          className="space-y-4 pt-2"
-        >
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground">Arena Nickname</Label>
-            <Input
-              value={renameInput}
-              onChange={(e) => setRenameInput(e.target.value.slice(0, 16))}
-              placeholder="Enter new nickname"
-              maxLength={16}
-              autoFocus
-              className="h-11 rounded-xl bg-muted/30 border-2 font-bold text-foreground text-sm"
-            />
-            <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-              <span>2–16 characters</span>
-              <span>{renameInput.trim().length}/16</span>
-            </div>
-          </div>
+        <form onSubmit={handleSaveArenaSettings} className="space-y-4 pt-2">
+          <Tabs value={arenaSettingsTab} onValueChange={(val) => setArenaSettingsTab(val as 'character' | 'audio')} className="w-full">
+            <TabsList className="grid grid-cols-2 bg-muted/60 p-1 rounded-2xl border border-border/60 h-11">
+              <TabsTrigger value="character" className="rounded-xl font-bold text-xs flex items-center gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Swords className="w-3.5 h-3.5" />
+                Character
+              </TabsTrigger>
+              <TabsTrigger value="audio" className="rounded-xl font-bold text-xs flex items-center gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Volume2 className="w-3.5 h-3.5" />
+                Audio & FX
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+            {/* TAB 1: CHARACTER */}
+            <TabsContent value="character" className="space-y-4 pt-3 focus-visible:outline-none">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Arena Nickname</Label>
+                <Input
+                  value={renameInput}
+                  onChange={(e) => setRenameInput(e.target.value.slice(0, 16))}
+                  placeholder="Enter new nickname"
+                  maxLength={16}
+                  className="h-11 rounded-xl bg-muted/30 border-2 font-bold text-foreground text-sm"
+                />
+                <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
+                  <span>2–16 characters</span>
+                  <span>{renameInput.trim().length}/16</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Avatar Gender</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRenameGender('male')}
+                    className={cn(
+                      "p-3 rounded-2xl border-2 flex items-center gap-3 transition-all cursor-pointer relative text-left",
+                      renameGender === 'male'
+                        ? "border-primary bg-primary/10 shadow-[0_0_16px_rgba(239,68,68,0.25)] ring-2 ring-primary/40"
+                        : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/30"
+                    )}
+                  >
+                    {renameGender === 'male' && (
+                      <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </div>
+                    )}
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+                      <span className="text-xl">♂️</span>
+                    </div>
+                    <div>
+                      <div className="font-headline font-bold text-sm text-foreground">Male</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRenameGender('female')}
+                    className={cn(
+                      "p-3 rounded-2xl border-2 flex items-center gap-3 transition-all cursor-pointer relative text-left",
+                      renameGender === 'female'
+                        ? "border-primary bg-primary/10 shadow-[0_0_16px_rgba(239,68,68,0.25)] ring-2 ring-primary/40"
+                        : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/30"
+                    )}
+                  >
+                    {renameGender === 'female' && (
+                      <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </div>
+                    )}
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+                      <span className="text-xl">♀️</span>
+                    </div>
+                    <div>
+                      <div className="font-headline font-bold text-sm text-foreground">Female</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* TAB 2: AUDIO & FX */}
+            <TabsContent value="audio" className="space-y-3 pt-3 focus-visible:outline-none">
+              {/* Sound Effects Volume */}
+              <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Volume2 className="w-4 h-4 text-primary" />
+                    Sound Effects (SFX) Volume
+                  </span>
+                  <span className="text-xs font-mono font-bold text-primary">{sfxVolume[0]}%</span>
+                </div>
+                <Slider
+                  value={sfxVolume}
+                  onValueChange={setSfxVolume}
+                  max={100}
+                  step={5}
+                  className="py-1 cursor-pointer"
+                />
+              </div>
+
+              {/* Ambient Music */}
+              <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/80 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-foreground block">Background Ambient Music</span>
+                  <span className="text-[10px] text-muted-foreground block leading-tight">Enable atmospheric music during dungeon quizzes</span>
+                </div>
+                <Switch checked={ambientMusic} onCheckedChange={setAmbientMusic} />
+              </div>
+
+              {/* Floating Combat Text */}
+              <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/80 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-foreground block">Floating Combat Text</span>
+                  <span className="text-[10px] text-muted-foreground block leading-tight">Render animated damage indicators when attacking</span>
+                </div>
+                <Switch checked={floatingDamageText} onCheckedChange={setFloatingDamageText} />
+              </div>
+
+              {/* Screen Flash on Damage */}
+              <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/80 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-foreground block">Screen Flash on Damage</span>
+                  <span className="text-[10px] text-muted-foreground block leading-tight">Red pulse screen flash when taking damage</span>
+                </div>
+                <Switch checked={hitScreenFlash} onCheckedChange={setHitScreenFlash} />
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowRenameDialog(false)}
+              onClick={() => setShowArenaSettingsDialog(false)}
               className="h-10 rounded-xl px-4 text-xs font-bold"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={renameInput.trim().length < 2 || isRenaming}
+              disabled={renameInput.trim().length < 2 || isSavingSettings}
               className="h-10 rounded-xl px-5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-md"
             >
-              {isRenaming ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
-              Save Nickname
+              {isSavingSettings ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              Save Settings
             </Button>
           </div>
         </form>
@@ -2398,6 +2559,12 @@ export default function LearningQuest() {
         const parts = profile.name.trim().split(/\s+/);
         setUserLastName(parts[parts.length - 1]);
       }
+      if (profile?.avatarGender) {
+        setAvatarGender(profile.avatarGender as 'male' | 'female');
+      } else if (profile?.id && typeof window !== 'undefined') {
+        const cachedGender = localStorage.getItem(`bq_arena_gender_${profile.id}`) as 'male' | 'female' | null;
+        if (cachedGender) setAvatarGender(cachedGender);
+      }
       if (profile?.level) setUserLevel(profile.level);
       if (profile?.xp !== undefined) {
         setUserXp(profile.xp);
@@ -2406,6 +2573,26 @@ export default function LearningQuest() {
           localStorage.setItem('boardquest_user_xp', profile.xp.toString());
         } catch (e) { }
       }
+
+      // Load user audio & combat settings
+      try {
+        const settings = await getUserSettingsAction();
+        if (settings) {
+          if (settings.sfxVolume !== undefined) setSfxVolume([settings.sfxVolume]);
+          if (settings.ambientMusic !== undefined) setAmbientMusic(settings.ambientMusic);
+          if (settings.floatingDamageText !== undefined) setFloatingDamageText(settings.floatingDamageText);
+          if (settings.hitScreenFlash !== undefined) setHitScreenFlash(settings.hitScreenFlash);
+        } else if (typeof window !== 'undefined') {
+          const savedSfx = localStorage.getItem('bq_pref_sfx_vol');
+          if (savedSfx) setSfxVolume([parseInt(savedSfx, 10)]);
+          const savedMusic = localStorage.getItem('bq_pref_ambient_music');
+          if (savedMusic !== null) setAmbientMusic(savedMusic === 'true');
+          const savedFloating = localStorage.getItem('bq_pref_floating_damage');
+          if (savedFloating !== null) setFloatingDamageText(savedFloating === 'true');
+          const savedFlash = localStorage.getItem('bq_pref_hit_flash');
+          if (savedFlash !== null) setHitScreenFlash(savedFlash === 'true');
+        }
+      } catch (err) {}
 
       // Trigger 3-Step Character Setup Onboarding for first-time visitors
       if (profile?.id) {
@@ -4705,24 +4892,127 @@ export default function LearningQuest() {
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="px-2 sm:px-4 md:px-6 pb-4 sm:pb-6 md:pb-8 pt-1">
-                          <div className="bg-muted/30 dark:bg-muted/20 rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-5 md:p-8 space-y-3 sm:space-y-4 md:space-y-6 border border-border">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 md:gap-6">
-                              <div className="p-3 sm:p-4 bg-card rounded-xl border border-border shadow-sm">
-                                <p className="text-[8px] sm:text-[9px] uppercase font-black text-muted-foreground mb-1">Aspirant Choice</p>
-                                <p className={cn("font-bold text-xs sm:text-sm", isCorrect ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
-                                  {q.type === 'TRUE_FALSE' && userAns?.selectedLetter
-                                    ? (userAns.selectedLetter === 'A' ? 'True (Option A)' : userAns.selectedLetter === 'B' ? 'False (Option B)' : userAns.selectedLetter)
-                                    : userAns?.selectedLetter ? `Option ${userAns.selectedLetter}` : 'None'}
-                                </p>
+                          <div className="bg-muted/30 dark:bg-muted/20 rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-5 md:p-8 space-y-4 sm:space-y-5 md:space-y-6 border border-border">
+                            {/* Question Clinical Image Reference if present */}
+                            {q.imageUrl && (
+                              <div className="relative w-full max-w-md h-40 sm:h-52 rounded-xl overflow-hidden border border-border/60 bg-black/10 mx-auto">
+                                <Image
+                                  src={q.imageUrl}
+                                  alt="Clinical Specimen Reference"
+                                  fill
+                                  className="object-contain p-2"
+                                  unoptimized={!q.imageUrl.includes('supabase.co')}
+                                />
                               </div>
-                              <div className="p-3 sm:p-4 bg-card rounded-xl border border-border shadow-sm">
-                                <p className="text-[8px] sm:text-[9px] uppercase font-black text-muted-foreground mb-1">Correct Rationale</p>
-                                <p className="font-bold text-xs sm:text-sm text-primary">
-                                  {q.type === 'TRUE_FALSE'
-                                    ? (q.correctAnswer === 'A' ? 'True (Option A)' : q.correctAnswer === 'B' ? 'False (Option B)' : q.correctAnswer)
-                                    : `Option ${q.correctAnswer}`}
+                            )}
+
+                            {/* Full Choice Breakdown */}
+                            <div className="space-y-2.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                                  Choices & Answer Breakdown
                                 </p>
+                                {isCorrect ? (
+                                  <span className="text-[9px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
+                                    <CheckCircle2 className="w-3 h-3" /> Answered Correctly
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 shrink-0">
+                                    <XCircle className="w-3 h-3" /> Incorrect Attempt
+                                  </span>
+                                )}
                               </div>
+
+                              {q.type === 'SHORT_ANSWER' ? (
+                                <div className="space-y-2">
+                                  <div className={cn(
+                                    "p-3 rounded-xl border flex items-center justify-between gap-3 text-xs sm:text-sm font-medium",
+                                    isCorrect
+                                      ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200"
+                                      : "bg-rose-500/10 border-rose-500/40 text-rose-950 dark:text-rose-200"
+                                  )}>
+                                    <span className="text-muted-foreground text-xs font-bold shrink-0">Your Answer:</span>
+                                    <span className="font-bold truncate">{userAns?.selectedLetter || 'No response'}</span>
+                                    <Badge variant={isCorrect ? "default" : "destructive"} className="text-[8px] uppercase">
+                                      {isCorrect ? "Correct" : "Incorrect"}
+                                    </Badge>
+                                  </div>
+                                  {!isCorrect && (
+                                    <div className="p-3 rounded-xl border bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200 flex items-center justify-between gap-3 text-xs sm:text-sm">
+                                      <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold shrink-0">Expected Answer:</span>
+                                      <span className="font-bold truncate">{q.correctAnswer}</span>
+                                      <Badge className="bg-emerald-600 text-white text-[8px] uppercase">Correct</Badge>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 gap-2">
+                                  {(Array.isArray(q.options) && q.options.length > 0 ? q.options : (q.type === 'TRUE_FALSE' ? ['True', 'False'] : [])).map((optionText, optIdx) => {
+                                    const letter = String.fromCharCode(65 + optIdx);
+                                    const trimmedUserAns = userAns?.selectedLetter?.trim();
+                                    const trimmedOptText = optionText?.trim();
+                                    const isSelectedByUser =
+                                      trimmedUserAns?.toUpperCase() === letter ||
+                                      (!!trimmedUserAns && !!trimmedOptText && trimmedUserAns.toLowerCase() === trimmedOptText.toLowerCase());
+                                    const trimmedCorrect = q.correctAnswer?.trim();
+                                    const isThisCorrect =
+                                      trimmedCorrect?.toUpperCase() === letter ||
+                                      (!!trimmedCorrect && !!trimmedOptText && trimmedCorrect.toLowerCase() === trimmedOptText.toLowerCase());
+                                    const choiceImg = q.choiceImages?.[optIdx];
+
+                                    let badgeBg = "bg-muted text-muted-foreground";
+                                    let cardBg = "bg-card/70 border-border/60 text-foreground";
+                                    let statusBadge = null;
+
+                                    if (isThisCorrect) {
+                                      cardBg = "bg-emerald-500/10 border-emerald-500/50 text-foreground dark:text-emerald-100 ring-1 ring-emerald-500/30";
+                                      badgeBg = "bg-emerald-500 text-white";
+                                      statusBadge = (
+                                        <span className="ml-auto inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          {isSelectedByUser ? "Your Correct Answer" : "Correct Answer"}
+                                        </span>
+                                      );
+                                    } else if (isSelectedByUser && !isThisCorrect) {
+                                      cardBg = "bg-rose-500/10 border-rose-500/50 text-foreground dark:text-rose-100 ring-1 ring-rose-500/30";
+                                      badgeBg = "bg-rose-500 text-white";
+                                      statusBadge = (
+                                        <span className="ml-auto inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 shrink-0">
+                                          <XCircle className="w-3 h-3" />
+                                          Your Choice
+                                        </span>
+                                      );
+                                    }
+
+                                    return (
+                                      <div
+                                        key={optIdx}
+                                        className={cn(
+                                          "p-2.5 sm:p-3 rounded-xl border flex items-center gap-3 transition-all text-xs sm:text-sm",
+                                          cardBg
+                                        )}
+                                      >
+                                        <div className={cn("w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 shadow-xs", badgeBg)}>
+                                          {letter}
+                                        </div>
+                                        {choiceImg && (
+                                          <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden border border-border/50 shrink-0 bg-black/10">
+                                            <Image src={choiceImg} alt={`Choice ${letter}`} fill className="object-contain p-1" unoptimized={!choiceImg.includes('supabase.co')} />
+                                          </div>
+                                        )}
+                                        <span className={cn(
+                                          "font-semibold flex-1 leading-snug break-words",
+                                          isThisCorrect && "font-bold text-emerald-950 dark:text-emerald-200",
+                                          isSelectedByUser && !isThisCorrect && "font-bold text-rose-950 dark:text-rose-200"
+                                        )}>
+                                          {optionText}
+                                        </span>
+                                        {statusBadge}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                             <div className="space-y-2 sm:space-y-3">
                               <h4 className="font-black font-headline text-primary flex items-center gap-1.5 sm:gap-2 uppercase text-[9px] sm:text-[10px] tracking-widest">
@@ -4792,7 +5082,7 @@ export default function LearningQuest() {
             </Link>
           </div>
         </div>
-        {renameDialogJSX}
+        {arenaSettingsDialogJSX}
       </div>
     );
   }
@@ -6096,22 +6386,9 @@ export default function LearningQuest() {
                       </div>
                     )}
                     <div className="flex justify-between items-center mb-0.5 md:mb-1 gap-1 md:gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setRenameInput(userLastName?.replace(/^aspirant\s+/i, '') || '');
-                          setShowRenameDialog(true);
-                        }}
-                        className="group flex items-center gap-1 max-w-[75px] sm:max-w-[95px] md:max-w-none text-left cursor-pointer transition-transform active:scale-95 pointer-events-auto"
-                        title="Click to rename in Quest Arena"
-                      >
-                        <span className="text-[7.5px] sm:text-[8.5px] md:text-[10px] font-black text-white uppercase truncate group-hover:text-amber-300 transition-colors">
-                          {userLastName?.replace(/^aspirant\s+/i, '') || 'Player'}
-                        </span>
-                        <Pencil className="w-2.5 h-2.5 text-amber-300/80 group-hover:text-amber-300 transition-colors shrink-0" />
-                      </button>
+                      <span className="text-[7.5px] sm:text-[8.5px] md:text-[10px] font-black text-white uppercase truncate max-w-[75px] sm:max-w-[95px] md:max-w-none">
+                        {userLastName?.replace(/^aspirant\s+/i, '') || 'Player'}
+                      </span>
                       <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
                         {playerPoisoned && <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-green-500 text-white px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0 animate-pulse" title="Taking damage every turn! Defend to cure.">POISONED</span>}
                         <span className="text-[6.5px] sm:text-[7px] md:text-[8px] bg-background text-primary px-1 md:px-1.5 py-0.5 rounded-[2px] md:rounded font-black shrink-0">LVL {userLevel}</span>
@@ -6157,7 +6434,7 @@ export default function LearningQuest() {
             />
           </div>
         </main>
-        {renameDialogJSX}
+        {arenaSettingsDialogJSX}
         {inventoryDialogJSX}
       </div>
     );
@@ -6202,7 +6479,22 @@ export default function LearningQuest() {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-[6px] transition-all duration-600 pointer-events-none z-[1]" />
 
       <header id="tour-quest-header" className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-2 sm:pb-3 space-y-1 relative z-10 shrink-0">
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-8 z-50 pointer-events-auto">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-8 z-50 pointer-events-auto flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="bg-black/50 border-white/30 text-white hover:bg-black/70 hover:border-white/50 backdrop-blur-md transition-all shadow-xl cursor-pointer pointer-events-auto h-9 w-9 sm:h-10 sm:w-10 rounded-xl"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openArenaSettings('character');
+            }}
+            title="Arena Settings"
+            aria-label="Arena Settings"
+          >
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -6329,11 +6621,6 @@ export default function LearningQuest() {
                             <h3 className="text-2xl sm:text-3xl md:text-[2.6rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
                           </div>
                           <div className="flex flex-col items-center gap-1.5 sm:gap-2 md:gap-3">
-                            <div className="flex items-center gap-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star key={i} className={cn("w-3 h-3 md:w-4 md:h-4", i < meta.difficulty ? "text-primary fill-primary" : "text-white/30")} />
-                              ))}
-                            </div>
                             <div className="flex gap-2">
                               <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-0.5 md:py-1 flex items-center gap-1 text-[7px] sm:text-[8px] md:text-[10px]">
                                 <Target className="w-2.5 h-2.5 md:w-3 md:h-3" /> {meta.enemy}
@@ -6795,7 +7082,7 @@ export default function LearningQuest() {
         }}
       />
 
-      {renameDialogJSX}
+      {arenaSettingsDialogJSX}
       {inventoryDialogJSX}
     </div>
   );

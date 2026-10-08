@@ -85,6 +85,7 @@ interface AccountSettingsDialogProps {
     location: string;
     classString: string;
     arenaNickname?: string;
+    avatarGender?: 'male' | 'female';
   };
   onProfileUpdated: (updatedUser: any) => void;
   initialTab?: string;
@@ -114,6 +115,7 @@ export function AccountSettingsDialog({
   const [isEditingName, setIsEditingName] = useState(false);
   const [arenaNickname, setArenaNickname] = useState(userProfile.arenaNickname || '');
   const [isEditingArenaNickname, setIsEditingArenaNickname] = useState(false);
+  const [avatarGender, setAvatarGender] = useState<'male' | 'female'>(userProfile.avatarGender || 'male');
 
   // Form states - Study Goals
   const [dailyQuota, setDailyQuota] = useState('50');
@@ -230,6 +232,8 @@ export function AccountSettingsDialog({
         if (dbSettings) {
           if (dbSettings.arenaNickname) setArenaNickname(dbSettings.arenaNickname);
           else if (userProfile.arenaNickname) setArenaNickname(userProfile.arenaNickname);
+          if (dbSettings.avatarGender) setAvatarGender(dbSettings.avatarGender);
+          else if (userProfile.avatarGender) setAvatarGender(userProfile.avatarGender);
           if (dbSettings.dailyQuota) setDailyQuota(String(dbSettings.dailyQuota));
           if (dbSettings.focusSubject) setFocusSubject(dbSettings.focusSubject);
           else setFocusSubject('none');
@@ -253,6 +257,10 @@ export function AccountSettingsDialog({
           const cachedNickname = userProfile?.id && typeof window !== 'undefined' ? localStorage.getItem(`bq_arena_nickname_${userProfile.id}`) : null;
           if (cachedNickname) setArenaNickname(cachedNickname);
           else if (userProfile.arenaNickname) setArenaNickname(userProfile.arenaNickname);
+
+          const cachedGender = userProfile?.id && typeof window !== 'undefined' ? localStorage.getItem(`bq_arena_gender_${userProfile.id}`) : null;
+          if (cachedGender) setAvatarGender(cachedGender as 'male' | 'female');
+          else if (userProfile.avatarGender) setAvatarGender(userProfile.avatarGender);
 
           const savedQuota = localStorage.getItem('bq_pref_daily_quota');
           if (savedQuota) setDailyQuota(savedQuota);
@@ -379,22 +387,24 @@ export function AccountSettingsDialog({
         targetBatch,
         targetExamDate: dateIso,
         arenaNickname: arenaNickname.trim(),
+        avatarGender,
       });
 
-      if (userProfile?.id && arenaNickname.trim()) {
+      if (userProfile?.id) {
         try {
-          localStorage.setItem(`bq_arena_nickname_${userProfile.id}`, arenaNickname.trim());
+          if (arenaNickname.trim()) localStorage.setItem(`bq_arena_nickname_${userProfile.id}`, arenaNickname.trim());
+          localStorage.setItem(`bq_arena_gender_${userProfile.id}`, avatarGender);
         } catch (e) {}
       }
 
       window.dispatchEvent(new CustomEvent('bq_settings_updated', {
-        detail: { school, targetBatch, targetExamDate: dateIso, arenaNickname: arenaNickname.trim() }
+        detail: { school, targetBatch, targetExamDate: dateIso, arenaNickname: arenaNickname.trim(), avatarGender }
       }));
       window.dispatchEvent(new CustomEvent('bq_stats_updated'));
 
       toast({
         title: 'Profile Updated',
-        description: 'Your academic credentials and arena nickname have been saved.',
+        description: 'Your academic credentials, arena nickname, and avatar have been saved.',
       });
 
       if (res.user) {
@@ -954,6 +964,47 @@ export function AccountSettingsDialog({
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                     </div>
+                  </div>
+                </div>
+
+                {/* Quest Arena Avatar Gender Selection */}
+                <div className="p-3 sm:p-3.5 bg-muted/20 border border-border/80 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[11px] sm:text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                      <Swords className="w-3.5 h-3.5 text-primary shrink-0" />
+                      Quest Arena Avatar Gender
+                    </Label>
+                    <span className="text-[10px] text-muted-foreground font-medium">Used in combat encounters</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setAvatarGender('male')}
+                      className={cn(
+                        "h-10 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer relative",
+                        avatarGender === 'male'
+                          ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/40 shadow-xs"
+                          : "border-border/60 bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <span className="text-base">♂️</span>
+                      <span>Male</span>
+                      {avatarGender === 'male' && <Check className="w-3 h-3 ml-1 stroke-[3]" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAvatarGender('female')}
+                      className={cn(
+                        "h-10 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer relative",
+                        avatarGender === 'female'
+                          ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/40 shadow-xs"
+                          : "border-border/60 bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <span className="text-base">♀️</span>
+                      <span>Female</span>
+                      {avatarGender === 'female' && <Check className="w-3 h-3 ml-1 stroke-[3]" />}
+                    </button>
                   </div>
                 </div>
 

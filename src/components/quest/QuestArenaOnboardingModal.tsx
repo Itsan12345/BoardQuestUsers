@@ -146,14 +146,11 @@ export function QuestArenaOnboardingModal({
                   </div>
                 )}
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-inner">
-                  <div className="text-3xl sm:text-4xl">👨‍⚕️</div>
+                  <div className="text-3xl sm:text-4xl">♂️</div>
                 </div>
                 <div className="text-center">
                   <div className="font-headline font-bold text-sm sm:text-base text-foreground">
-                    Male Aspirant
-                  </div>
-                  <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
-                    Cadet of Science
+                    Male
                   </div>
                 </div>
               </button>
@@ -175,14 +172,11 @@ export function QuestArenaOnboardingModal({
                   </div>
                 )}
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-rose-500/20 to-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-inner">
-                  <div className="text-3xl sm:text-4xl">👩‍⚕️</div>
+                  <div className="text-3xl sm:text-4xl">♀️</div>
                 </div>
                 <div className="text-center">
                   <div className="font-headline font-bold text-sm sm:text-base text-foreground">
-                    Female Aspirant
-                  </div>
-                  <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
-                    Cadet of Science
+                    Female
                   </div>
                 </div>
               </button>

@@ -183,6 +183,8 @@ interface UserProfile {
   equippedItem?: string | null;
   inventory?: string | Record<string, number>;
   location: string;
+  arenaNickname?: string;
+  avatarGender?: 'male' | 'female';
   createdAt: Date;
   classString: string;
   userRank: number;
