@@ -241,6 +241,27 @@ export default function StudyPage() {
   const handleSetDateRange = async (subject: string, range: { startDate: Date; endDate: Date }) => {
     if (!range.startDate || !range.endDate) return;
 
+    const today = startOfDay(new Date());
+    const deadline = program?.endDate ? startOfDay(new Date(program.endDate)) : null;
+
+    if (startOfDay(range.startDate) < today) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Study Period",
+        description: "Study period cannot start in the past."
+      });
+      return;
+    }
+
+    if (deadline && (startOfDay(range.endDate) > deadline || startOfDay(range.startDate) > deadline)) {
+      toast({
+        variant: "destructive",
+        title: "Deadline Exceeded",
+        description: `Study period cannot extend beyond the final deadline (${format(new Date(program!.endDate), "MMMM dd, yyyy")}).`
+      });
+      return;
+    }
+
     setIsSaving(subject);
     try {
       const result = await saveStudyPlan({
@@ -694,16 +715,30 @@ export default function StudyPage() {
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0 shadow-2xl border-2 border-border rounded-3xl bg-background" align="end">
                         <div className="space-y-3 p-4">
-                          <div className="space-y-1 border-b pb-3 text-center">
+                          <div className="space-y-1.5 border-b pb-3 text-center">
                             <h3 className="font-black text-sm uppercase text-foreground">Set Target Study Period</h3>
                             <p className="text-[10px] text-muted-foreground font-semibold">For {selectedCategory.title}</p>
+                            {program?.endDate && (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[9px] font-bold text-primary">
+                                <CalendarIcon className="w-3 h-3 shrink-0" />
+                                <span>Final Deadline: {format(new Date(program.endDate), "MMM dd, yyyy")}</span>
+                              </div>
+                            )}
                           </div>
                           <CustomCalendar
                             startDate={activeSubjectPlan?.startDate}
                             endDate={activeSubjectPlan?.endDate}
                             selected={selectedDate}
+                            minDate={startOfDay(new Date())}
+                            maxDate={program?.endDate ? startOfDay(new Date(program.endDate)) : undefined}
                             onSelectRange={(range) => handleSetDateRange(selectedCategory.title, range)}
-                            disabled={(date) => date < startOfDay(new Date())}
+                            disabled={(date) => {
+                              const isPast = startOfDay(date) < startOfDay(new Date());
+                              const isPastDeadline = program?.endDate
+                                ? startOfDay(date) > startOfDay(new Date(program.endDate))
+                                : false;
+                              return isPast || isPastDeadline;
+                            }}
                           />
                         </div>
                       </PopoverContent>
@@ -738,17 +773,31 @@ export default function StudyPage() {
                       </DialogTrigger>
                       <DialogContent className="w-[92vw] max-w-sm rounded-3xl p-4 sm:p-6 border-0 shadow-2xl gap-0">
                         <div className="space-y-3 sm:space-y-4">
-                          <div className="space-y-1 border-b pb-3 text-center px-4">
+                          <div className="space-y-1.5 border-b pb-3 text-center px-4">
                             <DialogTitle className="font-black text-sm sm:text-base uppercase text-foreground leading-tight">Set Target Study Period</DialogTitle>
                             <p className="text-xs text-muted-foreground font-semibold">For {selectedCategory.title}</p>
+                            {program?.endDate && (
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[9px] font-bold text-primary">
+                                <CalendarIcon className="w-3 h-3 shrink-0" />
+                                <span>Final Deadline: {format(new Date(program.endDate), "MMM dd, yyyy")}</span>
+                              </div>
+                            )}
                           </div>
                           <div className="flex justify-center">
                             <CustomCalendar
                               startDate={activeSubjectPlan?.startDate}
                               endDate={activeSubjectPlan?.endDate}
                               selected={selectedDate}
+                              minDate={startOfDay(new Date())}
+                              maxDate={program?.endDate ? startOfDay(new Date(program.endDate)) : undefined}
                               onSelectRange={(range) => handleSetDateRange(selectedCategory.title, range)}
-                              disabled={(date) => date < startOfDay(new Date())}
+                              disabled={(date) => {
+                                const isPast = startOfDay(date) < startOfDay(new Date());
+                                const isPastDeadline = program?.endDate
+                                  ? startOfDay(date) > startOfDay(new Date(program.endDate))
+                                  : false;
+                                return isPast || isPastDeadline;
+                              }}
                             />
                           </div>
                         </div>

@@ -17,6 +17,34 @@ export async function saveStudyPlan(targets: Record<string, StudyPlanTargetInput
       return { success: false, error: 'Aspirant session not found. Please log in.' };
     }
 
+    // Server-side validation against active ReviewCenterProgram deadline
+    const program = await getReviewCenterProgram();
+    if (program && program.endDate) {
+      const deadline = new Date(program.endDate);
+      deadline.setHours(23, 59, 59, 999);
+
+      for (const [subject, val] of Object.entries(targets)) {
+        let endDateVal = new Date();
+        let startDateVal: Date | null = null;
+        if (val instanceof Date) {
+          endDateVal = new Date(val);
+        } else if (typeof val === 'string') {
+          endDateVal = new Date(val);
+        } else if (val && typeof val === 'object') {
+          const rawEnd = (val as any).endDate || (val as any).targetDate;
+          if (rawEnd) endDateVal = new Date(rawEnd);
+          if ((val as any).startDate) startDateVal = new Date((val as any).startDate);
+        }
+
+        if (endDateVal.getTime() > deadline.getTime() || (startDateVal && startDateVal.getTime() > deadline.getTime())) {
+          return {
+            success: false,
+            error: `Target period for ${subject} cannot exceed the Institutional Final Deadline.`
+          };
+        }
+      }
+    }
+
     const client = await clientPromise;
     const db = client.db('boardquest');
 

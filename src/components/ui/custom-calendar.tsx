@@ -24,6 +24,8 @@ interface CustomCalendarProps {
   startDate?: Date | null;
   endDate?: Date | null;
   selected?: Date | null;
+  minDate?: Date | null;
+  maxDate?: Date | null;
   onSelectRange?: (range: DateRangeSelection) => void;
   onSelect?: (date: Date) => void;
   disabled?: (date: Date) => boolean;
@@ -33,6 +35,8 @@ export function CustomCalendar({
   startDate,
   endDate,
   selected,
+  minDate,
+  maxDate,
   onSelectRange,
   onSelect,
   disabled
@@ -70,6 +74,16 @@ export function CustomCalendar({
 
   const dayNames = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
+  const isDateDisabled = (targetDate: Date) => {
+    if (minDate && startOfDay(targetDate) < startOfDay(minDate)) return true;
+    if (maxDate && startOfDay(targetDate) > startOfDay(maxDate)) return true;
+    if (disabled?.(targetDate)) return true;
+    return false;
+  };
+
+  const canGoPrev = !minDate || startOfMonth(currentMonth) > startOfMonth(minDate);
+  const canGoNext = !maxDate || startOfMonth(currentMonth) < startOfMonth(maxDate);
+
   // Determine effective range for visual highlights
   let effectiveStart: Date | null = rangeStart;
   let effectiveEnd: Date | null = rangeEnd;
@@ -90,7 +104,7 @@ export function CustomCalendar({
   }
 
   const handleDateClick = (clickedDate: Date) => {
-    if (disabled?.(clickedDate)) return;
+    if (isDateDisabled(clickedDate)) return;
 
     const cleanClicked = startOfDay(clickedDate);
 
@@ -126,8 +140,15 @@ export function CustomCalendar({
       <div className="flex items-center justify-between px-1 sm:px-2">
         <button
           type="button"
-          onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          className="p-1.5 sm:p-2 hover:bg-secondary rounded-xl transition-colors text-foreground/70 hover:text-foreground cursor-pointer"
+          disabled={!canGoPrev}
+          onClick={() => canGoPrev && setCurrentMonth(subMonths(currentMonth, 1))}
+          className={cn(
+            "p-1.5 sm:p-2 rounded-xl transition-colors",
+            canGoPrev
+              ? "hover:bg-secondary text-foreground/70 hover:text-foreground cursor-pointer"
+              : "text-muted-foreground/30 cursor-not-allowed opacity-40"
+          )}
+          aria-label="Previous month"
         >
           <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
@@ -143,8 +164,15 @@ export function CustomCalendar({
 
         <button
           type="button"
-          onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-          className="p-1.5 sm:p-2 hover:bg-secondary rounded-xl transition-colors text-foreground/70 hover:text-foreground cursor-pointer"
+          disabled={!canGoNext}
+          onClick={() => canGoNext && setCurrentMonth(addMonths(currentMonth, 1))}
+          className={cn(
+            "p-1.5 sm:p-2 rounded-xl transition-colors",
+            canGoNext
+              ? "hover:bg-secondary text-foreground/70 hover:text-foreground cursor-pointer"
+              : "text-muted-foreground/30 cursor-not-allowed opacity-40"
+          )}
+          aria-label="Next month"
         >
           <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
@@ -163,7 +191,8 @@ export function CustomCalendar({
       <div className="grid grid-cols-7 gap-y-1 gap-x-0" onMouseLeave={() => setHoverDate(null)}>
         {days.map((dayItem, idx) => {
           const isCurrentMonth = isSameMonth(dayItem, currentMonth);
-          const isDisabled = disabled?.(dayItem) || false;
+          const isDisabled = isDateDisabled(dayItem);
+          const isDeadline = maxDate && isSameDay(dayItem, maxDate);
 
           const isStart = effectiveStart && isSameDay(dayItem, effectiveStart);
           const isEnd = effectiveEnd && isSameDay(dayItem, effectiveEnd);
@@ -188,15 +217,17 @@ export function CustomCalendar({
               <button
                 type="button"
                 onClick={() => handleDateClick(dayItem)}
-                onMouseEnter={() => rangeStart && !rangeEnd && setHoverDate(dayItem)}
+                onMouseEnter={() => rangeStart && !rangeEnd && !isDisabled && setHoverDate(dayItem)}
                 disabled={isDisabled}
+                title={isDeadline ? `Final Deadline (${format(maxDate, "MMM dd, yyyy")})` : undefined}
                 className={cn(
                   "relative z-10 h-8 w-8 sm:h-9 sm:w-9 mx-auto rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center justify-center",
                   !isCurrentMonth && "text-muted-foreground/30",
                   (isStart || isEnd) && "bg-primary text-primary-foreground font-black shadow-md scale-105 ring-2 ring-primary/40",
                   !isStart && !isEnd && isInRange && "text-primary dark:text-primary-foreground font-black",
                   !isStart && !isEnd && !isInRange && isCurrentMonth && !isDisabled && "hover:bg-primary/10 cursor-pointer text-foreground",
-                  isDisabled && "opacity-30 cursor-not-allowed"
+                  !isStart && !isEnd && isDeadline && !isDisabled && "ring-2 ring-primary/40 font-bold",
+                  isDisabled && "opacity-25 cursor-not-allowed"
                 )}
               >
                 {format(dayItem, 'd')}
