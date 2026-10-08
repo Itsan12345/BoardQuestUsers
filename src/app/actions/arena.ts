@@ -277,28 +277,81 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
     }
 
     return selected.map((q: any) => {
-      const options = q.choices || q.options || [];
-      const correctIndex = options.findIndex((opt: string) => 
+      let rawOptions: string[] = Array.isArray(q.choices)
+        ? [...q.choices]
+        : Array.isArray(q.options)
+          ? [...q.options]
+          : [];
+      if (rawOptions.length === 0 && q.type === 'TRUE_FALSE') {
+        rawOptions = ['True', 'False'];
+      }
+      const rawChoiceImages: (string | null)[] = Array.isArray(q.choiceImages)
+        ? [...q.choiceImages]
+        : [];
+
+      // Determine original correct choice index
+      let origCorrectIndex = -1;
+      const textMatchIdx = rawOptions.findIndex((opt: string) => 
         opt.trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase()
       );
-      
+
+      if (textMatchIdx !== -1) {
+        origCorrectIndex = textMatchIdx;
+      } else if (String(q.correctAnswer).trim().toLowerCase() === 'true' || String(q.correctAnswer).trim().toUpperCase() === 'T') {
+        origCorrectIndex = rawOptions.findIndex((opt: string) => opt.trim().toLowerCase() === 'true');
+      } else if (String(q.correctAnswer).trim().toLowerCase() === 'false' || String(q.correctAnswer).trim().toUpperCase() === 'F') {
+        origCorrectIndex = rawOptions.findIndex((opt: string) => opt.trim().toLowerCase() === 'false');
+      } else if (["A", "B", "C", "D", "E", "F"].includes(String(q.correctAnswer).trim().toUpperCase())) {
+        origCorrectIndex = String(q.correctAnswer).trim().toUpperCase().charCodeAt(0) - 65;
+      } else if (typeof q.correctAnswer === 'string') {
+        const match = q.correctAnswer.trim().match(/^option\s*([A-F])$/i);
+        if (match) {
+          origCorrectIndex = match[1].toUpperCase().charCodeAt(0) - 65;
+        }
+      } else if (typeof q.correctAnswer === 'number' && q.correctAnswer >= 0 && q.correctAnswer < rawOptions.length) {
+        origCorrectIndex = q.correctAnswer;
+      }
+
+      let finalOptions = [...rawOptions];
+      let finalChoiceImages = [...rawChoiceImages];
       let correctAnswerLetter = q.correctAnswer;
-      if (correctIndex !== -1) {
-        correctAnswerLetter = String.fromCharCode(65 + correctIndex);
+
+      const isShortAnswer = q.type === 'SHORT_ANSWER';
+
+      // Randomize choices for both MCQ and True/False questions with at least 2 choices
+      // (Short Answer questions remain unaffected so students can type their answer)
+      if (!isShortAnswer && rawOptions.length > 1 && origCorrectIndex >= 0 && origCorrectIndex < rawOptions.length) {
+        const bundled = rawOptions.map((opt, idx) => ({
+          text: opt,
+          image: rawChoiceImages[idx] || null,
+          isCorrect: idx === origCorrectIndex,
+        }));
+
+        // Fisher-Yates shuffle
+        for (let i = bundled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [bundled[i], bundled[j]] = [bundled[j], bundled[i]];
+        }
+
+        finalOptions = bundled.map(b => b.text);
+        finalChoiceImages = bundled.map(b => b.image);
+        const newCorrectIdx = bundled.findIndex(b => b.isCorrect);
+        if (newCorrectIdx !== -1) {
+          correctAnswerLetter = String.fromCharCode(65 + newCorrectIdx);
+        }
+      } else if (origCorrectIndex !== -1 && origCorrectIndex < rawOptions.length) {
+        correctAnswerLetter = String.fromCharCode(65 + origCorrectIndex);
       } else if (["A", "B", "C", "D"].includes(String(q.correctAnswer).trim().toUpperCase())) {
         correctAnswerLetter = String(q.correctAnswer).trim().toUpperCase();
-      } else if (typeof q.correctAnswer === 'string') {
-        const match = q.correctAnswer.trim().match(/^option\s*([A-D])$/i);
-        if (match) {
-          correctAnswerLetter = match[1].toUpperCase();
-        }
       }
+
+      const hasValidChoiceImages = finalChoiceImages.some(img => typeof img === 'string' && img.trim().length > 0 && img.trim() !== 'null' && img.trim() !== 'undefined');
 
       return {
         id: q.id,
         question: q.question,
-        options: options,
-        choiceImages: Array.isArray(q.choiceImages) ? q.choiceImages : [],
+        options: finalOptions,
+        choiceImages: hasValidChoiceImages ? finalChoiceImages : [],
         imageUrl: q.imageUrl || null,
         correctAnswer: correctAnswerLetter,
         explanation: undefined,
