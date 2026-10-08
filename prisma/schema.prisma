@@ -170,6 +170,17 @@ model LearningModule {
   updatedAt   DateTime @updatedAt
 }
 
+model Topic {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  subjectId   String
+  name        String
+  description String?  @default("")
+  createdAt   String?
+  updatedAt   String?
+
+  @@index([subjectId])
+}
+
 // [ Review Center Schema ]
 
 model ReviewCenterRepresentativeUser {

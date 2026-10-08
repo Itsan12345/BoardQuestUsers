@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from 'react';
 import { 
   FlaskConical, 
   Microscope, 
@@ -9,11 +10,13 @@ import {
   FileText, 
   Zap, 
   BookOpen, 
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { TopicMasteryModal } from './TopicMasteryModal';
 
 export interface SubjectMasteryItem {
   subject: string;
@@ -25,9 +28,11 @@ export interface SubjectMasteryItem {
   points?: number;
 }
 
-interface SubjectTechnicalBreakdownProps {
+export interface SubjectTechnicalBreakdownProps {
   items: SubjectMasteryItem[];
   onSelectSubject?: (subjectName: string) => void;
+  onNavigateToQuest?: (subjectName: string, topicName?: string) => void;
+  onNavigateToStudy?: (subjectName: string) => void;
 }
 
 const SUBJECT_ICONS: Record<string, any> = {
@@ -40,7 +45,24 @@ const SUBJECT_ICONS: Record<string, any> = {
   "Histopathology and Medtech Laws": FileText,
 };
 
-export function SubjectTechnicalBreakdown({ items, onSelectSubject }: SubjectTechnicalBreakdownProps) {
+export function SubjectTechnicalBreakdown({ 
+  items, 
+  onSelectSubject,
+  onNavigateToQuest,
+  onNavigateToStudy
+}: SubjectTechnicalBreakdownProps) {
+  const [modalSubject, setModalSubject] = useState<string | null>(null);
+  const [selectedMastery, setSelectedMastery] = useState<number>(0);
+  const [selectedCompletion, setSelectedCompletion] = useState<number>(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleCardClick = (item: SubjectMasteryItem) => {
+    setModalSubject(item.subject);
+    setSelectedMastery(item.mastery);
+    setSelectedCompletion(item.completion);
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="space-y-4">
       {/* Section Header */}
@@ -51,7 +73,7 @@ export function SubjectTechnicalBreakdown({ items, onSelectSubject }: SubjectTec
             Subject Technical Breakdown
           </h3>
           <p className="text-xs text-muted-foreground font-medium">
-            Discipline points, syllabus completion, and quest mastery parameters.
+            Discipline points, syllabus completion, and quest mastery parameters. Click any discipline to view granular Topic Mastery.
           </p>
         </div>
         <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary uppercase shrink-0">
@@ -69,7 +91,7 @@ export function SubjectTechnicalBreakdown({ items, onSelectSubject }: SubjectTec
           return (
             <Card
               key={item.subject}
-              onClick={() => onSelectSubject?.(item.subject)}
+              onClick={() => handleCardClick(item)}
               className="group relative overflow-hidden p-4 sm:p-5 border border-border shadow-md rounded-2xl bg-card hover:border-primary/50 transition-all duration-200 cursor-pointer space-y-4"
             >
               {/* Top Row: Icon, Subject Title & Status Badge */}
@@ -135,13 +157,27 @@ export function SubjectTechnicalBreakdown({ items, onSelectSubject }: SubjectTec
 
               {/* Card Footer Link */}
               <div className="pt-2 flex items-center justify-between text-[11px] font-semibold text-muted-foreground group-hover:text-primary transition-colors">
-                <span>View Discipline Modules</span>
+                <span className="flex items-center gap-1.5 font-bold text-primary">
+                  <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
+                  View Topic Mastery
+                </span>
                 <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
               </div>
             </Card>
           );
         })}
       </div>
+
+      {/* Dynamic Topic Mastery Modal */}
+      <TopicMasteryModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        subjectName={modalSubject}
+        overallMastery={selectedMastery}
+        overallCompletion={selectedCompletion}
+        onNavigateToQuest={onNavigateToQuest}
+        onNavigateToStudy={onNavigateToStudy || onSelectSubject}
+      />
     </div>
   );
 }

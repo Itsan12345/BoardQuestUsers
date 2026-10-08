@@ -259,8 +259,14 @@ function PerformanceContent() {
       <section id="subject-technical-breakdown">
         <SubjectTechnicalBreakdown
           items={fullMastery}
-          onSelectSubject={(subjectName) => {
+          onNavigateToStudy={(subjectName) => {
             router.push(`/study?subject=${encodeURIComponent(subjectName)}`);
+          }}
+          onNavigateToQuest={(subjectName, topicName) => {
+            const url = topicName
+              ? `/quest?subject=${encodeURIComponent(subjectName)}&topic=${encodeURIComponent(topicName)}`
+              : `/quest?subject=${encodeURIComponent(subjectName)}`;
+            router.push(url);
           }}
         />
       </section>

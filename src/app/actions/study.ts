@@ -562,3 +562,295 @@ export async function getUserStudyNote(moduleId: string): Promise<string> {
   }
 }
 
+export interface TopicMasteryDetail {
+  id: string;
+  name: string;
+  description?: string;
+  totalQuestions: number;
+  attemptedQuestions: number;
+  totalAttempts: number;
+  totalCorrect: number;
+  accuracy: number;
+  mastery: number;
+  status: 'Mastered' | 'Proficient' | 'Needs Review' | 'Unattempted';
+  lastPracticed?: string | null;
+}
+
+export interface SubjectTopicMasteryResponse {
+  subject: string;
+  totalTopics: number;
+  masteredCount: number;
+  proficientCount: number;
+  needsReviewCount: number;
+  unattemptedCount: number;
+  totalQuestions: number;
+  totalAnswered: number;
+  overallAccuracy: number;
+  topics: TopicMasteryDetail[];
+}
+
+export async function getSubjectTopicMasteryAction(
+  subjectName: string
+): Promise<SubjectTopicMasteryResponse> {
+  try {
+    let userId: string | undefined;
+    try {
+      const cookieStore = await cookies();
+      userId = cookieStore.get('user_id')?.value;
+    } catch (_) {}
+
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+
+    const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const cleanSub = subjectName.trim();
+
+    // 1. Resolve matching Subject records in database
+    const subjectRegexes: RegExp[] = [
+      new RegExp('^' + escapeRegex(cleanSub) + '$', 'i')
+    ];
+
+    if (cleanSub.toLowerCase().includes('histopath')) {
+      subjectRegexes.push(/^Histopathology and Medtech Laws$/i);
+      subjectRegexes.push(/^Histopathology & MT Laws$/i);
+    } else if (cleanSub.toLowerCase().includes('microscopy') || cleanSub.toLowerCase().includes('parasit')) {
+      subjectRegexes.push(/^Clinical Microscopy & Parasitology$/i);
+    } else if (cleanSub.toLowerCase().includes('immuno')) {
+      subjectRegexes.push(/^Immunology & Serology and Immunohematology$/i);
+    }
+
+    const matchingSubjects = await db.collection('Subject').find({
+      $or: subjectRegexes.map(r => ({ name: r }))
+    }).toArray();
+
+    const idStrings: string[] = [];
+    const idObjects: any[] = [];
+    matchingSubjects.forEach(s => {
+      idStrings.push(s._id.toString());
+      idObjects.push(s._id);
+    });
+
+    // 2. Fetch canonical topics from Topic collection (if populated)
+    const canonicalTopics = (idStrings.length > 0)
+      ? await db.collection('Topic').find({
+          $or: [
+            { subjectId: { $in: idStrings } },
+            { subjectId: { $in: idObjects } }
+          ]
+        }).toArray()
+      : [];
+
+    // 3. Fetch questions assigned to this subject
+    const questionFilter: any = idStrings.length > 0
+      ? {
+          $or: [
+            { categoryId: { $in: idStrings } },
+            { categoryId: { $in: idObjects } },
+            { subjectId: { $in: idStrings } },
+            { subjectId: { $in: idObjects } }
+          ]
+        }
+      : { topic: new RegExp(escapeRegex(cleanSub), 'i') };
+
+    const questionDocs = await db.collection('Question').find(questionFilter).project({
+      _id: 1,
+      topic: 1,
+      difficulty: 1,
+      status: 1
+    }).toArray();
+
+    // 4. Fetch User Question Attempts for this user across these questions
+    const attemptMap = new Map<string, { attempts: number; correct: number; lastAttempt?: string }>();
+    if (userId && questionDocs.length > 0) {
+      try {
+        const { ObjectId } = await import('mongodb');
+        const userConditions: any[] = [userId];
+        if (ObjectId.isValid(userId)) {
+          userConditions.push(new ObjectId(userId));
+        }
+
+        const qIdStrings = questionDocs.map(q => q._id.toString());
+        const qObjIds = questionDocs.map(q => q._id);
+
+        const attempts = await db.collection('UserQuestionAttempt').find({
+          userId: { $in: userConditions },
+          questionId: { $in: [...qIdStrings, ...qObjIds] }
+        }).toArray();
+
+        attempts.forEach(a => {
+          const qId = a.questionId?.toString();
+          if (qId) {
+            attemptMap.set(qId, {
+              attempts: typeof a.attempts === 'number' ? a.attempts : 1,
+              correct: typeof a.correct === 'number' ? a.correct : 0,
+              lastAttempt: a.lastAttempt ? new Date(a.lastAttempt).toISOString() : undefined
+            });
+          }
+        });
+      } catch (attErr) {
+        console.warn('Failed to fetch user question attempts for topic mastery:', attErr);
+      }
+    }
+
+    // 5. Aggregate into Topic buckets
+    const topicMap = new Map<string, {
+      id: string;
+      name: string;
+      description?: string;
+      totalQuestions: number;
+      attemptedQuestions: number;
+      totalAttempts: number;
+      totalCorrect: number;
+      lastPracticed?: string | null;
+    }>();
+
+    // Seed canonical topics
+    canonicalTopics.forEach(t => {
+      const norm = (t.name || '').trim().toLowerCase();
+      if (!norm) return;
+      topicMap.set(norm, {
+        id: t._id.toString(),
+        name: (t.name || '').trim(),
+        description: t.description || undefined,
+        totalQuestions: 0,
+        attemptedQuestions: 0,
+        totalAttempts: 0,
+        totalCorrect: 0,
+        lastPracticed: null
+      });
+    });
+
+    // Populate question counts and user performance
+    questionDocs.forEach(q => {
+      const rawTopic = (q.topic || 'General Concepts').trim();
+      const norm = rawTopic.toLowerCase();
+      let entry = topicMap.get(norm);
+      if (!entry) {
+        entry = {
+          id: q._id.toString(),
+          name: rawTopic,
+          totalQuestions: 0,
+          attemptedQuestions: 0,
+          totalAttempts: 0,
+          totalCorrect: 0,
+          lastPracticed: null
+        };
+        topicMap.set(norm, entry);
+      }
+      entry.totalQuestions++;
+
+      const att = attemptMap.get(q._id.toString());
+      if (att && att.attempts > 0) {
+        entry.attemptedQuestions++;
+        entry.totalAttempts += att.attempts;
+        entry.totalCorrect += att.correct;
+        if (att.lastAttempt) {
+          if (!entry.lastPracticed || new Date(att.lastAttempt) > new Date(entry.lastPracticed)) {
+            entry.lastPracticed = att.lastAttempt;
+          }
+        }
+      }
+    });
+
+    // 6. Compute metrics and status for each topic
+    let grandTotalQuestions = 0;
+    let grandTotalAnswered = 0;
+    let grandTotalAttempts = 0;
+    let grandTotalCorrect = 0;
+
+    let masteredCount = 0;
+    let proficientCount = 0;
+    let needsReviewCount = 0;
+    let unattemptedCount = 0;
+
+    const topics: TopicMasteryDetail[] = Array.from(topicMap.values()).map(t => {
+      grandTotalQuestions += t.totalQuestions;
+      grandTotalAnswered += t.attemptedQuestions;
+      grandTotalAttempts += t.totalAttempts;
+      grandTotalCorrect += t.totalCorrect;
+
+      const accuracy = t.totalAttempts > 0 ? Math.round((t.totalCorrect / t.totalAttempts) * 100) : 0;
+      const coverageRatio = t.totalQuestions > 0 ? Math.min(1.0, t.attemptedQuestions / Math.min(5, Math.max(1, t.totalQuestions))) : 0;
+      const mastery = t.totalAttempts > 0 ? Math.round(accuracy * (0.6 + 0.4 * coverageRatio)) : 0;
+
+      let status: 'Mastered' | 'Proficient' | 'Needs Review' | 'Unattempted' = 'Unattempted';
+      if (t.totalAttempts === 0) {
+        status = 'Unattempted';
+        unattemptedCount++;
+      } else if (accuracy >= 85 && t.attemptedQuestions >= Math.min(3, Math.max(1, t.totalQuestions))) {
+        status = 'Mastered';
+        masteredCount++;
+      } else if (accuracy >= 70 && t.totalAttempts >= 2) {
+        status = 'Proficient';
+        proficientCount++;
+      } else {
+        status = 'Needs Review';
+        needsReviewCount++;
+      }
+
+      return {
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        totalQuestions: t.totalQuestions,
+        attemptedQuestions: t.attemptedQuestions,
+        totalAttempts: t.totalAttempts,
+        totalCorrect: t.totalCorrect,
+        accuracy,
+        mastery,
+        status,
+        lastPracticed: t.lastPracticed
+      };
+    });
+
+    // Sort topics: Needs Review first, then Proficient, then Unattempted, then Mastered
+    const statusWeight: Record<string, number> = {
+      'Needs Review': 1,
+      'Proficient': 2,
+      'Unattempted': 3,
+      'Mastered': 4
+    };
+
+    topics.sort((a, b) => {
+      const wDiff = statusWeight[a.status] - statusWeight[b.status];
+      if (wDiff !== 0) return wDiff;
+      if (a.status === 'Needs Review' || a.status === 'Proficient') {
+        return a.accuracy - b.accuracy; // lowest accuracy first
+      }
+      return b.totalQuestions - a.totalQuestions; // highest questions first
+    });
+
+    const overallAccuracy = grandTotalAttempts > 0
+      ? Math.round((grandTotalCorrect / grandTotalAttempts) * 100)
+      : 0;
+
+    return {
+      subject: matchingSubjects[0]?.name || subjectName,
+      totalTopics: topics.length,
+      masteredCount,
+      proficientCount,
+      needsReviewCount,
+      unattemptedCount,
+      totalQuestions: grandTotalQuestions,
+      totalAnswered: grandTotalAnswered,
+      overallAccuracy,
+      topics
+    };
+  } catch (error) {
+    console.error('Failed to get subject topic mastery:', error);
+    return {
+      subject: subjectName,
+      totalTopics: 0,
+      masteredCount: 0,
+      proficientCount: 0,
+      needsReviewCount: 0,
+      unattemptedCount: 0,
+      totalQuestions: 0,
+      totalAnswered: 0,
+      overallAccuracy: 0,
+      topics: []
+    };
+  }
+}
+
+
