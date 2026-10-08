@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import clientPromise from '@/lib/mongodb-client';
 import { cookies } from 'next/headers';
-import { unstable_cache } from 'next/cache';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 export interface LearningModuleData {
   id: string;
@@ -175,45 +175,47 @@ export interface SubjectMetrics {
   masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' | 'Needs Focus';
 }
 
-export const getCategories = unstable_cache(
-  async (): Promise<{ id: string; name: string; icon?: string | null }[]> => {
-    // 1. Try Prisma ORM Subject table
-    if (typeof (prisma as any).subject?.findMany === 'function') {
-      try {
-        const subjects = await (prisma as any).subject.findMany({
-          select: { id: true, name: true, icon: true },
-          orderBy: { createdAt: 'asc' }
-        });
-        if (subjects && subjects.length > 0) {
-          return JSON.parse(JSON.stringify(subjects));
-        }
-      } catch (err) {}
-    }
-
-    // 2. Query MongoDB 'Subject' collection directly
+export async function getCategories(): Promise<{ id: string; name: string; icon?: string | null }[]> {
+  // 1. Try Prisma ORM Subject table
+  if (typeof (prisma as any).subject?.findMany === 'function') {
     try {
-      const client = await clientPromise;
-      const db = client.db('boardquest');
-      const subjectDocs = await db.collection('Subject').find({}).sort({ createdAt: 1 }).toArray();
-      if (subjectDocs && subjectDocs.length > 0) {
-        return subjectDocs.map(doc => ({
-          id: doc._id.toString(),
-          name: doc.name || 'Untitled Subject',
-          icon: doc.icon || null
-        }));
+      const subjects = await (prisma as any).subject.findMany({
+        select: { id: true, name: true, icon: true },
+        orderBy: { createdAt: 'asc' }
+      });
+      if (subjects && subjects.length > 0) {
+        return JSON.parse(JSON.stringify(subjects));
       }
-    } catch (rawErr) {
-      console.error('Failed to fetch subjects via MongoDB client:', rawErr);
-    }
+    } catch (err) {}
+  }
 
-    // If no subjects exist in Subject collection, return empty array
-    return [];
-  },
-  ['curriculum_categories'],
-  { revalidate: 3600, tags: ['curriculum_categories'] }
-);
+  // 2. Query MongoDB 'Subject' collection directly
+  try {
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+    const subjectDocs = await db.collection('Subject').find({}).sort({ createdAt: 1 }).toArray();
+    if (subjectDocs && subjectDocs.length > 0) {
+      return subjectDocs.map(doc => ({
+        id: doc._id.toString(),
+        name: doc.name || 'Untitled Subject',
+        icon: doc.icon || null
+      }));
+    }
+  } catch (rawErr) {
+    console.error('Failed to fetch subjects via MongoDB client:', rawErr);
+  }
+
+  // If no subjects exist in Subject collection, return empty array
+  return [];
+}
 
 export const getSubjects = getCategories;
+
+export async function revalidateCategoriesCache() {
+  try {
+    revalidateTag('curriculum_categories');
+  } catch (err) {}
+}
 
 export async function getUserLessonCompletions(): Promise<Record<string, string>> {
   try {

@@ -32,6 +32,7 @@ import {
   Check,
   Settings,
   Volume2,
+  Pin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -293,64 +294,98 @@ export default function LearningQuest() {
   const [fetchingExplanations, setFetchingExplanations] = useState<Record<number, boolean>>({});
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>('Clinical Chemistry');
+  const [currentFocusSubject, setCurrentFocusSubject] = useState<string | null>(null);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  const isProgrammaticScrollRef = useRef(false);
+  const programmaticScrollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialCategoryLoadRef = useRef(true);
+
   // Fetch dynamic categories directly from MongoDB Category collection
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const [cats, userSettings] = await Promise.all([
-          getCategories().catch(() => []),
-          getUserSettingsAction().catch(() => null),
-        ]);
-        if (cats && cats.length > 0) {
-          const names = cats.map(c => c.name);
-          setDynamicCategories(names);
-
-          // Priority 1: URL search param ?subject=
-          const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-          const urlSubject = searchParams?.get('subject');
-
-          // Priority 2: Priority Focus Subject from Account Settings
-          const settingsFocus = userSettings?.focusSubject;
-          const savedFocus = settingsFocus !== undefined ? settingsFocus : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null);
-          const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
-
-          if (urlSubject && names.includes(urlSubject)) {
-            setSelectedSubject(urlSubject);
-          } else if (validFocus && names.includes(validFocus)) {
-            setSelectedSubject(validFocus);
-          } else {
-            setSelectedSubject(names[0]);
-          }
-        }
-      } catch (err) {
-        console.error("Error loading categories from MongoDB:", err);
-      } finally {
-        setCategoriesLoading(false);
-      }
-    }
-    loadCategories();
-  }, []);
-
-  const handleRescan = async () => {
-    setCategoriesLoading(true);
+  const loadCategories = useCallback(async (forcedFocus?: string | null) => {
     try {
-      const cats = await getCategories().catch(() => []);
+      const [cats, userSettings] = await Promise.all([
+        getCategories().catch(() => []),
+        getUserSettingsAction().catch(() => null),
+      ]);
       if (cats && cats.length > 0) {
         const names = cats.map(c => c.name);
-        setDynamicCategories(names);
-        setSelectedSubject(names[0]);
-      } else {
-        setDynamicCategories([]);
+
+        // Priority 1: URL search param ?subject=
+        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+        const urlSubject = searchParams?.get('subject');
+
+        // Priority 2: Priority Focus Subject from Account Settings / forcedFocus / localStorage
+        const settingsFocus = userSettings?.focusSubject;
+        const savedFocus = forcedFocus !== undefined
+          ? forcedFocus
+          : (settingsFocus !== undefined
+            ? settingsFocus
+            : (typeof window !== 'undefined' ? localStorage.getItem('bq_pref_focus_subject') : null));
+        const validFocus = savedFocus && savedFocus !== 'none' ? savedFocus : null;
+
+        const normalizeName = (s: string) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+
+        const findSubjectMatch = (target: string) => {
+          return names.find(n => n === target)
+            || names.find(n => normalizeName(n) === normalizeName(target))
+            || names.find(n => {
+              const nNorm = normalizeName(n);
+              const tNorm = normalizeName(target);
+              return (nNorm.includes('histopath') && tNorm.includes('histopath'))
+                || (nNorm.includes('microscop') && tNorm.includes('microscop'))
+                || (nNorm.includes('microbio') && tNorm.includes('microbio'))
+                || (nNorm.includes('immuno') && tNorm.includes('immuno'))
+                || (nNorm.includes('hema') && !nNorm.includes('immuno') && tNorm.includes('hema') && !tNorm.includes('immuno'))
+                || (nNorm.includes('chem') && tNorm.includes('chem'));
+            }) || null;
+        };
+
+        const matchedUrl = urlSubject ? findSubjectMatch(urlSubject) : null;
+        const matchedFocus = validFocus ? findSubjectMatch(validFocus) : null;
+        const effectivePriority = matchedUrl || matchedFocus;
+
+        if (matchedFocus) {
+          setCurrentFocusSubject(matchedFocus);
+        } else {
+          setCurrentFocusSubject(null);
+        }
+
+        // When a subject is prioritized, show it first in the list (on the left edge)
+        let orderedNames = names;
+        if (effectivePriority) {
+          orderedNames = [effectivePriority, ...names.filter(n => n !== effectivePriority)];
+        }
+        setDynamicCategories(orderedNames);
+
+        if (effectivePriority) {
+          isProgrammaticScrollRef.current = true;
+          setSelectedSubject(effectivePriority);
+        } else if (isInitialCategoryLoadRef.current) {
+          isProgrammaticScrollRef.current = true;
+          setSelectedSubject(orderedNames[0]);
+        } else {
+          // Preserve currently selected subject if it still exists in updated categories
+          setSelectedSubject(prev => (orderedNames.includes(prev) ? prev : orderedNames[0]));
+        }
+        isInitialCategoryLoadRef.current = false;
       }
     } catch (err) {
-      console.error("Error re-scanning categories:", err);
+      console.error("Error loading categories from MongoDB:", err);
     } finally {
       setCategoriesLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  const handleRescan = async () => {
+    setCategoriesLoading(true);
+    await loadCategories();
   };
 
   // Fullscreen state
@@ -2612,14 +2647,17 @@ export default function LearningQuest() {
     fetchUser();
   }, [fetchUser]);
 
-  // Listen for stats updates & window focus to keep player level 100% synced dynamically
+  // Listen for stats updates & window focus to keep player level & categories 100% synced dynamically
   useEffect(() => {
-    const handleStatsUpdate = () => {
+    const handleStatsUpdate = (e?: any) => {
       fetchUser();
+      const updatedFocus = e?.detail?.focusSubject;
+      loadCategories(updatedFocus);
     };
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         fetchUser();
+        loadCategories();
       }
     };
     window.addEventListener('bq_stats_updated', handleStatsUpdate);
@@ -2632,7 +2670,7 @@ export default function LearningQuest() {
       window.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', handleStatsUpdate);
     };
-  }, [fetchUser]);
+  }, [fetchUser, loadCategories]);
 
   // Guard against non-major subjects staying in Boss-Battle Mode
   useEffect(() => {
@@ -2728,6 +2766,7 @@ export default function LearningQuest() {
     });
 
     if (closestIdx > 0) {
+      isProgrammaticScrollRef.current = true;
       setSelectedSubject(dynamicCategories[closestIdx - 1]);
     } else {
       carousel.scrollBy({ left: -300, behavior: 'smooth' });
@@ -2754,6 +2793,7 @@ export default function LearningQuest() {
     });
 
     if (closestIdx >= 0 && closestIdx < dynamicCategories.length - 1) {
+      isProgrammaticScrollRef.current = true;
       setSelectedSubject(dynamicCategories[closestIdx + 1]);
     } else {
       carousel.scrollBy({ left: 300, behavior: 'smooth' });
@@ -2764,7 +2804,11 @@ export default function LearningQuest() {
   useEffect(() => {
     if (carouselRef.current) {
       const selectedIdx = dynamicCategories.indexOf(selectedSubject);
-      const selectedButton = carouselRef.current.querySelector(`button:nth-child(${selectedIdx + 1})`) as HTMLElement;
+      isProgrammaticScrollRef.current = true;
+      const selectedButton = (carouselRef.current.querySelector(
+        `button[data-subject="${CSS.escape(selectedSubject)}"]`
+      ) as HTMLElement) || (selectedIdx >= 0 ? (carouselRef.current.querySelector(`button:nth-child(${selectedIdx + 1})`) as HTMLElement) : null);
+
       if (selectedButton) {
         selectedButton.scrollIntoView({
           behavior: 'smooth',
@@ -2772,6 +2816,14 @@ export default function LearningQuest() {
           inline: 'center'
         });
       }
+      if (programmaticScrollTimerRef.current) {
+        clearTimeout(programmaticScrollTimerRef.current);
+      }
+      programmaticScrollTimerRef.current = setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+        updateScrollIndicators();
+      }, 700);
+
       const timer = setTimeout(updateScrollIndicators, 350);
       return () => clearTimeout(timer);
     }
@@ -2786,9 +2838,12 @@ export default function LearningQuest() {
 
     const handleScroll = () => {
       updateScrollIndicators();
+      if (isProgrammaticScrollRef.current) {
+        return;
+      }
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        if (!carousel) return;
+        if (!carousel || isProgrammaticScrollRef.current) return;
         const carouselRect = carousel.getBoundingClientRect();
         const carouselCenter = carouselRect.left + carouselRect.width / 2;
         const buttons = carousel.querySelectorAll('button[data-subject]');
@@ -2808,11 +2863,21 @@ export default function LearningQuest() {
         if (closestSubject && closestSubject !== selectedSubject) {
           setSelectedSubject(closestSubject);
         }
-      }, 100);
+      }, 150);
+    };
+
+    const handleUserInteraction = () => {
+      isProgrammaticScrollRef.current = false;
+      if (programmaticScrollTimerRef.current) {
+        clearTimeout(programmaticScrollTimerRef.current);
+      }
     };
 
     updateScrollIndicators();
     carousel.addEventListener('scroll', handleScroll, { passive: true });
+    carousel.addEventListener('pointerdown', handleUserInteraction, { passive: true });
+    carousel.addEventListener('touchstart', handleUserInteraction, { passive: true });
+    carousel.addEventListener('wheel', handleUserInteraction, { passive: true });
     window.addEventListener('resize', updateScrollIndicators);
 
     let resizeObserver: ResizeObserver | null = null;
@@ -2827,6 +2892,9 @@ export default function LearningQuest() {
 
     return () => {
       carousel.removeEventListener('scroll', handleScroll);
+      carousel.removeEventListener('pointerdown', handleUserInteraction);
+      carousel.removeEventListener('touchstart', handleUserInteraction);
+      carousel.removeEventListener('wheel', handleUserInteraction);
       window.removeEventListener('resize', updateScrollIndicators);
       if (resizeObserver) resizeObserver.disconnect();
       clearTimeout(timeoutId);
@@ -6581,7 +6649,7 @@ export default function LearningQuest() {
 
               <div
                 ref={carouselRef}
-                className="w-full min-w-0 max-w-full flex overflow-x-auto gap-4 md:gap-8 px-10 sm:px-16 md:px-24 no-scrollbar snap-x snap-mandatory items-center touch-pan-x min-h-[240px] sm:min-h-[300px] md:min-h-[380px] select-none"
+                className="w-full min-w-0 max-w-full flex overflow-x-auto gap-4 md:gap-8 px-10 sm:px-16 md:px-24 pt-6 sm:pt-8 pb-3 sm:pb-4 no-scrollbar snap-x snap-mandatory items-center touch-pan-x min-h-[250px] sm:min-h-[310px] md:min-h-[390px] select-none"
                 style={{ WebkitOverflowScrolling: 'touch' }}
               >
                 {dynamicCategories.map((subject) => {
@@ -6593,17 +6661,28 @@ export default function LearningQuest() {
                     <button
                       key={subject}
                       data-subject={subject}
-                      onClick={() => setSelectedSubject(subject)}
+                      onClick={() => {
+                        isProgrammaticScrollRef.current = true;
+                        setSelectedSubject(subject);
+                      }}
                       className={cn(
-                        "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center cursor-pointer",
+                        "flex-shrink-0 snap-center transition-all duration-500 transform outline-none flex flex-col items-center cursor-pointer overflow-visible",
                         isSelected ? "scale-100 w-48 sm:w-60 md:w-72 lg:w-80" : "scale-75 w-36 sm:w-44 md:w-52 lg:w-56 opacity-35"
                       )}
                     >
-                      <div className="relative w-full flex flex-col items-center">
+                      <div className="relative w-full flex flex-col items-center overflow-visible">
                         <div className={cn(
-                          "relative w-full aspect-square max-h-[160px] sm:max-h-[220px] md:max-h-[280px] transition-all duration-500",
+                          "relative w-full aspect-square max-h-[160px] sm:max-h-[220px] md:max-h-[280px] transition-all duration-500 overflow-visible",
                           isSelected ? "animate-float" : ""
                         )}>
+                          {subject === currentFocusSubject && (
+                            <div
+                              className="absolute top-3 sm:top-5 right-4 sm:right-6 md:right-8 z-30 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-white shadow-[0_4px_14px_rgba(245,158,11,0.65)] border-2 border-amber-200/90 backdrop-blur-md pointer-events-none"
+                              title="Pinned Priority Focus"
+                            >
+                              <Pin className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white text-white -rotate-45 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" />
+                            </div>
+                          )}
                           {meta.imageUrl ? (
                             <div className="relative w-full h-full transform hover:scale-105 transition-transform pointer-events-none">
                               <Image src={meta.imageUrl} alt={subject} fill className="object-contain pointer-events-none select-none" priority={isSelected} draggable={false} />
@@ -6621,7 +6700,12 @@ export default function LearningQuest() {
                             <h3 className="text-2xl sm:text-3xl md:text-[2.6rem] font-bytebounce text-white leading-none break-words" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.5)' }}>{subject}</h3>
                           </div>
                           <div className="flex flex-col items-center gap-1.5 sm:gap-2 md:gap-3">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center flex-wrap justify-center">
+                              {subject === currentFocusSubject && (
+                                <Badge variant="outline" className="bg-amber-500/20 border-amber-400/70 text-amber-300 font-bold px-2 md:px-2.5 py-0.5 md:py-1 flex items-center gap-1 text-[7px] sm:text-[8px] md:text-[9px] shadow-[0_0_10px_rgba(245,158,11,0.25)] backdrop-blur-sm">
+                                  <Pin className="w-2.5 h-2.5 fill-amber-300 text-amber-300 -rotate-45" /> Pinned
+                                </Badge>
+                              )}
                               <Badge variant="outline" className="bg-background/10 border-primary/40 text-white font-bold px-2 md:px-3 py-0.5 md:py-1 flex items-center gap-1 text-[7px] sm:text-[8px] md:text-[10px]">
                                 <Target className="w-2.5 h-2.5 md:w-3 md:h-3" /> {meta.enemy}
                               </Badge>

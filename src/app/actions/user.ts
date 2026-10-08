@@ -3,7 +3,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { startOfWeek, differenceInCalendarDays, startOfDay, parseISO } from 'date-fns';
 import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
@@ -871,7 +871,11 @@ export async function saveUserSettingsAction(settingsData: any) {
     );
 
     revalidatePath('/profile');
+    revalidatePath('/quest');
     revalidatePath('/');
+    try {
+      revalidateTag('curriculum_categories');
+    } catch {}
     return { success: true };
   } catch (error) {
     console.error('Failed to save user settings to MongoDB:', error);
