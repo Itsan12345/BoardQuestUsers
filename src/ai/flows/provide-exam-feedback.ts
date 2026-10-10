@@ -15,10 +15,11 @@ import {prisma} from '@/lib/prisma';
 const ProvideExamFeedbackInputSchema = z.object({
   questionId: z.string().optional().describe('The ID of the question in the database.'),
   question: z.string().describe('The mock exam question text.'),
-  correctAnswer: z.string().describe('The correct answer to the question.'),
+  options: z.array(z.string()).optional().describe('The formatted choices available with letters, e.g. ["A. Synergism", "B. Satellitism", ...].'),
+  correctAnswer: z.string().describe('The correct answer to the question (letter and text, e.g. "B. Satellitism").'),
   userAnswer: z
     .string()
-    .describe('The answer chosen by the student (can be incorrect).'),
+    .describe('The answer chosen by the student (letter and text, e.g. "C. Commensalism").'),
 });
 export type ProvideExamFeedbackInput = z.infer<
   typeof ProvideExamFeedbackInputSchema
@@ -45,17 +46,25 @@ const prompt = ai.definePrompt({
   name: 'provideExamFeedbackPrompt',
   input: {schema: ProvideExamFeedbackInputSchema},
   output: {schema: ProvideExamFeedbackOutputSchema},
-  prompt: `You are a Medical Technology instructor providing feedback.
-
-Explain:
-1. Why the correct answer is correct.
-2. Why the student's answer is incorrect.
-
-CRITICAL INSTRUCTION: Your explanation must be extremely concise. Limit your entire response to a maximum of 3 to 4 sentences. Do not use filler words.
+  prompt: `You are an expert Medical Technology instructor providing focused, accurate feedback for a licensure board exam practice question.
 
 Question: {{{question}}}
+
+{{#if options}}
+Available Choices:
+{{#each options}}
+- {{{this}}}
+{{/each}}
+{{/if}}
+
 Correct Answer: {{{correctAnswer}}}
-Student's Answer: {{{userAnswer}}}`,
+Student's Chosen Answer: {{{userAnswer}}}
+
+CRITICAL INSTRUCTIONS:
+1. Explain clearly why {{{correctAnswer}}} is the correct answer based on Medical Technology / Clinical Laboratory science.
+2. If the student's chosen answer ({{{userAnswer}}}) is different from the correct answer, specifically explain why {{{userAnswer}}} is incorrect for this question. Do NOT confuse or swap {{{userAnswer}}} with any other choice. Refer to it strictly by its exact option letter and text as provided above.
+3. If the student's answer is correct, validate why their reasoning is accurate.
+4. Keep the entire explanation concise (strictly 3 to 4 sentences). Do not use conversational filler, greetings, or sign-offs.`,
 });
 
 const provideExamFeedbackFlow = ai.defineFlow(
@@ -66,26 +75,58 @@ const provideExamFeedbackFlow = ai.defineFlow(
   },
   async input => {
     try {
+      const cacheKey = (input.userAnswer || 'default').trim().toLowerCase();
+
       // 1. Check if explanation already exists in QuestionExplanation cache
       if (input.questionId) {
         const existing = await prisma.questionExplanation.findUnique({
           where: { questionId: input.questionId }
         });
         if (existing) {
-          return { explanation: existing.explanation };
+          try {
+            const parsed = JSON.parse(existing.explanation);
+            if (parsed && typeof parsed === 'object' && parsed[cacheKey]) {
+              return { explanation: parsed[cacheKey] };
+            }
+          } catch {
+            // Not a JSON cache map (legacy single-string explanation).
+            // Do not return mismatched legacy explanations to prevent answer cross-contamination.
+          }
         }
       }
 
-      // 2. If not found, generate using AI
+      // 2. If not found in cache, generate using AI
       const {output} = await prompt(input);
       
       // 3. Save feedback to DB QuestionExplanation collection if questionId is provided
       if (input.questionId && output?.explanation) {
         try {
-          await prisma.questionExplanation.create({
-            data: { 
+          const existing = await prisma.questionExplanation.findUnique({
+            where: { questionId: input.questionId }
+          });
+
+          let cacheMap: Record<string, string> = {};
+          if (existing) {
+            try {
+              const parsed = JSON.parse(existing.explanation);
+              if (parsed && typeof parsed === 'object') {
+                cacheMap = parsed;
+              }
+            } catch {
+              // Legacy format will be safely superseded by the new keyed map
+            }
+          }
+
+          cacheMap[cacheKey] = output.explanation;
+
+          await prisma.questionExplanation.upsert({
+            where: { questionId: input.questionId },
+            create: { 
               questionId: input.questionId,
-              explanation: output.explanation 
+              explanation: JSON.stringify(cacheMap) 
+            },
+            update: {
+              explanation: JSON.stringify(cacheMap)
             }
           });
         } catch (dbError) {

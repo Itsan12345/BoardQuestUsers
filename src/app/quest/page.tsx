@@ -299,9 +299,13 @@ export default function LearningQuest() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  // Topic Mastery Quest Target (from Performance Topic Mastery Modal)
+  const [selectedTopicFilter, setSelectedTopicFilter] = useState<string | null>(null);
+
   const isProgrammaticScrollRef = useRef(false);
   const programmaticScrollTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialCategoryLoadRef = useRef(true);
+  const hasConsumedUrlTopicRef = useRef(false);
 
   // Fetch dynamic categories directly from MongoDB Category collection
   const loadCategories = useCallback(async (forcedFocus?: string | null) => {
@@ -313,9 +317,24 @@ export default function LearningQuest() {
       if (cats && cats.length > 0) {
         const names = cats.map(c => c.name);
 
-        // Priority 1: URL search param ?subject=
+        // Priority 1: URL search param ?subject= & ?topic=
         const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
         const urlSubject = searchParams?.get('subject');
+        const urlTopic = searchParams?.get('topic');
+
+        if (!hasConsumedUrlTopicRef.current && urlTopic && urlTopic.trim().length > 0) {
+          hasConsumedUrlTopicRef.current = true;
+          setSelectedTopicFilter(urlTopic.trim());
+          setQuizMode(prev => prev === 'boss-battle' ? 'learning' : prev);
+          setSetupStep('mode');
+          setModeSelectDialogOpen(true);
+          if (typeof window !== 'undefined') {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('topic');
+            newUrl.searchParams.delete('subject');
+            window.history.replaceState({}, '', newUrl.pathname + (newUrl.searchParams.toString() ? `?${newUrl.searchParams.toString()}` : ''));
+          }
+        }
 
         // Priority 2: Priority Focus Subject from Account Settings / forcedFocus / localStorage
         const settingsFocus = userSettings?.focusSubject;
@@ -369,6 +388,13 @@ export default function LearningQuest() {
         } else {
           // Preserve currently selected subject if it still exists in updated categories
           setSelectedSubject(prev => (orderedNames.includes(prev) ? prev : orderedNames[0]));
+        }
+        if (urlSubject && typeof window !== 'undefined') {
+          const cleanUrl = new URL(window.location.href);
+          if (cleanUrl.searchParams.has('subject')) {
+            cleanUrl.searchParams.delete('subject');
+            window.history.replaceState({}, '', cleanUrl.pathname + (cleanUrl.searchParams.toString() ? `?${cleanUrl.searchParams.toString()}` : ''));
+          }
         }
         isInitialCategoryLoadRef.current = false;
       }
@@ -596,6 +622,10 @@ export default function LearningQuest() {
   const [battleStage, setBattleStage] = useState<1 | 2 | 3 | 4>(1);
   const [_learningStage, setLearningStage] = useState<1 | 2 | 3>(1);
   const [activeQuizIndex, setActiveQuizIndex] = useState(0);
+  const activeQuizIndexRef = useRef(0);
+  useEffect(() => {
+    activeQuizIndexRef.current = activeQuizIndex;
+  }, [activeQuizIndex]);
   const [waveCharOffscreen, setWaveCharOffscreen] = useState(false);
   const [waveTransition, setWaveTransition] = useState<{
     stage: 'outcome' | 'arrival';
@@ -1532,7 +1562,7 @@ export default function LearningQuest() {
     ],
   };
 
-  const getSubjectNodes = (subject: string): SubjectNodeConfig[] => {
+  const getSubjectNodes = useCallback((subject: string): SubjectNodeConfig[] => {
     if (CHAPTER_NODES_PER_SUBJECT[subject]) return CHAPTER_NODES_PER_SUBJECT[subject];
     if (subject.toLowerCase().includes('histo') || subject.toLowerCase().includes('law')) {
       return CHAPTER_NODES_PER_SUBJECT["Histopathology and Medtech Laws"];
@@ -1543,9 +1573,10 @@ export default function LearningQuest() {
       { id: `${subject}-3`, nodeNumber: 3, tier: 'boss', title: `${subject} Chapter Boss`, subtopic: 'Pathology & Testing Methodologies', bossName: `${subject} Overlord`, bossIcon: '👑' },
       { id: `${subject}-4`, nodeNumber: 4, tier: 'final-boss', title: `👑 ${subject} Sovereign (FINAL BOSS)`, subtopic: 'Comprehensive Licensure Board Challenge', bossName: `Master ${subject} Colossus`, bossIcon: '👑' },
     ];
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const getLearningWaveState = (
+  const getLearningWaveState = useCallback((
     questions: Question[],
     userAnswersList: { isCorrect: boolean; difficulty?: string }[],
     subject: string,
@@ -1721,7 +1752,7 @@ export default function LearningQuest() {
         heavyAttackSfxUrl: waveBoss?.heavyAttackSfxUrl || wave3BossNode?.heavyAttackSfxUrl || ch3Node?.heavyAttackSfxUrl || subjectMeta?.heavyAttackSfxUrl,
       };
     }
-  };
+  }, [selectedSubject, selectedNodeId, getSubjectNodes]);
 
   // Helper to calculate Level-Scaled HP for Player and 3-Stage Enemies
   const calculatePlayerMaxHp = (level: number, hasShield: boolean) => {
@@ -2649,36 +2680,44 @@ export default function LearningQuest() {
 
   // Listen for stats updates & window focus to keep player level & categories 100% synced dynamically
   useEffect(() => {
+    let lastWindowSync = 0;
+
     const handleStatsUpdate = (e?: any) => {
       fetchUser();
       const updatedFocus = e?.detail?.focusSubject;
       loadCategories(updatedFocus);
     };
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
+
+    const handleWindowFocusOrVisibility = () => {
+      const now = Date.now();
+      // Throttle window focus and visibility events to at most once every 3 seconds to avoid bursting in-flight requests
+      if (now - lastWindowSync < 3000) return;
+      lastWindowSync = now;
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
         fetchUser();
         loadCategories();
       }
     };
+
     window.addEventListener('bq_stats_updated', handleStatsUpdate);
     window.addEventListener('bq_settings_updated', handleStatsUpdate);
-    window.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', handleStatsUpdate);
+    window.addEventListener('visibilitychange', handleWindowFocusOrVisibility);
+    window.addEventListener('focus', handleWindowFocusOrVisibility);
     return () => {
       window.removeEventListener('bq_stats_updated', handleStatsUpdate);
       window.removeEventListener('bq_settings_updated', handleStatsUpdate);
-      window.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('focus', handleStatsUpdate);
+      window.removeEventListener('visibilitychange', handleWindowFocusOrVisibility);
+      window.removeEventListener('focus', handleWindowFocusOrVisibility);
     };
   }, [fetchUser, loadCategories]);
 
-  // Guard against non-major subjects staying in Boss-Battle Mode
+  // Guard against non-major subjects or topic drills staying in Boss-Battle Mode
   useEffect(() => {
-    if (!isMajorSubject(selectedSubject) && quizMode === 'boss-battle') {
+    if ((!isMajorSubject(selectedSubject) || selectedTopicFilter) && quizMode === 'boss-battle') {
       setQuizMode('learning');
       setShowChapterMap(false);
     }
-  }, [selectedSubject, quizMode]);
+  }, [selectedSubject, selectedTopicFilter, quizMode]);
 
   // Monitor Boss Battle Health for Early Win/Loss
   useEffect(() => {
@@ -2902,7 +2941,7 @@ export default function LearningQuest() {
     };
   }, [dynamicCategories, selectedSubject, updateScrollIndicators]);
 
-  const startQuest = async (limit: number = 50, specificDifficulty?: string) => {
+  const startQuest = async (limit: number = 50, specificDifficulty?: string, topicOverride?: string | null) => {
     stopBossBattleMusic();
     stopFinalBossMusic();
     stopLearningModeMusic();
@@ -2930,22 +2969,32 @@ export default function LearningQuest() {
       if (quizMode === 'boss-battle' && specificDifficulty) {
         setBossDifficulty(specificDifficulty);
       }
-      const selected = await getQuestQuestions(selectedSubject, quizMode, limit, specificDifficulty);
+      const topicToUse = topicOverride !== undefined ? topicOverride : selectedTopicFilter;
+      const [selected, freshProfile] = await Promise.all([
+        getQuestQuestions(selectedSubject, quizMode, limit, specificDifficulty, topicToUse || undefined),
+        getUserProfile().catch(() => null)
+      ]);
 
       if (!selected || selected.length === 0) {
         toast({
           variant: "destructive",
           title: "No Questions Found",
-          description: "There are currently no questions available for this region in the database.",
+          description: topicToUse
+            ? `No approved questions found specifically for "${topicToUse}". Please select another topic or switch to "All Topics".`
+            : "There are currently no questions available for this region in the database.",
         });
         return;
       }
       setQuestions(selected);
 
-      // Dynamically fetch and sync the latest Player level immediately before battle starts
+      // Clean up URL query parameters so refresh or next session isn't locked to topic or subject
+      if (typeof window !== 'undefined' && (window.location.search.includes('topic=') || window.location.search.includes('subject='))) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      // Dynamically sync the latest Player level immediately before battle starts
       let currentLevelForBattle = userLevel;
       try {
-        const freshProfile = await getUserProfile();
         if (freshProfile?.id) currentUserIdRef.current = freshProfile.id;
         const cachedNickname = freshProfile?.id && typeof window !== 'undefined' ? localStorage.getItem(`bq_arena_nickname_${freshProfile.id}`) : null;
         if (freshProfile?.arenaNickname) {
@@ -3227,7 +3276,10 @@ export default function LearningQuest() {
     }
   };
 
-  const handleQuestionChange = (nextIdx: number) => {
+  const handleQuestionChange = useCallback((nextIdx: number) => {
+    if (nextIdx === activeQuizIndexRef.current) return;
+    activeQuizIndexRef.current = nextIdx;
+
     if (quizMode === 'learning' && questions && questions.length > 0) {
       const currentQ = questions[activeQuizIndex] || questions[0];
       const nextQ = questions[nextIdx] || questions[questions.length - 1];
@@ -3273,6 +3325,7 @@ export default function LearningQuest() {
             playDebuffSound();
           } catch (e) {}
 
+          activeQuizIndexRef.current = nextIdx;
           setActiveQuizIndex(nextIdx);
           setEnemyHealth(100);
           setLearningStage(toWave as 1 | 2 | 3);
@@ -3293,7 +3346,7 @@ export default function LearningQuest() {
     }
 
     setActiveQuizIndex(nextIdx);
-  };
+  }, [quizMode, questions, activeQuizIndex, userAnswers, enemyHealth, selectedSubject, learningWaveEnemies, getLearningWaveState]);
 
   const handleAnswer = (isCorrect: boolean, index: number, letter: string, action?: 'heavy' | 'normal' | 'defend', questionData?: Question) => {
     setUserAnswers(prev => [...prev, {
@@ -4256,11 +4309,53 @@ export default function LearningQuest() {
 
     setFetchingExplanations(prev => ({ ...prev, [index]: true }));
     try {
+      const optionsArray = (
+        Array.isArray(qToExplain.options) && qToExplain.options.length > 0
+          ? qToExplain.options
+          : (qToExplain.type === 'TRUE_FALSE' ? ['True', 'False'] : [])
+      );
+
+      const formattedOptions = optionsArray.map((opt, optIdx) => {
+        const letter = String.fromCharCode(65 + optIdx);
+        return `${letter}. ${opt}`;
+      });
+
+      // Resolve full letter and text for user's chosen answer
+      const userLetter = (userAns.selectedLetter || '').trim();
+      let resolvedUserAnswer = userLetter;
+      if (/^[A-Za-z]$/.test(userLetter)) {
+        const optIdx = userLetter.toUpperCase().charCodeAt(0) - 65;
+        if (optIdx >= 0 && optIdx < optionsArray.length) {
+          resolvedUserAnswer = `${userLetter.toUpperCase()}. ${optionsArray[optIdx]}`;
+        }
+      } else {
+        const foundIdx = optionsArray.findIndex(opt => opt && opt.trim().toLowerCase() === userLetter.toLowerCase());
+        if (foundIdx !== -1) {
+          resolvedUserAnswer = `${String.fromCharCode(65 + foundIdx)}. ${optionsArray[foundIdx]}`;
+        }
+      }
+
+      // Resolve full letter and text for correct answer
+      const correctRaw = (qToExplain.correctAnswer || '').trim();
+      let resolvedCorrectAnswer = correctRaw;
+      if (/^[A-Za-z]$/.test(correctRaw)) {
+        const optIdx = correctRaw.toUpperCase().charCodeAt(0) - 65;
+        if (optIdx >= 0 && optIdx < optionsArray.length) {
+          resolvedCorrectAnswer = `${correctRaw.toUpperCase()}. ${optionsArray[optIdx]}`;
+        }
+      } else {
+        const foundIdx = optionsArray.findIndex(opt => opt && opt.trim().toLowerCase() === correctRaw.toLowerCase());
+        if (foundIdx !== -1) {
+          resolvedCorrectAnswer = `${String.fromCharCode(65 + foundIdx)}. ${optionsArray[foundIdx]}`;
+        }
+      }
+
       const feedback = await provideExamFeedback({
         questionId: qToExplain.id,
         question: qToExplain.question,
-        correctAnswer: qToExplain.correctAnswer,
-        userAnswer: userAns.selectedLetter
+        options: formattedOptions.length > 0 ? formattedOptions : undefined,
+        correctAnswer: resolvedCorrectAnswer,
+        userAnswer: resolvedUserAnswer
       });
 
       setQuestions(prev => {
@@ -4568,6 +4663,13 @@ export default function LearningQuest() {
                 <p className="text-muted-foreground font-bold uppercase tracking-widest text-[9px] sm:text-[10px] md:text-xs">
                   Expedition for {selectedSubject}
                 </p>
+                {selectedTopicFilter && (
+                  <div className="flex justify-center pt-1.5 px-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-xs max-w-full flex-wrap justify-center text-center">
+                      🎯 Topic Drill: <span className="text-foreground font-black break-words">{selectedTopicFilter}</span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-center items-center gap-4 sm:gap-8 md:gap-12 py-3 sm:py-4">
@@ -5125,29 +5227,85 @@ export default function LearningQuest() {
             </Card>
           )}
 
-          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pb-12 w-full max-w-xl mx-auto px-2 sm:px-0 mt-6 sm:mt-8">
-            <Button
-              onClick={() => {
-                stopBossBattleMusic();
-                stopFinalBossMusic();
-                stopLearningModeMusic();
-                stopTestModeMusic();
-                setIsStarted(false);
-                setIsFinished(false);
-                setShowBattleLog(false);
-                setEarnedQuestXp(null);
-                setLeveledUpDetails(null);
-                fetchUser();
-              }}
-              className="flex-1 h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-primary hover:bg-primary/90 text-primary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
-            >
-              Re-Enter Arena
-            </Button>
-            <Link href="/" className="flex-1 flex" onClick={() => { stopBossBattleMusic(); stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); }}>
-              <Button className="w-full h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap">
-                Back to Dashboard
-              </Button>
-            </Link>
+          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pb-12 w-full max-w-2xl mx-auto px-2 sm:px-0 mt-6 sm:mt-8">
+            {selectedTopicFilter ? (
+              <>
+                {/* Dynamic Drill Again Button: Preserves topic filter and re-opens the mode selection dialog */}
+                <Button
+                  onClick={() => {
+                    stopBossBattleMusic();
+                    stopFinalBossMusic();
+                    stopLearningModeMusic();
+                    stopTestModeMusic();
+                    setIsStarted(false);
+                    setIsFinished(false);
+                    setShowBattleLog(false);
+                    setEarnedQuestXp(null);
+                    setLeveledUpDetails(null);
+                    setSetupStep('mode');
+                    setModeSelectDialogOpen(true);
+                    fetchUser();
+                  }}
+                  className="flex-1 h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-primary hover:bg-primary/90 text-primary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
+                >
+                  🎯 Drill Again
+                </Button>
+
+                {/* Return to Arena / All Topics Button: Clears topic filter and returns to main arena carousel */}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    stopBossBattleMusic();
+                    stopFinalBossMusic();
+                    stopLearningModeMusic();
+                    stopTestModeMusic();
+                    setIsStarted(false);
+                    setIsFinished(false);
+                    setShowBattleLog(false);
+                    setEarnedQuestXp(null);
+                    setLeveledUpDetails(null);
+                    setSelectedTopicFilter(null);
+                    fetchUser();
+                  }}
+                  className="flex-1 h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-primary/40 bg-card hover:bg-muted text-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
+                >
+                  All Topics / Arena
+                </Button>
+
+                {/* Back to Dashboard */}
+                <Link href="/" className="flex-1 flex" onClick={() => { stopBossBattleMusic(); stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); setSelectedTopicFilter(null); }}>
+                  <Button className="w-full h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap">
+                    Back to Dashboard
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => {
+                    stopBossBattleMusic();
+                    stopFinalBossMusic();
+                    stopLearningModeMusic();
+                    stopTestModeMusic();
+                    setIsStarted(false);
+                    setIsFinished(false);
+                    setShowBattleLog(false);
+                    setEarnedQuestXp(null);
+                    setLeveledUpDetails(null);
+                    setSelectedTopicFilter(null);
+                    fetchUser();
+                  }}
+                  className="flex-1 h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-primary hover:bg-primary/90 text-primary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
+                >
+                  Re-Enter Arena
+                </Button>
+                <Link href="/" className="flex-1 flex" onClick={() => { stopBossBattleMusic(); stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); setSelectedTopicFilter(null); }}>
+                  <Button className="w-full h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap">
+                    Back to Dashboard
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
         {arenaSettingsDialogJSX}
@@ -5178,6 +5336,7 @@ export default function LearningQuest() {
     setTimeout(() => {
       setIsFleeing(false);
       setIsStarted(false);
+      setSelectedTopicFilter(null);
       toast({
         title: "Tactical Retreat",
         description: "You safely withdrew from the arena. XP and session rewards were forfeited.",
@@ -5537,8 +5696,11 @@ export default function LearningQuest() {
               </Button>
               <div className="text-center min-w-0 flex-1 px-4">
                 <h1 className="text-white font-black font-headline text-sm md:text-lg uppercase leading-none truncate">{selectedSubject}</h1>
-                <p className="text-[8px] md:text-[10px] font-bold text-white/80 uppercase tracking-widest mt-1">
-                  {quizMode === 'learning' ? 'Intel Gathering' : 'Battle Simulation'}
+                <p 
+                  className="text-[8px] md:text-[10px] font-bold text-white/80 uppercase tracking-widest mt-1 truncate max-w-[240px] xs:max-w-[300px] sm:max-w-md mx-auto"
+                  title={questions[activeQuizIndex]?.topic?.trim() || (quizMode === 'learning' ? 'Intel Gathering' : 'Battle Simulation')}
+                >
+                  {questions[activeQuizIndex]?.topic?.trim() || (quizMode === 'learning' ? 'Intel Gathering' : 'Battle Simulation')}
                 </p>
               </div>
               <div className="flex shrink-0 justify-end items-center gap-2" >
@@ -6663,6 +6825,7 @@ export default function LearningQuest() {
                       data-subject={subject}
                       onClick={() => {
                         isProgrammaticScrollRef.current = true;
+                        setSelectedTopicFilter(null);
                         setSelectedSubject(subject);
                       }}
                       className={cn(
@@ -6761,7 +6924,23 @@ export default function LearningQuest() {
       </div>
 
       {/* Mode Selection Dialog */}
-      <Dialog open={modeSelectDialogOpen} onOpenChange={setModeSelectDialogOpen}>
+      <Dialog 
+        open={modeSelectDialogOpen} 
+        onOpenChange={(open) => {
+          setModeSelectDialogOpen(open);
+          if (!open) {
+            setSelectedTopicFilter(null);
+            if (typeof window !== 'undefined') {
+              const newUrl = new URL(window.location.href);
+              if (newUrl.searchParams.has('topic') || newUrl.searchParams.has('subject')) {
+                newUrl.searchParams.delete('topic');
+                newUrl.searchParams.delete('subject');
+                window.history.replaceState({}, '', newUrl.pathname + (newUrl.searchParams.toString() ? `?${newUrl.searchParams.toString()}` : ''));
+              }
+            }
+          }
+        }}
+      >
         <DialogContent container={fullscreenRef.current} className="sm:max-w-3xl bg-transparent border-none shadow-none p-0 flex justify-center items-center [&>button]:hidden">
           <DialogTitle className="sr-only">Select a session mode</DialogTitle>
           <div className="relative w-[800px] max-w-full aspect-[4/3] flex items-center justify-center overflow-hidden">
@@ -6784,7 +6963,19 @@ export default function LearningQuest() {
 
             {/* Custom Pixelated Close Button */}
             <button
-              onClick={() => setModeSelectDialogOpen(false)}
+              type="button"
+              onClick={() => {
+                setModeSelectDialogOpen(false);
+                setSelectedTopicFilter(null);
+                if (typeof window !== 'undefined') {
+                  const newUrl = new URL(window.location.href);
+                  if (newUrl.searchParams.has('topic') || newUrl.searchParams.has('subject')) {
+                    newUrl.searchParams.delete('topic');
+                    newUrl.searchParams.delete('subject');
+                    window.history.replaceState({}, '', newUrl.pathname + (newUrl.searchParams.toString() ? `?${newUrl.searchParams.toString()}` : ''));
+                  }
+                }
+              }}
               className="absolute top-[15.5%] right-[2%] z-50 flex items-center justify-center transition-all cursor-pointer group active:translate-y-0.5"
             >
               <span
@@ -6835,6 +7026,8 @@ export default function LearningQuest() {
                     {/* Boss Battle Button */}
                     {(() => {
                       const isMajor = isMajorSubject(selectedSubject);
+                      const isTopicDrill = Boolean(selectedTopicFilter && selectedTopicFilter.trim().length > 0);
+                      const isLocked = !isMajor || isTopicDrill;
                       return (
                         <button
                           onClick={() => {
@@ -6845,17 +7038,24 @@ export default function LearningQuest() {
                               });
                               return;
                             }
+                            if (isTopicDrill) {
+                              toast({
+                                title: "Campaign Mode Locked for Topic Drills",
+                                description: `Boss-Battle follows the linear 4-node Chapter Map campaign. To drill "${selectedTopicFilter}", please select Learning Mode or Test Mode.`,
+                              });
+                              return;
+                            }
                             setQuizMode('boss-battle');
                             setModeSelectDialogOpen(false);
                             setShowChapterMap(true);
                           }}
                           className={cn(
                             "relative flex-1 h-full max-h-[80%] transition-all",
-                            isMajor
+                            !isLocked
                               ? "group hover:scale-105 active:scale-95 hover:brightness-110 cursor-pointer"
                               : "grayscale contrast-75 opacity-60 cursor-not-allowed"
                           )}
-                          title={!isMajor ? "Exclusive to the 6 Core Board Exam Subjects" : "Enter Boss Battle"}
+                          title={!isMajor ? "Exclusive to the 6 Core Board Exam Subjects" : isTopicDrill ? "Topic drills are exclusive to Learning Mode & Test Mode" : "Enter Boss Battle"}
                         >
                           <Image src="/ui/btn-boss.png" alt="Boss Battle" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
                           <div className="absolute inset-x-0 bottom-[22%] flex items-center justify-center">
@@ -6867,8 +7067,8 @@ export default function LearningQuest() {
                             </span>
                           </div>
 
-                          {/* Padlock & Exclusivity Tag for Non-Major Subjects */}
-                          {!isMajor && (
+                          {/* Padlock & Exclusivity Tag for Non-Major Subjects OR Topic Drills */}
+                          {!isMajor ? (
                             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-2 text-center pointer-events-none">
                               <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/85 border border-amber-400/90 flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.5)] mb-1">
                                 <Lock className="w-4 h-4 md:w-5 md:h-5 text-amber-300" />
@@ -6880,7 +7080,19 @@ export default function LearningQuest() {
                                 6 Core Subjects Only
                               </span>
                             </div>
-                          )}
+                          ) : isTopicDrill ? (
+                            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-2 text-center pointer-events-none">
+                              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/85 border border-amber-400/90 flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.5)] mb-1">
+                                <Lock className="w-4 h-4 md:w-5 md:h-5 text-amber-300" />
+                              </div>
+                              <span
+                                className="font-bytebounce text-amber-300 text-[9px] min-[375px]:text-[11px] md:text-sm tracking-wider uppercase leading-tight bg-black/85 px-2 py-0.5 rounded border border-amber-500/40 shadow-md text-center"
+                                style={{ textShadow: '1px 1px 0 #000' }}
+                              >
+                                Chapter Nodes Only
+                              </span>
+                            </div>
+                          ) : null}
                         </button>
                       );
                     })()}
@@ -6894,7 +7106,9 @@ export default function LearningQuest() {
                         <div className="flex-1 flex flex-col space-y-2 min-[375px]:space-y-3 md:space-y-5 overflow-hidden justify-center md:justify-end items-center">
                           <div className="text-center space-y-0.5">
                             <p className="text-white/90 text-[9px] min-[375px]:text-[11px] sm:text-xs md:text-lg max-w-lg mx-auto font-bold leading-tight min-[375px]:leading-snug sm:leading-relaxed" style={{ textShadow: '1px 1px 0 #000' }}>
-                              Hone your skills with immediate AI Tutor rationale after every answer. Master the basics at your own pace.
+                              {selectedTopicFilter
+                                ? `Targeted drill on "${selectedTopicFilter}". Hone your skills with immediate AI Tutor rationale after every answer.`
+                                : "Hone your skills with immediate AI Tutor rationale after every answer. Master the basics at your own pace."}
                             </p>
                           </div>
 
@@ -6917,7 +7131,9 @@ export default function LearningQuest() {
                         <div className="flex-1 flex flex-col space-y-2 min-[375px]:space-y-3 md:space-y-4.5 overflow-hidden justify-center md:justify-end items-center">
                           <div className="text-center space-y-0.5">
                             <p className="text-white/90 text-[9px] min-[375px]:text-[11px] sm:text-sm md:text-lg max-w-lg mx-auto font-bold leading-tight min-[375px]:leading-snug sm:leading-relaxed" style={{ textShadow: '1px 1px 0 #000' }}>
-                              A grueling test of endurance. No immediate feedback, no second chances. Only your final score matters.
+                              {selectedTopicFilter
+                                ? `Targeted endurance test on "${selectedTopicFilter}". No immediate feedback, no second chances. Only your final score matters.`
+                                : "A grueling test of endurance. No immediate feedback, no second chances. Only your final score matters."}
                             </p>
                           </div>
 
@@ -6971,6 +7187,7 @@ export default function LearningQuest() {
                           <ChevronLeft className="w-3.5 h-3.5 text-white" />
                         </button>
                       )}
+
                       {quizMode !== 'boss-battle' ? (
                         <>
                           <div className="w-full border-t border-white/20 my-1 md:my-1" />

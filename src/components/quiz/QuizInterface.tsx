@@ -18,6 +18,7 @@ export type Question = {
   explanation?: string;
   difficulty?: string;
   type?: 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+  topic?: string;
 };
 
 interface QuizInterfaceProps {
@@ -53,10 +54,16 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
 
   const containerRef = useRef<HTMLDivElement>(null);
   const nextActionRef = useRef<HTMLDivElement>(null);
+  const onQuestionChangeRef = useRef(onQuestionChange);
+
+  useEffect(() => {
+    onQuestionChangeRef.current = onQuestionChange;
+  }, [onQuestionChange]);
 
   useEffect(() => {
     setEliminatedOptionLetters([]);
     setZoomedImage(null);
+    onQuestionChangeRef.current?.(currentIndex);
   }, [currentIndex]);
 
   useEffect(() => {

@@ -16,7 +16,135 @@ function escapeRegex(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export async function getQuestQuestions(subject: string, mode: string = 'learning', limit: number = 50, specificDifficulty?: string): Promise<QuizQuestion[]> {
+const subjectCache = new Map<string, { matchingSubjectIds: string[]; matchingObjectIds: ObjectId[] }>();
+
+async function resolveSubjectIds(subject: string) {
+  const normKey = subject.trim().toLowerCase();
+  const cached = subjectCache.get(normKey);
+  if (cached) return cached;
+
+  const matchingSubjectIds: string[] = [];
+  const matchingObjectIds: ObjectId[] = [];
+
+  const addId = (idStr: string) => {
+    if (idStr && !matchingSubjectIds.includes(idStr)) {
+      matchingSubjectIds.push(idStr);
+      if (ObjectId.isValid(idStr)) {
+        try {
+          matchingObjectIds.push(new ObjectId(idStr));
+        } catch (e) {}
+      }
+    }
+  };
+
+  try {
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+    const nameRegex = new RegExp('^' + escapeRegex(subject) + '$', 'i');
+
+    const rawSubjects = await db.collection('Subject').find({ name: nameRegex }).toArray();
+    rawSubjects.forEach(s => addId(s._id.toString()));
+  } catch (e) {}
+
+  if (matchingSubjectIds.length === 0) {
+    try {
+      const dbSubjects = await (prisma as any).subject?.findMany({
+        where: { name: { equals: subject, mode: 'insensitive' } }
+      });
+      dbSubjects?.forEach((s: any) => addId(s.id));
+    } catch (e) {}
+  }
+
+  const result = { matchingSubjectIds, matchingObjectIds };
+  if (matchingSubjectIds.length > 0) {
+    subjectCache.set(normKey, result);
+  }
+  return result;
+}
+
+export async function getSubjectTopics(subject: string): Promise<string[]> {
+  try {
+    const { matchingSubjectIds, matchingObjectIds } = await resolveSubjectIds(subject);
+
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+
+    const idOrConditions: any[] = [];
+    matchingSubjectIds.forEach(idStr => {
+      idOrConditions.push({ categoryId: idStr });
+      idOrConditions.push({ subjectId: idStr });
+    });
+    matchingObjectIds.forEach(objId => {
+      idOrConditions.push({ categoryId: objId });
+      idOrConditions.push({ subjectId: objId });
+    });
+    idOrConditions.push({ topic: new RegExp(escapeRegex(subject), 'i') });
+
+    const queryFilter: any = idOrConditions.length > 0 ? { $or: idOrConditions } : {};
+
+    const approvedStatusFilter = {
+      $or: [
+        { status: { $regex: /^approved$/i } },
+        { isPublished: true },
+        { status: { $exists: false } }
+      ]
+    };
+
+    let rawTopics: any[] = [];
+    try {
+      rawTopics = await db.collection('Question').distinct('topic', {
+        $and: [queryFilter, approvedStatusFilter]
+      });
+    } catch (e) {
+      const docs = await db.collection('Question').find(queryFilter, { projection: { topic: 1 } }).toArray();
+      rawTopics = docs.map(d => d.topic);
+    }
+
+    if (!rawTopics || rawTopics.length === 0) {
+      try {
+        const prismaQuestions = await prisma.question.findMany({
+          where: {
+            OR: [
+              ...(matchingSubjectIds.length > 0 ? [{ categoryId: { in: matchingSubjectIds } }] : []),
+              ...(matchingSubjectIds.length > 0 ? [{ subjectId: { in: matchingSubjectIds } }] : []),
+              { topic: { contains: subject, mode: 'insensitive' } }
+            ]
+          } as any,
+          select: { topic: true },
+          distinct: ['topic']
+        });
+        rawTopics = prismaQuestions.map((q: any) => q.topic);
+      } catch (e) {}
+    }
+
+    const cleanTopics = (rawTopics || [])
+      .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+      .map(t => t.trim());
+
+    const seen = new Set<string>();
+    const uniqueTopics: string[] = [];
+    for (const t of cleanTopics) {
+      const lower = t.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        uniqueTopics.push(t);
+      }
+    }
+
+    return uniqueTopics.sort((a, b) => a.localeCompare(b));
+  } catch (error) {
+    console.error('Failed to get subject topics:', error);
+    return [];
+  }
+}
+
+export async function getQuestQuestions(
+  subject: string, 
+  mode: string = 'learning', 
+  limit: number = 50, 
+  specificDifficulty?: string,
+  specificTopic?: string
+): Promise<QuizQuestion[]> {
   try {
     let userId: string | undefined = undefined;
     try {
@@ -24,39 +152,12 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
       userId = cookieStore.get('user_id')?.value;
     } catch (e) {}
 
-    const matchingSubjectIds: string[] = [];
-    const matchingObjectIds: ObjectId[] = [];
-
-    const addId = (idStr: string) => {
-      if (idStr && !matchingSubjectIds.includes(idStr)) {
-        matchingSubjectIds.push(idStr);
-        if (ObjectId.isValid(idStr)) {
-          try {
-            matchingObjectIds.push(new ObjectId(idStr));
-          } catch (e) {}
-        }
-      }
-    };
-
-    // 1. Resolve Subject IDs from MongoDB 'Subject' collection & Prisma Subject model
-    try {
-      const dbSubjects = await (prisma as any).subject?.findMany({
-        where: { name: { equals: subject, mode: 'insensitive' } }
-      });
-      dbSubjects?.forEach((s: any) => addId(s.id));
-    } catch (e) {}
-
-    try {
-      const client = await clientPromise;
-      const db = client.db('boardquest');
-      const nameRegex = new RegExp('^' + escapeRegex(subject) + '$', 'i');
-
-      const rawSubjects = await db.collection('Subject').find({ name: nameRegex }).toArray();
-      rawSubjects.forEach(s => addId(s._id.toString()));
-    } catch (e) {}
+    const { matchingSubjectIds, matchingObjectIds } = await resolveSubjectIds(subject);
 
     const isBossBattle = mode === 'boss-battle';
     const targetDiff = specificDifficulty ? specificDifficulty.toUpperCase() : undefined;
+    const cleanTopic = typeof specificTopic === 'string' ? specificTopic.trim() : '';
+    const hasTopicFilter = cleanTopic.length > 0;
 
     let rawQuestions: any[] = [];
 
@@ -90,41 +191,62 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
         ]
       };
 
-      const fullQuery: any = {
-        $and: [
-          queryFilter,
-          approvedStatusFilter,
-          ...(!isBossBattle && targetDiff ? [{ difficulty: { $regex: new RegExp('^' + targetDiff + '$', 'i') } }] : [])
-        ]
-      };
+      if (hasTopicFilter) {
+        // Fast direct topic lookup
+        const topicRegex = new RegExp(escapeRegex(cleanTopic), 'i');
+        const topicSubjectQuery: any = {
+          $and: [
+            approvedStatusFilter,
+            { topic: topicRegex },
+            ...(idOrConditions.length > 0 ? [{ $or: [...idOrConditions, { topic: topicRegex }] }] : [])
+          ]
+        };
+        rawQuestions = await db.collection('Question').find(topicSubjectQuery).toArray();
 
-      rawQuestions = await db.collection('Question').find(fullQuery).toArray();
+        // If no questions found with strict subject binding, search topic across Question collection
+        if (rawQuestions.length === 0) {
+          rawQuestions = await db.collection('Question').find({
+            $and: [
+              approvedStatusFilter,
+              { topic: topicRegex }
+            ]
+          }).toArray();
+        }
+      } else {
+        const fullQuery: any = {
+          $and: [
+            queryFilter,
+            approvedStatusFilter,
+            ...(!isBossBattle && targetDiff ? [{ difficulty: { $regex: new RegExp('^' + targetDiff + '$', 'i') } }] : [])
+          ]
+        };
 
-      if (rawQuestions.length === 0 && !isBossBattle && targetDiff) {
-        const fallbackDiffQuery = { $and: [queryFilter, approvedStatusFilter] };
-        rawQuestions = await db.collection('Question').find(fallbackDiffQuery).toArray();
-      }
+        rawQuestions = await db.collection('Question').find(fullQuery).toArray();
 
-      if (rawQuestions.length === 0) {
-        rawQuestions = await db.collection('Question').find(queryFilter).toArray();
-      }
+        if (rawQuestions.length === 0 && !isBossBattle && targetDiff) {
+          rawQuestions = await db.collection('Question').find({
+            $and: [queryFilter, approvedStatusFilter]
+          }).toArray();
+        }
 
-      if (rawQuestions.length === 0) {
-        rawQuestions = await db.collection('Question').find(approvedStatusFilter).limit(limit).toArray();
-      }
-
-      if (rawQuestions.length === 0) {
-        rawQuestions = await db.collection('Question').find({}).limit(limit).toArray();
+        if (rawQuestions.length === 0) {
+          rawQuestions = await db.collection('Question').find(queryFilter).limit(limit * 2).toArray();
+        }
       }
     } catch (dbErr) {
       console.warn('Raw MongoDB question query failed, attempting Prisma query fallback:', dbErr);
       try {
         const prismaQuestions = await prisma.question.findMany({
           where: {
-            OR: [
-              ...(matchingSubjectIds.length > 0 ? [{ categoryId: { in: matchingSubjectIds } }] : []),
-              ...(matchingSubjectIds.length > 0 ? [{ subjectId: { in: matchingSubjectIds } }] : []),
-              { topic: { contains: subject, mode: 'insensitive' } }
+            AND: [
+              {
+                OR: [
+                  ...(matchingSubjectIds.length > 0 ? [{ categoryId: { in: matchingSubjectIds } }] : []),
+                  ...(matchingSubjectIds.length > 0 ? [{ subjectId: { in: matchingSubjectIds } }] : []),
+                  { topic: { contains: subject, mode: 'insensitive' } }
+                ]
+              },
+              ...(hasTopicFilter ? [{ topic: { contains: cleanTopic, mode: 'insensitive' } }] : [])
             ]
           } as any,
           select: {
@@ -136,6 +258,7 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
             correctAnswer: true,
             difficulty: true,
             type: true,
+            topic: true,
           }
         });
         rawQuestions = prismaQuestions;
@@ -161,16 +284,33 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
         : null,
       correctAnswer: q.correctAnswer || '',
       difficulty: String(q.difficulty || 'EASY').toUpperCase(),
-      type: q.type || 'MCQ'
+      type: q.type || 'MCQ',
+      topic: typeof q.topic === 'string' ? q.topic.trim() : ''
     }));
 
     let selected = [...allQuestions];
 
-    // Spaced Repetition / Mastery Algorithm
-    if (userId) {
-      const attempts: any[] = await (prisma as any).userQuestionAttempt.findMany({
-        where: { userId }
-      });
+    // Spaced Repetition / Mastery Algorithm (Optimized native Mongo lookup)
+    if (userId && allQuestions.length > 0) {
+      let attempts: any[] = [];
+      try {
+        const client = await clientPromise;
+        const db = client.db('boardquest');
+        const qIds = allQuestions.map(q => q.id);
+        const userObjId = ObjectId.isValid(userId) ? new ObjectId(userId) : null;
+        const userFilter = userObjId ? { $or: [{ userId }, { userId: userObjId }] } : { userId };
+
+        attempts = await db.collection('UserQuestionAttempt').find({
+          ...userFilter,
+          questionId: { $in: qIds }
+        }).toArray();
+      } catch (err) {
+        try {
+          attempts = await (prisma as any).userQuestionAttempt.findMany({
+            where: { userId, questionId: { in: allQuestions.map(q => q.id) } }
+          });
+        } catch (e) {}
+      }
       
       const attemptMap = new Map(attempts.map(a => [a.questionId, a]));
 
@@ -187,11 +327,6 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
         const attemptsA = attemptA ? attemptA.attempts : 0;
         const attemptsB = attemptB ? attemptB.attempts : 0;
 
-        // Score formulation: Lower score = higher priority
-        // If they got it wrong a lot, ratio is low (e.g. 0/5 = 0). We want this at the top!
-        // Unanswered: ratio is 1, attempts is 0. 
-        // Mastered: ratio is 1, attempts > 0.
-        
         let scoreA = 0;
         let scoreB = 0;
 
@@ -357,6 +492,7 @@ export async function getQuestQuestions(subject: string, mode: string = 'learnin
         explanation: undefined,
         difficulty: String(q.difficulty || 'EASY').toUpperCase(),
         type: q.type || 'MCQ',
+        topic: typeof q.topic === 'string' ? q.topic.trim() : '',
       };
     });
   } catch (error) {
