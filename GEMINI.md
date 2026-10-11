@@ -68,6 +68,23 @@
 
 ### Clinical Microscopy & Parasitology
 - **Reagent Strip Slime (Stage 1 Minion - `cm-1`)**: Full animation sequence, lunges, and sound effects (`ReagentStripSlimeNormal&HeavyAttack.mp3`) are permanently locked.
+- **Urochrome Titan (Stage 3 Chapter Boss - `cm-3` / legacy `cm-1`)**:
+  - `idleSpriteUrl`: `/images/bosses/clinmicro_chapterOneBoss_idleAnimation.png` (14 frames, 77x99, 1.0s loop)
+  - `attackSpriteUrl`: `/images/bosses/clinmicro_chapterOneBoss_normalAttackAnimation.png` (14 frames, 219x128, 1.25s duration, `step-end` with 14 dedicated keyframes)
+  - Normal Attack Sequence & Timing:
+    - 0–150ms: Swift dash directly in front of the player (`min(-45px, calc(-100cqw + 590px))` / `calc(-100cqw + 720px)`)
+    - 0–1250ms: Executes and renders all 14 frames of the normal claw strike attack in front of the player, with `BiohazardOverlordNormalAttack.mp3` triggered at ~350ms and claw impact at 420ms (`impactDelay = 420ms`, hit spark, and shake)
+    - 1250ms–2184ms: Seamlessly transitions to `idleSpriteUrl` in a dedicated clipped 77x99 window at `left: 51 * effectiveScale px, top: 29 * effectiveScale px`, pausing for ~1 second in its Idle stance in front of the player
+    - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
+  - `heavyAttackSpriteUrl`: `/images/bosses/clinmicro_chapterOneBoss_heavyAttackAnimation.png` (14 frames, 151x128, 1.25s duration, `step-end` with 14 dedicated keyframes)
+  - Heavy Attack Sequence & Timing:
+    - 0–150ms: Swift dash directly in front of the player (`min(-45px, calc(-100cqw + 420px))` / `calc(-100cqw + 550px)`)
+    - 0–1250ms: Executes and renders all 14 frames of the heavy claw ground slam attack in front of the player, with `CrystalGolemNormalAttack.mp3` triggered at ~420ms and slam impact at 450ms (`impactDelay = 450ms`, hit spark, and shake)
+    - 1250ms–2184ms: Seamlessly transitions to `idleSpriteUrl` in a dedicated clipped 77x99 window at `left: 51 * effectiveScale px, top: 29 * effectiveScale px`, pausing for ~1 second in its Idle stance in front of the player
+    - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
+  - Scale & Positioning: `effectiveScale = scale * 2.55` with vertical alignment `translate-y-[16px] md:translate-y-[20px]` in `src/app/quest/page.tsx` ensuring generous clearance below the Enemy HP bar and SHIELDED badge while matching the physical body size and silhouette of Crystal Golem.
+  - Sound effects: `normalAttackSfxUrl: /SoundEffects/BiohazardOverlordNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/CrystalGolemNormalAttack.mp3`, with preloaded handlers via `preloadBiohazardSounds` and `preloadCrystalGolemSounds` permanently locked.
+  - All animations, timings, frame dimensions, delays, scales, positions, keyframes, and sound effect bindings are permanently locked to not modify, alter, degrade, or cross-contaminate. Must NEVER leak into other stages.
 - **Crystal Golem (Stage 4 Final Boss - `cm-4` / legacy `cm-3`)**: Scoped strictly to Final Boss with idle, normal, and heavy animations and audio (`CrystalGolemNormalAttack.mp3`, `CrystalGolemHeavyAttack.mp3`) permanently locked.
 
 ### Histopathology and Medtech Laws
@@ -164,7 +181,7 @@
 ## 8. Test Mode Random Encounter & Full Mode Parity Rules (Option B)
 - **Random Candidate Selection**: When a player starts Test Mode for a chosen subject, the game constructs a candidate pool exclusively from that subject's approved elite roster:
   1. **Mini-Boss** (`tier: 'mini-boss'`, e.g. Anemia Shade, Paraffin Golem, Staph Sentinel, Antigen Titan, Hyperglycemic Mutant)
-  2. **Chapter 1 Boss** (`tier: 'boss'`, e.g. Erythrocyte Colossus, Fixation Overlord, Gram Positive Overlord, Ketoacidosis Colossus, Immune Archon)
+  2. **Chapter 1 Boss** (`tier: 'boss'`, e.g. Erythrocyte Colossus, Fixation Overlord, Gram Positive Overlord, Ketoacidosis Colossus, Immune Archon, Urochrome Titan)
   3. **Chapter 3 Final Boss** (`tier: 'final-boss'`, e.g. Sickle-Cell Reaper, Legal Beholder, Biohazard Overlord, Crystal Golem, Hyperglycemic Specter, Anti-Serum Hydra)
 - **Minion Exclusion**: Minions are strictly reserved for Wave 1 of Learning/Boss modes and are excluded from the Test Mode candidate pool.
 - **100% Identical Choreography, Timings & Sound Effects**: The chosen enemy runs with complete parity to Boss-Battle and Learning Mode: identical frame dimensions, step-end keyframes, golden standard 4-phase lunges (swift forward dash, full in-place attack execution, 1-second idle pause, smooth glide return), impact delays, reset delays, hit sparks, screen shakes, overlay animators (`JudicialHammerAnimator`, `UndergroundBlastAnimator`, `UndergroundSpikesAnimator`, `HydraLightningAnimator`, `ArchonThunderAnimator`, `ParaffinBallsAnimator`, `FixationNailedAnimator`, `ColossusFistAnimator`, `AnemiaSlashAnimator`), and dedicated sound effect bindings.

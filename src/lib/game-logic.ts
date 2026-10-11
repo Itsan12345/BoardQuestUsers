@@ -39,6 +39,7 @@ export interface PlayerStats {
   equippedItemName: string;
   equippedItemBuff: string;
   equippedItemIcon: string;
+  equippedItemImageUrl?: string;
 }
 
 export function calculatePlayerStats(level: number, streak: number = 0, equippedItem?: string | null): PlayerStats {
@@ -79,19 +80,23 @@ export function calculatePlayerStats(level: number, streak: number = 0, equipped
   let equippedItemName = 'None Equipped';
   let equippedItemBuff = 'No active combat buff';
   let equippedItemIcon = '🎒';
+  let equippedItemImageUrl: string | undefined = undefined;
 
   if (hasShield) {
     equippedItemName = 'Erlenmeyer Shield';
     equippedItemBuff = '+20 Max HP & +15 Armor (Blocks initial boss attacks)';
     equippedItemIcon = '🛡️';
+    equippedItemImageUrl = '/images/bossbattleItems/ErlenmayerShield.png';
   } else if (hasClarity) {
     equippedItemName = 'Pipette of Clarity';
     equippedItemBuff = '+10% Crit Rate (Eliminates 2 wrong options)';
     equippedItemIcon = '🧪';
+    equippedItemImageUrl = '/images/bossbattleItems/PippeteofClarity.png';
   } else if (hasSaline) {
     equippedItemName = 'Buffered Saline Solution';
     equippedItemBuff = 'Cures Poison & restores +40 HP on activation';
     equippedItemIcon = '💧';
+    equippedItemImageUrl = '/images/bossbattleItems/BufferedSaline.png';
   }
 
   return {
@@ -105,6 +110,7 @@ export function calculatePlayerStats(level: number, streak: number = 0, equipped
     equippedItemName,
     equippedItemBuff,
     equippedItemIcon,
+    equippedItemImageUrl,
   };
 }
 

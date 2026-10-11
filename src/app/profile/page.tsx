@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Settings, LogOut, MapPin, Mail, Calendar as CalendarIcon, Zap, Clock, Award, Shield, Swords, Heart, Crosshair, Lock, CheckCircle2, GraduationCap, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -509,8 +510,20 @@ function ProfileContent() {
                         <span className="text-[11px]">Boost: <strong className="text-foreground">{stats.multiplier}x</strong></span>
                       </div>
 
-                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
-                        <span>{stats.equippedItemIcon}</span>
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
+                        {stats.equippedItemImageUrl ? (
+                          <Image
+                            src={stats.equippedItemImageUrl}
+                            alt={stats.equippedItemName}
+                            width={16}
+                            height={16}
+                            className="w-4 h-4 object-contain"
+                            style={{ imageRendering: 'pixelated' }}
+                            unoptimized
+                          />
+                        ) : (
+                          <span>{stats.equippedItemIcon}</span>
+                        )}
                         <span className="truncate max-w-[130px]" title={stats.equippedItemName}>
                           {stats.equippedItemName}
                         </span>

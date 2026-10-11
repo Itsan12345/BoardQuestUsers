@@ -342,7 +342,15 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
             onClick={handleUsePipetteOfClarity}
             className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-[9px] md:text-[10px] uppercase tracking-wider h-8 px-3 rounded-full shadow-lg shadow-purple-500/30 animate-pulse flex items-center gap-1.5 shrink-0 border border-purple-300"
           >
-            <Sparkles className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300 animate-spin" style={{ animationDuration: '3s' }} />
+            <Image
+              src="/images/bossbattleItems/PippeteofClarity.png"
+              alt="Pipette of Clarity"
+              width={18}
+              height={18}
+              className="w-4 h-4 object-contain filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+              style={{ imageRendering: 'pixelated' }}
+              unoptimized
+            />
             Pipette Hint (50:50)
           </Button>
         )}
