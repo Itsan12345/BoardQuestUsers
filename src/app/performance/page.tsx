@@ -302,8 +302,8 @@ function PerformanceContent() {
               </CardHeader>
 
               {/* Tab 1: Radar Chart */}
-              <TabsContent value="radar" className="p-4 sm:p-8 m-0">
-                <div className="h-[340px] sm:h-[400px] w-full flex items-center justify-center">
+              <TabsContent value="radar" className="p-4 sm:p-8 m-0 relative overflow-hidden select-none">
+                <div className="h-[340px] sm:h-[400px] w-full flex items-center justify-center relative z-10">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart cx="50%" cy="50%" outerRadius={115} data={radarData}>
                       <PolarGrid stroke="currentColor" strokeWidth={1} className="text-muted-foreground/25" />

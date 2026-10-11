@@ -286,7 +286,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
   };
 
   return (
-    <div ref={containerRef} className="w-full flex flex-col h-full overflow-y-auto pb-20 no-scrollbar relative">
+    <div ref={containerRef} className="w-full flex flex-col h-full overflow-y-auto pb-20 no-scrollbar relative select-none">
       <div className="px-6 pt-6 flex justify-between items-center mb-4 gap-4">
         <div className="flex flex-col">
           {mode !== 'boss-battle' ? (

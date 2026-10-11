@@ -70,6 +70,8 @@ import { AnemiaSlashAnimator } from '@/components/game/AnemiaSlashAnimator';
 import { ColossusFistAnimator } from '@/components/game/ColossusFistAnimator';
 import { ParaffinBallsAnimator } from '@/components/game/ParaffinBallsAnimator';
 import { FixationNailedAnimator } from '@/components/game/FixationNailedAnimator';
+import { useArenaIntegrity } from '@/hooks/useArenaIntegrity';
+import { ArenaIntegrityOverlay } from '@/components/quest/ArenaIntegrityOverlay';
 
 const SUBJECT_METADATA: Record<string, {
   name: string;
@@ -417,9 +419,10 @@ export default function LearningQuest() {
     await loadCategories();
   };
 
-  // Fullscreen state
+  // Fullscreen & Arena Integrity Security State
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fullscreenRef = useRef<HTMLDivElement>(null);
+  const handleFleeArenaRef = useRef<() => void>(() => {});
 
   const isCurrentlyFullscreen = () => {
     if (typeof document === 'undefined') return false;
@@ -430,6 +433,62 @@ export default function LearningQuest() {
       (document as any).msFullscreenElement
     );
   };
+
+  const selectedNodeIdRef = useRef<string>('cc-1');
+
+  const {
+    isFullscreen: arenaIsFullscreen,
+    isShieldActive: arenaShieldActive,
+    shieldReason: arenaShieldReason,
+    isWarningModalOpen: arenaWarningModalOpen,
+    modalReason: arenaModalReason,
+    strikes: arenaStrikes,
+    maxStrikes: arenaMaxStrikes,
+    enterFullscreen: arenaEnterFullscreen,
+    exitFullscreen: arenaExitFullscreen,
+    dismissWarningModal: arenaDismissWarningModal,
+    recordViolation: arenaRecordViolation,
+    resetIntegrity: arenaResetIntegrity,
+  } = useArenaIntegrity({
+    isActive: isStarted && !isFinished,
+    targetElementRef: fullscreenRef,
+    subject: selectedSubject,
+    nodeId: selectedNodeIdRef.current,
+    quizMode,
+    maxStrikes: 3,
+    onViolation: (reason, strikes) => {
+      if (reason === 'fullscreen_exit') {
+        toast({
+          variant: "destructive",
+          title: `Fullscreen Exited (Warning ${strikes}/3)`,
+          description: "Full-screen mode is required during the quiz.",
+        });
+      } else if (reason === 'printscreen') {
+        toast({
+          variant: "destructive",
+          title: `Screenshot Detected (Warning ${strikes}/3)`,
+          description: "Taking screenshots is not allowed during the quiz.",
+        });
+      } else if (reason === 'copy_attempt') {
+        toast({
+          variant: "destructive",
+          title: "Copying Not Allowed",
+          description: "Copying quiz questions is not allowed.",
+        });
+      } else if (reason === 'blur') {
+        toast({
+          variant: "destructive",
+          title: `Tab Switched (Warning ${strikes}/3)`,
+          description: "Please stay on the quiz page until you finish.",
+        });
+      }
+    },
+  });
+
+  // Sync fullscreen state
+  useEffect(() => {
+    setIsFullscreen(arenaIsFullscreen);
+  }, [arenaIsFullscreen]);
 
   // Sync fullscreen state with native browser events (e.g. hitting ESC, vendor events)
   useEffect(() => {
@@ -457,33 +516,25 @@ export default function LearningQuest() {
 
   const toggleFullscreen = async () => {
     try {
-      const activeFs = isCurrentlyFullscreen();
-      if (!activeFs) {
-        const el = fullscreenRef.current || document.documentElement;
-        if (el.requestFullscreen) {
-          await el.requestFullscreen();
-        } else if ((el as any).webkitRequestFullscreen) {
-          await (el as any).webkitRequestFullscreen();
-        } else if ((el as any).mozRequestFullScreen) {
-          await (el as any).mozRequestFullScreen();
-        } else if ((el as any).msRequestFullscreen) {
-          await (el as any).msRequestFullscreen();
+      const activeFs = isCurrentlyFullscreen() || isFullscreen;
+      if (isStarted && !isFinished) {
+        if (activeFs) {
+          // Exiting fullscreen during an active battle simulation triggers the integrity warning!
+          await arenaExitFullscreen();
+          arenaRecordViolation('fullscreen_exit');
         } else {
-          // Native fullscreen not supported by browser/device - fallback to CSS fullscreen
+          await arenaEnterFullscreen();
           setIsFullscreen(true);
         }
+        return;
+      }
+
+      if (!activeFs) {
+        await arenaEnterFullscreen();
+        setIsFullscreen(true);
       } else {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-        } else if ((document as any).webkitExitFullscreen) {
-          await (document as any).webkitExitFullscreen();
-        } else if ((document as any).mozCancelFullScreen) {
-          await (document as any).mozCancelFullScreen();
-        } else if ((document as any).msExitFullscreen) {
-          await (document as any).msExitFullscreen();
-        } else {
-          setIsFullscreen(false);
-        }
+        await arenaExitFullscreen();
+        setIsFullscreen(false);
       }
     } catch (err: any) {
       console.warn("Native fullscreen toggle error, falling back to CSS fullscreen:", err);
@@ -755,6 +806,7 @@ export default function LearningQuest() {
     heavyAttackSfxUrl?: string;
   } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('cc-1');
+  selectedNodeIdRef.current = selectedNodeId;
   const [showChapterMap, setShowChapterMap] = useState<boolean>(false);
   const [nodeStars, setNodeStars] = useState<Record<string, number>>({});
   const [nodeClears, setNodeClears] = useState<Record<string, { EASY?: boolean; MEDIUM?: boolean; HARD?: boolean }>>({});
@@ -3362,6 +3414,9 @@ export default function LearningQuest() {
 
       setIsStarted(true);
       setIsFinished(false);
+      arenaResetIntegrity();
+      // Automatically engage fullscreen mode for Quest Arena simulation
+      arenaEnterFullscreen().catch(() => {});
 
       // Ensure we start at the top of the page so the cutscene is fully visible
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -5447,6 +5502,7 @@ export default function LearningQuest() {
     stopFinalBossMusic();
     stopLearningModeMusic();
     stopTestModeMusic();
+    arenaResetIntegrity();
     setLeaveConfirmDialogOpen(false);
     setIsFleeing(true);
     setFleeProgress(false);
@@ -5477,6 +5533,7 @@ export default function LearningQuest() {
       }
     }, 2800);
   };
+  handleFleeArenaRef.current = handleFleeArena;
 
   if (isStarted) {
     const _maxPlayerHp = getPlayerMaxHp();
@@ -5502,6 +5559,18 @@ export default function LearningQuest() {
           hitFlash && "animate-shake"
         )}
       >
+        {/* Anti-Cheating & Arena Integrity Security Overlay */}
+        <ArenaIntegrityOverlay
+          isShieldActive={arenaShieldActive}
+          shieldReason={arenaShieldReason}
+          isWarningModalOpen={arenaWarningModalOpen}
+          modalReason={arenaModalReason}
+          strikes={arenaStrikes}
+          maxStrikes={arenaMaxStrikes}
+          onDismissWarning={arenaDismissWarningModal}
+          onForfeit={handleFleeArena}
+        />
+
         {/* Gamified Pixelated Flee Arena Overlay */}
         {isFleeing && (
           <div className="fixed inset-0 z-[150] flex flex-col items-center justify-between bg-black/95 backdrop-blur-md animate-in fade-in duration-300 pointer-events-auto select-none overflow-hidden py-6 px-4">
@@ -6817,7 +6886,7 @@ export default function LearningQuest() {
           </div>
 
           <div className={cn(
-            "flex-1 bg-background transition-all duration-700 ease-out z-20",
+            "flex-1 bg-background transition-all duration-700 ease-out z-20 relative select-none",
             introPhase !== 'active'
               ? 'translate-y-[100%] opacity-0 pointer-events-none'
               : waveTransition

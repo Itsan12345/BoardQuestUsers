@@ -500,3 +500,376 @@ export async function getQuestQuestions(
     return [];
   }
 }
+
+export interface LogIntegrityIncidentParams {
+  incidentType: 'TAB_SWITCH' | 'SCREENSHOT_ATTEMPT' | 'FULLSCREEN_EXIT' | 'COPY_ATTEMPT';
+  subject?: string;
+  nodeId?: string;
+  quizMode?: string;
+  strikeCount: number;
+  details?: string;
+}
+
+/**
+ * Calculates ISO week number and starting Monday date for dynamic weekly resets.
+ * ISO weeks run Monday through Sunday.
+ */
+function getISOWeekDetails(date: Date = new Date()): { weekKey: string; weekStartDate: Date } {
+  const target = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayNr = target.getUTCDay() || 7;
+  target.setUTCDate(target.getUTCDate() + 4 - dayNr);
+  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const weekKey = `${target.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+
+  const monday = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const currentDay = monday.getUTCDay() || 7;
+  monday.setUTCDate(monday.getUTCDate() - (currentDay - 1));
+
+  return { weekKey, weekStartDate: monday };
+}
+
+let hasEnsuredIntegrityIndexes = false;
+async function ensureIntegrityIndexes(db: any) {
+  if (hasEnsuredIntegrityIndexes) return;
+  hasEnsuredIntegrityIndexes = true;
+
+  try {
+    // 1. Ensure 90-day TTL index on StudentWarningIncidents (90 days = 7,776,000 seconds)
+    const incidentIndexes = await db.collection('StudentWarningIncidents').indexes().catch(() => []);
+    const hasTtl = incidentIndexes.some((idx: any) => idx.name === 'timestamp_ttl_90d' || (idx.key && idx.key.timestamp && idx.expireAfterSeconds));
+    if (!hasTtl) {
+      await db.collection('StudentWarningIncidents').createIndex(
+        { timestamp: 1 },
+        { expireAfterSeconds: 7776000, name: 'timestamp_ttl_90d', background: true }
+      ).catch(() => {});
+    }
+
+    const hasIncidentUserIdx = incidentIndexes.some((idx: any) => idx.key && idx.key.userId);
+    if (!hasIncidentUserIdx) {
+      await db.collection('StudentWarningIncidents').createIndex({ userId: 1 }, { background: true }).catch(() => {});
+    }
+
+    // 2. Ensure userId unique index on StudentWarningSummaries (respecting existing sparse/unique spec)
+    const summaryIndexes = await db.collection('StudentWarningSummaries').indexes().catch(() => []);
+    const hasSummaryUserIdx = summaryIndexes.some((idx: any) => idx.key && idx.key.userId);
+    if (!hasSummaryUserIdx) {
+      await db.collection('StudentWarningSummaries').createIndex(
+        { userId: 1 },
+        { unique: true, sparse: true, background: true }
+      ).catch(() => {});
+    }
+  } catch (err) {
+    // Non-fatal if index already exists or cluster permissions restrict ad-hoc index creation
+  }
+}
+
+export async function logArenaIntegrityIncidentAction(params: LogIntegrityIncidentParams) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+
+    let userName = 'Aspirant Student';
+    let userEmail = 'student@boardquest.app';
+
+    if (userId) {
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true, email: true },
+        });
+        if (user) {
+          userName = user.name || userName;
+          userEmail = user.email || userEmail;
+        }
+      } catch (_) {}
+    }
+
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+    const now = new Date();
+    const { weekKey, weekStartDate } = getISOWeekDetails(now);
+
+    // Ensure 90-day TTL & query indexes are active
+    await ensureIntegrityIndexes(db);
+
+    const incidentDoc = {
+      userId: userId || null,
+      userName,
+      userEmail,
+      subject: params.subject || 'General Quest',
+      nodeId: params.nodeId || 'unknown',
+      quizMode: params.quizMode || 'quest',
+      incidentType: params.incidentType,
+      strikeCount: params.strikeCount,
+      details: params.details || '',
+      weekKey,
+      timestamp: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // 1. Store in the dedicated StudentWarningIncidents collection (auto-expires in 90 days via TTL)
+    await db.collection('StudentWarningIncidents').insertOne(incidentDoc);
+
+    // Also mirror to legacy collection for historical continuity
+    await db.collection('arena_integrity_incidents').insertOne({
+      ...incidentDoc,
+      createdAt: now.toISOString(),
+    }).catch(() => {});
+
+    // 2. Real-time dynamic dual-counter in StudentWarningSummaries (weekly active window + lifetime audit)
+    if (userId) {
+      const incType = params.incidentType;
+      const isFullscreen = incType === 'FULLSCREEN_EXIT';
+      const isScreenshot = incType === 'SCREENSHOT_ATTEMPT';
+      const isTab = incType === 'TAB_SWITCH';
+
+      const lifetimeIncField =
+        isFullscreen ? 'fullscreenExits'
+        : isScreenshot ? 'screenshots'
+        : isTab ? 'tabSwitches'
+        : 'copyAttempts';
+
+      const weeklyIncField =
+        isFullscreen ? 'weeklyFullscreenExits'
+        : isScreenshot ? 'weeklyScreenshots'
+        : isTab ? 'weeklyTabSwitches'
+        : 'weeklyCopyAttempts';
+
+      const existingSummary = await db.collection('StudentWarningSummaries').findOne({ userId });
+      const isSameWeek = existingSummary && existingSummary.currentWeekKey === weekKey;
+      const prevAllTime = existingSummary
+        ? Math.max(existingSummary.allTimeWarnings || 0, existingSummary.totalWarnings || 0)
+        : 0;
+      const allTimeTotal = prevAllTime + 1;
+      const allTimeRisk = allTimeTotal >= 6 ? 'HIGH' : allTimeTotal >= 3 ? 'MEDIUM' : 'LOW';
+
+      if (isSameWeek) {
+        // Increment both weekly active window & lifetime audit counters
+        const weeklyTotal = (existingSummary.weeklyWarnings || 0) + 1;
+        const weeklyRisk = weeklyTotal >= 6 ? 'HIGH' : weeklyTotal >= 3 ? 'MEDIUM' : 'LOW';
+
+        await db.collection('StudentWarningSummaries').updateOne(
+          { userId },
+          {
+            $set: {
+              userName,
+              userEmail,
+              weeklyWarnings: weeklyTotal,
+              weeklyRiskLevel: weeklyRisk,
+              allTimeWarnings: allTimeTotal,
+              totalWarnings: allTimeTotal,
+              riskLevel: allTimeRisk,
+              lastIncidentType: params.incidentType,
+              lastIncidentAt: now,
+              updatedAt: now,
+            },
+            $inc: {
+              [weeklyIncField]: 1,
+              [lifetimeIncField]: 1,
+            },
+            $addToSet: {
+              subjectsAffected: params.subject || 'General Quest',
+            },
+          }
+        );
+      } else {
+        // Week rollover or first infraction: Reset weekly counters, set lifetime counters
+        await db.collection('StudentWarningSummaries').updateOne(
+          { userId },
+          {
+            $set: {
+              userName,
+              userEmail,
+              currentWeekKey: weekKey,
+              weekStartDate,
+              weeklyWarnings: 1,
+              weeklyFullscreenExits: isFullscreen ? 1 : 0,
+              weeklyScreenshots: isScreenshot ? 1 : 0,
+              weeklyTabSwitches: isTab ? 1 : 0,
+              weeklyCopyAttempts: (!isFullscreen && !isScreenshot && !isTab) ? 1 : 0,
+              weeklyRiskLevel: 'LOW',
+              allTimeWarnings: allTimeTotal,
+              totalWarnings: allTimeTotal,
+              riskLevel: allTimeRisk,
+              lastIncidentType: params.incidentType,
+              lastIncidentAt: now,
+              updatedAt: now,
+            },
+            $inc: {
+              [lifetimeIncField]: 1,
+            },
+            $addToSet: {
+              subjectsAffected: params.subject || 'General Quest',
+            },
+          },
+          { upsert: true }
+        );
+      }
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to log arena integrity incident:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getArenaIntegrityIncidentsAction(limit = 100) {
+  try {
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+    
+    // Read from dedicated StudentWarningIncidents collection
+    let incidents = await db
+      .collection('StudentWarningIncidents')
+      .find({})
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .toArray();
+
+    // Fallback to legacy collection if new collection is empty
+    if (incidents.length === 0) {
+      incidents = await db
+        .collection('arena_integrity_incidents')
+        .find({})
+        .sort({ timestamp: -1 })
+        .limit(limit)
+        .toArray();
+    }
+
+    return {
+      success: true,
+      incidents: incidents.map(inc => ({
+        id: inc._id.toString(),
+        userId: inc.userId,
+        userName: inc.userName,
+        userEmail: inc.userEmail,
+        subject: inc.subject,
+        nodeId: inc.nodeId,
+        quizMode: inc.quizMode,
+        incidentType: inc.incidentType,
+        strikeCount: inc.strikeCount,
+        details: inc.details,
+        weekKey: inc.weekKey,
+        timestamp: inc.timestamp ? new Date(inc.timestamp).toISOString() : (inc.createdAt || ''),
+      })),
+    };
+  } catch (error: any) {
+    console.error('Failed to get arena integrity incidents:', error);
+    return { success: false, incidents: [], error: error.message };
+  }
+}
+
+export interface StudentIntegritySummary {
+  userId: string | null;
+  userName: string;
+  userEmail: string;
+
+  // Weekly Active Window (Resets each week)
+  currentWeekKey: string;
+  weekStartDate?: string;
+  weeklyWarnings: number;
+  weeklyFullscreenExits: number;
+  weeklyScreenshots: number;
+  weeklyTabSwitches: number;
+  weeklyCopyAttempts: number;
+  weeklyRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+
+  // All-Time Lifetime Tracking
+  allTimeWarnings: number;
+  totalWarnings: number; // alias for backwards compatibility
+  fullscreenExits: number;
+  screenshots: number;
+  tabSwitches: number;
+  copyAttempts: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+
+  lastIncidentAt: string;
+  lastIncidentType?: string;
+  subjectsAffected: string[];
+}
+
+export async function getStudentIntegritySummaryAction(timeframe: 'weekly' | 'all-time' = 'weekly'): Promise<{
+  success: boolean;
+  currentWeekKey: string;
+  students: StudentIntegritySummary[];
+  error?: string;
+}> {
+  try {
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+    const { weekKey, weekStartDate } = getISOWeekDetails(new Date());
+
+    // Read directly from real-time StudentWarningSummaries counter collection
+    const summaries = await db
+      .collection('StudentWarningSummaries')
+      .find({})
+      .toArray();
+
+    const students: StudentIntegritySummary[] = summaries.map((s: any) => {
+      const isCurrentWeek = s.currentWeekKey === weekKey;
+
+      // Dynamic Weekly Zeroing: If student's recorded infractions belong to a prior week,
+      // weekly tallies automatically evaluate to 0 without requiring manual batch sweeps
+      const weeklyWarnings = isCurrentWeek ? (s.weeklyWarnings || 0) : 0;
+      const weeklyFullscreenExits = isCurrentWeek ? (s.weeklyFullscreenExits || 0) : 0;
+      const weeklyScreenshots = isCurrentWeek ? (s.weeklyScreenshots || 0) : 0;
+      const weeklyTabSwitches = isCurrentWeek ? (s.weeklyTabSwitches || 0) : 0;
+      const weeklyCopyAttempts = isCurrentWeek ? (s.weeklyCopyAttempts || 0) : 0;
+      const weeklyRiskLevel = isCurrentWeek
+        ? (s.weeklyRiskLevel || (weeklyWarnings >= 6 ? 'HIGH' : weeklyWarnings >= 3 ? 'MEDIUM' : 'LOW'))
+        : 'LOW';
+
+      const allTimeWarnings = Math.max(s.allTimeWarnings || 0, s.totalWarnings || 0);
+
+      return {
+        userId: s.userId || s._id?.toString() || null,
+        userName: s.userName || 'Unknown Student',
+        userEmail: s.userEmail || 'unknown@boardquest.app',
+
+        currentWeekKey: weekKey,
+        weekStartDate: s.weekStartDate ? new Date(s.weekStartDate).toISOString() : weekStartDate.toISOString(),
+        weeklyWarnings,
+        weeklyFullscreenExits,
+        weeklyScreenshots,
+        weeklyTabSwitches,
+        weeklyCopyAttempts,
+        weeklyRiskLevel,
+
+        allTimeWarnings,
+        totalWarnings: allTimeWarnings,
+        fullscreenExits: s.fullscreenExits || 0,
+        screenshots: s.screenshots || 0,
+        tabSwitches: s.tabSwitches || 0,
+        copyAttempts: s.copyAttempts || 0,
+        riskLevel: s.riskLevel || (allTimeWarnings >= 6 ? 'HIGH' : allTimeWarnings >= 3 ? 'MEDIUM' : 'LOW'),
+
+        lastIncidentAt: s.lastIncidentAt ? new Date(s.lastIncidentAt).toISOString() : '',
+        lastIncidentType: s.lastIncidentType,
+        subjectsAffected: Array.isArray(s.subjectsAffected) ? s.subjectsAffected : [],
+      };
+    });
+
+    // Sort according to requested timeframe
+    students.sort((a, b) => {
+      if (timeframe === 'weekly') {
+        return b.weeklyWarnings - a.weeklyWarnings || b.allTimeWarnings - a.allTimeWarnings;
+      }
+      return b.allTimeWarnings - a.allTimeWarnings || b.weeklyWarnings - a.weeklyWarnings;
+    });
+
+    return {
+      success: true,
+      currentWeekKey: weekKey,
+      students,
+    };
+  } catch (error: any) {
+    console.error('Failed to get student integrity summary:', error);
+    return { success: false, currentWeekKey: '', students: [], error: error.message };
+  }
+}
+
+
+

@@ -220,6 +220,8 @@ model User {
   lessonCompletions  LessonCompletion[]
   questNodeCompletions QuestNodeCompletion[]
   questionAttempts   UserQuestionAttempt[]
+  warningIncidents   StudentWarningIncident[]
+  warningSummary     StudentWarningSummary?
 
   @@index([xp])
 }
@@ -422,5 +424,67 @@ model RankTier {
   @@index([minLevel])
 }
 
+// [ Arena Integrity & Anti-Cheat Warning Schema ]
 
+model StudentWarningIncident {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String?  @db.ObjectId
+  userName     String
+  userEmail    String
+  subject      String
+  nodeId       String
+  quizMode     String   @default("quest")
+  incidentType String   // 'FULLSCREEN_EXIT' | 'SCREENSHOT_ATTEMPT' | 'TAB_SWITCH' | 'COPY_ATTEMPT'
+  strikeCount  Int      @default(1)
+  details      String   @default("")
+  timestamp    DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([incidentType])
+  @@index([timestamp])
+  @@map("StudentWarningIncidents")
+}
+
+model StudentWarningSummary {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String   @unique @db.ObjectId
+  userName              String
+  userEmail             String
+
+  // Weekly Active Window (Resets each week)
+  currentWeekKey        String   @default("") // e.g. "2026-W41"
+  weekStartDate         DateTime?
+  weeklyWarnings        Int      @default(0)
+  weeklyFullscreenExits Int      @default(0)
+  weeklyScreenshots     Int      @default(0)
+  weeklyTabSwitches     Int      @default(0)
+  weeklyCopyAttempts    Int      @default(0)
+  weeklyRiskLevel       String   @default("LOW") // 'LOW' | 'MEDIUM' | 'HIGH'
+
+  // All-Time Lifetime Tracking
+  allTimeWarnings       Int      @default(0)
+  totalWarnings         Int      @default(0) // alias for backwards compatibility
+  fullscreenExits       Int      @default(0)
+  screenshots           Int      @default(0)
+  tabSwitches           Int      @default(0)
+  copyAttempts          Int      @default(0)
+  riskLevel             String   @default("LOW") // 'LOW' | 'MEDIUM' | 'HIGH'
+
+  lastIncidentType      String?
+  lastIncidentAt        DateTime @default(now())
+  subjectsAffected      String[] @default([])
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([weeklyWarnings])
+  @@index([allTimeWarnings])
+  @@index([totalWarnings])
+  @@index([currentWeekKey])
+  @@index([riskLevel])
+  @@map("StudentWarningSummaries")
+}
