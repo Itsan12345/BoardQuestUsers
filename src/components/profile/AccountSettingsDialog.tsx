@@ -50,7 +50,6 @@ import {
   Trash2,
   GraduationCap,
   Pencil,
-  Swords,
 } from 'lucide-react';
 import { getActiveSessionsAction, terminateSessionAction, type ActiveSessionRecord } from '@/app/actions/session';
 import { useTheme } from 'next-themes';
@@ -113,9 +112,6 @@ export function AccountSettingsDialog({
   const [calendarOpen, setCalendarOpen] = useState(autoOpenTargetExamCalendar);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [arenaNickname, setArenaNickname] = useState(userProfile.arenaNickname || '');
-  const [isEditingArenaNickname, setIsEditingArenaNickname] = useState(false);
-  const [avatarGender, setAvatarGender] = useState<'male' | 'female'>(userProfile.avatarGender || 'male');
 
   // Form states - Study Goals
   const [dailyQuota, setDailyQuota] = useState('50');
@@ -230,10 +226,6 @@ export function AccountSettingsDialog({
         }
 
         if (dbSettings) {
-          if (dbSettings.arenaNickname) setArenaNickname(dbSettings.arenaNickname);
-          else if (userProfile.arenaNickname) setArenaNickname(userProfile.arenaNickname);
-          if (dbSettings.avatarGender) setAvatarGender(dbSettings.avatarGender);
-          else if (userProfile.avatarGender) setAvatarGender(userProfile.avatarGender);
           if (dbSettings.dailyQuota) setDailyQuota(String(dbSettings.dailyQuota));
           if (dbSettings.focusSubject) setFocusSubject(dbSettings.focusSubject);
           else setFocusSubject('none');
@@ -254,14 +246,6 @@ export function AccountSettingsDialog({
           else setTargetExamDate(null);
         } else {
           // Fallback to client localStorage
-          const cachedNickname = userProfile?.id && typeof window !== 'undefined' ? localStorage.getItem(`bq_arena_nickname_${userProfile.id}`) : null;
-          if (cachedNickname) setArenaNickname(cachedNickname);
-          else if (userProfile.arenaNickname) setArenaNickname(userProfile.arenaNickname);
-
-          const cachedGender = userProfile?.id && typeof window !== 'undefined' ? localStorage.getItem(`bq_arena_gender_${userProfile.id}`) : null;
-          if (cachedGender) setAvatarGender(cachedGender as 'male' | 'female');
-          else if (userProfile.avatarGender) setAvatarGender(userProfile.avatarGender);
-
           const savedQuota = localStorage.getItem('bq_pref_daily_quota');
           if (savedQuota) setDailyQuota(savedQuota);
 
@@ -386,25 +370,16 @@ export function AccountSettingsDialog({
         school,
         targetBatch,
         targetExamDate: dateIso,
-        arenaNickname: arenaNickname.trim(),
-        avatarGender,
       });
 
-      if (userProfile?.id) {
-        try {
-          if (arenaNickname.trim()) localStorage.setItem(`bq_arena_nickname_${userProfile.id}`, arenaNickname.trim());
-          localStorage.setItem(`bq_arena_gender_${userProfile.id}`, avatarGender);
-        } catch (e) {}
-      }
-
       window.dispatchEvent(new CustomEvent('bq_settings_updated', {
-        detail: { school, targetBatch, targetExamDate: dateIso, arenaNickname: arenaNickname.trim(), avatarGender }
+        detail: { school, targetBatch, targetExamDate: dateIso }
       }));
       window.dispatchEvent(new CustomEvent('bq_stats_updated'));
 
       toast({
         title: 'Profile Updated',
-        description: 'Your academic credentials, arena nickname, and avatar have been saved.',
+        description: 'Your academic credentials have been saved.',
       });
 
       if (res.user) {
@@ -875,8 +850,8 @@ export function AccountSettingsDialog({
                   </div>
                 )}
 
-                {/* Row 1: Full Legal Name & Quest Arena Nickname */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 w-full max-w-full min-w-0">
+                {/* Row 1: Full Legal Name & Target MTLE Board Schedule */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
                   <div className="space-y-1 w-full min-w-0">
                     <Label htmlFor="name" className="text-[11px] sm:text-xs font-semibold flex items-center justify-between">
                       <span className="flex items-center gap-1 truncate">
@@ -921,90 +896,55 @@ export function AccountSettingsDialog({
                     </div>
                   </div>
 
-                  <div className="space-y-1 w-full min-w-0">
-                    <Label htmlFor="arenaNickname" className="text-[11px] sm:text-xs font-semibold flex items-center justify-between gap-1">
-                      <span className="flex items-center gap-1 truncate">
-                        <Swords className="w-3.5 h-3.5 text-primary shrink-0" />
-                        Quest Arena Nickname
-                      </span>
-                      {isEditingArenaNickname && (
-                        <span className="text-[10px] text-primary font-bold animate-pulse">Editing Enabled</span>
+                  <div id="tour-profile-target-exam" className="space-y-1 w-full min-w-0">
+                    <div className="flex items-center justify-between min-w-0 gap-1">
+                      <Label className="text-[11px] sm:text-xs font-semibold flex items-center gap-1 truncate">
+                        <Calendar className="w-3.5 h-3.5 text-primary" /> Target MTLE Board Schedule
+                      </Label>
+                      {daysRemaining > 0 && (
+                        <span className="text-[10px] sm:text-xs font-bold text-primary shrink-0">
+                          {daysRemaining} days left
+                        </span>
                       )}
-                    </Label>
-                    <div className="relative flex items-center">
-                      <Input
-                        id="arenaNickname"
-                        value={arenaNickname}
-                        disabled={!isEditingArenaNickname}
-                        maxLength={16}
-                        onChange={e => setArenaNickname(e.target.value.slice(0, 16))}
-                        placeholder="e.g. Lupin"
-                        className={cn(
-                          "rounded-xl h-9 sm:h-10 text-xs sm:text-sm w-full min-w-0 pr-9 transition-all font-bold",
-                          !isEditingArenaNickname
-                            ? "bg-muted/50 text-foreground cursor-not-allowed border-border/60"
-                            : "bg-background text-foreground ring-2 ring-primary/40 border-primary"
-                        )}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const nextState = !isEditingArenaNickname;
-                          setIsEditingArenaNickname(nextState);
-                          if (nextState) {
-                            setTimeout(() => document.getElementById('arenaNickname')?.focus(), 50);
-                          }
-                        }}
-                        className={cn(
-                          "absolute right-2 text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg",
-                          isEditingArenaNickname && "text-primary bg-primary/10"
-                        )}
-                        title={isEditingArenaNickname ? "Click to lock nickname editing" : "Click edit icon to change arena nickname"}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
                     </div>
-                  </div>
-                </div>
 
-                {/* Quest Arena Avatar Gender Selection */}
-                <div className="p-3 sm:p-3.5 bg-muted/20 border border-border/80 rounded-2xl space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[11px] sm:text-xs font-semibold flex items-center gap-1.5 text-foreground">
-                      <Swords className="w-3.5 h-3.5 text-primary shrink-0" />
-                      Quest Arena Avatar Gender
-                    </Label>
-                    <span className="text-[10px] text-muted-foreground font-medium">Used in combat encounters</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setAvatarGender('male')}
-                      className={cn(
-                        "h-10 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer relative",
-                        avatarGender === 'male'
-                          ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/40 shadow-xs"
-                          : "border-border/60 bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <span className="text-base">♂️</span>
-                      <span>Male</span>
-                      {avatarGender === 'male' && <Check className="w-3 h-3 ml-1 stroke-[3]" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAvatarGender('female')}
-                      className={cn(
-                        "h-10 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer relative",
-                        avatarGender === 'female'
-                          ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/40 shadow-xs"
-                          : "border-border/60 bg-background hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <span className="text-base">♀️</span>
-                      <span>Female</span>
-                      {avatarGender === 'female' && <Check className="w-3 h-3 ml-1 stroke-[3]" />}
-                    </button>
+                    <Popover modal={true} open={calendarOpen} onOpenChange={setCalendarOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-full h-9 sm:h-10 px-3 bg-background hover:bg-muted/50 border border-input hover:border-primary/50 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between transition-all group shadow-sm text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/30 min-w-0 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 truncate">
+                            <Calendar className="w-4 h-4 text-primary shrink-0 group-hover:scale-110 transition-transform" />
+                            <span className="truncate text-xs sm:text-sm font-normal text-foreground">
+                              {targetExamDate ? format(targetExamDate, 'MMMM d, yyyy') : 'Pick examination date'}
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg shrink-0 transition-colors ml-1">
+                            Pick Date
+                          </span>
+                        </button>
+                      </PopoverTrigger>
+
+                      <PopoverContent
+                        className="w-[calc(100vw-28px)] max-w-[340px] p-2.5 sm:p-4 bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl z-[150]"
+                        align="end"
+                        side="top"
+                        sideOffset={8}
+                        collisionPadding={10}
+                      >
+                        <TargetExamCalendar
+                          selectedDate={targetExamDate}
+                          onSelectDate={(newDate, batchLabel) => {
+                            setTargetExamDate(newDate);
+                            if (batchLabel) {
+                              setTargetBatch(batchLabel);
+                            }
+                          }}
+                          showHeader={true}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 
@@ -1040,61 +980,8 @@ export function AccountSettingsDialog({
                   </div>
                 </div>
 
-                {/* Row 3: Target MTLE Board Schedule & Regional Testing Hub */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
-                  <div id="tour-profile-target-exam" className="space-y-1.5 w-full min-w-0">
-                    <div className="flex items-center justify-between min-w-0 gap-1">
-                      <Label className="text-xs font-semibold flex items-center gap-1 truncate">
-                        <Calendar className="w-3.5 h-3.5 text-primary" /> Target MTLE Board Schedule
-                      </Label>
-                      {daysRemaining > 0 && (
-                        <span className="text-xs font-bold text-primary shrink-0">
-                          {daysRemaining} days left
-                        </span>
-                      )}
-                    </div>
-
-                    <Popover modal={true} open={calendarOpen} onOpenChange={setCalendarOpen}>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="w-full h-10 px-3 bg-background hover:bg-muted/50 border border-input hover:border-primary/50 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between transition-all group shadow-sm text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/30 min-w-0 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2 min-w-0 truncate">
-                            <Calendar className="w-4 h-4 text-primary shrink-0 group-hover:scale-110 transition-transform" />
-                            <span className="truncate text-xs sm:text-sm font-normal text-foreground">
-                              {targetExamDate ? format(targetExamDate, 'MMMM d, yyyy') : 'Pick examination date'}
-                            </span>
-                          </div>
-                          <span className="text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg shrink-0 transition-colors ml-1">
-                            Pick Date
-                          </span>
-                        </button>
-                      </PopoverTrigger>
-
-                      <PopoverContent
-                        className="w-[calc(100vw-28px)] max-w-[340px] p-2.5 sm:p-4 bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl z-[150]"
-                        align="end"
-                        side="top"
-                        sideOffset={8}
-                        collisionPadding={10}
-                      >
-                        <TargetExamCalendar
-                          selectedDate={targetExamDate}
-                          onSelectDate={(newDate, batchLabel) => {
-                            setTargetExamDate(newDate);
-                            if (batchLabel) {
-                              setTargetBatch(batchLabel);
-                            }
-                          }}
-                          showHeader={true}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* Column 2: Regional Testing Hub / City */}
-                  <div className="space-y-1 w-full min-w-0">
+                {/* Row 3: Regional Testing Hub / City */}
+                <div className="space-y-1 w-full min-w-0">
                   <Label htmlFor="location" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-primary shrink-0" /> Regional Testing Hub / City
                   </Label>
@@ -1105,7 +992,6 @@ export function AccountSettingsDialog({
                     placeholder="Philippines"
                     className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted/50 text-muted-foreground cursor-not-allowed w-full min-w-0 border-border/60"
                   />
-                  </div>
                 </div>
                 </div>
 

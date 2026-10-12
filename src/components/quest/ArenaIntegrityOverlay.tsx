@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ShieldAlert, Maximize2, AlertTriangle, EyeOff, Lock, Database, ShieldCheck, Skull } from 'lucide-react';
+import { ShieldAlert, Maximize2, EyeOff, Lock, Database, ShieldCheck, Skull } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';

@@ -95,12 +95,29 @@ function PerformanceContent() {
     }
     loadData();
 
-    // Listen for setting updates across the app
+    // Listen for setting and stats updates across the app
     const handleSettingsUpdated = async () => {
       const settings = await getUserSettingsAction().catch(() => null);
       if (settings) setUserSettings(settings);
     };
+
+    const handleStatsUpdated = async () => {
+      try {
+        const [stats, metrics, historyData, settings] = await Promise.all([
+          getUserStats().catch(() => null),
+          getSubjectMetrics().catch(() => []),
+          getSubjectPerformanceHistoryAction().catch(() => []),
+          getUserSettingsAction().catch(() => null)
+        ]);
+        if (stats) setUser(stats);
+        if (metrics) setSubjectMetrics(metrics);
+        if (historyData) setPerformanceHistory(historyData);
+        if (settings) setUserSettings(settings);
+      } catch (err) { }
+    };
+
     window.addEventListener('bq_settings_updated', handleSettingsUpdated);
+    window.addEventListener('bq_stats_updated', handleStatsUpdated);
 
     // Refresh metrics every 30 seconds
     const metricsRefreshInterval = setInterval(async () => {
@@ -116,6 +133,7 @@ function PerformanceContent() {
 
     return () => {
       window.removeEventListener('bq_settings_updated', handleSettingsUpdated);
+      window.removeEventListener('bq_stats_updated', handleStatsUpdated);
       clearInterval(metricsRefreshInterval);
     };
   }, []);

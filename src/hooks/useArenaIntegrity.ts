@@ -170,6 +170,14 @@ export function useArenaIntegrity({
     }).catch(err => console.warn('Failed to log integrity incident to DB:', err));
   }, [subject, nodeId, quizMode]);
 
+  // Acknowledge warning and resume battle
+  const dismissWarningModal = useCallback(async () => {
+    setIsWarningModalOpen(false);
+    setIsShieldActive(false);
+    // Restore fullscreen upon student clicking resume
+    await enterFullscreen();
+  }, [enterFullscreen]);
+
   // Main listener for fullscreen, focus loss, keyboard, and clipboard events
   useEffect(() => {
     if (!isActive) {
@@ -316,15 +324,7 @@ export function useArenaIntegrity({
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('cut', handleCopy);
     };
-  }, [isActive, isCurrentlyFullscreen, isWarningModalOpen, recordViolation]);
-
-  // Acknowledge warning and resume battle
-  const dismissWarningModal = useCallback(async () => {
-    setIsWarningModalOpen(false);
-    setIsShieldActive(false);
-    // Restore fullscreen upon student clicking resume
-    await enterFullscreen();
-  }, [enterFullscreen]);
+  }, [isActive, isCurrentlyFullscreen, isWarningModalOpen, recordViolation, dismissWarningModal]);
 
   const resetIntegrity = useCallback(() => {
     setStrikes(0);

@@ -229,12 +229,27 @@ export default function StudyPage() {
       } catch { }
     };
 
+    const handleStatsUpdate = async () => {
+      try {
+        const metrics = await getSubjectMetrics();
+        if (metrics && Array.isArray(metrics)) {
+          const metricsMap: Record<string, SubjectMetrics> = {};
+          metrics.forEach(m => {
+            metricsMap[m.subject] = m;
+          });
+          setSubjectMetrics(metricsMap);
+        }
+      } catch (err) { }
+    };
+
     window.addEventListener('bq_settings_updated', handleSettingsUpdate);
+    window.addEventListener('bq_stats_updated', handleStatsUpdate);
 
     return () => {
       clearInterval(metricsRefreshInterval);
       window.removeEventListener('resize', checkDesktop);
       window.removeEventListener('bq_settings_updated', handleSettingsUpdate);
+      window.removeEventListener('bq_stats_updated', handleStatsUpdate);
     };
   }, []);
 
@@ -394,6 +409,20 @@ export default function StudyPage() {
   const selectedCategory = (curriculum && curriculum.length > 0)
     ? (curriculum.find(c => c.id === selectedCategoryId) || curriculum[0])
     : null;
+
+  const selectedMetric = selectedCategory ? (
+    subjectMetrics[selectedCategory.title]
+    || Object.values(subjectMetrics).find(m => m.subject?.trim().toLowerCase() === selectedCategory.title.trim().toLowerCase())
+    || Object.values(subjectMetrics).find(m => {
+      const s1 = m.subject?.trim().toLowerCase() || '';
+      const s2 = selectedCategory.title.trim().toLowerCase();
+      return s1.includes(s2) || s2.includes(s1);
+    })
+  ) : undefined;
+
+  const currentProficiency = selectedMetric?.proficiency ?? selectedMetric?.mastery ?? 0;
+  const currentCompletion = selectedMetric?.completion ?? 0;
+  const currentMasteryStatus = selectedMetric?.masteryStatus || 'Not Started';
 
   const selectedDate = selectedCategory ? targetDates[selectedCategory.title] : undefined;
 
@@ -815,10 +844,10 @@ export default function StudyPage() {
                       Completion
                     </span>
                     <span className="text-[11px] sm:text-xs font-semibold text-foreground">
-                      {subjectMetrics[selectedCategory.title]?.completion || 0}%
+                      {currentCompletion}%
                     </span>
                   </div>
-                  <Progress value={subjectMetrics[selectedCategory.title]?.completion || 0} className="h-2 sm:h-2.5 bg-secondary" />
+                  <Progress value={currentCompletion} className="h-2 sm:h-2.5 bg-secondary" />
                 </div>
 
                 {/* Mastery Metric */}
@@ -830,21 +859,25 @@ export default function StudyPage() {
                     </span>
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <span className="text-[11px] sm:text-xs font-semibold text-foreground">
-                        {subjectMetrics[selectedCategory.title]?.mastery || 0}%
+                        {currentProficiency}%
                       </span>
                       <span className={cn(
                         "text-[8px] sm:text-[9px] font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full uppercase",
-                        subjectMetrics[selectedCategory.title]?.masteryStatus === 'Mastered' ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" :
-                          subjectMetrics[selectedCategory.title]?.masteryStatus === 'Proficient' ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" :
-                            subjectMetrics[selectedCategory.title]?.masteryStatus === 'In Training' ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
+                        currentMasteryStatus === 'Mastered' ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" :
+                          currentMasteryStatus === 'Proficient' ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" :
+                            currentMasteryStatus === 'In Training' ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
                               "bg-secondary text-slate-600 dark:text-slate-400"
                       )}>
-                        {subjectMetrics[selectedCategory.title]?.masteryStatus || 'Not Started'}
+                        {currentMasteryStatus}
                       </span>
                     </div>
                   </div>
-                  <Progress value={subjectMetrics[selectedCategory.title]?.mastery || 0} className="h-2 sm:h-2.5 bg-secondary" />
-                  <p className="text-[8px] sm:text-[9px] text-muted-foreground font-semibold">Based on your average performance in Quest Arena for this subject</p>
+                  <Progress value={currentProficiency} className="h-2 sm:h-2.5 bg-secondary" />
+                  <p className="text-[8px] sm:text-[9px] text-muted-foreground font-semibold">
+                    {selectedMetric && selectedMetric.totalQuestionsAnswered > 0
+                      ? `Based on Quest Arena performance (${selectedMetric.mastery}% accuracy • ${selectedMetric.totalQuestionsAnswered}/100 volume weight)`
+                      : 'Based on your average performance in Quest Arena for this subject'}
+                  </p>
                 </div>
               </div>
             </CardHeader>
