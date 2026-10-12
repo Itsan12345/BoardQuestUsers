@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { logout } from '@/app/actions/auth';
 import { getUserProfile } from '@/app/actions/user';
 import { getDailyLoginStatusAction } from '@/app/actions/daily-login';
 import { getStudentGuidanceAssignmentsAction, type GuidanceAssignmentRecord } from '@/app/actions/guidance';
@@ -313,23 +312,20 @@ function ProfileContent() {
       try {
         localStorage.removeItem('bq_today_quest_date');
         localStorage.removeItem('bq_today_questions_count');
-      } catch (e) {}
-      await logout();
+      } catch {}
+
+      // Cleanly terminate session and invalidate cookies via dedicated API route
+      await fetch('/api/auth/logout', { method: 'POST' });
+
       toast({
         title: "Logged Out",
         description: "See you next time!",
       });
-      // Use router.replace instead of window.location for better Next.js integration
-      setTimeout(() => {
-        router.replace('/login');
-      }, 500);
+
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to logout. Please try again.",
-      });
+      window.location.href = '/login';
     }
   }
 

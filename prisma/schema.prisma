@@ -272,13 +272,19 @@ model LessonCompletion {
 }
 
 model StudyPlan {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String    @db.ObjectId
-  subject    String
-  startDate  DateTime? @default(now())
-  endDate    DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String    @db.ObjectId
+  subject         String
+  startDate       DateTime? @default(now())
+  endDate         DateTime?
+  priority        String?   @default("MEDIUM")
+  goal            String?
+  targetQuestions Int?      @default(50)
+  targetAccuracy  Float?    @default(75)
+  notes           String?
+  status          String?   @default("IN_PROGRESS")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -12,6 +12,8 @@ import {
   ShieldAlert,
   Search,
   Calendar as CalendarIcon,
+  CalendarDays,
+  BookOpen,
   Loader2,
   CheckCircle2,
   Brain,
@@ -20,7 +22,8 @@ import {
   FileText,
   Eye,
   Check,
-  X
+  X,
+  ArrowUpRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -28,11 +31,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
-import { CustomCalendar } from '@/components/ui/custom-calendar';
 import { cn } from '@/lib/utils';
-import { getStudyPlans, saveStudyPlan, getReviewCenterProgram, type ReviewCenterProgramData } from '@/app/actions/study-plan';
+import { getStudyPlans, getReviewCenterProgram, type ReviewCenterProgramData } from '@/app/actions/study-plan';
+import { StudyScheduleTimeline, type StudyPlanRecord } from '@/components/study/StudyScheduleTimeline';
 import {
   getSubjectMetrics,
   getCategories,
@@ -43,7 +44,7 @@ import {
   type LearningModuleData
 } from '@/app/actions/study';
 import { getUserSettingsAction } from '@/app/actions/user';
-import { format, startOfDay, differenceInDays } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ModuleViewerDialog, type LearningModule as DialogLearningModule } from '@/components/study/ModuleViewerDialog';
 
@@ -74,17 +75,53 @@ export default function StudyPage() {
   const [subjectMetrics, setSubjectMetrics] = useState<Record<string, SubjectMetrics>>({});
   const [program, setProgram] = useState<ReviewCenterProgramData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState<string | null>(null);
-  const [isDesktop, setIsDesktop] = useState(true);
-  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  // Tab State: 'modules' (Curriculum Modules) vs 'timeline' (Study Schedule & Timeline)
+  const [activeTab, setActiveTab] = useState<'modules' | 'timeline'>('modules');
+  const [rawPlans, setRawPlans] = useState<StudyPlanRecord[]>([]);
 
   // Search & PDF Viewer Dialog State
   const [searchQuery, setSearchQuery] = useState('');
   const [viewerModule, setViewerModule] = useState<DialogLearningModule | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
 
+  const refreshStudyPlans = async () => {
+    try {
+      const plans = await getStudyPlans();
+      if (plans && Array.isArray(plans)) {
+        setRawPlans(plans);
+        const dates: Record<string, Date> = {};
+        const plansMap: Record<string, { startDate: Date; endDate: Date }> = {};
+        plans.forEach((p: any) => {
+          const rawStart = p.startDate || p.createdAt;
+          const rawEnd = p.endDate || p.targetDate || p.createdAt;
+          if (rawEnd) dates[p.subject] = new Date(rawEnd);
+          if (rawStart && rawEnd) {
+            plansMap[p.subject] = {
+              startDate: new Date(rawStart),
+              endDate: new Date(rawEnd)
+            };
+          }
+        });
+        setTargetDates(dates);
+        setSubjectPlans(plansMap);
+      }
+    } catch (err) {
+      console.error('Failed to refresh study plans:', err);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'timeline' || tabParam === 'schedule' || tabParam === 'planner') {
+        setActiveTab('timeline');
+      }
+    }
+
     async function loadData() {
       try {
         const [dbCategories, dbModules, plans, metrics, programData, lessonCompletionsMap, userSettings] = await Promise.all([
@@ -96,6 +133,10 @@ export default function StudyPage() {
           getUserLessonCompletions().catch(() => ({} as Record<string, string>)),
           getUserSettingsAction().catch(() => null),
         ]);
+
+        if (plans && Array.isArray(plans)) {
+          setRawPlans(plans);
+        }
 
         const compMap: Record<string, string> = lessonCompletionsMap || {};
         const modulesList: LearningModuleData[] = dbModules || [];
@@ -218,10 +259,6 @@ export default function StudyPage() {
       } catch (err) { }
     }, 30000);
 
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768);
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-
     const handleSettingsUpdate = () => {
       try {
         const updatedFocus = localStorage.getItem('bq_pref_focus_subject');
@@ -247,62 +284,11 @@ export default function StudyPage() {
 
     return () => {
       clearInterval(metricsRefreshInterval);
-      window.removeEventListener('resize', checkDesktop);
       window.removeEventListener('bq_settings_updated', handleSettingsUpdate);
       window.removeEventListener('bq_stats_updated', handleStatsUpdate);
     };
   }, []);
 
-  const handleSetDateRange = async (subject: string, range: { startDate: Date; endDate: Date }) => {
-    if (!range.startDate || !range.endDate) return;
-
-    const today = startOfDay(new Date());
-    const deadline = program?.endDate ? startOfDay(new Date(program.endDate)) : null;
-
-    if (startOfDay(range.startDate) < today) {
-      toast({
-        variant: "destructive",
-        title: "Invalid Study Period",
-        description: "Study period cannot start in the past."
-      });
-      return;
-    }
-
-    if (deadline && (startOfDay(range.endDate) > deadline || startOfDay(range.startDate) > deadline)) {
-      toast({
-        variant: "destructive",
-        title: "Deadline Exceeded",
-        description: `Study period cannot extend beyond the final deadline (${format(new Date(program!.endDate), "MMMM dd, yyyy")}).`
-      });
-      return;
-    }
-
-    setIsSaving(subject);
-    try {
-      const result = await saveStudyPlan({
-        [subject]: {
-          startDate: range.startDate,
-          endDate: range.endDate,
-        }
-      });
-      if (result.success) {
-        setSubjectPlans(prev => ({
-          ...prev,
-          [subject]: { startDate: range.startDate, endDate: range.endDate }
-        }));
-        setTargetDates(prev => ({ ...prev, [subject]: range.endDate }));
-        toast({
-          title: "Study Period Synchronized ✓",
-          description: `${subject} set from ${format(range.startDate, "MMM dd")} to ${format(range.endDate, "MMM dd, yyyy")}.`
-        });
-        setCalendarOpen(false);
-      } else {
-        toast({ variant: "destructive", title: "Sync Failed", description: result.error });
-      }
-    } finally {
-      setIsSaving(null);
-    }
-  };
 
   const handleToggleComplete = async (lessonId: string) => {
     if (!selectedCategory) return;
@@ -424,8 +410,6 @@ export default function StudyPage() {
   const currentCompletion = selectedMetric?.completion ?? 0;
   const currentMasteryStatus = selectedMetric?.masteryStatus || 'Not Started';
 
-  const selectedDate = selectedCategory ? targetDates[selectedCategory.title] : undefined;
-
   // Filter lessons based on user search query
   const filteredLessons = (selectedCategory?.lessons || []).filter((l: any) => {
     if (!searchQuery.trim()) return true;
@@ -544,29 +528,95 @@ export default function StudyPage() {
             )}
           </div>
 
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search subjects or modules..."
-              className="pl-10 sm:pl-12 pr-10 h-11 sm:h-14 bg-muted border-2 border-border rounded-xl sm:rounded-2xl focus-visible:ring-primary/20 text-xs sm:text-sm font-medium"
-            />
-            {searchQuery.trim() && (
+          {/* Segmented Tab Switcher: Curriculum vs Study Timeline */}
+          <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center p-1 bg-muted/80 border border-border/80 rounded-2xl shadow-xs">
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-background transition-colors"
-                title="Clear search"
+                type="button"
+                onClick={() => {
+                  setActiveTab('modules');
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('tab', 'modules');
+                    window.history.replaceState({}, '', url.toString());
+                  }
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer",
+                  activeTab === 'modules'
+                    ? "bg-card text-foreground shadow-sm border border-border/70"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                <X className="w-4 h-4" />
+                <BookOpen className="w-4 h-4 text-primary" />
+                <span>Syllabus Curriculum</span>
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('timeline');
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('tab', 'timeline');
+                    window.history.replaceState({}, '', url.toString());
+                  }
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer relative",
+                  activeTab === 'timeline'
+                    ? "bg-card text-foreground shadow-sm border border-border/70"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <CalendarDays className="w-4 h-4 text-primary" />
+                <span>Study Schedule & Timeline</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
+              </button>
+            </div>
           </div>
+
+          {/* Search Bar (Only shown in Curriculum tab) */}
+          {activeTab === 'modules' && (
+            <div className="relative">
+              <Search className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search subjects or modules..."
+                className="pl-10 sm:pl-12 pr-10 h-11 sm:h-14 bg-muted border-2 border-border rounded-xl sm:rounded-2xl focus-visible:ring-primary/20 text-xs sm:text-sm font-medium"
+              />
+              {searchQuery.trim() && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-background transition-colors"
+                  title="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="p-3.5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 max-w-7xl mx-auto">
+      {activeTab === 'timeline' ? (
+        <main className="p-3.5 sm:p-6 max-w-7xl mx-auto">
+          <StudyScheduleTimeline
+            initialPlans={rawPlans}
+            program={program}
+            subjectMetrics={Object.values(subjectMetrics)}
+            onRefreshPlans={refreshStudyPlans}
+            onSelectSubjectInCurriculum={(subjectTitle) => {
+              const match = curriculum.find(
+                (c) => c.title.toLowerCase() === subjectTitle.toLowerCase()
+              );
+              if (match) setSelectedCategoryId(match.id);
+              setActiveTab('modules');
+            }}
+          />
+        </main>
+      ) : (
+        <main className="p-3.5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 max-w-7xl mx-auto">
         {/* Subjects Sidebar / Mobile Carousel Selector */}
         <aside id="tour-study-subjects" className="lg:col-span-4 space-y-3 sm:space-y-4">
           <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 sm:px-2">Subjects</h2>
@@ -714,124 +764,47 @@ export default function StudyPage() {
                 {(() => {
                   const activeSubjectPlan = selectedCategory ? subjectPlans[selectedCategory.title] : undefined;
 
-                  return isDesktop ? (
-                    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "rounded-2xl border-2 h-11 sm:h-13 px-4 sm:px-6 flex items-center gap-2.5 sm:gap-3 transition-all hover:shadow-lg hover:border-primary/50",
-                            activeSubjectPlan || selectedDate ? "border-primary/40 bg-primary/10 text-primary shadow-md" : "border-border hover:border-slate-300"
-                          )}
-                          disabled={isSaving === selectedCategory.title}
-                        >
-                          {isSaving === selectedCategory.title ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                          ) : (
-                            <CalendarIcon className="w-4 h-4 text-primary shrink-0" />
-                          )}
-                          <div className="text-left">
-                            <p className="text-[8px] font-extrabold uppercase text-muted-foreground leading-none mb-1">Study Period Target</p>
-                            <p className="text-xs font-black leading-none text-foreground">
-                              {mounted && activeSubjectPlan ? (
-                                `${format(activeSubjectPlan.startDate, "MMM dd")} - ${format(activeSubjectPlan.endDate, "MMM dd, yyyy")}`
-                              ) : (
-                                mounted && selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Set Target Period"
-                              )}
-                            </p>
-                          </div>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 shadow-2xl border-2 border-border rounded-3xl bg-background" align="end">
-                        <div className="space-y-3 p-4">
-                          <div className="space-y-1.5 border-b pb-3 text-center">
-                            <h3 className="font-black text-sm uppercase text-foreground">Set Target Study Period</h3>
-                            <p className="text-[10px] text-muted-foreground font-semibold">For {selectedCategory.title}</p>
-                            {program?.endDate && (
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[9px] font-bold text-primary">
-                                <CalendarIcon className="w-3 h-3 shrink-0" />
-                                <span>Final Deadline: {format(new Date(program.endDate), "MMM dd, yyyy")}</span>
-                              </div>
-                            )}
-                          </div>
-                          <CustomCalendar
-                            startDate={activeSubjectPlan?.startDate}
-                            endDate={activeSubjectPlan?.endDate}
-                            selected={selectedDate}
-                            minDate={startOfDay(new Date())}
-                            maxDate={program?.endDate ? startOfDay(new Date(program.endDate)) : undefined}
-                            onSelectRange={(range) => handleSetDateRange(selectedCategory.title, range)}
-                            disabled={(date) => {
-                              const isPast = startOfDay(date) < startOfDay(new Date());
-                              const isPastDeadline = program?.endDate
-                                ? startOfDay(date) > startOfDay(new Date(program.endDate))
-                                : false;
-                              return isPast || isPastDeadline;
-                            }}
-                          />
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('timeline');
+                        if (typeof window !== 'undefined') {
+                          const url = new URL(window.location.href);
+                          url.searchParams.set('tab', 'timeline');
+                          window.history.replaceState({}, '', url.toString());
+                        }
+                      }}
+                      className={cn(
+                        "group rounded-2xl border-2 px-3.5 sm:px-5 py-2 sm:py-2.5 flex items-center gap-2.5 sm:gap-3 transition-all cursor-pointer text-left",
+                        activeSubjectPlan
+                          ? "border-primary/40 bg-primary/10 hover:bg-primary/15 hover:border-primary/60 text-primary shadow-xs"
+                          : "border-dashed border-border hover:border-primary/50 bg-card/60 hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+                      )}
+                      title="Manage schedule in Study Schedule & Timeline"
+                    >
+                      <div className={cn(
+                        "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+                        activeSubjectPlan ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground group-hover:text-primary group-hover:bg-primary/10"
+                      )}>
+                        <CalendarIcon className="w-4 h-4" />
+                      </div>
+                      <div className="text-left min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground leading-none">
+                            Study Period Target
+                          </p>
+                          <ArrowUpRight className="w-3 h-3 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                         </div>
-                      </PopoverContent>
-                    </Popover>
-                  ) : (
-                    <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full sm:w-auto rounded-2xl border-2 h-11 sm:h-13 px-4 sm:px-6 flex items-center justify-center gap-2.5 sm:gap-3 transition-all hover:shadow-lg hover:border-primary/50",
-                            activeSubjectPlan || selectedDate ? "border-primary/40 bg-primary/10 text-primary shadow-md" : "border-border hover:border-slate-300"
-                          )}
-                          disabled={isSaving === selectedCategory.title}
-                        >
-                          {isSaving === selectedCategory.title ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                        <p className="text-xs sm:text-[13px] font-black leading-tight text-foreground mt-0.5 truncate">
+                          {mounted && activeSubjectPlan ? (
+                            `${format(activeSubjectPlan.startDate, "MMM dd")} - ${format(activeSubjectPlan.endDate, "MMM dd, yyyy")}`
                           ) : (
-                            <CalendarIcon className="w-4 h-4 text-primary shrink-0" />
+                            <span className="text-muted-foreground group-hover:text-primary transition-colors">+ Schedule in Timeline</span>
                           )}
-                          <div className="text-left">
-                            <p className="text-[8px] font-extrabold uppercase text-muted-foreground leading-none mb-1">Study Period Target</p>
-                            <p className="text-xs font-black leading-none text-foreground">
-                              {mounted && activeSubjectPlan ? (
-                                `${format(activeSubjectPlan.startDate, "MMM dd")} - ${format(activeSubjectPlan.endDate, "MMM dd, yyyy")}`
-                              ) : (
-                                mounted && selectedDate ? format(selectedDate, "MMM dd, yyyy") : "Set Target Period"
-                              )}
-                            </p>
-                          </div>
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="w-[92vw] max-w-sm rounded-3xl p-4 sm:p-6 border-0 shadow-2xl gap-0">
-                        <div className="space-y-3 sm:space-y-4">
-                          <div className="space-y-1.5 border-b pb-3 text-center px-4">
-                            <DialogTitle className="font-black text-sm sm:text-base uppercase text-foreground leading-tight">Set Target Study Period</DialogTitle>
-                            <p className="text-xs text-muted-foreground font-semibold">For {selectedCategory.title}</p>
-                            {program?.endDate && (
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[9px] font-bold text-primary">
-                                <CalendarIcon className="w-3 h-3 shrink-0" />
-                                <span>Final Deadline: {format(new Date(program.endDate), "MMM dd, yyyy")}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex justify-center">
-                            <CustomCalendar
-                              startDate={activeSubjectPlan?.startDate}
-                              endDate={activeSubjectPlan?.endDate}
-                              selected={selectedDate}
-                              minDate={startOfDay(new Date())}
-                              maxDate={program?.endDate ? startOfDay(new Date(program.endDate)) : undefined}
-                              onSelectRange={(range) => handleSetDateRange(selectedCategory.title, range)}
-                              disabled={(date) => {
-                                const isPast = startOfDay(date) < startOfDay(new Date());
-                                const isPastDeadline = program?.endDate
-                                  ? startOfDay(date) > startOfDay(new Date(program.endDate))
-                                  : false;
-                                return isPast || isPastDeadline;
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                        </p>
+                      </div>
+                    </button>
                   );
                 })()}
               </div>
@@ -1037,6 +1010,7 @@ export default function StudyPage() {
           </Card>
         </section>
       </main>
+      )}
 
       {/* Coursera-Style PDF & Learning Module Viewer Dialog */}
       <ModuleViewerDialog

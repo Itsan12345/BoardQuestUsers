@@ -296,13 +296,27 @@ export async function login(formData: FormData) {
 
 export async function logout() {
   const cookieStore = await cookies();
+  const userId = cookieStore.get('user_id')?.value;
   const currentSessionId = cookieStore.get('bq_session_token')?.value;
 
-  if (currentSessionId) {
+  if (currentSessionId && userId) {
     try {
-      const { terminateSessionAction } = await import('@/app/actions/session');
-      await terminateSessionAction(currentSessionId);
-    } catch (e) {}
+      const client = await clientPromise;
+      const db = client.db('boardquest');
+      const { ObjectId } = await import('mongodb');
+      let userObjId: any = null;
+      try {
+        userObjId = new ObjectId(userId);
+      } catch {}
+
+      const query = userObjId
+        ? { $or: [{ userId }, { userId: userObjId }], sessionId: currentSessionId }
+        : { userId, sessionId: currentSessionId };
+
+      await db.collection('UserSession').deleteOne(query);
+    } catch (e) {
+      console.error('Error removing session during logout:', e);
+    }
   }
 
   cookieStore.set('user_id', '', {
@@ -320,6 +334,8 @@ export async function logout() {
     secure: process.env.NODE_ENV === 'production',
     expires: new Date(0),
   });
+
+  return { success: true };
 }
 
 export async function sendPasswordResetCode(email: string) {

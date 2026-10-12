@@ -96,6 +96,139 @@ export async function saveStudyPlan(targets: Record<string, StudyPlanTargetInput
   }
 }
 
+export interface StudyBlockInput {
+  subject: string;
+  startDate: string | Date;
+  endDate: string | Date;
+  priority?: 'HIGH' | 'MEDIUM' | 'LOW';
+  goal?: string;
+  targetQuestions?: number;
+  targetAccuracy?: number;
+  notes?: string;
+  status?: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED';
+}
+
+export async function saveStudyBlock(input: StudyBlockInput) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+
+    if (!userId) {
+      return { success: false, error: 'Aspirant session not found. Please log in.' };
+    }
+
+    if (!input.subject || !input.startDate || !input.endDate) {
+      return { success: false, error: 'Subject, start date, and end date are required.' };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startDateVal = new Date(input.startDate);
+    const endDateVal = new Date(input.endDate);
+    startDateVal.setHours(0, 0, 0, 0);
+    endDateVal.setHours(23, 59, 59, 999);
+
+    if (isNaN(startDateVal.getTime()) || isNaN(endDateVal.getTime())) {
+      return { success: false, error: 'Invalid dates provided.' };
+    }
+
+    if (startDateVal.getTime() > endDateVal.getTime()) {
+      return { success: false, error: 'Start date cannot be after end date.' };
+    }
+
+    if (endDateVal.getTime() < today.getTime()) {
+      return {
+        success: false,
+        error: 'Cannot schedule a study block for dates that have already passed.'
+      };
+    }
+
+    // Ensure start date cannot be in the past
+    let effectiveStart = startDateVal;
+    if (effectiveStart.getTime() < today.getTime()) {
+      effectiveStart = today;
+    }
+
+    // Server-side validation against active ReviewCenterProgram deadline
+    const program = await getReviewCenterProgram();
+    if (program && program.endDate) {
+      const deadline = new Date(program.endDate);
+      deadline.setHours(23, 59, 59, 999);
+
+      if (endDateVal.getTime() > deadline.getTime() || effectiveStart.getTime() > deadline.getTime()) {
+        return {
+          success: false,
+          error: `Target period for ${input.subject} cannot exceed the Institutional Final Deadline.`
+        };
+      }
+    }
+
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+
+    await db.collection('StudyPlan').updateOne(
+      { userId, subject: input.subject },
+      {
+        $set: {
+          userId,
+          subject: input.subject,
+          startDate: effectiveStart,
+          endDate: endDateVal,
+          priority: input.priority || 'MEDIUM',
+          goal: typeof input.goal === 'string' ? input.goal.trim() : '',
+          targetQuestions: typeof input.targetQuestions === 'number' ? input.targetQuestions : 50,
+          targetAccuracy: typeof input.targetAccuracy === 'number' ? input.targetAccuracy : 75,
+          notes: typeof input.notes === 'string' ? input.notes.trim() : '',
+          status: input.status || 'IN_PROGRESS',
+          updatedAt: new Date()
+        },
+        $unset: {
+          targetDate: ""
+        },
+        $setOnInsert: {
+          createdAt: new Date()
+        }
+      },
+      { upsert: true }
+    );
+
+    revalidatePath('/');
+    revalidatePath('/study');
+    revalidatePath('/profile');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save study block via MongoDB driver:', error);
+    return { success: false, error: 'Failed to save study block.' };
+  }
+}
+
+export async function deleteStudyBlock(subject: string) {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('user_id')?.value;
+
+    if (!userId) {
+      return { success: false, error: 'Aspirant session not found.' };
+    }
+
+    const client = await clientPromise;
+    const db = client.db('boardquest');
+
+    await db.collection('StudyPlan').deleteOne({ userId, subject });
+
+    revalidatePath('/');
+    revalidatePath('/study');
+    revalidatePath('/profile');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete study block via MongoDB driver:', error);
+    return { success: false, error: 'Failed to delete study block.' };
+  }
+}
+
 export async function getStudyPlans(): Promise<any[]> {
   try {
     const cookieStore = await cookies();
@@ -113,6 +246,12 @@ export async function getStudyPlans(): Promise<any[]> {
       subject: doc.subject,
       startDate: doc.startDate ? new Date(doc.startDate).toISOString() : (doc.createdAt ? new Date(doc.createdAt).toISOString() : new Date().toISOString()),
       endDate: doc.endDate ? new Date(doc.endDate).toISOString() : (doc.targetDate ? new Date(doc.targetDate).toISOString() : new Date().toISOString()),
+      priority: doc.priority || 'MEDIUM',
+      goal: doc.goal || '',
+      targetQuestions: typeof doc.targetQuestions === 'number' ? doc.targetQuestions : 50,
+      targetAccuracy: typeof doc.targetAccuracy === 'number' ? doc.targetAccuracy : 75,
+      notes: doc.notes || '',
+      status: doc.status || 'IN_PROGRESS',
       createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : new Date().toISOString(),
       updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : new Date().toISOString(),
     }));
