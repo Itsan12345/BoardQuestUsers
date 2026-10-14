@@ -165,25 +165,25 @@ export function ModuleViewerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl w-[96vw] sm:w-[92vw] h-[94vh] max-h-[940px] p-0 gap-0 border-2 border-border/80 rounded-3xl overflow-hidden bg-background shadow-2xl flex flex-col font-sans">
+      <DialogContent className="max-w-7xl w-[96vw] sm:w-[92vw] h-[calc(100dvh-20px)] sm:h-[92vh] max-h-[calc(100dvh-20px)] sm:max-h-[920px] p-0 gap-0 border-2 border-border/80 rounded-2xl sm:rounded-3xl overflow-hidden bg-background shadow-2xl flex flex-col font-sans">
         {/* System Theme Header */}
-        <DialogHeader className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card text-foreground shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-black uppercase tracking-widest bg-primary/20 text-primary border border-primary/30 px-2.5 py-0.5 rounded-md">
+        <DialogHeader className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card text-foreground shrink-0 pr-12 sm:pr-14 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3">
+          <div className="space-y-0.5 sm:space-y-1 min-w-0 pr-1">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-md leading-none">
                 LEARNING MODULE
               </span>
               <span className="text-muted-foreground text-xs font-semibold">•</span>
-              <span className="text-foreground text-xs font-bold uppercase tracking-tight truncate max-w-[160px] sm:max-w-none">
+              <span className="text-foreground text-[11px] sm:text-xs font-bold uppercase tracking-tight truncate max-w-[140px] sm:max-w-none">
                 {subjectTitle}
               </span>
               {typeof module.order === 'number' && (
-                <span className="text-muted-foreground text-xs font-medium">
+                <span className="text-muted-foreground text-[11px] sm:text-xs font-medium">
                   Module #{module.order}
                 </span>
               )}
             </div>
-            <DialogTitle className="text-base sm:text-xl font-headline font-bold text-foreground truncate">
+            <DialogTitle className="text-sm sm:text-lg lg:text-xl font-headline font-bold text-foreground truncate">
               {module.title}
             </DialogTitle>
           </div>
@@ -433,41 +433,53 @@ export function ModuleViewerDialog({
 
           {/* Right Panel: PDF Viewer Frame - Visible on Desktop or Mobile 'reader' tab */}
           <div className={cn(
-            "lg:col-span-8 bg-muted/40 p-2 sm:p-4 flex flex-col min-h-[350px] lg:min-h-0 relative",
+            "lg:col-span-8 bg-muted/40 p-1.5 sm:p-4 flex flex-col min-h-0 flex-1 relative overflow-hidden",
             mobileTab !== 'reader' ? "hidden lg:flex" : "flex"
           )}>
             {activeFileUrl ? (
-              <div className="w-full h-full rounded-2xl overflow-hidden border border-border/80 bg-background shadow-xs relative flex flex-col">
+              <div className="w-full h-full rounded-xl sm:rounded-2xl overflow-hidden border border-border/80 bg-background shadow-xs relative flex flex-col flex-1 min-h-0">
                 {/* PDF Viewer Header Bar */}
-                <div className="px-3.5 sm:px-4 py-2 bg-muted/80 border-b border-border flex items-center justify-between text-foreground shrink-0">
+                <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-muted/80 border-b border-border flex items-center justify-between text-foreground shrink-0 gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <FileText className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-xs font-bold tracking-tight truncate text-foreground">
+                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
+                    <span className="text-[11px] sm:text-xs font-bold tracking-tight truncate text-foreground">
                       {cleanFilename(activeFileUrl, activeFileIndex)}
                     </span>
                   </div>
 
-                  {files.length > 1 && (
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase px-2 py-0.5 bg-background border border-border rounded-md shrink-0">
-                      Doc {activeFileIndex + 1} of {files.length}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {files.length > 1 && (
+                      <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase px-1.5 py-0.5 bg-background border border-border rounded-md shrink-0">
+                        Doc {activeFileIndex + 1} of {files.length}
+                      </span>
+                    )}
+                    <a
+                      href={activeFileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2 py-0.5 rounded-md bg-background hover:bg-muted text-foreground border border-border text-[10px] sm:text-xs font-semibold flex items-center gap-1 transition-colors"
+                      title="Open PDF directly"
+                    >
+                      <Download className="w-3 h-3 text-primary" />
+                      <span className="hidden sm:inline">Open PDF</span>
+                    </a>
+                  </div>
                 </div>
 
                 {/* PDF Iframe Viewer */}
                 <iframe
                   src={`${activeFileUrl}#toolbar=1&navpanes=0`}
-                  className="w-full h-full border-0 rounded-b-2xl bg-white"
+                  className="w-full h-full border-0 rounded-b-xl sm:rounded-b-2xl bg-white flex-1 min-h-0"
                   title={module.title}
                 />
               </div>
             ) : (
-              <div className="w-full h-full rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center p-8 text-center bg-background text-foreground">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
-                  <Sparkles className="w-6 h-6" />
+              <div className="w-full h-full rounded-xl sm:rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center p-6 text-center bg-background text-foreground">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-2 sm:mb-3">
+                  <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <h3 className="font-bold text-sm uppercase text-foreground tracking-tight">Study Text & Materials</h3>
-                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                <h3 className="font-bold text-xs sm:text-sm uppercase text-foreground tracking-tight">Study Text & Materials</h3>
+                <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 max-w-sm">
                   Select a document from the left panel to begin reading your study material.
                 </p>
               </div>
@@ -476,19 +488,19 @@ export function ModuleViewerDialog({
         </div>
 
         {/* System Theme Bottom Action Bar */}
-        <div className="p-3.5 sm:p-5 border-t border-border bg-card text-card-foreground shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="px-3.5 py-2.5 sm:px-5 sm:py-3.5 border-t border-border bg-card text-card-foreground shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <div className={cn(
-              "w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center transition-colors shrink-0",
+              "w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center transition-colors shrink-0",
               isCompleted ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" : "bg-primary/10 text-primary border border-primary/20"
             )}>
-              {isCompleted ? <FileCheck className="w-4.5 h-4.5 sm:w-5 sm:h-5" /> : <BookOpen className="w-4.5 h-4.5 sm:w-5 sm:h-5" />}
+              {isCompleted ? <FileCheck className="w-4 h-4 sm:w-5 sm:h-5" /> : <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />}
             </div>
-            <div>
-              <p className="text-xs font-bold text-foreground leading-tight">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-bold text-foreground leading-tight truncate">
                 {isCompleted ? "You completed this reading module!" : "Finished reading this module?"}
               </p>
-              <p className="text-[10px] text-muted-foreground font-semibold line-clamp-1">
+              <p className="text-[9.5px] sm:text-[10px] text-muted-foreground font-semibold line-clamp-1">
                 {isCompleted
                   ? "Your subject completion score and mastery metrics have been updated."
                   : "Mark complete once you've finished studying the materials."}
@@ -496,12 +508,12 @@ export function ModuleViewerDialog({
             </div>
           </div>
 
-          <div className="w-full sm:w-auto flex items-center gap-3">
+          <div className="w-full sm:w-auto flex items-center gap-2 shrink-0">
             <Button
               onClick={handleCompleteClick}
               disabled={isSubmitting}
               className={cn(
-                "w-full sm:w-auto h-11 sm:h-12 px-6 sm:px-7 rounded-2xl font-bold uppercase tracking-wider text-xs transition-all shadow-md flex items-center justify-center gap-2",
+                "w-full sm:w-auto h-9 sm:h-11 px-5 sm:px-7 rounded-xl sm:rounded-2xl font-bold uppercase tracking-wider text-xs transition-all shadow-md flex items-center justify-center gap-2",
                 isCompleted
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-emerald-500/20"
                   : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/25"
@@ -509,17 +521,17 @@ export function ModuleViewerDialog({
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Updating...</span>
                 </>
               ) : isCompleted ? (
                 <>
-                  <Check className="w-4 h-4 stroke-[3]" />
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
                   <span>Completed ✓</span>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Mark as Completed</span>
                 </>
               )}

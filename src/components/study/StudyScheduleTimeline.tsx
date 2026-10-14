@@ -26,6 +26,8 @@ import {
   Sword,
   CalendarDays,
   Layers,
+  Pencil,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -304,36 +306,36 @@ export function StudyScheduleTimeline({
       </div>
 
       {/* Main Container: Header with View Toggle + Content */}
-      <div className="bg-card border-2 border-border/80 rounded-3xl p-4 sm:p-6 lg:p-7 shadow-sm space-y-6">
+      <div className="bg-card border-2 border-border/80 rounded-2xl sm:rounded-3xl p-3 sm:p-6 lg:p-7 shadow-sm space-y-5 sm:space-y-6">
         {/* Controls Bar: View Toggle + Month Navigation */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
-          <div className="flex items-center gap-2">
-            <div className="flex bg-muted/50 p-1 rounded-2xl border border-border">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex bg-muted/50 p-1 rounded-xl sm:rounded-2xl border border-border w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setViewMode('calendar')}
                 className={cn(
-                  'flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                  'flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center',
                   viewMode === 'calendar'
                     ? 'bg-card text-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <CalendarDays className="w-3.5 h-3.5 text-primary" />
-                Month Calendar Grid
+                <CalendarDays className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>Month Calendar Grid</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('roadmap')}
                 className={cn(
-                  'flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                  'flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial text-center',
                   viewMode === 'roadmap'
                     ? 'bg-card text-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <Layers className="w-3.5 h-3.5 text-primary" />
-                Subject Roadmap & Targets
+                <Layers className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>Subject Roadmap & Targets</span>
               </button>
             </div>
           </div>
@@ -377,13 +379,13 @@ export function StudyScheduleTimeline({
 
         {/* VIEW 1: MONTH CALENDAR GRID */}
         {viewMode === 'calendar' && (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {/* Day of Week Header */}
             <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center">
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
                 <div
                   key={day}
-                  className="text-[10px] sm:text-xs font-black uppercase text-muted-foreground tracking-wider py-1"
+                  className="text-[9px] sm:text-xs font-black uppercase text-muted-foreground tracking-wider py-0.5 sm:py-1"
                 >
                   {day}
                 </div>
@@ -391,7 +393,7 @@ export function StudyScheduleTimeline({
             </div>
 
             {/* Calendar Cells */}
-            <div className="grid grid-cols-7 gap-1 sm:gap-2 auto-rows-fr">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {calendarDays.map((date, idx) => {
                 const isCurrent = isSameMonth(date, currentMonth);
                 const isToday = isSameDay(date, new Date());
@@ -429,24 +431,24 @@ export function StudyScheduleTimeline({
                       }
                     }}
                     className={cn(
-                      'min-h-[75px] sm:min-h-[105px] p-1 sm:p-2 rounded-2xl border transition-all flex flex-col justify-between group relative',
+                      'aspect-square rounded-[4px] sm:rounded-[8px] p-1 sm:p-2 border transition-all flex flex-col justify-between group relative overflow-hidden',
                       (isPast || isPastDeadline) && dayPlans.length === 0
                         ? 'bg-muted/10 border-border/30 opacity-40 hover:opacity-60 cursor-not-allowed'
                         : isCurrent
                         ? 'bg-card border-border/70 hover:border-primary/60 hover:shadow-md cursor-pointer'
-                        : 'bg-muted/15 border-border/30 opacity-40 hover:opacity-80 cursor-pointer',
-                      isToday && 'ring-2 ring-primary border-primary bg-primary/[0.03]'
+                        : 'bg-muted/15 border-border/30 opacity-30 hover:opacity-70 cursor-pointer',
+                      isToday && 'ring-2 ring-primary border-primary bg-primary/[0.04] shadow-xs'
                     )}
                   >
                     {/* Top Row: Date Number & Badges */}
-                    <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center justify-between w-full leading-none">
                       <span
                         className={cn(
-                          'text-[10px] sm:text-xs font-black leading-none px-1.5 py-0.5 rounded-lg',
+                          'text-[9px] sm:text-xs font-black px-1 sm:px-1.5 py-0.5 rounded-[2px] sm:rounded-md leading-none',
                           isToday
                             ? 'bg-primary text-primary-foreground shadow-xs'
                             : isPast
-                            ? 'text-muted-foreground'
+                            ? 'text-muted-foreground/80'
                             : 'text-foreground'
                         )}
                       >
@@ -455,17 +457,19 @@ export function StudyScheduleTimeline({
 
                       {isDeadline && (
                         <span
-                          className="text-[8px] bg-red-500 text-white font-bold px-1 rounded uppercase tracking-tighter"
+                          className="text-[6.5px] sm:text-[8px] bg-red-500 text-white font-black px-1 py-0.5 rounded-[2px] uppercase tracking-tighter shrink-0"
                           title="Institutional Deadline"
                         >
-                          Deadline
+                          <span className="sm:hidden">D-Day</span>
+                          <span className="hidden sm:inline">Deadline</span>
                         </span>
                       )}
                     </div>
 
                     {/* Middle: Active Subject Blocks on this date */}
-                    <div className="flex-1 my-1 space-y-1 overflow-hidden">
-                      {dayPlans.map((plan) => {
+                    <div className="flex-1 my-0.5 sm:my-1 space-y-0.5 sm:space-y-1 overflow-hidden w-full">
+                      {/* On mobile show up to 2 chips; on desktop show up to 3 */}
+                      {dayPlans.slice(0, 2).map((plan) => {
                         const meta =
                           MTLE_SUBJECTS.find((s) => s.title === plan.subject) || MTLE_SUBJECTS[0];
 
@@ -473,7 +477,7 @@ export function StudyScheduleTimeline({
                           <div
                             key={plan.subject}
                             className={cn(
-                              'text-[9px] sm:text-[10px] font-bold p-1 rounded-lg border flex items-center justify-between truncate transition-transform hover:scale-[1.02]',
+                              'text-[7px] sm:text-[9.5px] font-bold px-1 py-0.5 rounded-[2px] sm:rounded-md border flex items-center justify-between truncate transition-transform hover:scale-[1.02] leading-tight',
                               meta.badgeBg,
                               meta.badgeBorder,
                               meta.badgeText
@@ -483,22 +487,46 @@ export function StudyScheduleTimeline({
                               'MMM dd'
                             )} - ${format(new Date(plan.endDate), 'MMM dd')} (${plan.priority || 'HIGH'} Priority)`}
                           >
-                            <span className="truncate flex items-center gap-1 font-extrabold">
-                              <span>{meta.icon}</span>
+                            <span className="truncate flex items-center gap-0.5 sm:gap-1 font-extrabold min-w-0">
+                              <span className="shrink-0">{meta.icon}</span>
                               <span className="hidden sm:inline truncate">{plan.subject}</span>
                               <span className="sm:hidden truncate">{meta.shortTitle}</span>
                             </span>
 
                             {plan.priority === 'HIGH' && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 ml-1" />
+                              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-red-500 shrink-0 ml-0.5" />
                             )}
                           </div>
                         );
                       })}
+
+                      {/* Desktop 3rd plan if available */}
+                      {dayPlans.length > 2 && (
+                        <>
+                          <div
+                            key={dayPlans[2].subject}
+                            className={cn(
+                              'hidden sm:flex text-[9.5px] font-bold px-1 py-0.5 rounded-md border items-center justify-between truncate transition-transform hover:scale-[1.02] leading-tight',
+                              (MTLE_SUBJECTS.find((s) => s.title === dayPlans[2].subject) || MTLE_SUBJECTS[0]).badgeBg,
+                              (MTLE_SUBJECTS.find((s) => s.title === dayPlans[2].subject) || MTLE_SUBJECTS[0]).badgeBorder,
+                              (MTLE_SUBJECTS.find((s) => s.title === dayPlans[2].subject) || MTLE_SUBJECTS[0]).badgeText
+                            )}
+                          >
+                            <span className="truncate flex items-center gap-1 font-extrabold min-w-0">
+                              <span>{(MTLE_SUBJECTS.find((s) => s.title === dayPlans[2].subject) || MTLE_SUBJECTS[0]).icon}</span>
+                              <span className="truncate">{dayPlans[2].subject}</span>
+                            </span>
+                          </div>
+
+                          <div className="text-[6.5px] sm:text-[8px] font-black text-muted-foreground text-center bg-muted/40 rounded-[2px] py-0.2 leading-none">
+                            +{dayPlans.length - 2} more
+                          </div>
+                        </>
+                      )}
                     </div>
 
-                    {/* Bottom: Quick Add prompt or status on hover */}
-                    <div className="text-[8px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity font-bold text-center">
+                    {/* Bottom: Quick Add prompt or status on hover (desktop only) */}
+                    <div className="hidden sm:block text-[8px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity font-bold text-center">
                       {dayPlans.length > 0
                         ? 'Edit Block'
                         : isPast
@@ -513,25 +541,25 @@ export function StudyScheduleTimeline({
             </div>
 
             {/* Legend */}
-            <div className="pt-3 border-t border-border/50 flex items-center justify-between flex-wrap gap-2 text-[10px] text-muted-foreground font-semibold">
-              <div className="flex items-center gap-3 flex-wrap">
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-card/60 border border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[10px] sm:text-xs text-muted-foreground font-semibold">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <span className="font-bold text-foreground">Subjects:</span>
                 {MTLE_SUBJECTS.map((sub) => (
-                  <span key={sub.title} className="flex items-center gap-1">
+                  <span key={sub.title} className="flex items-center gap-1 bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/30">
                     <span>{sub.icon}</span>
                     <span>{sub.shortTitle}</span>
                   </span>
                 ))}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-red-500" /> High Priority
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" /> High Priority
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" /> Medium
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500" /> Medium
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Maintenance
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500" /> Maintenance
                 </span>
               </div>
             </div>
@@ -558,7 +586,7 @@ export function StudyScheduleTimeline({
                   <div
                     key={sub.title}
                     className={cn(
-                      'p-4 sm:p-5 rounded-3xl border-2 transition-all flex flex-col justify-between gap-3 relative overflow-hidden bg-card',
+                      'p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 transition-all flex flex-col justify-between gap-3 relative overflow-hidden bg-card',
                       isScheduled
                         ? 'border-border/80 hover:border-primary/50 shadow-xs'
                         : 'border-dashed border-border/60 bg-muted/10'
@@ -566,15 +594,15 @@ export function StudyScheduleTimeline({
                   >
                     {/* Top Row: Icon, Subject Title, Board Weight & Priority Badge */}
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                         <div
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0"
+                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl shrink-0"
                           style={{ backgroundColor: `${sub.color}20` }}
                         >
                           {sub.icon}
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm sm:text-base font-black text-foreground truncate">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm sm:text-base font-black text-foreground leading-snug line-clamp-2 break-words">
                             {sub.title}
                           </h4>
                         </div>
@@ -586,7 +614,7 @@ export function StudyScheduleTimeline({
                           <>
                             <Badge
                               className={cn(
-                                'text-[9px] font-bold uppercase tracking-wider',
+                                'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5',
                                 plan.priority === 'HIGH'
                                   ? 'bg-red-500/15 text-red-500 border-red-500/30'
                                   : plan.priority === 'MEDIUM'
@@ -594,7 +622,8 @@ export function StudyScheduleTimeline({
                                   : 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
                               )}
                             >
-                              {plan.priority || 'HIGH'} Priority
+                              <span className="sm:hidden">{plan.priority || 'HIGH'}</span>
+                              <span className="hidden sm:inline">{plan.priority || 'HIGH'} Priority</span>
                             </Badge>
                             {isTodayActive && (
                               <span className="text-[8px] font-bold text-emerald-500 uppercase flex items-center gap-1">
@@ -604,7 +633,7 @@ export function StudyScheduleTimeline({
                             )}
                           </>
                         ) : (
-                          <Badge variant="outline" className="text-[9px] font-bold uppercase text-muted-foreground">
+                          <Badge variant="outline" className="text-[9px] font-bold uppercase text-muted-foreground px-2 py-0.5">
                             Not Scheduled
                           </Badge>
                         )}
@@ -613,26 +642,26 @@ export function StudyScheduleTimeline({
 
                     {/* Middle: Scheduled Review Period & Targets */}
                     {isScheduled ? (
-                      <div className="space-y-2.5 bg-muted/20 border border-border/60 rounded-2xl p-3">
+                      <div className="space-y-2 sm:space-y-2.5 bg-muted/20 border border-border/60 rounded-xl sm:rounded-2xl p-2.5 sm:p-3">
                         {/* Dates */}
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-muted-foreground flex items-center gap-1.5">
-                            <CalendarIcon className="w-3.5 h-3.5 text-primary" />
+                        <div className="flex flex-col xs:flex-row xs:items-center justify-between text-xs gap-1">
+                          <span className="font-bold text-muted-foreground flex items-center gap-1.5 shrink-0 text-[11px] sm:text-xs">
+                            <CalendarIcon className="w-3.5 h-3.5 text-primary shrink-0" />
                             Review Period:
                           </span>
-                          <span className="font-black text-foreground">
+                          <span className="font-black text-foreground text-[11px] sm:text-xs">
                             {format(new Date(plan.startDate), 'MMM dd')} –{' '}
                             {format(new Date(plan.endDate), 'MMM dd, yyyy')}
                           </span>
                         </div>
 
                         {/* What to Achieve: Target Quota & Accuracy */}
-                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40 text-[11px]">
-                          <div>
-                            <span className="text-[10px] font-bold text-muted-foreground block">
+                        <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-border/40 text-[11px]">
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-bold text-muted-foreground block truncate">
                               Daily Question Target:
                             </span>
-                            <span className="font-black text-foreground">
+                            <span className="font-black text-foreground text-[11px] sm:text-xs block mt-0.5 truncate">
                               🎯 {plan.targetQuestions || 50} Qs / day
                             </span>
                             {metric?.questionsAnswered !== undefined && (
@@ -641,11 +670,11 @@ export function StudyScheduleTimeline({
                               </span>
                             )}
                           </div>
-                          <div>
-                            <span className="text-[10px] font-bold text-muted-foreground block">
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-bold text-muted-foreground block truncate">
                               Target Accuracy:
                             </span>
-                            <span className="font-black text-foreground">
+                            <span className="font-black text-foreground text-[11px] sm:text-xs block mt-0.5 truncate">
                               ⚡ ≥ {plan.targetAccuracy || 75}%
                             </span>
                             {metric?.accuracy !== undefined && (
@@ -675,38 +704,42 @@ export function StudyScheduleTimeline({
                     )}
 
                     {/* Bottom Row: Actions */}
-                    <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-2">
+                    <div className="pt-2 border-t border-border/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       {isScheduled ? (
                         <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenEditModal(plan)}
-                            className="rounded-xl h-8 text-[11px] font-bold border-border"
-                          >
-                            Edit Dates & Targets
-                          </Button>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenEditModal(plan)}
+                              className="rounded-xl h-8 text-[11px] font-bold border-border flex-1 sm:flex-initial px-2.5 sm:px-3 truncate"
+                            >
+                              <Pencil className="w-3 h-3 mr-1 shrink-0 sm:hidden" />
+                              <span className="sm:hidden">Edit Targets</span>
+                              <span className="hidden sm:inline">Edit Dates & Targets</span>
+                            </Button>
                             {onSelectSubjectInCurriculum && (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => onSelectSubjectInCurriculum(sub.title)}
-                                className="rounded-xl h-8 text-[11px] font-bold text-primary hover:bg-primary/10"
+                                className="rounded-xl h-8 text-[11px] font-bold text-primary hover:bg-primary/10 flex-1 sm:flex-initial px-2.5 sm:px-3 truncate"
                               >
-                                View Modules
+                                <BookOpen className="w-3 h-3 mr-1 shrink-0 sm:hidden" />
+                                <span className="sm:hidden">Modules</span>
+                                <span className="hidden sm:inline">View Modules</span>
                               </Button>
                             )}
-                            <Link href={`/quest?subject=${encodeURIComponent(sub.title)}`}>
-                              <Button
-                                size="sm"
-                                className="rounded-xl h-8 px-3 text-[11px] font-black uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs flex items-center gap-1"
-                              >
-                                <Sword className="w-3 h-3" />
-                                Quest Drill
-                              </Button>
-                            </Link>
                           </div>
+                          <Link href={`/quest?subject=${encodeURIComponent(sub.title)}`} className="w-full sm:w-auto">
+                            <Button
+                              size="sm"
+                              className="w-full sm:w-auto rounded-xl h-8 px-3 text-[11px] font-black uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs flex items-center justify-center gap-1.5"
+                            >
+                              <Sword className="w-3 h-3" />
+                              Quest Drill
+                            </Button>
+                          </Link>
                         </>
                       ) : (
                         <Button
@@ -717,7 +750,7 @@ export function StudyScheduleTimeline({
                             setClickedDateForSchedule(undefined);
                             setModalOpen(true);
                           }}
-                          className="w-full rounded-2xl h-9 text-xs font-bold bg-muted hover:bg-muted/80 text-foreground border border-border"
+                          className="w-full rounded-xl sm:rounded-2xl h-8 sm:h-9 text-[11px] sm:text-xs font-bold bg-muted hover:bg-muted/80 text-foreground border border-border"
                         >
                           + Set Schedule for {sub.shortTitle}
                         </Button>

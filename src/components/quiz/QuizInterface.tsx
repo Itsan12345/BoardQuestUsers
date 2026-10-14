@@ -426,63 +426,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
               </div>
             </button>
             
-            {/* Heavy Attack Card (Center - Matching Reference Image) */}
-            <button
-              type="button"
-              onClick={() => handleSelectMove('heavy')}
-              className="group relative flex flex-col items-center cursor-pointer focus:outline-none transition-all duration-300 transform hover:-translate-y-2.5 hover:scale-[1.03] active:translate-y-1 active:scale-[0.98] w-full max-w-[280px] lg:max-w-[300px] mx-auto select-none"
-            >
-              <div className={cn(
-                "relative w-full aspect-[56/72] transition-all duration-300 filter",
-                bossShieldActive 
-                  ? "drop-shadow-[0_0_18px_rgba(59,130,246,0.9)] animate-pulse" 
-                  : "drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_12px_24px_rgba(239,68,68,0.75)]"
-              )}>
-                {/* Pixel Art Card Base */}
-                <Image
-                  src="/images/bossbattlecards/heavyAttack_btn.png"
-                  alt="Heavy Attack Card"
-                  fill
-                  sizes="(max-width: 640px) 115px, (max-width: 1024px) 220px, 300px"
-                  unoptimized
-                  priority
-                  className="object-fill [image-rendering:pixelated] select-none pointer-events-none"
-                  draggable={false}
-                />
-
-                {/* Card Sheen on Hover */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-sm" />
-
-                {/* Content Area Inside Card's Lower Plate (Proportionately centered & fully responsive) */}
-                <div className="absolute inset-x-[7%] top-[51%] sm:top-[52%] bottom-[11%] sm:bottom-[12%] flex flex-col items-center justify-center text-center px-1 sm:px-2 gap-0 pointer-events-none">
-                  {/* Title & Badges */}
-                  <div className="w-full flex flex-col items-center">
-                    <h3 className={cn(
-                      "font-bytebounce uppercase tracking-wide text-xs min-[360px]:text-sm sm:text-lg md:text-xl lg:text-2xl leading-none [text-shadow:1px_1px_0_#000,-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000]",
-                      bossShieldActive ? "text-cyan-300" : "text-[#f87171]"
-                    )}>
-                      HEAVY ATTACK
-                    </h3>
-                    
-                    {bossShieldActive && (
-                      <span className="inline-block font-bytebounce text-[8px] sm:text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded shadow-sm mt-0.5 animate-pulse border border-blue-400 leading-none">
-                        BREAKS SHIELD
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Description */}
-                  <div className="w-full px-0.5 -mt-0.5 sm:-mt-1">
-                    <p className="text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs md:text-[13px] lg:text-[14px] font-bold text-white leading-tight sm:leading-snug [text-shadow:0_1px_2px_rgba(0,0,0,0.95)] max-w-full mx-auto">
-                      <span className="sm:hidden">Deals massive damage. Counter-attacked if wrong!</span>
-                      <span className="hidden sm:inline">Deals massive damage. If wrong, player takes heavy counter-attack!</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </button>
-            
-            {/* Normal Attack Card (Right - Matching Reference Image) */}
+            {/* Normal Attack Card (Center) */}
             <button
               type="button"
               onClick={() => handleSelectMove('normal')}
@@ -532,6 +476,62 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                     <p className="text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs md:text-[13px] lg:text-[14px] font-bold text-white leading-tight sm:leading-snug [text-shadow:0_1px_2px_rgba(0,0,0,0.95)] max-w-full mx-auto">
                       <span className="sm:hidden">Standard damage with balanced risk.</span>
                       <span className="hidden sm:inline">Answer a standard question. Deals reliable damage with balanced risk.</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {/* Heavy Attack Card (Right) */}
+            <button
+              type="button"
+              onClick={() => handleSelectMove('heavy')}
+              className="group relative flex flex-col items-center cursor-pointer focus:outline-none transition-all duration-300 transform hover:-translate-y-2.5 hover:scale-[1.03] active:translate-y-1 active:scale-[0.98] w-full max-w-[280px] lg:max-w-[300px] mx-auto select-none"
+            >
+              <div className={cn(
+                "relative w-full aspect-[56/72] transition-all duration-300 filter",
+                bossShieldActive 
+                  ? "drop-shadow-[0_0_18px_rgba(59,130,246,0.9)] animate-pulse" 
+                  : "drop-shadow-[0_6px_14px_rgba(0,0,0,0.5)] group-hover:drop-shadow-[0_12px_24px_rgba(239,68,68,0.75)]"
+              )}>
+                {/* Pixel Art Card Base */}
+                <Image
+                  src="/images/bossbattlecards/heavyAttack_btn.png"
+                  alt="Heavy Attack Card"
+                  fill
+                  sizes="(max-width: 640px) 115px, (max-width: 1024px) 220px, 300px"
+                  unoptimized
+                  priority
+                  className="object-fill [image-rendering:pixelated] select-none pointer-events-none"
+                  draggable={false}
+                />
+
+                {/* Card Sheen on Hover */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-sm" />
+
+                {/* Content Area Inside Card's Lower Plate (Proportionately centered & fully responsive) */}
+                <div className="absolute inset-x-[7%] top-[51%] sm:top-[52%] bottom-[11%] sm:bottom-[12%] flex flex-col items-center justify-center text-center px-1 sm:px-2 gap-0 pointer-events-none">
+                  {/* Title & Badges */}
+                  <div className="w-full flex flex-col items-center">
+                    <h3 className={cn(
+                      "font-bytebounce uppercase tracking-wide text-xs min-[360px]:text-sm sm:text-lg md:text-xl lg:text-2xl leading-none [text-shadow:1px_1px_0_#000,-1px_-1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000]",
+                      bossShieldActive ? "text-cyan-300" : "text-[#f87171]"
+                    )}>
+                      HEAVY ATTACK
+                    </h3>
+                    
+                    {bossShieldActive && (
+                      <span className="inline-block font-bytebounce text-[8px] sm:text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded shadow-sm mt-0.5 animate-pulse border border-blue-400 leading-none">
+                        BREAKS SHIELD
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div className="w-full px-0.5 -mt-0.5 sm:-mt-1">
+                    <p className="text-[7.5px] min-[360px]:text-[8.5px] sm:text-xs md:text-[13px] lg:text-[14px] font-bold text-white leading-tight sm:leading-snug [text-shadow:0_1px_2px_rgba(0,0,0,0.95)] max-w-full mx-auto">
+                      <span className="sm:hidden">Deals massive damage. Counter-attacked if wrong!</span>
+                      <span className="hidden sm:inline">Deals massive damage. If wrong, player takes heavy counter-attack!</span>
                     </p>
                   </div>
                 </div>
@@ -859,14 +859,28 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                             )}
                           </div>
 
-                          <div className="w-full animate-in fade-in duration-300 delay-75 pb-4">
+                          <div className="w-full animate-in fade-in slide-in-from-bottom-2 duration-300 delay-75 pb-4">
                             <Button 
                               onClick={handleNext}
                               size="lg"
-                              className="w-full font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all rounded-xl border-2 border-primary/20 bg-primary/10 text-primary hover:bg-primary hover:text-white py-5 text-xs sm:text-sm"
+                              className={cn(
+                                "group relative w-full font-black uppercase tracking-wider flex items-center justify-center gap-2.5 rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.98] overflow-hidden",
+                                "py-5 sm:py-6 text-xs sm:text-sm md:text-base cursor-pointer select-none",
+                                // Light Mode: Rich, crisp emerald green fill with white text, subtle border & strong elevation shadow
+                                "bg-emerald-600 text-white shadow-md shadow-emerald-600/25 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/35 hover:-translate-y-0.5 border border-emerald-500/40",
+                                // Dark Mode: Radiant luminous emerald glow, white text, ambient glowing shadow & refined border
+                                "dark:bg-emerald-600 dark:text-white dark:border-emerald-400/50 dark:shadow-[0_0_22px_rgba(16,185,129,0.45)] dark:hover:shadow-[0_0_32px_rgba(16,185,129,0.75)] dark:hover:bg-emerald-500",
+                                // Accessibility Focus
+                                "focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                              )}
                             >
-                              <span>{currentIndex < questions.length - 1 ? "Next Quest" : "Finish Quest"}</span>
-                              <ArrowRight className="w-4 h-4" />
+                              {/* Top sheen highlight line */}
+                              <div className="absolute inset-x-0 top-0 h-[1px] bg-white/30 pointer-events-none rounded-t-xl sm:rounded-t-2xl" />
+
+                              <span className="font-extrabold tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]">
+                                {currentIndex < questions.length - 1 ? "Next Quest" : "Finish Quest"}
+                              </span>
+                              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:translate-x-1.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]" />
                             </Button>
                           </div>
                         </>

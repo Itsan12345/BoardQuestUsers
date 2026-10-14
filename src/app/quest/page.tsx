@@ -7190,7 +7190,9 @@ export default function LearningQuest() {
         }}
       >
         <DialogContent container={fullscreenRef.current} className="sm:max-w-3xl bg-transparent border-none shadow-none p-0 flex justify-center items-center [&>button]:hidden">
-          <DialogTitle className="sr-only">Select a session mode</DialogTitle>
+          <DialogTitle className="sr-only">
+            {selectedTopicFilter ? `Topic Drill - ${selectedTopicFilter}` : "Select a session mode"}
+          </DialogTitle>
           <div className="relative w-[800px] max-w-full aspect-[4/3] flex items-center justify-center overflow-hidden">
             <Image
               src={
@@ -7200,9 +7202,11 @@ export default function LearningQuest() {
                     : quizMode === 'test'
                       ? "/ui/TestMode_OverviewModal.png"
                       : "/ui/BossBattleMode_OverviewModal.png"
-                  : "/ui/modal-bg.png"
+                  : selectedTopicFilter
+                    ? "/ui/TopicDrill_Modal.png"
+                    : "/ui/modal-bg.png"
               }
-              alt="Select Mode Background"
+              alt={selectedTopicFilter ? "Topic Drill Background" : "Select Mode Background"}
               fill
               className="object-contain"
               style={{ imageRendering: 'pixelated' }}
