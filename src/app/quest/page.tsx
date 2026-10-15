@@ -6221,7 +6221,7 @@ export default function LearningQuest() {
                 ((selectedSubject.toLowerCase().includes('microscopy') || selectedSubject.toLowerCase().includes('parasit')) && (currentActiveNode?.id === 'cm-3' || currentActiveNode?.id === 'cm-1') && (quizMode === 'boss-battle' ? battleStage === 3 : quizMode === 'learning' ? waveState?.waveStage === 3 : (quizMode === 'test' ? testModeEnemy?.tier === 'boss' : true)))
               );
 
-              const isSpecialCenteredBoss = isCurrentMutant || isCurrentAcidSlime || isCurrentAntigenTitan || isCurrentKetoacidosisColossus || isCurrentImmuneArchon || isCurrentErythrocyteColossus || isCurrentParaffinGolem || isCurrentFixationOverlord || isCurrentNitriteSpectre || isCurrentUrochromeTitan;
+              const isSpecialCenteredBoss = isCurrentAcidSlime || isCurrentErythrocyteColossus || isCurrentParaffinGolem || isCurrentFixationOverlord || isCurrentNitriteSpectre || isCurrentUrochromeTitan;
 
               return (
                 <div className={cn(
@@ -6261,9 +6261,10 @@ export default function LearningQuest() {
                     isSpecialCenteredBoss
                       ? "flex-1 w-full min-h-0 flex items-center justify-center pointer-events-auto relative"
                       : "flex justify-end pr-2 md:pr-4 mt-2 relative items-center min-h-[96px]",
-                    isCurrentAntigenTitan && "-translate-y-[44px] md:-translate-y-[48px]",
-                    isCurrentKetoacidosisColossus && "-translate-y-[16px] md:-translate-y-[20px]",
-                    isCurrentImmuneArchon && "-translate-y-[20px] md:-translate-y-[24px]",
+                    isCurrentMutant && "translate-x-[40px] sm:translate-x-[50px] md:translate-x-[80px] -translate-y-[45px] md:-translate-y-[55px]",
+                    isCurrentAntigenTitan && "translate-x-[40px] sm:translate-x-[50px] md:translate-x-[80px] -translate-y-[45px] md:-translate-y-[55px]",
+                    isCurrentKetoacidosisColossus && "translate-x-[85px] sm:translate-x-[115px] md:translate-x-[165px] -translate-y-[68px] md:-translate-y-[80px]",
+                    isCurrentImmuneArchon && "translate-x-[85px] sm:translate-x-[115px] md:translate-x-[165px] -translate-y-[68px] md:-translate-y-[80px]",
                     isCurrentErythrocyteColossus && "translate-y-[8px] md:translate-y-[12px]",
                     isCurrentParaffinGolem && "-translate-y-[8px] md:-translate-y-[12px]",
                     isCurrentFixationOverlord && "translate-y-[52px] md:translate-y-[60px]",

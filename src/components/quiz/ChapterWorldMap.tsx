@@ -44,11 +44,12 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
 }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM');
 
-  // Node Lock Helper: Node 1 is always unlocked.
-  // Node N unlocks ONLY IF Node N-1 has defeated EASY, MEDIUM, and HARD!
-  const isNodeUnlocked = (index: number): boolean => {
-    if (index === 0) return true;
-    const prevNodeId = subjectNodes[index - 1]?.id;
+  // [TEMPORARY_TEST_UNLOCK]: Unlocking all nodes for testing purposes
+  const isNodeUnlocked = (_index: number): boolean => {
+    return true;
+    /* ORIGINAL LOGIC:
+    if (_index === 0) return true;
+    const prevNodeId = subjectNodes[_index - 1]?.id;
     if (!prevNodeId) return false;
 
     const clears = nodeClears[prevNodeId];
@@ -56,18 +57,20 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
       return !!(clears.EASY && clears.MEDIUM && clears.HARD);
     }
     return (nodeStars[prevNodeId] || 0) >= 3;
+    */
   };
 
   // Helper to check if a specific difficulty is unlocked for a node:
-  // EASY is unlocked by default when node is unlocked.
-  // MEDIUM requires EASY to be cleared first.
-  // HARD requires MEDIUM to be cleared first.
-  const isDifficultyUnlocked = (nodeId: string, diff: 'EASY' | 'MEDIUM' | 'HARD'): boolean => {
-    const clears = nodeClears[nodeId] || {};
-    if (diff === 'EASY') return true;
-    if (diff === 'MEDIUM') return !!clears.EASY;
-    if (diff === 'HARD') return !!(clears.EASY && clears.MEDIUM);
+  // [TEMPORARY_TEST_UNLOCK]: Unlocking all difficulties for testing purposes
+  const isDifficultyUnlocked = (_nodeId: string, _diff: 'EASY' | 'MEDIUM' | 'HARD'): boolean => {
+    return true;
+    /* ORIGINAL LOGIC:
+    const clears = nodeClears[_nodeId] || {};
+    if (_diff === 'EASY') return true;
+    if (_diff === 'MEDIUM') return !!clears.EASY;
+    if (_diff === 'HARD') return !!(clears.EASY && clears.MEDIUM);
     return false;
+    */
   };
 
   const selectedNode = subjectNodes.find(n => n.id === selectedNodeId) || subjectNodes[0];

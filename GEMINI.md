@@ -8,8 +8,19 @@
 
 ### Clinical Chemistry
 - **Acid Slime (Stage 1 Minion - `cc-1`)**: All original attack animations, lunges, frame timings, and sound effects (`AcidSlimeNormal&HeavyAttack.mp3`) are permanently locked.
-- **Hyperglycemic Mutant (Stage 2 Mini-Boss - `cc-2`)**: All claw slam timings (430ms delay), normal/heavy attacks, and sound effects are permanently locked.
-- **Ketoacidosis Colossus (Stage 3 Chapter Boss - `cc-3`)**: All original animations, lunges, and audio effects (`KetoacidosisColossusNormalAttack.mp3`, `KetoacidosisColossusHeavyAttack.mp3`) are permanently locked.
+- **Hyperglycemic Mutant (Stage 2 Mini-Boss - `cc-2`)**:
+  - `miniBossIdleSpriteUrl`: `/images/bosses/clinchem_chapterOneMiniBoss_idleAnimation.png` (9 frames, 183x194, 0.9s loop)
+  - `miniBossAttackSpriteUrl`: `/images/bosses/clinchem_chapterOneMiniBoss_normalAttackAnimation.png` (8 frames, 250x210, 0.80s duration) with claw slash lunge (`min(-40px, calc(-100cqw + 310px))` / `calc(-100cqw + 460px)`, 42px) attacking right in front of the player and resetting cleanly to `translate(70px, 17px)`
+  - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/clinchem_chapterOneMiniBoss_heavyAttackAnimation.png` (8 frames, 190x154, 0.95s duration) with soaring leap dive ground shockwave slam lunge (`min(-50px, calc(-100cqw + 180px))` / `calc(-100cqw + 310px)`, -10px) slamming cleanly onto player and resetting cleanly to `translate(7px, -41px)`
+  - Scale & Positioning: `effectiveScale = scale * 1.55` with resting alignment `translate-x-[40px] sm:translate-x-[50px] md:translate-x-[80px] -translate-y-[45px] md:-translate-y-[55px]` in `src/app/quest/page.tsx` keeping the HP card on the right side and centering the mutant vertically in between its HP bar and the ground.
+  - Sound effects: `normalAttackSfxUrl: /SoundEffects/SickleCellNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/AcidSlimeNormal&HeavyAttack.mp3`, with preloaded handlers via `preloadHyperglycemicMutantSounds` and `playHyperglycemicMutantAttack`.
+  - All animations, frame dimensions, timings, scale, position, delays, and sound effects are permanently locked to not change, alter, modify, or cross-contaminate. Must NEVER leak into other stages.
+- **Ketoacidosis Colossus (Stage 3 Chapter Boss - `cc-3`)**:
+  - `idleSpriteUrl`: `/images/bosses/clinchem_chapterOneBoss_idleAnimation.png` (7 frames, 304x273, 1.0s loop)
+  - `attackSpriteUrl`: `/images/bosses/clinchem_chapterOneBoss_normalAttackAnimation.png` (7 frames, 379x307, 0.70s duration) with `KetoacidosisColossusNormalAttack.mp3` and forward lunge target (`min(-40px, calc(-100cqw + 350px))` / `calc(-100cqw + 470px)`, -35px) hitting cleanly in front of player
+  - `heavyAttackSpriteUrl`: `/images/bosses/clinchem_chapterOneBoss_heavyAttackAnimation.png` (8 frames, 493x639, 0.85s duration) with `KetoacidosisColossusHeavyAttack.mp3`, repositioned to the top (`-270px` resting/reset, `-280px` slam) and forward lunge target (`min(-50px, calc(-100cqw + 475px))` / `calc(-100cqw + 570px)`, -280px) hitting cleanly in front of player
+  - Scale & Positioning: `effectiveScale = scale * 1.18` with resting alignment `translate-x-[85px] sm:translate-x-[115px] md:translate-x-[165px] -translate-y-[68px] md:-translate-y-[80px]` in `src/app/quest/page.tsx` keeping the HP card on the right side, centered directly under its HP card and vertically centered between its HP bar and the ground.
+  - All animations, frame dimensions, timings, scale, position, delays, lunges, and sound effects are permanently locked to not change, alter, modify, or cross-contaminate. Must NEVER leak into other stages.
 - **Hyperglycemic Specter (Stage 4 Final Boss - `cc-4` / legacy `cc-3`)**: Scoped strictly to Final Boss with normal attack projectile, heavy beam attack, and sound effects permanently locked.
 
 ### Microbiology
@@ -49,22 +60,25 @@
 ### Immunology & Serology and Immunohematology
 - **Lymphocyte Swarm (Stage 1 Minion - `is-1`)**: All animations, lightning overlays, and audio effects (`MicrobeSwarmNormalAttack.mp3`, `MicrobeSwarmHeavyAttack.wav`) are permanently locked.
 - **Antigen Titan (Stage 2 Mini-Boss - `is-2`)**:
-  - `miniBossIdleSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_idleAnimation.png` (7 frames, 128x128, scale 1.85, centered position)
-  - `miniBossAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_normalAttackAnimation.png` (8 frames, 128x128) with `KetoacidosisColossusNormalAttack.mp3`
-  - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_heavyAttackAnimation.png` (9 frames, 128x128) with `CrystalGolemNormalAttack.mp3`
-  - All animations, timings, scale, position, and audio effects are permanently locked.
-- **Anti-Serum Hydra (Stage 4 Final Boss - `is-4` / legacy `is-3`)**: All animations, lightning effects, frame dimensions, vertical spritesheet configuration, and audio effects are permanently locked.
+  - `miniBossIdleSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_idleAnimation.png` (7 frames, 128x128, 1.0s loop)
+  - `miniBossAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_normalAttackAnimation.png` (8 frames, 128x128, 0.70s duration) with swift forward strike lunge (`min(-60px, calc(-100cqw + 260px))` / `calc(-100cqw + 330px)`, 15px, scale 1.12–1.14) hitting cleanly in front of player and resetting cleanly to `translate(0px, 0px)`
+  - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_heavyAttackAnimation.png` (9 frames, 183x153, 0.85s duration) with overhead ground slam heavy wave lunge (`min(-60px, calc(-100cqw + 245px))` / `calc(-100cqw + 320px)`, 20px, scale 1.16–1.18) hitting cleanly in front of player and resetting cleanly to `translate(0px, 0px)`
+  - Scale & Positioning: `effectiveScale = scale * 1.85` with resting alignment `translate-x-[40px] sm:translate-x-[50px] md:translate-x-[80px] -translate-y-[45px] md:-translate-y-[55px]` in `src/app/quest/page.tsx` keeping the HP card on the right side and centering vertically in between its HP bar and the ground.
+  - Sound effects: `normalAttackSfxUrl: /SoundEffects/KetoacidosisColossusNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/CrystalGolemNormalAttack.mp3`, with preloaded handlers via `preloadKetoacidosisSounds` and `preloadCrystalGolemSounds` (heavy SFX impact at 460ms, resetDelay = 750ms normal / 900ms heavy, impactDelay = 280ms normal / 480ms heavy).
+  - All animations, frame dimensions, timings, scale, position, delays, lunges, and sound effects are permanently locked to not change, alter, modify, or cross-contaminate. Must NEVER leak into other stages.
 - **Immune Archon (Stage 3 Chapter Boss - `is-3` / legacy `is-1`)**:
-  - `idleSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_idleAnimation.png` (7 frames, 284x220)
-  - `attackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_normalAttackAnimation.png` (11 frames, 252x177) with `ImmuneArchonNormalAttack.mp3`
-  - `heavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackAnimation.png` (18 frames, 247x228) playing in-place as a warning glint animation (no lunge)
-  - `lightningAttackUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackThunderAnimation.png` (12 frames, 192x192 via `ArchonThunderAnimator`, scale 2.8, 720ms duration, and `AntiSerumHydraHeavyAttack.mp3` at 2.0x speed via `playImmuneArchonAttack`).
+  - `idleSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_idleAnimation.png` (7 frames, 284x220, 1.0s loop)
+  - `attackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_normalAttackAnimation.png` (11 frames, 252x177, 0.90s duration) with `ImmuneArchonNormalAttack.mp3` and forward whip strike lunge (`min(-60px, calc(-100cqw + 320px))` / `calc(-100cqw + 420px)`, 8px) hitting cleanly in front of player (impactDelay = 380ms, resetDelay = 900ms)
+  - `heavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackAnimation.png` (18 frames, 247x228, 1.05s duration) playing in-place as a warning glint animation (no lunge)
+  - `lightningAttackUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackThunderAnimation.png` (12 frames, 192x192 via `ArchonThunderAnimator`, scale 2.8, 720ms duration, and `AntiSerumHydraHeavyAttack.mp3` at 2.0x speed via `playImmuneArchonAttack`)
   - Heavy Attack Sequence & Timing:
     - 0–250ms: Immune Archon summons the thunder storm while executing its warning glint animation on its pedestal (no forward lunge).
     - 250–970ms: Renders all 12 frames of the thunder animation directly centered over the aspirant's body with `AntiSerumHydraHeavyAttack.mp3` at 2.0x speed, impacting at 420ms (`impactDelay = 420ms`, hit spark, and shake).
     - 970–1120ms: Frame 12 clears cleanly with a smooth fade-out settling at `resetDelay = 1120ms`.
+  - Scale & Positioning: `effectiveScale = scale * 1.35` with resting alignment `translate-x-[85px] sm:translate-x-[115px] md:translate-x-[165px] -translate-y-[68px] md:-translate-y-[80px]` in `src/app/quest/page.tsx` keeping the HP card on the right side, centered directly under its HP card and vertically centered between its HP bar and the ground.
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/ImmuneArchonNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/AntiSerumHydraHeavyAttack.mp3` (in 2x speed), with preloaded handlers permanently locked.
-  - All animations, timings, frame dimensions, delays, scales, positions, animator components (`ArchonThunderAnimator`), and sound effect bindings are permanently locked to not modify, alter, degrade, or cross-contaminate. Must NEVER leak into other stages.
+  - All animations, frame dimensions, timings, scale, position, delays, lunges, animator components (`ArchonThunderAnimator`), and sound effect bindings are permanently locked to not change, alter, modify, degrade, or cross-contaminate. Must NEVER leak into other stages.
+- **Anti-Serum Hydra (Stage 4 Final Boss - `is-4` / legacy `is-3`)**: All animations, lightning effects, frame dimensions, vertical spritesheet configuration, and audio effects are permanently locked.
 
 ### Clinical Microscopy & Parasitology
 - **Reagent Strip Slime (Stage 1 Minion - `cm-1`)**: Full animation sequence, lunges, and sound effects (`ReagentStripSlimeNormal&HeavyAttack.mp3`) are permanently locked.

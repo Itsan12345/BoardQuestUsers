@@ -2439,11 +2439,11 @@ export function BossSpriteAnimator({
           }
           16% {
             /* Dash into slashing position right in front of the player */
-            transform: translate(min(-30px, calc(-100cqw + 460px)), 42px) scale(1.15);
+            transform: translate(min(-40px, calc(-100cqw + 310px)), 42px) scale(1.15);
           }
           76% {
             /* Execute 8-frame claw slash directly onto the player, pause cleanly */
-            transform: translate(min(-30px, calc(-100cqw + 460px)), 42px) scale(1.15);
+            transform: translate(min(-40px, calc(-100cqw + 310px)), 42px) scale(1.15);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           100% {
@@ -2459,11 +2459,11 @@ export function BossSpriteAnimator({
           }
           16% {
             /* Leap high and soar forward into heavy slam position in front of player */
-            transform: translate(min(-35px, calc(-100cqw + 410px)), -10px) scale(1.22);
+            transform: translate(min(-50px, calc(-100cqw + 180px)), -10px) scale(1.22);
           }
           76% {
             /* Execute soaring dive and ground shockwave smash right onto player, pause cleanly */
-            transform: translate(min(-35px, calc(-100cqw + 410px)), -10px) scale(1.22);
+            transform: translate(min(-50px, calc(-100cqw + 180px)), -10px) scale(1.22);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           100% {
@@ -2610,10 +2610,10 @@ export function BossSpriteAnimator({
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           15% {
-            transform: translate(calc(-100cqw + 615px), -35px) scale(1.04);
+            transform: translate(min(-40px, calc(-100cqw + 350px)), -35px) scale(1.04);
           }
           75% {
-            transform: translate(calc(-100cqw + 615px), -35px) scale(1.04);
+            transform: translate(min(-40px, calc(-100cqw + 350px)), -35px) scale(1.04);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           100% {
@@ -2623,18 +2623,18 @@ export function BossSpriteAnimator({
 
         @keyframes bossKetoacidosisColossusHeavyLunge {
           0% {
-            transform: translate(163px, 43px) scale(1);
+            transform: translate(163px, -270px) scale(1);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           15% {
-            transform: translate(calc(-100cqw + 675px), 46px) scale(1.04);
+            transform: translate(min(-50px, calc(-100cqw + 475px)), -280px) scale(1.04);
           }
           75% {
-            transform: translate(calc(-100cqw + 675px), 46px) scale(1.04);
+            transform: translate(min(-50px, calc(-100cqw + 475px)), -280px) scale(1.04);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           100% {
-            transform: translate(163px, 43px) scale(1);
+            transform: translate(163px, -270px) scale(1);
           }
         }
 
@@ -2678,10 +2678,10 @@ export function BossSpriteAnimator({
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           22% {
-            transform: translate(min(-60px, calc(-100cqw + 460px)), 8px) scale(1.06);
+            transform: translate(min(-60px, calc(-100cqw + 320px)), 8px) scale(1.06);
           }
           72% {
-            transform: translate(min(-60px, calc(-100cqw + 460px)), 8px) scale(1.06);
+            transform: translate(min(-60px, calc(-100cqw + 320px)), 8px) scale(1.06);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           100% {
@@ -3118,11 +3118,11 @@ export function BossSpriteAnimator({
             }
             16% {
               /* Lands cleanly right in front of player attacking their front */
-              transform: translate(calc(-100cqw + 585px), 42px) scale(1.15);
+              transform: translate(calc(-100cqw + 460px), 42px) scale(1.15);
             }
             76% {
               /* Execute full 8-frame claw slash directly onto the player, pause cleanly */
-              transform: translate(calc(-100cqw + 585px), 42px) scale(1.15);
+              transform: translate(calc(-100cqw + 460px), 42px) scale(1.15);
               animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
             }
             100% {
@@ -3138,11 +3138,11 @@ export function BossSpriteAnimator({
             }
             16% {
               /* Leap high and soar forward into heavy slam position in front of player */
-              transform: translate(calc(-100cqw + 530px), -10px) scale(1.22);
+              transform: translate(calc(-100cqw + 310px), -10px) scale(1.22);
             }
             76% {
               /* Execute soaring dive and ground shockwave smash right onto player, pause cleanly */
-              transform: translate(calc(-100cqw + 530px), -10px) scale(1.22);
+              transform: translate(calc(-100cqw + 310px), -10px) scale(1.22);
               animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
             }
             100% {
@@ -3303,10 +3303,10 @@ export function BossSpriteAnimator({
               animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
             }
             15% {
-              transform: translate(calc(-100cqw + 710px), -35px) scale(1.04);
+              transform: translate(calc(-100cqw + 470px), -35px) scale(1.04);
             }
             75% {
-              transform: translate(calc(-100cqw + 710px), -35px) scale(1.04);
+              transform: translate(calc(-100cqw + 470px), -35px) scale(1.04);
               animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
             }
             100% {
@@ -3316,18 +3316,18 @@ export function BossSpriteAnimator({
 
           @keyframes bossKetoacidosisColossusHeavyLunge {
             0% {
-              transform: translate(163px, 43px) scale(1);
+              transform: translate(163px, -270px) scale(1);
               animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
             }
             15% {
-              transform: translate(calc(-100cqw + 765px), 52px) scale(1.04);
+              transform: translate(calc(-100cqw + 570px), -280px) scale(1.04);
             }
             75% {
-              transform: translate(calc(-100cqw + 765px), 52px) scale(1.04);
+              transform: translate(calc(-100cqw + 570px), -280px) scale(1.04);
               animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
             }
             100% {
-              transform: translate(163px, 43px) scale(1);
+              transform: translate(163px, -270px) scale(1);
             }
           }
 
@@ -3371,10 +3371,10 @@ export function BossSpriteAnimator({
               animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
             }
             22% {
-              transform: translate(calc(-100cqw + 580px), 8px) scale(1.08);
+              transform: translate(calc(-100cqw + 420px), 8px) scale(1.08);
             }
             72% {
-              transform: translate(calc(-100cqw + 580px), 8px) scale(1.08);
+              transform: translate(calc(-100cqw + 420px), 8px) scale(1.08);
               animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
             }
             100% {
@@ -3602,24 +3602,26 @@ export function BossSpriteAnimator({
             12% {
               /* Lands just to the left side of the boss sprite on desktop */
               transform: ${isKetoacidosisColossus
-          ? 'translate(calc(100cqw - 640px), 10px) scale(1.2)'
-          : isAntigenTitan
-            ? 'translate(calc(100cqw - 570px), 5px) scale(1.2)'
-            : isHyperglycemicMutant
-              ? 'translate(calc(100cqw - 560px), -10px) scale(1.2)'
-              : isImmuneArchon ? 'translate(calc(100cqw - 500px), -10px) scale(1.2)' : 'translate(calc(100cqw - 410px), -30px) scale(1.2)'
-        };
+                ? 'translate(calc(100cqw - 640px), 10px) scale(1.2)'
+                : isAntigenTitan
+                  ? 'translate(calc(100cqw - 570px), 5px) scale(1.2)'
+                  : isHyperglycemicMutant
+                    ? 'translate(calc(100cqw - 560px), -10px) scale(1.2)'
+                    : isImmuneArchon
+                      ? 'translate(calc(100cqw - 500px), -10px) scale(1.2)'
+                      : 'translate(calc(100cqw - 410px), -30px) scale(1.2)'};
             }
             78% {
               /* Slashes boss, then pauses cleanly in front of boss */
               transform: ${isKetoacidosisColossus
-          ? 'translate(calc(100cqw - 640px), 10px) scale(1.2)'
-          : isAntigenTitan
-            ? 'translate(calc(100cqw - 570px), 5px) scale(1.2)'
-            : isHyperglycemicMutant
-              ? 'translate(calc(100cqw - 560px), -10px) scale(1.2)'
-              : isImmuneArchon ? 'translate(calc(100cqw - 500px), -10px) scale(1.2)' : 'translate(calc(100cqw - 410px), -30px) scale(1.2)'
-        };
+                ? 'translate(calc(100cqw - 640px), 10px) scale(1.2)'
+                : isAntigenTitan
+                  ? 'translate(calc(100cqw - 570px), 5px) scale(1.2)'
+                  : isHyperglycemicMutant
+                    ? 'translate(calc(100cqw - 560px), -10px) scale(1.2)'
+                    : isImmuneArchon
+                      ? 'translate(calc(100cqw - 500px), -10px) scale(1.2)'
+                      : 'translate(calc(100cqw - 410px), -30px) scale(1.2)'};
             }
             100% {
               /* Glides back smoothly to home spot */
@@ -3887,24 +3889,26 @@ export function BossSpriteAnimator({
           12% {
             /* Charge across arena to land directly to the left side of the boss sprite */
             transform: ${isKetoacidosisColossus
-          ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
-          : isAntigenTitan
-            ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'
-            : isHyperglycemicMutant
-              ? 'translate(calc(100cqw - 460px), -15px) scale(1.15)'
-              : isImmuneArchon ? 'translate(calc(100cqw - 440px), -15px) scale(1.15)' : 'translate(calc(100cqw - 340px), -20px) scale(1.15)'
-        };
+              ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
+              : isAntigenTitan
+                ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'
+                : isHyperglycemicMutant
+                  ? 'translate(calc(100cqw - 460px), -15px) scale(1.15)'
+                  : isImmuneArchon
+                    ? 'translate(calc(100cqw - 440px), -15px) scale(1.15)'
+                    : 'translate(calc(100cqw - 340px), -20px) scale(1.15)'};
           }
           78% {
             /* Slash boss, then pause cleanly in front of boss */
             transform: ${isKetoacidosisColossus
-          ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
-          : isAntigenTitan
-            ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'
-            : isHyperglycemicMutant
-              ? 'translate(calc(100cqw - 460px), -15px) scale(1.15)'
-              : isImmuneArchon ? 'translate(calc(100cqw - 440px), -15px) scale(1.15)' : 'translate(calc(100cqw - 340px), -20px) scale(1.15)'
-        };
+              ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
+              : isAntigenTitan
+                ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'
+                : isHyperglycemicMutant
+                  ? 'translate(calc(100cqw - 460px), -15px) scale(1.15)'
+                  : isImmuneArchon
+                    ? 'translate(calc(100cqw - 440px), -15px) scale(1.15)'
+                    : 'translate(calc(100cqw - 340px), -20px) scale(1.15)'};
           }
           100% {
             /* Return to bottom-left home spot */
