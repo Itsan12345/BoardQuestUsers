@@ -289,21 +289,12 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
     <div ref={containerRef} className="w-full flex flex-col h-full overflow-y-auto pb-20 no-scrollbar relative select-none">
       <div className="px-6 pt-6 flex justify-between items-center mb-4 gap-4">
         <div className="flex flex-col">
-          {mode !== 'boss-battle' ? (
+          {mode !== 'boss-battle' && (
             <span className="text-xs sm:text-[13px] font-bold text-foreground/80 uppercase tracking-wider">
                Quest {currentIndex + 1}{questions.length > 0 ? ` of ${questions.length}` : ''}
             </span>
-          ) : (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs sm:text-[13px] font-bold text-foreground/80 uppercase tracking-wider">
-                 Quest {currentIndex + 1}{questions.length > 0 ? ` of ${questions.length}` : ''}
-              </span>
-              <span className="text-[10px] sm:text-xs font-semibold text-destructive uppercase tracking-wider">
-                 (Survival Mode)
-              </span>
-            </div>
           )}
-          <div className="flex gap-2 mt-1 flex-wrap items-center">
+          <div className={cn("flex gap-2 flex-wrap items-center", mode !== 'boss-battle' ? "mt-1" : "")}>
              <Badge variant="outline" className={cn("h-4 text-[8px] uppercase tracking-tighter", mode === 'learning' || mode === 'boss-battle' ? "border-primary text-primary" : "border-slate-500 text-muted-foreground")}>
                {mode === 'learning' ? <BrainCircuit className="w-2 h-2 mr-1" /> : mode === 'boss-battle' ? <Swords className="w-2 h-2 mr-1" /> : <Shield className="w-2 h-2 mr-1" />}
                {mode === 'learning' ? 'Learning Mode' : mode === 'boss-battle' ? 'Boss Battle Mode' : 'Test Mode'}

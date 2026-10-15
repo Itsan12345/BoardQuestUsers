@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { X, Lock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface ChapterNode {
   id: string;

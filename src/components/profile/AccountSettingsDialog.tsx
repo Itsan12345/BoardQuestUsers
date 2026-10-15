@@ -26,6 +26,7 @@ import {
   User,
   Target,
   Volume2,
+  Music,
   Bell,
   FileSpreadsheet,
   CheckCircle2,
@@ -70,6 +71,7 @@ import { TargetExamCalendar } from '@/components/profile/TargetExamCalendar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { setAudioBgmVolume, setAudioAmbientMusicEnabled } from '@/lib/audio-manager';
 
 interface AccountSettingsDialogProps {
   open: boolean;
@@ -122,6 +124,7 @@ export function AccountSettingsDialog({
 
   // Form states - Audio & FX
   const [sfxVolume, setSfxVolume] = useState([80]);
+  const [bgmVolume, setBgmVolume] = useState([60]);
   const [ambientMusic, setAmbientMusic] = useState(true);
   const [floatingDamageText, setFloatingDamageText] = useState(true);
   const [hitScreenFlash, setHitScreenFlash] = useState(true);
@@ -232,6 +235,7 @@ export function AccountSettingsDialog({
           if (dbSettings.defaultDifficulty) setDefaultDifficulty(dbSettings.defaultDifficulty);
           if (dbSettings.confidencePrompts !== undefined) setConfidencePrompts(dbSettings.confidencePrompts);
           if (dbSettings.sfxVolume !== undefined) setSfxVolume([dbSettings.sfxVolume]);
+          if (dbSettings.bgmVolume !== undefined) setBgmVolume([dbSettings.bgmVolume]);
           if (dbSettings.ambientMusic !== undefined) setAmbientMusic(dbSettings.ambientMusic);
           if (dbSettings.floatingDamageText !== undefined) setFloatingDamageText(dbSettings.floatingDamageText);
           if (dbSettings.hitScreenFlash !== undefined) setHitScreenFlash(dbSettings.hitScreenFlash);
@@ -260,6 +264,9 @@ export function AccountSettingsDialog({
 
           const savedSfx = localStorage.getItem('bq_pref_sfx_vol');
           if (savedSfx) setSfxVolume([parseInt(savedSfx, 10)]);
+
+          const savedBgm = localStorage.getItem('bq_pref_bgm_vol');
+          if (savedBgm) setBgmVolume([parseInt(savedBgm, 10)]);
 
           const savedMusic = localStorage.getItem('bq_pref_ambient_music');
           if (savedMusic !== null) setAmbientMusic(savedMusic === 'true');
@@ -441,12 +448,14 @@ export function AccountSettingsDialog({
   const handleSaveAudio = async () => {
     try {
       localStorage.setItem('bq_pref_sfx_vol', String(sfxVolume[0]));
+      localStorage.setItem('bq_pref_bgm_vol', String(bgmVolume[0]));
       localStorage.setItem('bq_pref_ambient_music', String(ambientMusic));
       localStorage.setItem('bq_pref_floating_damage', String(floatingDamageText));
       localStorage.setItem('bq_pref_hit_flash', String(hitScreenFlash));
 
       await saveUserSettingsAction({
         sfxVolume: sfxVolume[0],
+        bgmVolume: bgmVolume[0],
         ambientMusic,
         floatingDamageText,
         hitScreenFlash,
@@ -455,6 +464,7 @@ export function AccountSettingsDialog({
       window.dispatchEvent(new CustomEvent('bq_settings_updated', {
         detail: {
           sfxVolume: sfxVolume[0],
+          bgmVolume: bgmVolume[0],
           ambientMusic,
           floatingDamageText,
           hitScreenFlash,
@@ -1129,12 +1139,41 @@ export function AccountSettingsDialog({
                   />
                 </div>
 
+                <div id="tour-audio-bgm" className="space-y-3 p-4 bg-muted/20 border border-border rounded-2xl">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <Music className="w-4 h-4 text-primary" />
+                        Background Music (BGM) Volume
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Adjust volume for battle simulations and map selection</p>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-muted-foreground">{bgmVolume[0]}%</span>
+                  </div>
+                  <Slider
+                    value={bgmVolume}
+                    onValueChange={(val) => {
+                      setBgmVolume(val);
+                      setAudioBgmVolume(val[0]);
+                    }}
+                    max={100}
+                    step={5}
+                    className="w-full"
+                  />
+                </div>
+
                 <div id="tour-audio-music" className="p-4 bg-muted/20 border border-border rounded-2xl flex items-center justify-between">
                   <div className="space-y-0.5 pr-4">
                     <Label className="text-sm font-semibold text-foreground">Background Ambient Music</Label>
                     <p className="text-xs text-muted-foreground">Enable medieval atmospheric music during dungeon quizzes</p>
                   </div>
-                  <Switch checked={ambientMusic} onCheckedChange={setAmbientMusic} />
+                  <Switch
+                    checked={ambientMusic}
+                    onCheckedChange={(checked) => {
+                      setAmbientMusic(checked);
+                      setAudioAmbientMusicEnabled(checked);
+                    }}
+                  />
                 </div>
 
                 <div id="tour-audio-combat" className="space-y-4 p-4 bg-muted/20 border border-border rounded-2xl">

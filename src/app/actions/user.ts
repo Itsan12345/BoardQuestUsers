@@ -835,6 +835,7 @@ export async function getUserSettingsAction() {
       defaultDifficulty: 'MEDIUM',
       confidencePrompts: true,
       sfxVolume: 80,
+      bgmVolume: 60,
       ambientMusic: true,
       floatingDamageText: true,
       hitScreenFlash: true,

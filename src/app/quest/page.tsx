@@ -33,6 +33,8 @@ import {
   Check,
   Settings,
   Volume2,
+  VolumeX,
+  Music,
   Pin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -56,7 +58,7 @@ import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettin
 import { QuestArenaOnboardingModal } from '@/components/quest/QuestArenaOnboardingModal';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
 import { getLocalTodayDateString } from '@/lib/notifications';
-import { playSfx, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds } from '@/lib/audio-manager';
+import { playSfx, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds, playBgm, stopBgm, stopCombatBgm, isAnyVerdictMusicPlaying, pauseBgm, resumeBgm, preloadBgm, setAudioBgmVolume, setAudioAmbientMusicEnabled, isMapMusicMuted, isBattleMusicMuted, setMapMusicMuted, setBattleMusicMuted } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
@@ -585,12 +587,82 @@ export default function LearningQuest() {
   const [renameGender, setRenameGender] = useState<'male' | 'female'>('male');
   const [isSavingSettings, setIsSavingSettings] = useState<boolean>(false);
   const [sfxVolume, setSfxVolume] = useState<number[]>([80]);
+  const [bgmVolume, setBgmVolume] = useState<number[]>([60]);
   const [ambientMusic, setAmbientMusic] = useState<boolean>(true);
+  const [mapMusicMuted, setMapMusicMutedState] = useState<boolean>(false);
+  const [battleMusicMuted, setBattleMusicMutedState] = useState<boolean>(false);
   const [floatingDamageText, setFloatingDamageText] = useState<boolean>(true);
   const [hitScreenFlash, setHitScreenFlash] = useState<boolean>(true);
   const currentUserIdRef = useRef<string | null>(null);
   const [bossAnimState, setBossAnimState] = useState<BossAnimState>('idle');
   const [playerAnimState, setPlayerAnimState] = useState<'idle' | 'attack'>('idle');
+
+  // Sync cross-tab or cross-dialog mute events & load on client mount to avoid SSR hydration mismatch
+  useEffect(() => {
+    try {
+      setMapMusicMutedState(localStorage.getItem('bq_pref_map_music_muted') === 'true');
+      setBattleMusicMutedState(localStorage.getItem('bq_pref_battle_music_muted') === 'true');
+    } catch (e) {}
+
+    const handleSync = () => {
+      if (typeof window !== 'undefined') {
+        setMapMusicMutedState(localStorage.getItem('bq_pref_map_music_muted') === 'true');
+        setBattleMusicMutedState(localStorage.getItem('bq_pref_battle_music_muted') === 'true');
+      }
+    };
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('bq_bgm_mute_sync', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('bq_bgm_mute_sync', handleSync);
+    };
+  }, []);
+
+  const toggleMapMusicMute = () => {
+    const nextMuted = !mapMusicMuted;
+    setMapMusicMutedState(nextMuted);
+    setMapMusicMuted(nextMuted);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bq_bgm_mute_sync'));
+    }
+    toast({
+      title: nextMuted ? "Map Music Muted 🔇" : "Map Music Unmuted 🎵",
+      description: nextMuted ? "Map selection background music silenced." : "Map selection music resumed.",
+      duration: 1800,
+    });
+  };
+
+  const toggleBattleMusicMute = () => {
+    const nextMuted = !battleMusicMuted;
+    setBattleMusicMutedState(nextMuted);
+    setBattleMusicMuted(nextMuted);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bq_bgm_mute_sync'));
+    }
+    toast({
+      title: nextMuted ? "Battle Music Muted 🔇" : "Battle Music Unmuted 🎵",
+      description: nextMuted ? "Battle simulation background music silenced." : "Battle simulation music resumed.",
+      duration: 1800,
+    });
+  };
+
+  const toggleAmbientMusicMute = () => {
+    const nextState = !ambientMusic;
+    setAmbientMusic(nextState);
+    setAudioAmbientMusicEnabled(nextState);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bq_pref_ambient_music', String(nextState));
+    }
+    saveUserSettingsAction({ ambientMusic: nextState }).catch(() => {});
+    window.dispatchEvent(new CustomEvent('bq_settings_updated', {
+      detail: { ambientMusic: nextState }
+    }));
+    toast({
+      title: nextState ? "Music Enabled 🎵" : "Music Disabled 🔇",
+      description: nextState ? "Ambient audio enabled." : "Ambient audio silenced.",
+      duration: 1800,
+    });
+  };
 
   // Bookworm Adventures 3-Stage Progression & Chapter Map State
   interface SubjectNodeConfig {
@@ -1947,6 +2019,11 @@ export default function LearningQuest() {
     preloadBossBattleMusic();
     preloadLearningModeMusic();
     preloadTestModeMusic();
+    preloadBgm('map_selection');
+    preloadBgm('learning_battle');
+    preloadBgm('test_battle');
+    preloadBgm('boss_battle_regular');
+    preloadBgm('boss_battle_final');
     const assetsToPreload = [
       '/ui/Inventory_bg.png',
       '/ui/Inventory_icon.png',
@@ -2481,6 +2558,7 @@ export default function LearningQuest() {
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('bq_pref_sfx_vol', String(sfxVolume[0]));
+        localStorage.setItem('bq_pref_bgm_vol', String(bgmVolume[0]));
         localStorage.setItem('bq_pref_ambient_music', String(ambientMusic));
         localStorage.setItem('bq_pref_floating_damage', String(floatingDamageText));
         localStorage.setItem('bq_pref_hit_flash', String(hitScreenFlash));
@@ -2502,6 +2580,7 @@ export default function LearningQuest() {
           arenaNickname: cleanNick,
           avatarGender: renameGender,
           sfxVolume: sfxVolume[0],
+          bgmVolume: bgmVolume[0],
           ambientMusic,
           floatingDamageText,
           hitScreenFlash,
@@ -2513,6 +2592,7 @@ export default function LearningQuest() {
           arenaNickname: cleanNick,
           avatarGender: renameGender,
           sfxVolume: sfxVolume[0],
+          bgmVolume: bgmVolume[0],
           ambientMusic,
           floatingDamageText,
           hitScreenFlash
@@ -2655,13 +2735,40 @@ export default function LearningQuest() {
                 />
               </div>
 
+              {/* Background Music (BGM) Volume */}
+              <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Music className="w-4 h-4 text-primary" />
+                    Background Music (BGM) Volume
+                  </span>
+                  <span className="text-xs font-mono font-bold text-primary">{bgmVolume[0]}%</span>
+                </div>
+                <Slider
+                  value={bgmVolume}
+                  onValueChange={(val) => {
+                    setBgmVolume(val);
+                    setAudioBgmVolume(val[0]);
+                  }}
+                  max={100}
+                  step={5}
+                  className="py-1 cursor-pointer"
+                />
+              </div>
+
               {/* Ambient Music */}
               <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/80 flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
                   <span className="text-xs font-bold text-foreground block">Background Ambient Music</span>
                   <span className="text-[10px] text-muted-foreground block leading-tight">Enable atmospheric music during dungeon quizzes</span>
                 </div>
-                <Switch checked={ambientMusic} onCheckedChange={setAmbientMusic} />
+                <Switch
+                  checked={ambientMusic}
+                  onCheckedChange={(checked) => {
+                    setAmbientMusic(checked);
+                    setAudioAmbientMusicEnabled(checked);
+                  }}
+                />
               </div>
 
               {/* Floating Combat Text */}
@@ -2753,14 +2860,19 @@ export default function LearningQuest() {
         const settings = await getUserSettingsAction();
         if (settings) {
           if (settings.sfxVolume !== undefined) setSfxVolume([settings.sfxVolume]);
-          if (settings.ambientMusic !== undefined) setAmbientMusic(settings.ambientMusic);
+          if (settings.bgmVolume !== undefined) setBgmVolume([settings.bgmVolume]);
           if (settings.floatingDamageText !== undefined) setFloatingDamageText(settings.floatingDamageText);
           if (settings.hitScreenFlash !== undefined) setHitScreenFlash(settings.hitScreenFlash);
-        } else if (typeof window !== 'undefined') {
+        }
+        if (typeof window !== 'undefined') {
           const savedSfx = localStorage.getItem('bq_pref_sfx_vol');
           if (savedSfx) setSfxVolume([parseInt(savedSfx, 10)]);
-          const savedMusic = localStorage.getItem('bq_pref_ambient_music');
-          if (savedMusic !== null) setAmbientMusic(savedMusic === 'true');
+          const savedBgm = localStorage.getItem('bq_pref_bgm_vol');
+          if (savedBgm) setBgmVolume([parseInt(savedBgm, 10)]);
+          const savedMapMuted = localStorage.getItem('bq_pref_map_music_muted');
+          if (savedMapMuted !== null) setMapMusicMutedState(savedMapMuted === 'true');
+          const savedBattleMuted = localStorage.getItem('bq_pref_battle_music_muted');
+          if (savedBattleMuted !== null) setBattleMusicMutedState(savedBattleMuted === 'true');
           const savedFloating = localStorage.getItem('bq_pref_floating_damage');
           if (savedFloating !== null) setFloatingDamageText(savedFloating === 'true');
           const savedFlash = localStorage.getItem('bq_pref_hit_flash');
@@ -2840,6 +2952,69 @@ export default function LearningQuest() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enemyHealth, playerHealth, isStarted, isFinished, quizMode, userAnswers]);
+
+  // Background Music (BGM) Coordinator Effect
+  useEffect(() => {
+    // 1. Post-Battle Scorecard screen: Don't play anything!
+    if (isFinished) {
+      stopBgm();
+      return;
+    }
+
+    // 2. Active Combat Battle Simulation:
+    if (isStarted) {
+      // If verdict/judgement ("YOU WON", "YOU FAILED", "GAME OVER", "VICTORY") is active, or battle outcome is resolved, or fleeing:
+      if (judgementText !== null || battleOutcome !== null || isFleeing) {
+        stopCombatBgm();
+        return;
+      }
+
+      if (quizMode === 'learning') {
+        playBgm('learning_battle');
+      } else if (quizMode === 'test') {
+        playBgm('test_battle');
+      } else if (quizMode === 'boss-battle') {
+        const activeNodes = getSubjectNodes(selectedSubject);
+        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+        const isFinalBoss = (
+          battleStage === 4 ||
+          currentActiveNode?.tier === 'final-boss' ||
+          currentActiveNode?.nodeNumber === 4 ||
+          currentActiveNode?.id?.endsWith('-4')
+        );
+        if (isFinalBoss) {
+          playBgm('boss_battle_final');
+        } else {
+          playBgm('boss_battle_regular');
+        }
+      }
+    } else {
+      // 3. Outside of battle (Select Your Quest Region / Chapter Overworld Map when re-entering arena)
+      stopCombatBgm();
+      playBgm('map_selection');
+    }
+  }, [
+    mapMusicMuted,
+    battleMusicMuted,
+    ambientMusic,
+    isStarted,
+    isFinished,
+    judgementText,
+    battleOutcome,
+    isFleeing,
+    quizMode,
+    battleStage,
+    selectedNodeId,
+    selectedSubject,
+    showChapterMap,
+  ]);
+
+  // Cleanly stop BGM when component unmounts
+  useEffect(() => {
+    return () => {
+      stopBgm();
+    };
+  }, []);
 
   // Intercept navigation & prompt Retreat from Battle when attempting to leave active combat
   useEffect(() => {
@@ -3922,6 +4097,7 @@ export default function LearningQuest() {
           const currentScore = userAnswers.filter(a => a.isCorrect).length + (isCorrect ? 1 : 0);
           // Allow player's winning attack animation (1200ms) to complete smoothly before Victory displays!
           setTimeout(() => {
+            stopCombatBgm();
             playBossBattleMusic('victory');
             handleFinish(currentScore, 'victory');
           }, 800);
@@ -3998,6 +4174,7 @@ export default function LearningQuest() {
             // Boss-Battle & Test Mode: Strict Game Over Defeat
             // Allow the enemy's fatal attack animation to finish completely before Game Over displays!
             setTimeout(() => {
+              stopCombatBgm();
               addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-600 font-black');
               setJudgementText('GAME OVER');
               if (quizMode === 'boss-battle') {
@@ -4461,6 +4638,7 @@ export default function LearningQuest() {
       setTimeout(() => {
         setPlayerAnimState('idle');
         setBossAnimState('idle');
+        stopCombatBgm();
 
         if (isOverallPassing) {
           setEnemyHealth(0);
@@ -4468,12 +4646,14 @@ export default function LearningQuest() {
           setHitEffectKey(k => k + 1);
           addFloatingText('enemy', '👑 BOSS DEFEATED!', 'text-amber-300 font-black');
           setJudgementText('YOU WON');
+          playLearningModeMusic('victory');
         } else {
           setPlayerHealth(0);
           setHitEffectTarget('player');
           setHitEffectKey(k => k + 1);
           addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-500 font-black');
           setJudgementText('YOU FAILED');
+          playLearningModeMusic('defeat');
         }
       }, attackDuration);
     }
@@ -4559,6 +4739,7 @@ export default function LearningQuest() {
   const handleFinish = (finalScore: number, outcome?: 'victory' | 'defeat') => {
     if (isFinishingRef.current) return; // Prevent stale closures from double-calling
     isFinishingRef.current = true;
+    stopCombatBgm();
 
     setScore(finalScore);
     setBossAnimState('idle');
@@ -4629,6 +4810,7 @@ export default function LearningQuest() {
     const transitionToPostBattle = () => {
       setJudgementText(null);
       setIsFinished(true);
+      stopBgm();
 
       const confEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_confidence_prompts') !== 'false' : true;
       if (confEnabled) {
@@ -4645,11 +4827,15 @@ export default function LearningQuest() {
         transitionToPostBattle();
       });
     } else if (quizMode === 'learning') {
-      // Transition to post-battle STRICTLY after MusicWhenWinInLearningMode / MusicWhenLostInLearningMode finishes playing!
+      // Transition to post-battle: if fanfare is currently playing, let it finish; otherwise transition immediately!
       const outcomeType = finalOutcome === 'victory' ? 'victory' : 'defeat';
-      playLearningModeMusic(outcomeType, () => {
+      if (isAnyVerdictMusicPlaying()) {
+        playLearningModeMusic(outcomeType, () => {
+          transitionToPostBattle();
+        });
+      } else {
         transitionToPostBattle();
-      });
+      }
     } else if (quizMode === 'test') {
       // Transition to post-battle STRICTLY after MusicWhenWinInTestMode / MusicWhenLostInTestMode finishes playing!
       const outcomeType = finalOutcome === 'victory' ? 'victory' : 'defeat';
@@ -5423,12 +5609,15 @@ export default function LearningQuest() {
                     stopTestModeMusic();
                     setIsStarted(false);
                     setIsFinished(false);
+                    setBattleOutcome(null);
+                    setJudgementText(null);
                     setShowBattleLog(false);
                     setEarnedQuestXp(null);
                     setLeveledUpDetails(null);
                     setSetupStep('mode');
                     setModeSelectDialogOpen(true);
                     fetchUser();
+                    playBgm('map_selection');
                   }}
                   className="flex-1 h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-primary hover:bg-primary/90 text-primary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
                 >
@@ -5445,11 +5634,14 @@ export default function LearningQuest() {
                     stopTestModeMusic();
                     setIsStarted(false);
                     setIsFinished(false);
+                    setBattleOutcome(null);
+                    setJudgementText(null);
                     setShowBattleLog(false);
                     setEarnedQuestXp(null);
                     setLeveledUpDetails(null);
                     setSelectedTopicFilter(null);
                     fetchUser();
+                    playBgm('map_selection');
                   }}
                   className="flex-1 h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-primary/40 bg-card hover:bg-muted text-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
                 >
@@ -5457,7 +5649,7 @@ export default function LearningQuest() {
                 </Button>
 
                 {/* Back to Dashboard */}
-                <Link href="/" className="flex-1 flex" onClick={() => { stopBossBattleMusic(); stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); setSelectedTopicFilter(null); }}>
+                <Link href="/" className="flex-1 flex" onClick={() => { stopBossBattleMusic(); stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); stopBgm(); setBattleOutcome(null); setJudgementText(null); setSelectedTopicFilter(null); }}>
                   <Button className="w-full h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap">
                     Back to Dashboard
                   </Button>
@@ -5473,17 +5665,20 @@ export default function LearningQuest() {
                     stopTestModeMusic();
                     setIsStarted(false);
                     setIsFinished(false);
+                    setBattleOutcome(null);
+                    setJudgementText(null);
                     setShowBattleLog(false);
                     setEarnedQuestXp(null);
                     setLeveledUpDetails(null);
                     setSelectedTopicFilter(null);
                     fetchUser();
+                    playBgm('map_selection');
                   }}
                   className="flex-1 h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-primary hover:bg-primary/90 text-primary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap"
                 >
                   Re-Enter Arena
                 </Button>
-                <Link href="/" className="flex-1 flex" onClick={() => { stopBossBattleMusic(); stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); setSelectedTopicFilter(null); }}>
+                <Link href="/" className="flex-1 flex" onClick={() => { stopBossBattleMusic(); stopFinalBossMusic(); stopLearningModeMusic(); stopTestModeMusic(); stopBgm(); setBattleOutcome(null); setJudgementText(null); setSelectedTopicFilter(null); }}>
                   <Button className="w-full h-12 sm:h-14 md:h-16 text-base sm:text-xl md:text-2xl font-bytebounce tracking-widest border-2 border-black/80 dark:border-white/20 shadow-[3px_3px_0_0_rgba(0,0,0,1)] dark:shadow-[3px_3px_0_0_rgba(255,255,255,0.15)] bg-secondary hover:bg-secondary/80 text-secondary-foreground hover:-translate-y-0.5 active:scale-95 transition-all whitespace-nowrap">
                     Back to Dashboard
                   </Button>
@@ -5521,6 +5716,9 @@ export default function LearningQuest() {
     setTimeout(() => {
       setIsFleeing(false);
       setIsStarted(false);
+      setIsFinished(false);
+      setBattleOutcome(null);
+      setJudgementText(null);
       setSelectedTopicFilter(null);
       toast({
         title: "Tactical Retreat",
@@ -5928,6 +6126,28 @@ export default function LearningQuest() {
                     Skip Cutscene
                   </Button>
                 )}
+                {/* Instant BGM Mute/Unmute Button during battle (strictly controls battle simulation music) */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  suppressHydrationWarning
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleBattleMusicMute();
+                  }}
+                  className={cn(
+                    "rounded-full h-8 w-8 cursor-pointer pointer-events-auto transition-colors flex items-center justify-center",
+                    !battleMusicMuted
+                      ? "text-white/90 hover:text-white hover:bg-white/20"
+                      : "text-red-400 hover:text-red-300 hover:bg-red-500/20 bg-red-950/40 border border-red-500/40"
+                  )}
+                  title={battleMusicMuted ? "Unmute Battle Music" : "Mute Battle Music"}
+                  aria-label={battleMusicMuted ? "Unmute Battle Music" : "Mute Battle Music"}
+                >
+                  {battleMusicMuted ? <VolumeX className="h-4 w-4 text-red-400" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
                 {quizMode === 'boss-battle' && (
                   <Button
                     variant="ghost"
@@ -6959,6 +7179,28 @@ export default function LearningQuest() {
 
       <header id="tour-quest-header" className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-2 sm:pb-3 space-y-1 relative z-10 shrink-0">
         <div className="absolute top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-8 z-50 pointer-events-auto flex items-center gap-2">
+          {/* Instant Map Selection BGM Mute/Unmute Button (strictly controls map_selection.mp3) */}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            suppressHydrationWarning
+            className={cn(
+              "border-white/30 backdrop-blur-md transition-all shadow-xl cursor-pointer pointer-events-auto h-9 w-9 sm:h-10 sm:w-10 rounded-xl",
+              !mapMusicMuted
+                ? "bg-black/50 text-white hover:bg-black/70 hover:border-white/50"
+                : "bg-red-950/60 border-red-500/50 text-red-400 hover:bg-red-900/60 hover:border-red-400"
+            )}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleMapMusicMute();
+            }}
+            title={mapMusicMuted ? "Unmute Map Music" : "Mute Map Music"}
+            aria-label={mapMusicMuted ? "Unmute Map Music" : "Mute Map Music"}
+          >
+            {mapMusicMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
+          </Button>
           <Button
             type="button"
             variant="outline"

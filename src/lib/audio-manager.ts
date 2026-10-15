@@ -42,6 +42,323 @@ export function isAmbientMusicEnabled(): boolean {
   return true;
 }
 
+export function getBgmVolume(): number {
+  if (typeof window === 'undefined') return 0.6;
+  try {
+    const saved = localStorage.getItem('bq_pref_bgm_vol');
+    if (saved !== null) {
+      const vol = parseInt(saved, 10);
+      return isNaN(vol) ? 0.6 : Math.max(0, Math.min(1, vol / 100));
+    }
+  } catch (e) { }
+  return 0.6;
+}
+
+export function setAudioBgmVolume(volPercent: number) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('bq_pref_bgm_vol', String(volPercent));
+    updateActiveBgmVolume();
+  } catch (e) { }
+}
+
+export function setAudioAmbientMusicEnabled(enabled: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('bq_pref_ambient_music', String(enabled));
+    if (!enabled) {
+      pauseBgm();
+    } else {
+      resumeBgm();
+    }
+  } catch (e) { }
+}
+
+export type BgmTrackKey =
+  | 'map_selection'
+  | 'learning_battle'
+  | 'test_battle'
+  | 'boss_battle_regular'
+  | 'boss_battle_final';
+
+export const BGM_TRACKS: Record<BgmTrackKey, { url: string; title: string }> = {
+  map_selection: {
+    url: '/audio/bgm/map_selection.mp3',
+    title: 'Map Selection',
+  },
+  learning_battle: {
+    url: '/audio/bgm/learning_mode_battle.mp3',
+    title: 'Learning Mode Battle',
+  },
+  test_battle: {
+    url: '/audio/bgm/test_mode_battle.mp3',
+    title: 'Test Mode Battle',
+  },
+  boss_battle_regular: {
+    url: '/audio/bgm/boss_battle_regular.mp3',
+    title: 'Boss Battle (Stages 1-3: Minion / Mini-Boss / Chapter Boss)',
+  },
+  boss_battle_final: {
+    url: '/audio/bgm/boss_battle_final.mp3',
+    title: 'Final Boss Battle',
+  },
+};
+
+let currentBgmTrack: BgmTrackKey | null = null;
+const bgmAudioMap: Partial<Record<BgmTrackKey, HTMLAudioElement>> = {};
+
+export const COMBAT_BGM_TRACKS: BgmTrackKey[] = [
+  'learning_battle',
+  'test_battle',
+  'boss_battle_regular',
+  'boss_battle_final',
+];
+
+function getBgmAudio(trackKey: BgmTrackKey): HTMLAudioElement {
+  if (!bgmAudioMap[trackKey]) {
+    const config = BGM_TRACKS[trackKey];
+    const audio = new Audio(config.url);
+    audio.loop = true;
+    audio.preload = 'auto';
+    audio.volume = getBgmVolume();
+    audio.onerror = (e) => {
+      console.warn(`[AudioManager] Error loading BGM track ${trackKey}:`, e);
+    };
+    bgmAudioMap[trackKey] = audio;
+  }
+  return bgmAudioMap[trackKey]!;
+}
+
+export function isMapMusicMuted(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem('bq_pref_map_music_muted') === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+export function isBattleMusicMuted(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem('bq_pref_battle_music_muted') === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+export function setMapMusicMuted(muted: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('bq_pref_map_music_muted', String(muted));
+    const audio = bgmAudioMap['map_selection'];
+    if (muted) {
+      if (audio) {
+        audio.pause();
+      }
+    } else {
+      if (currentBgmTrack === 'map_selection' && isAmbientMusicEnabled()) {
+        const audioToPlay = getBgmAudio('map_selection');
+        audioToPlay.volume = getBgmVolume();
+        audioToPlay.play().catch(() => {});
+      }
+    }
+  } catch (e) {}
+}
+
+export function setBattleMusicMuted(muted: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('bq_pref_battle_music_muted', String(muted));
+    if (muted) {
+      COMBAT_BGM_TRACKS.forEach((trackKey) => {
+        const audio = bgmAudioMap[trackKey];
+        if (audio) {
+          audio.pause();
+        }
+      });
+    } else {
+      if (currentBgmTrack && COMBAT_BGM_TRACKS.includes(currentBgmTrack) && isAmbientMusicEnabled()) {
+        const audioToPlay = getBgmAudio(currentBgmTrack);
+        audioToPlay.volume = getBgmVolume();
+        audioToPlay.play().catch(() => {});
+      }
+    }
+  } catch (e) {}
+}
+
+function updateActiveBgmVolume() {
+  const vol = getBgmVolume();
+  const enabled = isAmbientMusicEnabled();
+  (Object.keys(bgmAudioMap) as BgmTrackKey[]).forEach((key) => {
+    const audio = bgmAudioMap[key];
+    if (audio) {
+      const isMuted = key === 'map_selection' ? isMapMusicMuted() : isBattleMusicMuted();
+      if (!enabled || isMuted) {
+        audio.volume = 0;
+        audio.pause();
+      } else {
+        audio.volume = vol;
+      }
+    }
+  });
+  if (enabled && currentBgmTrack) {
+    const isMuted = currentBgmTrack === 'map_selection' ? isMapMusicMuted() : isBattleMusicMuted();
+    if (!isMuted) {
+      const currentAudio = getBgmAudio(currentBgmTrack);
+      if (currentAudio.paused) {
+        currentAudio.play().catch(() => {});
+      }
+    }
+  }
+}
+
+export function getCurrentBgmTrack(): BgmTrackKey | null {
+  return currentBgmTrack;
+}
+
+export function preloadBgm(trackKey: BgmTrackKey) {
+  if (typeof window === 'undefined') return;
+  try {
+    getBgmAudio(trackKey);
+  } catch (e) {}
+}
+
+export function playBgm(trackKey: BgmTrackKey) {
+  if (typeof window === 'undefined') return;
+
+  // Immediately stop and reset all OTHER BGM tracks so tracks NEVER overlap
+  (Object.keys(BGM_TRACKS) as BgmTrackKey[]).forEach((key) => {
+    if (key !== trackKey) {
+      const other = bgmAudioMap[key];
+      if (other) {
+        try {
+          other.pause();
+          other.currentTime = 0;
+        } catch (e) {}
+      }
+    }
+  });
+
+  currentBgmTrack = trackKey;
+
+  if (!isAmbientMusicEnabled()) {
+    return;
+  }
+
+  // Check the independent mute status for this specific category:
+  const isMuted = trackKey === 'map_selection' ? isMapMusicMuted() : isBattleMusicMuted();
+  if (isMuted) {
+    const audio = bgmAudioMap[trackKey];
+    if (audio) {
+      audio.pause();
+    }
+    return;
+  }
+
+  const audio = getBgmAudio(trackKey);
+  audio.volume = getBgmVolume();
+
+  if (audio.paused) {
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Autoplay policy fallback: resume on first user interaction
+        const unlockAudio = () => {
+          const currentMuted = currentBgmTrack === 'map_selection' ? isMapMusicMuted() : isBattleMusicMuted();
+          if (currentBgmTrack === trackKey && !currentMuted && isAmbientMusicEnabled()) {
+            audio.play().catch(() => {});
+          }
+          window.removeEventListener('click', unlockAudio);
+          window.removeEventListener('keydown', unlockAudio);
+          window.removeEventListener('touchstart', unlockAudio);
+        };
+        window.addEventListener('click', unlockAudio, { once: true });
+        window.addEventListener('keydown', unlockAudio, { once: true });
+        window.addEventListener('touchstart', unlockAudio, { once: true });
+      });
+    }
+  }
+}
+
+/**
+ * Immediately stops all 4 combat battle tracks (learning_mode_battle, test_mode_battle,
+ * boss_battle_regular, and boss_battle_final). Guarantees they cut off instantly without
+ * hanging or continuing over verdicts / fanfares.
+ */
+export function stopCombatBgm() {
+  if (typeof window === 'undefined') return;
+  COMBAT_BGM_TRACKS.forEach((trackKey) => {
+    const audio = bgmAudioMap[trackKey];
+    if (audio) {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch (e) {}
+    }
+  });
+  if (currentBgmTrack && COMBAT_BGM_TRACKS.includes(currentBgmTrack)) {
+    currentBgmTrack = null;
+  }
+}
+
+/**
+ * Stops all BGM tracks immediately and resets playback position.
+ */
+export function stopBgm(_fadeOut: boolean = false) {
+  if (typeof window === 'undefined') return;
+  (Object.keys(BGM_TRACKS) as BgmTrackKey[]).forEach((trackKey) => {
+    const audio = bgmAudioMap[trackKey];
+    if (audio) {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch (e) {}
+    }
+  });
+  currentBgmTrack = null;
+}
+
+/**
+ * Pauses active BGM track without resetting position, allowing seamless continuation on unmute.
+ */
+export function pauseBgm() {
+  if (typeof window === 'undefined') return;
+  if (currentBgmTrack) {
+    const audio = bgmAudioMap[currentBgmTrack];
+    if (audio) {
+      try {
+        audio.pause();
+      } catch (e) {}
+    }
+  }
+}
+
+/**
+ * Resumes active BGM track from its paused position.
+ */
+export function resumeBgm() {
+  if (typeof window === 'undefined') return;
+  if (isAmbientMusicEnabled() && currentBgmTrack) {
+    const isMuted = currentBgmTrack === 'map_selection' ? isMapMusicMuted() : isBattleMusicMuted();
+    if (!isMuted) {
+      const audio = getBgmAudio(currentBgmTrack);
+      try {
+        audio.volume = getBgmVolume();
+        audio.play().catch(() => {});
+      } catch (e) {}
+    }
+  }
+}
+
+export function isAnyVerdictMusicPlaying(): boolean {
+  return Boolean(
+    (currentBossBattleMusic && !currentBossBattleMusic.paused) ||
+    (currentLearningModeMusic && !currentLearningModeMusic.paused) ||
+    (currentTestModeMusic && !currentTestModeMusic.paused)
+  );
+}
+
 export function playSfx(type: SfxType) {
   try {
     const ctx = getAudioContext();
@@ -419,6 +736,7 @@ export function playBossBattleMusic(outcome: 'victory' | 'defeat', onEnded?: () 
   }
 
   try {
+    stopCombatBgm();
     const targetSrc = outcome === 'victory'
       ? '/SoundEffects/MusicWhenWonInBossBattleMode.mp3'
       : '/SoundEffects/MusicWhenLostInBossBattleMode.mp3';
@@ -570,6 +888,7 @@ export function playLearningModeMusic(outcome: 'victory' | 'defeat', onEnded?: (
   }
 
   try {
+    stopCombatBgm();
     const targetSrc = outcome === 'victory'
       ? '/SoundEffects/MusicWhenWinInLearningMode.mp3'
       : '/SoundEffects/MusicWhenLostInLearningMode.mp3';
@@ -715,6 +1034,7 @@ export function playTestModeMusic(outcome: 'victory' | 'defeat', onEnded?: () =>
   }
 
   try {
+    stopCombatBgm();
     const targetSrc = outcome === 'victory'
       ? '/SoundEffects/MusicWhenWinInTestMode.mp3'
       : '/SoundEffects/MusicWhenLostInTestMode.mp3';
