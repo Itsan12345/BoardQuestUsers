@@ -44,12 +44,10 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
 }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM');
 
-  // [TEMPORARY_TEST_UNLOCK]: Unlocking all nodes for testing purposes
-  const isNodeUnlocked = (_index: number): boolean => {
-    return true;
-    /* ORIGINAL LOGIC:
-    if (_index === 0) return true;
-    const prevNodeId = subjectNodes[_index - 1]?.id;
+  // Helper to check if a node is unlocked based on previous node completion
+  const isNodeUnlocked = (index: number): boolean => {
+    if (index === 0) return true;
+    const prevNodeId = subjectNodes[index - 1]?.id;
     if (!prevNodeId) return false;
 
     const clears = nodeClears[prevNodeId];
@@ -57,20 +55,18 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
       return !!(clears.EASY && clears.MEDIUM && clears.HARD);
     }
     return (nodeStars[prevNodeId] || 0) >= 3;
-    */
   };
 
   // Helper to check if a specific difficulty is unlocked for a node:
-  // [TEMPORARY_TEST_UNLOCK]: Unlocking all difficulties for testing purposes
-  const isDifficultyUnlocked = (_nodeId: string, _diff: 'EASY' | 'MEDIUM' | 'HARD'): boolean => {
-    return true;
-    /* ORIGINAL LOGIC:
-    const clears = nodeClears[_nodeId] || {};
-    if (_diff === 'EASY') return true;
-    if (_diff === 'MEDIUM') return !!clears.EASY;
-    if (_diff === 'HARD') return !!(clears.EASY && clears.MEDIUM);
+  // - EASY is always unlocked if the node is unlocked
+  // - MEDIUM requires EASY clear
+  // - HARD requires MEDIUM clear
+  const isDifficultyUnlocked = (nodeId: string, diff: 'EASY' | 'MEDIUM' | 'HARD'): boolean => {
+    const clears = nodeClears[nodeId] || {};
+    if (diff === 'EASY') return true;
+    if (diff === 'MEDIUM') return !!clears.EASY;
+    if (diff === 'HARD') return !!(clears.EASY && clears.MEDIUM);
     return false;
-    */
   };
 
   const selectedNode = subjectNodes.find(n => n.id === selectedNodeId) || subjectNodes[0];
