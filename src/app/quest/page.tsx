@@ -58,7 +58,7 @@ import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettin
 import { QuestArenaOnboardingModal } from '@/components/quest/QuestArenaOnboardingModal';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
 import { getLocalTodayDateString } from '@/lib/notifications';
-import { playSfx, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds, playBgm, stopBgm, stopCombatBgm, isAnyVerdictMusicPlaying, pauseBgm, resumeBgm, preloadBgm, setAudioBgmVolume, setAudioAmbientMusicEnabled, isMapMusicMuted, isBattleMusicMuted, setMapMusicMuted, setBattleMusicMuted } from '@/lib/audio-manager';
+import { playSfx, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds, playBgm, stopBgm, stopCombatBgm, isAnyVerdictMusicPlaying, preloadBgm, setAudioBgmVolume, setAudioAmbientMusicEnabled, setMapMusicMuted, setBattleMusicMuted } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
@@ -646,7 +646,7 @@ export default function LearningQuest() {
     });
   };
 
-  const toggleAmbientMusicMute = () => {
+  const _toggleAmbientMusicMute = () => {
     const nextState = !ambientMusic;
     setAmbientMusic(nextState);
     setAudioAmbientMusicEnabled(nextState);
@@ -889,6 +889,7 @@ export default function LearningQuest() {
     if (nodes && nodes.length > 0) {
       if (!nodes.some(n => n.id === selectedNodeId)) {
         setSelectedNodeId(nodes[0].id);
+        selectedNodeIdRef.current = nodes[0].id;
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1705,9 +1706,26 @@ export default function LearningQuest() {
   };
 
   const getSubjectNodes = useCallback((subject: string): SubjectNodeConfig[] => {
+    if (!subject) return CHAPTER_NODES_PER_SUBJECT["Clinical Chemistry"];
     if (CHAPTER_NODES_PER_SUBJECT[subject]) return CHAPTER_NODES_PER_SUBJECT[subject];
-    if (subject.toLowerCase().includes('histo') || subject.toLowerCase().includes('law')) {
+    const lower = subject.toLowerCase();
+    if (lower.includes('histo') || lower.includes('law')) {
       return CHAPTER_NODES_PER_SUBJECT["Histopathology and Medtech Laws"];
+    }
+    if (lower.includes('microscop') || lower.includes('parasit')) {
+      return CHAPTER_NODES_PER_SUBJECT["Clinical Microscopy & Parasitology"];
+    }
+    if (lower.includes('chem')) {
+      return CHAPTER_NODES_PER_SUBJECT["Clinical Chemistry"];
+    }
+    if (lower.includes('hema') && !lower.includes('immuno')) {
+      return CHAPTER_NODES_PER_SUBJECT["Hematology"];
+    }
+    if (lower.includes('microbio') || (lower.includes('microb') && !lower.includes('microscop'))) {
+      return CHAPTER_NODES_PER_SUBJECT["Microbiology"];
+    }
+    if (lower.includes('immuno') || lower.includes('serolog')) {
+      return CHAPTER_NODES_PER_SUBJECT["Immunology & Serology and Immunohematology"];
     }
     return CHAPTER_NODES_PER_SUBJECT[subject] || [
       { id: `${subject}-1`, nodeNumber: 1, tier: 'minion', title: `${subject} Minion Encounter`, subtopic: 'Core Diagnostic Principles', bossName: `${subject} Minion`, bossIcon: '👾' },
@@ -1717,6 +1735,18 @@ export default function LearningQuest() {
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const getResolvedActiveNode = useCallback((subject: string, stage?: number, nodeId?: string): SubjectNodeConfig => {
+    const activeNodes = getSubjectNodes(subject);
+    const targetNodeId = nodeId || selectedNodeIdRef.current || selectedNodeId;
+    if (quizMode === 'boss-battle' && stage) {
+      const stageNode = activeNodes.find(n => n.nodeNumber === stage);
+      if (stageNode) return stageNode;
+    }
+    const matchedNode = activeNodes.find(n => n.id === targetNodeId);
+    if (matchedNode) return matchedNode;
+    return activeNodes[0];
+  }, [getSubjectNodes, selectedNodeId, quizMode]);
 
   const getLearningWaveState = useCallback((
     questions: Question[],
@@ -2974,8 +3004,7 @@ export default function LearningQuest() {
       } else if (quizMode === 'test') {
         playBgm('test_battle');
       } else if (quizMode === 'boss-battle') {
-        const activeNodes = getSubjectNodes(selectedSubject);
-        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+        const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
         const isFinalBoss = (
           battleStage === 4 ||
           currentActiveNode?.tier === 'final-boss' ||
@@ -3007,6 +3036,7 @@ export default function LearningQuest() {
     selectedNodeId,
     selectedSubject,
     showChapterMap,
+    getResolvedActiveNode,
   ]);
 
   // Cleanly stop BGM when component unmounts
@@ -3268,7 +3298,12 @@ export default function LearningQuest() {
     };
   }, [dynamicCategories, selectedSubject, updateScrollIndicators]);
 
-  const startQuest = async (limit: number = 50, specificDifficulty?: string, topicOverride?: string | null) => {
+  const startQuest = async (
+    limit: number = 50, 
+    specificDifficulty?: string, 
+    topicOverride?: string | null,
+    targetNodeId?: string
+  ) => {
     stopBossBattleMusic();
     stopFinalBossMusic();
     stopLearningModeMusic();
@@ -3362,20 +3397,23 @@ export default function LearningQuest() {
 
       let bossStartingHp = 100;
       if (quizMode === 'boss-battle') {
-        const activeNodes = getSubjectNodes(selectedSubject);
-        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+        const effectiveNodeId = targetNodeId || selectedNodeIdRef.current || selectedNodeId;
+        setSelectedNodeId(effectiveNodeId);
+        selectedNodeIdRef.current = effectiveNodeId;
+        const currentActiveNode = getResolvedActiveNode(selectedSubject, undefined, effectiveNodeId);
         const initialStage = (currentActiveNode.nodeNumber as 1 | 2 | 3 | 4) || 1;
 
         setBattleStage(initialStage);
         bossStartingHp = calculateEnemyStageHp(initialStage, currentLevelForBattle, specificDifficulty || 'MEDIUM');
       } else if (quizMode === 'learning') {
         setLearningStage(1);
+        const effectiveNodeId = targetNodeId || selectedNodeIdRef.current || selectedNodeId;
         const activeNodes = getSubjectNodes(selectedSubject);
         const minionNode = activeNodes.find(n => n.tier === 'minion' || n.nodeNumber === 1) || activeNodes[0];
         const miniBossNode = activeNodes.find(n => n.tier === 'mini-boss' || n.nodeNumber === 2) || activeNodes[1] || activeNodes[0];
         const ch1BossNode = activeNodes.find(n => n.tier === 'boss' || n.nodeNumber === 3) || activeNodes[2] || activeNodes[0];
         const finalBossNode = activeNodes.find(n => n.tier === 'final-boss' || n.nodeNumber === 4) || activeNodes[activeNodes.length - 1];
-        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || minionNode;
+        const currentActiveNode = activeNodes.find(n => n.id === effectiveNodeId) || minionNode;
         const subjectMeta = getSubjectMeta(selectedSubject);
         const wave3BossNode = (currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4) ? finalBossNode : ch1BossNode;
 
@@ -3689,8 +3727,7 @@ export default function LearningQuest() {
 
     // All XP, streaks, badges, and level-ups are strictly awarded upon completed quests via completeQuest
 
-    const activeNodes = getSubjectNodes(selectedSubject);
-    const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+    const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
     const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4;
     const subjectMeta = getSubjectMeta(selectedSubject);
     let bossAttackResetDelay = 1000;
@@ -4212,8 +4249,7 @@ export default function LearningQuest() {
 
       // Trigger Boss Attack animation & physical lunge ONLY on player mistake (!isCorrect)
       if (!isCorrect) {
-        const activeNodes = getSubjectNodes(selectedSubject);
-        const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+        const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
         const subjectMeta = getSubjectMeta(selectedSubject);
         const isSpikesAttack = !isSickleCellMinion && !isAnemiaShade && Boolean(
           currentEnemyName?.toLowerCase().includes('reaper') ||
@@ -4865,9 +4901,11 @@ export default function LearningQuest() {
     try {
       // Calculate difficulty clears: Defeating Easy, Medium, and Hard unlocks next chapter node!
       // Node clears and stars are EXCLUSIVELY earned in Boss-Battle Mode on unlocked nodes!
-      if (quizMode === 'boss-battle' && selectedNodeId && battleOutcome === 'victory') {
+      if (quizMode === 'boss-battle' && battleOutcome === 'victory') {
         const activeNodes = getSubjectNodes(selectedSubject);
-        const nodeIndex = activeNodes.findIndex(n => n.id === selectedNodeId);
+        const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
+        const targetNodeId = currentActiveNode.id;
+        const nodeIndex = activeNodes.findIndex(n => n.id === targetNodeId);
         const isNodeUnlockedForClear = (idx: number): boolean => {
           if (idx <= 0) return true;
           const prevNodeId = activeNodes[idx - 1]?.id;
@@ -4878,18 +4916,18 @@ export default function LearningQuest() {
 
         if (nodeIndex !== -1 && isNodeUnlockedForClear(nodeIndex)) {
           const currentDiff = (bossDifficulty || 'MEDIUM').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD';
-          saveNodeClearAction(selectedNodeId, currentDiff, selectedSubject);
+          saveNodeClearAction(targetNodeId, currentDiff, selectedSubject);
           setNodeClears(prevClears => {
-            const prevNodeClears = prevClears[selectedNodeId] || {};
+            const prevNodeClears = prevClears[targetNodeId] || {};
             const updatedNodeClears = { ...prevNodeClears, [currentDiff]: true };
-            const updatedClearsMap = { ...prevClears, [selectedNodeId]: updatedNodeClears };
+            const updatedClearsMap = { ...prevClears, [targetNodeId]: updatedNodeClears };
             try {
               localStorage.setItem('boardquest_node_clears', JSON.stringify(updatedClearsMap));
             } catch (e) { }
 
             const totalStars = (updatedNodeClears.EASY ? 1 : 0) + (updatedNodeClears.MEDIUM ? 1 : 0) + (updatedNodeClears.HARD ? 1 : 0);
             setNodeStars(prevStars => {
-              const updatedStarsMap = { ...prevStars, [selectedNodeId]: Math.max(prevStars[selectedNodeId] || 0, totalStars) };
+              const updatedStarsMap = { ...prevStars, [targetNodeId]: Math.max(prevStars[targetNodeId] || 0, totalStars) };
               try {
                 localStorage.setItem('boardquest_node_stars', JSON.stringify(updatedStarsMap));
               } catch (e) { }
@@ -6192,7 +6230,7 @@ export default function LearningQuest() {
             {/* Enemy */}
             {(() => {
               const activeNodes = getSubjectNodes(selectedSubject);
-              const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+              const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
               const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4;
 
               const currentQ = questions[Math.min(questions.length - 1, userAnswers.length)] || questions[0];
@@ -6657,8 +6695,7 @@ export default function LearningQuest() {
 
                 {/* Underground Spikes Eruption Animation directly beneath the Player - Sickle-Cell Reaper & Hematology Glint Attack */}
                 {(() => {
-                  const activeNodes = getSubjectNodes(selectedSubject);
-                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
                   const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4 || currentActiveNode?.id === 'hem-4';
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
                   const isMinionWithSprite = (quizMode === 'boss-battle' && !isChapter3FinalBoss && battleStage === 1 && !!currentActiveNode?.minionIdleSpriteUrl) || (quizMode === 'learning' && waveState?.waveStage === 1);
@@ -6725,8 +6762,7 @@ export default function LearningQuest() {
                   const isHistoSubject = Boolean(selectedSubject?.toLowerCase().includes('histo') || selectedSubject?.toLowerCase().includes('law'));
                   if (!isHistoSubject) return null;
 
-                  const activeNodes = getSubjectNodes(selectedSubject);
-                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
                   // Strictly Chapter 3 Final Boss Legal Beholder (hp-4). NEVER Minion (hp-1), Mini-Boss (hp-2), or Chapter Boss (hp-3)
@@ -6771,8 +6807,7 @@ export default function LearningQuest() {
                   const isHistoSubject = Boolean(selectedSubject?.toLowerCase().includes('histo') || selectedSubject?.toLowerCase().includes('law'));
                   if (!isHistoSubject) return null;
 
-                  const activeNodes = getSubjectNodes(selectedSubject);
-                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
                   // Strictly Chapter 3 Final Boss Legal Beholder (hp-4). NEVER Minion (hp-1), Mini-Boss (hp-2), or Chapter Boss (hp-3)
@@ -6817,8 +6852,7 @@ export default function LearningQuest() {
                   const isImmunoSubject = Boolean(selectedSubject?.toLowerCase().includes('immuno') || selectedSubject?.toLowerCase().includes('serology'));
                   if (!isImmunoSubject) return null;
 
-                  const activeNodes = getSubjectNodes(selectedSubject);
-                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
                   const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4 || currentActiveNode?.id === 'is-4';
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
@@ -6845,8 +6879,7 @@ export default function LearningQuest() {
                   const isImmunoSubject = Boolean(selectedSubject?.toLowerCase().includes('immuno') || selectedSubject?.toLowerCase().includes('serology'));
                   if (!isImmunoSubject) return null;
 
-                  const activeNodes = getSubjectNodes(selectedSubject);
-                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
                   const isChapterBoss = currentActiveNode?.nodeNumber === 3 || currentActiveNode?.tier === 'boss' || currentActiveNode?.id === 'is-3' || currentActiveNode?.id === 'is-1';
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
@@ -6873,8 +6906,7 @@ export default function LearningQuest() {
                   const isHisto = selectedSubject?.toLowerCase().includes('histo') || selectedSubject?.toLowerCase().includes('law');
                   if (!isHisto) return null;
 
-                  const activeNodes = getSubjectNodes(selectedSubject);
-                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
                   // Strictly Chapter 1 Mini-Boss Stage 2 (Paraffin Golem), NEVER Minion (GMS Fungal Spore) or Final Boss hp-4 (Legal Beholder)
@@ -6910,8 +6942,7 @@ export default function LearningQuest() {
                   const isHisto = selectedSubject?.toLowerCase().includes('histo') || selectedSubject?.toLowerCase().includes('law');
                   if (!isHisto) return null;
 
-                  const activeNodes = getSubjectNodes(selectedSubject);
-                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
                   // Strictly Chapter 1 Boss Stage 3 (Fixation Overlord), NEVER Minion (GMS Fungal Spore), Mini-Boss (Paraffin Golem), or Final Boss hp-4 (Legal Beholder)
@@ -6948,8 +6979,7 @@ export default function LearningQuest() {
                   const isHematology = selectedSubject === 'Hematology' || (selectedSubject?.toLowerCase().includes('hematology') && !selectedSubject?.toLowerCase().includes('immuno'));
                   if (!isHematology) return null;
 
-                  const activeNodes = getSubjectNodes(selectedSubject);
-                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
                   // Strictly Chapter 1 Boss Stage 3 (Erythrocyte Colossus), NEVER Minion (Sickle Cell) or Mini-Boss (Anemia Shade) or Final Boss hem-4 (Sickle-Cell Reaper)
@@ -6987,8 +7017,7 @@ export default function LearningQuest() {
                   const isHematology = selectedSubject === 'Hematology' || (selectedSubject?.toLowerCase().includes('hematology') && !selectedSubject?.toLowerCase().includes('immuno'));
                   if (!isHematology) return null;
 
-                  const activeNodes = getSubjectNodes(selectedSubject);
-                  const currentActiveNode = activeNodes.find(n => n.id === selectedNodeId) || activeNodes[0];
+                  const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
                   const waveState = quizMode === 'learning' ? getLearningWaveState(questions, userAnswers, selectedSubject, learningWaveEnemies, undefined, activeQuizIndex) : null;
 
                   // Strictly Stage 2 Mini-Boss (Anemia Shade), NEVER Stage 1 (Sickle Cell) or Stage 3 (Colossus) or Stage 4 (Reaper), and NEVER Antigen Titan
@@ -7837,8 +7866,9 @@ export default function LearningQuest() {
             onSelectNode={(nodeId) => setSelectedNodeId(nodeId)}
             onLaunchExpedition={(nodeId, difficulty) => {
               setSelectedNodeId(nodeId);
+              selectedNodeIdRef.current = nodeId;
               setShowChapterMap(false);
-              startQuest(999, difficulty);
+              startQuest(999, difficulty, undefined, nodeId);
             }}
             onClose={() => setShowChapterMap(false)}
             nodeStars={nodeStars}

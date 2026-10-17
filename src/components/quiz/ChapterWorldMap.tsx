@@ -69,7 +69,18 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
     return false;
   };
 
-  const selectedNode = subjectNodes.find(n => n.id === selectedNodeId) || subjectNodes[0];
+  const [internalSelectedNodeId, setInternalSelectedNodeId] = useState<string>(selectedNodeId);
+
+  React.useEffect(() => {
+    if (selectedNodeId && subjectNodes.some(n => n.id === selectedNodeId)) {
+      setInternalSelectedNodeId(selectedNodeId);
+    } else if (subjectNodes.length > 0) {
+      setInternalSelectedNodeId(subjectNodes[0].id);
+    }
+  }, [selectedNodeId, subjectNodes]);
+
+  const activeNodeId = internalSelectedNodeId;
+  const selectedNode = subjectNodes.find(n => n.id === activeNodeId) || subjectNodes[0];
   const selectedNodeIndex = subjectNodes.findIndex(n => n.id === selectedNode.id);
   const isSelectedUnlocked = isNodeUnlocked(selectedNodeIndex);
   const selectedNodeClears = isSelectedUnlocked ? (nodeClears[selectedNode.id] || {}) : {};
@@ -216,7 +227,7 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
             const stars = unlocked
               ? ((clears.EASY ? 1 : 0) + (clears.EASY && clears.MEDIUM ? 1 : 0) + (clears.EASY && clears.MEDIUM && clears.HARD ? 1 : 0) || 0)
               : 0;
-            const isSelected = selectedNodeId === node.id;
+            const isSelected = activeNodeId === node.id;
             const isBossNode = index === subjectNodes.length - 1;
             const s = selectedSubject.toLowerCase();
             const isMicroscopy = s.includes('microscop') || s.includes('parasit');
@@ -239,7 +250,10 @@ export const ChapterWorldMap: React.FC<ChapterWorldMapProps> = ({
                 key={node.id}
                 style={{ left: nodeCoords.left, top: nodeCoords.top }}
                 className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer group pointer-events-auto z-30"
-                onClick={() => onSelectNode(node.id)}
+                onClick={() => {
+                  setInternalSelectedNodeId(node.id);
+                  onSelectNode(node.id);
+                }}
               >
                 {/* Floating Star Badges above Node */}
                 <div className={cn(
