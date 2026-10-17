@@ -21,7 +21,9 @@ import {
   Trophy,
   GraduationCap,
   Info,
-  Compass
+  Compass,
+  Layers,
+  ChevronRight
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +32,7 @@ import { Progress } from '@/components/ui/progress';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { SubjectMasteryItem } from './SubjectTechnicalBreakdown';
+import { TopicMasteryModal } from './TopicMasteryModal';
 import {
   getAiDiagnosticAction,
   type AiDiagnosticResponse
@@ -101,8 +104,9 @@ export interface AiDiagnosticPrescriptionProps {
   nextObjective?: any;
   userSettings?: any;
   onNavigateToStudy?: (subjectName?: string) => void;
-  onNavigateToQuest?: (subjectName?: string) => void;
+  onNavigateToQuest?: (subjectName?: string, topicName?: string) => void;
   onOpenGoalSettings?: () => void;
+  onOpenTopicMastery?: (subjectName?: string) => void;
 }
 
 export function AiDiagnosticPrescription({
@@ -113,12 +117,17 @@ export function AiDiagnosticPrescription({
   userSettings,
   onNavigateToStudy,
   onNavigateToQuest,
-  onOpenGoalSettings
+  onOpenGoalSettings,
+  onOpenTopicMastery
 }: AiDiagnosticPrescriptionProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [diagnosticData, setDiagnosticData] = useState<AiDiagnosticResponse | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+
+  // Dynamic Topic Matrix Modal State
+  const [topicModalOpen, setTopicModalOpen] = useState(false);
+  const [topicModalSubject, setTopicModalSubject] = useState<string | null>(null);
 
   // Extract account settings priority focus subject
   const accountFocusSubject = (userSettings?.focusSubject && userSettings.focusSubject !== 'none')
@@ -152,7 +161,7 @@ export function AiDiagnosticPrescription({
     fetchDiagnostic(false);
   }, [fetchDiagnostic]);
 
-  // Live countdown timer ticking down every 1 second
+  // Live countdown timer for the regenerate button cooldown
   useEffect(() => {
     if (cooldownRemaining <= 0) return;
 
@@ -169,34 +178,45 @@ export function AiDiagnosticPrescription({
     return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
-  const analysis: GenerateDiagnosticOutput | undefined = diagnosticData?.analysis;
+  // Format countdown mm:ss
+  const formatCooldown = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
-  // Format updated timestamp
-  const getFormattedTime = (isoString?: string) => {
-    if (!isoString) return 'Just now';
+  // Format timestamp helper
+  const getFormattedTime = (dateStr?: string) => {
+    if (!dateStr) return '';
     try {
-      const date = new Date(isoString);
+      const date = new Date(dateStr);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch {
-      return 'Just now';
+      return '';
     }
   };
 
-  // Format countdown mm:ss
-  const formatCooldown = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
+  const analysis = diagnosticData?.analysis;
+  const topicMastery = analysis?.topicMasteryAnalysis;
+  const priorityWeakTopics = topicMastery?.priorityWeakTopics || [];
+  const masteredAnchorTopics = topicMastery?.masteredAnchorTopics || [];
 
-  // Status Badge Configuration
+  // Determine current tier badge info
   const getStatusBadge = () => {
-    const status = analysis?.readinessStatus || 'BASELINE_PENDING';
-    const found = STATUS_TIERS.find(t => t.id === status);
-    if (found) {
+    const statusKey = analysis?.readinessStatus;
+    const tier = STATUS_TIERS.find((t) => t.id === statusKey);
+    if (tier) return tier;
+
+    // Fallback if not matched
+    if (analysis?.readinessLabel) {
       return {
-        ...found,
-        label: analysis?.readinessLabel || found.label,
+        id: 'BASELINE_PENDING' as const,
+        label: analysis.readinessLabel,
+        color: 'bg-primary/10 text-primary border-primary/30',
+        icon: Brain,
+        scoreRange: `${analysis.readinessScore || 0}% Score`,
+        headline: analysis.headline || 'Board readiness evaluation',
+        description: analysis.executiveSummary || '',
       };
     }
     return {
@@ -228,10 +248,19 @@ export function AiDiagnosticPrescription({
       const target = step.targetSubject !== 'Quest Arena' && step.targetSubject !== 'Account Goals'
         ? step.targetSubject
         : undefined;
-      onNavigateToQuest?.(target);
+      onNavigateToQuest?.(target, step.targetTopic);
     } else {
       const target = step.targetSubject !== 'Account Goals' ? step.targetSubject : undefined;
       onNavigateToStudy?.(target);
+    }
+  };
+
+  const handleOpenTopicModal = (subjectName?: string) => {
+    if (onOpenTopicMastery) {
+      onOpenTopicMastery(subjectName);
+    } else {
+      setTopicModalSubject(subjectName || fullMastery[0]?.subject || 'Clinical Chemistry');
+      setTopicModalOpen(true);
     }
   };
 
@@ -651,6 +680,223 @@ export function AiDiagnosticPrescription({
 
             </div>
 
+            {/* SECTION: Topic Mastery via AI Analytics */}
+            <div className="p-4 sm:p-5 md:p-6 rounded-2xl bg-gradient-to-b from-card via-card to-muted/20 border-2 border-primary/25 shadow-lg space-y-4 relative overflow-hidden">
+              {/* Decorative background glow */}
+              <div className="absolute top-0 right-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/70 relative z-10">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary shrink-0 shadow-xs">
+                    <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-black uppercase tracking-tight text-foreground flex items-center gap-1.5">
+                        Topic Mastery via AI Analytics
+                      </h3>
+                      <Badge className="text-[9px] font-extrabold uppercase px-2 py-0.5 bg-primary/15 text-primary border border-primary/30 shrink-0">
+                        Deep Concept Diagnostics
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground font-medium">
+                      Granular subtopic performance analytics & targeted MTLE drill prescriptions
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleOpenTopicModal(priorityWeakTopics[0]?.subject || undefined)}
+                  className="h-7 px-2.5 rounded-xl text-[11px] font-bold border-primary/30 hover:bg-primary/10 text-primary flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer shadow-xs transition-all active:scale-95"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>View Full Topic Matrix</span>
+                  <ChevronRight className="w-3 h-3" />
+                </Button>
+              </div>
+
+              {/* Overall Topic Synthesis */}
+              {topicMastery?.overallTopicReadinessSummary && (
+                <div className="p-3 sm:p-3.5 rounded-xl bg-muted/40 border border-border/70 text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5 relative z-10">
+                  <Brain className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-[11.5px] leading-relaxed text-foreground font-medium">
+                    {topicMastery.overallTopicReadinessSummary}
+                  </p>
+                </div>
+              )}
+
+              {/* 2-Column Grid: Weak Topics (Blind Spots) vs Mastered Anchors */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 sm:gap-4 relative z-10">
+                
+                {/* Left Column: Priority Remediation Topics */}
+                <div className="p-3.5 sm:p-4 rounded-xl bg-card border border-rose-500/30 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                      <h4 className="text-xs font-black uppercase tracking-wider text-rose-500 truncate">
+                        Priority Weak Topics • Remediation
+                      </h4>
+                    </div>
+                    <Badge variant="outline" className="text-[9px] font-bold border-rose-500/30 text-rose-500 uppercase px-1.5 py-0 shrink-0">
+                      Blind Spots
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {priorityWeakTopics.length > 0 ? (
+                      priorityWeakTopics.map((topicItem, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded-xl bg-muted/40 border border-border/80 hover:border-rose-500/40 transition-all flex flex-col justify-between gap-2 group/topic"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-bold text-foreground group-hover/topic:text-rose-500 transition-colors">
+                                  {topicItem.topic}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenTopicModal(topicItem.subject)}
+                                  className="text-[9px] font-semibold px-1.5 py-0 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border cursor-pointer transition-colors"
+                                  title="Click to view all topics in this discipline"
+                                >
+                                  {topicItem.subject}
+                                </button>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                                {topicItem.diagnosticNote}
+                              </p>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px] font-mono font-bold px-1.5 py-0.5 shrink-0",
+                                topicItem.status === 'Needs Review'
+                                  ? "bg-rose-500/10 text-rose-500 border-rose-500/30"
+                                  : "bg-muted text-muted-foreground border-border"
+                              )}
+                            >
+                              {topicItem.totalAttempts > 0 ? `${topicItem.accuracy}% Acc` : 'Unattempted'}
+                            </Badge>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {topicItem.totalAttempts > 0 ? `${topicItem.totalAttempts} questions answered` : 'High-yield starting domain'}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => onNavigateToQuest?.(topicItem.subject, topicItem.topic)}
+                              className="h-6 px-2 text-[10.5px] font-bold text-primary hover:text-primary hover:bg-primary/10 rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                              title={`Launch Quest Arena drill for ${topicItem.topic}`}
+                            >
+                              <Sword className="w-3 h-3 text-primary" />
+                              <span>Drill Topic</span>
+                              <ArrowRight className="w-2.5 h-2.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 rounded-xl bg-muted/20 border border-dashed border-border text-center space-y-1">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          No critical weak topics flagged.
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Answer more questions to refine micro-topic sensitivity.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column: Mastered Topic Anchors */}
+                <div className="p-3.5 sm:p-4 rounded-xl bg-card border border-emerald-500/30 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 truncate">
+                        Mastered Topic Anchors
+                      </h4>
+                    </div>
+                    <Badge variant="outline" className="text-[9px] font-bold border-emerald-500/30 text-emerald-500 uppercase px-1.5 py-0 shrink-0">
+                      Demonstrated
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {masteredAnchorTopics.length > 0 ? (
+                      masteredAnchorTopics.map((topicItem, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded-xl bg-muted/40 border border-border/80 hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-2 group/topic"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 space-y-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-bold text-foreground group-hover/topic:text-emerald-500 transition-colors">
+                                  {topicItem.topic}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenTopicModal(topicItem.subject)}
+                                  className="text-[9px] font-semibold px-1.5 py-0 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border cursor-pointer transition-colors"
+                                  title="Click to view all topics in this discipline"
+                                >
+                                  {topicItem.subject}
+                                </button>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                                {topicItem.diagnosticNote}
+                              </p>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-mono font-bold px-1.5 py-0.5 shrink-0 bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                            >
+                              {topicItem.accuracy}% Acc
+                            </Badge>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {topicItem.totalAttempts} questions answered
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => onNavigateToQuest?.(topicItem.subject, topicItem.topic)}
+                              className="h-6 px-2 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded-lg flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                              title={`Review quest drill for ${topicItem.topic}`}
+                            >
+                              <Sword className="w-3 h-3 text-emerald-500" />
+                              <span>Review Drill</span>
+                              <ArrowRight className="w-2.5 h-2.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 rounded-xl bg-muted/20 border border-dashed border-border text-center space-y-1">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          Topic mastery anchors calibrate as you complete question sets.
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Score 80%+ on repeated topic drills to promote topics into anchors.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
             {/* Licensure Coaching Tip Banner */}
             {analysis?.coachingTip && (
               <div className="p-3 sm:p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-2.5">
@@ -701,9 +947,12 @@ export function AiDiagnosticPrescription({
                         </p>
                       </div>
 
-                      <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground truncate max-w-[120px]">
+                      <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[10px] gap-2">
+                        <span className="text-muted-foreground truncate max-w-[130px] sm:max-w-[170px]" title={item.targetTopic ? `${item.targetSubject} • ${item.targetTopic}` : item.targetSubject}>
                           Target: <strong className="text-foreground">{item.targetSubject}</strong>
+                          {item.targetTopic && (
+                            <span className="text-primary font-semibold truncate"> • {item.targetTopic}</span>
+                          )}
                         </span>
                         <button
                           onClick={() => handleActionClick(item)}
@@ -737,13 +986,16 @@ export function AiDiagnosticPrescription({
                           step: 1
                         },
                     {
-                      title: hasRecordedMastery ? `Mastery Anchor: ${strongest.subject}` : 'Diagnostic Baseline',
-                      description: hasRecordedMastery
-                        ? `Maintain peak accuracy (${strongest.mastery}%) by tackling advanced difficulty questions in Quest Arena.`
-                        : 'Complete your first study module or chapter quest in Quest Arena to activate your discipline anchor.',
-                      priority: 'MEDIUM PRIORITY',
-                      targetSubject: hasRecordedMastery ? strongest.subject : 'Quest Arena',
-                      actionText: 'Quest Arena',
+                      title: priorityWeakTopics[0] ? `Topic Drill: ${priorityWeakTopics[0].topic}` : (hasRecordedMastery ? `Mastery Anchor: ${strongest.subject}` : 'Diagnostic Baseline'),
+                      description: priorityWeakTopics[0]
+                        ? `Remediate ${priorityWeakTopics[0].topic} (${priorityWeakTopics[0].subject}) through high-yield targeted quest drills.`
+                        : (hasRecordedMastery
+                          ? `Maintain peak accuracy (${strongest.mastery}%) by tackling advanced difficulty questions in Quest Arena.`
+                          : 'Complete your first study module or chapter quest in Quest Arena to activate your discipline anchor.'),
+                      priority: 'HIGH PRIORITY',
+                      targetSubject: priorityWeakTopics[0] ? priorityWeakTopics[0].subject : (hasRecordedMastery ? strongest.subject : 'Quest Arena'),
+                      targetTopic: priorityWeakTopics[0]?.topic,
+                      actionText: priorityWeakTopics[0] ? `Drill ${priorityWeakTopics[0].topic.split(' ')[0]}` : 'Quest Arena',
                       actionType: 'quest' as const,
                       step: 2
                     },
@@ -759,12 +1011,12 @@ export function AiDiagnosticPrescription({
                   ].map((item, idx) => (
                     <div
                       key={idx}
-                      className="p-3.5 rounded-xl bg-muted/40 hover:bg-muted/70 border border-border transition-all flex flex-col justify-between space-y-2 group/step shadow-xs"
+                      className="p-3.5 rounded-xl bg-muted/40 hover:bg-muted/70 border border-border transition-all flex flex-col justify-between space-y-2.5 group/step shadow-xs"
                     >
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
-                            Step {idx + 1}
+                            Step {item.step || idx + 1}
                           </span>
                           <span className="text-[9px] font-extrabold uppercase text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
                             {item.priority}
@@ -773,16 +1025,21 @@ export function AiDiagnosticPrescription({
                         <h4 className="text-xs font-bold text-foreground leading-tight group-hover/step:text-primary transition-colors">
                           {item.title}
                         </h4>
-                        <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                        <p className="text-[11px] text-muted-foreground leading-snug line-clamp-3">
                           {item.description}
                         </p>
                       </div>
 
-                      <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground">Target: <strong className="text-foreground">{item.targetSubject}</strong></span>
+                      <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[10px] gap-2">
+                        <span className="text-muted-foreground truncate max-w-[130px] sm:max-w-[170px]" title={item.targetTopic ? `${item.targetSubject} • ${item.targetTopic}` : item.targetSubject}>
+                          Target: <strong className="text-foreground">{item.targetSubject}</strong>
+                          {item.targetTopic && (
+                            <span className="text-primary font-semibold truncate"> • {item.targetTopic}</span>
+                          )}
+                        </span>
                         <button
                           onClick={() => handleActionClick(item as any)}
-                          className="font-bold text-primary hover:text-accent flex items-center gap-1 transition-colors cursor-pointer"
+                          className="font-bold text-primary hover:text-accent flex items-center gap-1 transition-colors cursor-pointer shrink-0"
                         >
                           {item.actionText} <ArrowRight className="w-3 h-3" />
                         </button>
@@ -794,8 +1051,16 @@ export function AiDiagnosticPrescription({
             </div>
           </>
         )}
-
       </div>
+
+      {/* Dynamic Topic Mastery Modal triggered from AI Prescription */}
+      <TopicMasteryModal
+        open={topicModalOpen}
+        onOpenChange={setTopicModalOpen}
+        subjectName={topicModalSubject}
+        onNavigateToQuest={onNavigateToQuest}
+        onNavigateToStudy={onNavigateToStudy}
+      />
     </Card>
   );
 }

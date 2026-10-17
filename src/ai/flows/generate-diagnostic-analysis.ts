@@ -3,52 +3,78 @@ import { z } from 'genkit';
 
 export const DiagnosticSubjectInputSchema = z.object({
   subject: z.string(),
-  mastery: z.number().describe('Subject mastery percentage (0-100)'),
-  completion: z.number().describe('Curriculum completion percentage (0-100)'),
-  status: z.string().describe('Mastery status e.g. Mastered, Proficient, Needs Review, Not Started'),
+  mastery: z.number(),
+  completion: z.number(),
+  status: z.string(),
+});
+
+export const DiagnosticTopicInputSchema = z.object({
+  topic: z.string(),
+  subject: z.string(),
+  accuracy: z.number(),
+  totalAttempts: z.number(),
+  status: z.string(),
 });
 
 export const GenerateDiagnosticInputSchema = z.object({
   studentName: z.string().optional().default('Aspirant'),
-  avgMastery: z.number().describe('Overall average mastery score'),
-  avgCompletion: z.number().describe('Overall average syllabus completion'),
+  avgMastery: z.number(),
+  avgCompletion: z.number(),
   totalQuestionsAnswered: z.number().optional().default(0),
   focusSubject: z.string().nullable().optional(),
   dailyQuota: z.number().optional().default(50),
   subjects: z.array(DiagnosticSubjectInputSchema),
-  weakestTopics: z.array(z.string()).optional().default([]),
+  weakestTopics: z.array(DiagnosticTopicInputSchema).optional().default([]),
+  strongestTopics: z.array(DiagnosticTopicInputSchema).optional().default([]),
 });
 
 export type GenerateDiagnosticInput = z.infer<typeof GenerateDiagnosticInputSchema>;
 
 export const RemediationActionStepSchema = z.object({
   step: z.number(),
-  title: z.string().describe('Short punchy action title e.g. "Enzymology Flash Drills" or "Urinalysis Microscopic Review"'),
-  description: z.string().describe('Actionable 1-2 sentence recommendation specifying target concepts and question sets.'),
-  priority: z.string().describe('Priority level: e.g. "HIGH PRIORITY", "ACCOUNT GOAL", "MEDIUM PRIORITY", "MASTERY ANCHOR"'),
-  targetSubject: z.string().describe('Specific subject discipline or "Account Goals"'),
+  title: z.string().describe('Short punchy title (max 5 words)'),
+  description: z.string().describe('Actionable 1-2 sentence recommendation'),
+  priority: z.string().describe('HIGH PRIORITY, ACCOUNT GOAL, or MEDIUM PRIORITY'),
+  targetSubject: z.string().describe('Target subject discipline or Account Goals'),
+  targetTopic: z.string().optional().describe('Specific weak topic if applicable'),
   actionType: z.enum(['study', 'quest', 'goals']),
-  actionText: z.string().describe('Action button text e.g. "Study Chemistry", "Quest Arena", "Configure Goals"'),
+  actionText: z.string().describe('Button text e.g. Study, Quest Arena, Drill Topic'),
+});
+
+export const TopicDiagnosticItemSchema = z.object({
+  topic: z.string(),
+  subject: z.string(),
+  accuracy: z.number(),
+  totalAttempts: z.number(),
+  status: z.enum(['Needs Review', 'Proficient', 'Mastered', 'Unattempted']),
+  diagnosticNote: z.string().describe('1 concise sentence (max 15 words) explaining focus or strength'),
+});
+
+export const TopicMasteryAnalysisSchema = z.object({
+  priorityWeakTopics: z.array(TopicDiagnosticItemSchema).describe('Up to 3 high-yield weak topics'),
+  masteredAnchorTopics: z.array(TopicDiagnosticItemSchema).describe('Up to 2 demonstrated strong topics'),
+  overallTopicReadinessSummary: z.string().describe('1 concise sentence synthesizing topic readiness'),
 });
 
 export const GenerateDiagnosticOutputSchema = z.object({
-  headline: z.string().describe('1-2 sentence executive summary of the student current licensure exam readiness and immediate focus.'),
+  headline: z.string().describe('1 concise sentence summary of readiness and immediate focus'),
   readinessStatus: z.enum(['TOPNOTCHER_TRACK', 'PASSING_STANDARD', 'BORDERLINE', 'CRITICAL_FOCUS', 'BASELINE_PENDING']),
-  readinessLabel: z.string().describe('Visual status badge label: Top Performer, Exam Ready, Almost Ready, Needs Work, or Getting Started'),
-  readinessScore: z.number().describe('Estimated board exam readiness index from 0 to 100.'),
-  executiveSummary: z.string().describe('2-3 sentences of expert diagnostic guidance analyzing academic strengths, blind spots, and exam trajectory.'),
+  readinessLabel: z.string().describe('Top Performer, Exam Ready, Almost Ready, Needs Work, or Getting Started'),
+  readinessScore: z.number().describe('Readiness index 0-100'),
+  executiveSummary: z.string().describe('1-2 concise sentences analyzing academic strengths and blind spots'),
   topStrength: z.object({
     subject: z.string(),
     mastery: z.number(),
-    commentary: z.string().describe('1 sentence explaining why this discipline is their strongest performance anchor.'),
+    commentary: z.string().describe('1 concise sentence explaining strength anchor'),
   }),
   criticalWeakness: z.object({
     subject: z.string(),
     mastery: z.number(),
-    commentary: z.string().describe('1 sentence pinpointing vulnerability and why immediate review is critical.'),
+    commentary: z.string().describe('1 concise sentence explaining priority weakness'),
   }),
-  remediationPlan: z.array(RemediationActionStepSchema).describe('Exactly 3 prioritized, structured remediation action steps.'),
-  coachingTip: z.string().describe('1-2 sentence high-yield Medical Technology licensure board tip (mnemonics, pacing, or retention strategy).'),
+  topicMasteryAnalysis: TopicMasteryAnalysisSchema.optional(),
+  remediationPlan: z.array(RemediationActionStepSchema).describe('Exactly 3 prioritized remediation steps'),
+  coachingTip: z.string().describe('1 concise high-yield board tip (max 20 words)'),
 });
 
 export type GenerateDiagnosticOutput = z.infer<typeof GenerateDiagnosticOutputSchema>;
@@ -57,44 +83,43 @@ const diagnosticPrompt = ai.definePrompt({
   name: 'generateDiagnosticAnalysisPrompt',
   input: { schema: GenerateDiagnosticInputSchema },
   output: { schema: GenerateDiagnosticOutputSchema },
-  prompt: `You are the Lead Medical Technology Licensure Board Examination Coach and AI Diagnostic Director for BoardQuest (Philippine MTLE / MLS syllabus).
+  prompt: `You are the Lead MTLE Board Exam Diagnostic Coach for BoardQuest.
 
-Analyze this student's real academic performance metrics across the 6 licensure disciplines:
-- Clinical Chemistry
-- Microbiology
-- Hematology
-- Immunology & Serology and Immunohematology
-- Clinical Microscopy & Parasitology
-- Histopathology and Medtech Laws
+Student Performance:
+• Name: {{studentName}}
+• Mastery: {{avgMastery}}% | Completion: {{avgCompletion}}% | Qs: {{totalQuestionsAnswered}}
+• Focus Goal: {{focusSubject}} ({{dailyQuota}} Qs/day)
 
-Student Academic Profile:
-• Student Name: {{studentName}}
-• Overall Average Mastery: {{avgMastery}}%
-• Overall Syllabus Completion: {{avgCompletion}}%
-• Total Questions Answered: {{totalQuestionsAnswered}}
-• Configured Account Focus Subject: {{focusSubject}} (Daily Quota: {{dailyQuota}} questions/day)
-
-Individual Discipline Standings:
+Disciplines:
 {{#each subjects}}
-- {{subject}}: {{mastery}}% mastery, {{completion}}% completion (Status: {{status}})
+- {{subject}}: {{mastery}}% ({{status}})
 {{/each}}
 {{#if weakestTopics}}
-Weak Topics Recorded in System:
+
+Weakest Subtopics:
 {{#each weakestTopics}}
-- {{this}}
+- {{topic}} ({{subject}}): {{accuracy}}% acc
+{{/each}}
+{{/if}}
+{{#if strongestTopics}}
+
+Strongest Subtopics:
+{{#each strongestTopics}}
+- {{topic}} ({{subject}}): {{accuracy}}% acc
 {{/each}}
 {{/if}}
 
-EXPERT DIAGNOSTIC GUIDELINES:
-1. Standards: In Philippine MTLE, general weighted average must reach at least 75%, with no grade below 50% in any major discipline.
-2. If totalQuestionsAnswered is 0 or syllabus completion is under 5%, classify readinessStatus as "BASELINE_PENDING" (readinessLabel: "Getting Started", score: 0-25) and guide them on initiating their first chapter quest.
-3. If performance index (mastery * 0.7 + completion * 0.3) is >= 85%, classify as "TOPNOTCHER_TRACK" (readinessLabel: "Top Performer").
-4. If performance index is >= 75%, classify as "PASSING_STANDARD" (readinessLabel: "Exam Ready").
-5. If performance index is >= 60%, classify as "BORDERLINE" (readinessLabel: "Almost Ready").
-6. Otherwise, classify as "CRITICAL_FOCUS" (readinessLabel: "Needs Work").
-7. If focusSubject is configured, ensure it is highlighted in the remediation plan (Step 1 or Step 2) with priority "ACCOUNT GOAL".
-8. Return exactly 3 remediation steps in remediationPlan. Assign actionType to one of: 'study', 'quest', 'goals'.
-9. Ensure all output is professional, inspiring, authoritative, and medically accurate. Avoid filler words.`,
+RULES (STRICT BREVITY REQUIRED - MINIMIZE TOKENS):
+1. Standards: Passing is >=75% with no subject <50%.
+2. Classify readinessStatus: "TOPNOTCHER_TRACK" (>=85%), "PASSING_STANDARD" (>=75%), "BORDERLINE" (>=60%), "CRITICAL_FOCUS" (<60%), or "BASELINE_PENDING" (if total Qs < 5).
+3. If focusSubject is configured, feature it in Step 1 with priority "ACCOUNT GOAL".
+4. topicMasteryAnalysis:
+   - priorityWeakTopics: up to 3 weak topics, each with 1 concise sentence (max 15 words).
+   - masteredAnchorTopics: up to 2 strong topics, each with 1 concise sentence (max 15 words).
+   - overallTopicReadinessSummary: 1 concise sentence on topic coverage.
+5. remediationPlan: Exactly 3 steps. Specify targetTopic on Step 2 if weak topics exist. Keep titles under 5 words, descriptions strictly 1-2 short sentences.
+6. coachingTip: 1 short high-yield MTLE mnemonic or strategy (max 20 words).
+7. Keep all text crisp and clinical. Zero conversational filler to minimize tokens.`,
 });
 
 export const generateDiagnosticAnalysisFlow = ai.defineFlow(

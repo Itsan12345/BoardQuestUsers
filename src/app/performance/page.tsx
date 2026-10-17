@@ -262,8 +262,10 @@ function PerformanceContent() {
               router.push('/study');
             }
           }}
-          onNavigateToQuest={(subjectName) => {
-            if (subjectName) {
+          onNavigateToQuest={(subjectName, topicName) => {
+            if (subjectName && topicName) {
+              router.push(`/quest?subject=${encodeURIComponent(subjectName)}&topic=${encodeURIComponent(topicName)}`);
+            } else if (subjectName) {
               router.push(`/quest?subject=${encodeURIComponent(subjectName)}`);
             } else {
               router.push('/quest');

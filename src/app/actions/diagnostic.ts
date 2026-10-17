@@ -40,6 +40,15 @@ const DEFAULT_SUBJECTS = [
   'Histopathology and Medtech Laws',
 ];
 
+export interface AggregatedTopicMasteryItem {
+  topic: string;
+  subject: string;
+  accuracy: number;
+  totalAttempts: number;
+  status: 'Needs Review' | 'Proficient' | 'Mastered' | 'Unattempted';
+  diagnosticNote?: string;
+}
+
 /**
  * Intelligent deterministic fallback generator if AI rate limit or network error occurs.
  */
@@ -50,7 +59,9 @@ function createDeterministicDiagnosticFallback(
   focusSubject: string | null,
   dailyQuota: number,
   subjects: { subject: string; mastery: number; completion: number; status: string }[],
-  totalAttempts: number
+  totalAttempts: number,
+  weakestTopics: AggregatedTopicMasteryItem[] = [],
+  strongestTopics: AggregatedTopicMasteryItem[] = []
 ): GenerateDiagnosticOutput {
   const sorted = [...subjects].sort((a, b) => b.mastery - a.mastery);
   const best = sorted[0] || { subject: 'Clinical Chemistry', mastery: 0, completion: 0, status: 'Not Started' };
@@ -86,6 +97,39 @@ function createDeterministicDiagnosticFallback(
     ? `${studentName} demonstrates an anchor proficiency in ${best.subject} (${best.mastery}%). Targeted drills in ${worst.subject} (${worst.mastery}%) will yield the highest margin of passing score improvement.`
     : `Welcome ${studentName}. Complete chapter quests in Quest Arena or practice questions to calibrate your real-time diagnostic prescription.`;
 
+  // Deterministic Topic Mastery Analytics
+  const fallbackWeakList: AggregatedTopicMasteryItem[] = weakestTopics.length > 0
+    ? weakestTopics
+    : [
+        { topic: 'Carbohydrate Metabolism', subject: 'Clinical Chemistry', accuracy: 0, totalAttempts: 0, status: 'Unattempted', diagnosticNote: 'Foundational MTLE chemistry domain requiring initial practice calibration.' },
+        { topic: 'Bacterial Morphology and Staining', subject: 'Microbiology', accuracy: 0, totalAttempts: 0, status: 'Unattempted', diagnosticNote: 'Core microbiology baseline critical for primary gram identification questions.' },
+        { topic: 'RBC Indices and Morphologies', subject: 'Hematology', accuracy: 0, totalAttempts: 0, status: 'Unattempted', diagnosticNote: 'High-yield licensure topic for differential diagnosis of anemia.' },
+      ];
+
+  const priorityWeakTopics = fallbackWeakList.slice(0, 3).map((t) => ({
+    topic: t.topic,
+    subject: t.subject,
+    accuracy: t.accuracy,
+    totalAttempts: t.totalAttempts,
+    status: t.status,
+    diagnosticNote: t.diagnosticNote || `Target review recommended: ${t.accuracy}% accuracy across ${t.totalAttempts} question${t.totalAttempts === 1 ? '' : 's'}.`,
+  }));
+
+  const masteredAnchorTopics = strongestTopics.slice(0, 3).map((t) => ({
+    topic: t.topic,
+    subject: t.subject,
+    accuracy: t.accuracy,
+    totalAttempts: t.totalAttempts,
+    status: t.status,
+    diagnosticNote: t.diagnosticNote || `Solid performance anchor with ${t.accuracy}% accuracy across ${t.totalAttempts} attempts.`,
+  }));
+
+  const overallTopicReadinessSummary = totalAttempts > 0
+    ? `${studentName} has active topic diagnostics across ${weakestTopics.length + strongestTopics.length} evaluated topics. Prioritizing low-accuracy subtopics in Quest Arena will rapidly elevate overall discipline mastery.`
+    : `Topic analytics calibration pending. Complete questions in Quest Arena or Study Mode to generate real-time topic mastery rankings.`;
+
+  const primaryRemediationTopic = weakestTopics[0];
+
   const remediationPlan: GenerateDiagnosticOutput['remediationPlan'] = [
     focusSubject
       ? {
@@ -108,14 +152,19 @@ function createDeterministicDiagnosticFallback(
         },
     {
       step: 2,
-      title: totalAttempts > 0 ? `Weak Domain Drill: ${worst.subject}` : 'Initial Chapter Quest',
-      description: totalAttempts > 0
-        ? `Remediate ${worst.subject} (${worst.mastery}% accuracy) through 20 targeted flash questions in Quest Arena.`
-        : 'Embark on your first Quest Arena battle to generate granular chapter diagnostics.',
+      title: primaryRemediationTopic
+        ? `Remediate Weak Topic: ${primaryRemediationTopic.topic}`
+        : (totalAttempts > 0 ? `Weak Domain Drill: ${worst.subject}` : 'Initial Chapter Quest'),
+      description: primaryRemediationTopic
+        ? `High-yield topic drill in ${primaryRemediationTopic.topic} (${primaryRemediationTopic.subject}) to eliminate conceptual blind spots.`
+        : (totalAttempts > 0
+          ? `Remediate ${worst.subject} (${worst.mastery}% accuracy) through targeted flash questions in Quest Arena.`
+          : 'Embark on your first Quest Arena battle to generate granular chapter diagnostics.'),
       priority: 'HIGH PRIORITY',
-      targetSubject: totalAttempts > 0 ? worst.subject : 'Quest Arena',
+      targetSubject: primaryRemediationTopic ? primaryRemediationTopic.subject : (totalAttempts > 0 ? worst.subject : 'Quest Arena'),
+      targetTopic: primaryRemediationTopic ? primaryRemediationTopic.topic : undefined,
       actionType: 'quest',
-      actionText: 'Quest Arena',
+      actionText: primaryRemediationTopic ? `Drill ${primaryRemediationTopic.topic.split(' ')[0]}` : 'Quest Arena',
     },
     {
       step: 3,
@@ -143,6 +192,11 @@ function createDeterministicDiagnosticFallback(
       subject: worst.subject,
       mastery: worst.mastery,
       commentary: `${worst.subject} shows prime opportunity for score gains through focused remediation drills.`,
+    },
+    topicMasteryAnalysis: {
+      priorityWeakTopics,
+      masteredAnchorTopics,
+      overallTopicReadinessSummary,
     },
     remediationPlan,
     coachingTip: 'High-yield MTLE Tip: Practice active recall and formula mnemonics daily; consistency beats cramming every time.',
@@ -180,11 +234,12 @@ export async function getAiDiagnosticAction(options?: {
     const idQueries = userObjId ? [{ userId: userId }, { userId: userObjId }] : [{ userId: userId }];
 
     // 1. Fetch user profile, settings, metrics, and attempts in parallel
-    const [userDoc, settingsDoc, metrics, categories] = await Promise.all([
+    const [userDoc, settingsDoc, metrics, categories, userAttempts] = await Promise.all([
       db.collection('User').findOne({ $or: userObjId ? [{ _id: userObjId }, { _id: userId as any }] : [{ _id: userId as any }] }),
       db.collection('UserSettings').findOne({ $or: idQueries }),
       getSubjectMetrics().catch(() => []),
       getCategories().catch(() => []),
+      db.collection('UserQuestionAttempt').find({ $or: idQueries }).toArray().catch(() => []),
     ]);
 
     const activeSubjects = categories && categories.length > 0
@@ -222,8 +277,80 @@ export async function getAiDiagnosticAction(options?: {
       ? Math.round(fullMastery.reduce((acc: number, s: any) => acc + s.completion, 0) / fullMastery.length)
       : 0;
 
-    // Count attempts
-    const totalAttempts = await db.collection('UserQuestionAttempt').countDocuments({ $or: idQueries }).catch(() => 0);
+    // Count attempts and compute topic mastery
+    const totalAttempts = userAttempts.reduce((acc: number, a: any) => acc + (a.attempts || 1), 0);
+
+    let weakestTopics: AggregatedTopicMasteryItem[] = [];
+    let strongestTopics: AggregatedTopicMasteryItem[] = [];
+
+    if (userAttempts.length > 0) {
+      try {
+        const qIds = userAttempts.map((a: any) => a.questionId);
+        const qObjIds = qIds
+          .filter((id: any) => id && (id instanceof ObjectId || (typeof id === 'string' && ObjectId.isValid(id))))
+          .map((id: any) => (id instanceof ObjectId ? id : new ObjectId(id)));
+
+        const [questions, subjectsList] = await Promise.all([
+          db.collection('Question').find(
+            { _id: { $in: qObjIds } },
+            { projection: { topic: 1, subjectId: 1, categoryId: 1 } }
+          ).toArray().catch(() => []),
+          db.collection('Subject').find({}).toArray().catch(() => []),
+        ]);
+
+        const qMap = new Map(questions.map((q: any) => [q._id.toString(), q]));
+        const subMap = new Map(subjectsList.map((s: any) => [s._id.toString(), s.name]));
+
+        const topicStats = new Map<string, { topic: string; subject: string; attempts: number; correct: number }>();
+
+        userAttempts.forEach((att: any) => {
+          const qIdStr = att.questionId?.toString();
+          const q = qMap.get(qIdStr);
+          if (!q) return;
+
+          const rawTopic = (q.topic || 'General Concepts').trim();
+          if (!rawTopic) return;
+
+          const sId = q.subjectId?.toString() || q.categoryId?.toString();
+          const subName = subMap.get(sId) || 'General MTLE';
+
+          const key = `${subName}:::${rawTopic}`;
+          const existing = topicStats.get(key) || { topic: rawTopic, subject: subName, attempts: 0, correct: 0 };
+          existing.attempts += (typeof att.attempts === 'number' ? att.attempts : 1);
+          existing.correct += (typeof att.correct === 'number' ? att.correct : 0);
+          topicStats.set(key, existing);
+        });
+
+        const computedTopics: AggregatedTopicMasteryItem[] = Array.from(topicStats.values()).map((t) => {
+          const accuracy = t.attempts > 0 ? Math.round((t.correct / t.attempts) * 100) : 0;
+          let status: 'Mastered' | 'Proficient' | 'Needs Review' = 'Needs Review';
+          if (accuracy >= 80 && t.attempts >= 2) status = 'Mastered';
+          else if (accuracy >= 65) status = 'Proficient';
+
+          return {
+            topic: t.topic,
+            subject: t.subject,
+            accuracy,
+            totalAttempts: t.attempts,
+            status,
+          };
+        });
+
+        // Weakest topics: Needs Review first, sorted by lowest accuracy
+        weakestTopics = computedTopics
+          .filter((t) => t.accuracy < 70 || t.status === 'Needs Review')
+          .sort((a, b) => a.accuracy - b.accuracy || b.totalAttempts - a.totalAttempts)
+          .slice(0, 5);
+
+        // Strongest topics: Proficient or Mastered, sorted by highest accuracy
+        strongestTopics = computedTopics
+          .filter((t) => t.totalAttempts >= 1 && (t.accuracy >= 70 || t.status === 'Mastered'))
+          .sort((a, b) => b.accuracy - a.accuracy || b.totalAttempts - a.totalAttempts)
+          .slice(0, 5);
+      } catch (topicErr) {
+        console.warn('Failed to aggregate user topic mastery for AI diagnostic:', topicErr);
+      }
+    }
 
     const focusSubject = (settingsDoc?.focusSubject && settingsDoc.focusSubject !== 'none')
       ? settingsDoc.focusSubject
@@ -240,6 +367,8 @@ export async function getAiDiagnosticAction(options?: {
       dq: dailyQuota,
       ta: totalAttempts,
       sub: fullMastery.map((s: any) => `${s.subject}:${s.mastery}:${s.completion}`),
+      wt: weakestTopics.map((w) => `${w.topic}:${w.accuracy}:${w.totalAttempts}`),
+      st: strongestTopics.map((s) => `${s.topic}:${s.accuracy}:${s.totalAttempts}`),
     };
 
     const dataHash = crypto
@@ -262,16 +391,65 @@ export async function getAiDiagnosticAction(options?: {
       ? new Date(lastUpdatedTime + MANUAL_REGENERATE_COOLDOWN_MS).toISOString()
       : undefined;
 
+    // Helper to ensure cached analysis has topicMasteryAnalysis hydrated if cached before this update
+    const hydrateCachedAnalysis = (parsed: any): GenerateDiagnosticOutput => {
+      // If legacy format without modern schema fields
+      if (!parsed || !parsed.headline || !parsed.remediationPlan || !parsed.readinessStatus) {
+        return createDeterministicDiagnosticFallback(
+          studentName,
+          avgMastery,
+          avgCompletion,
+          focusSubject,
+          dailyQuota,
+          fullMastery,
+          totalAttempts,
+          weakestTopics,
+          strongestTopics
+        );
+      }
+
+      if (!parsed.topicMasteryAnalysis) {
+        const fallbackWeak = weakestTopics.length > 0 ? weakestTopics : [
+          { topic: 'Carbohydrate Metabolism', subject: 'Clinical Chemistry', accuracy: 0, totalAttempts: 0, status: 'Unattempted' as const, diagnosticNote: 'Foundational MTLE chemistry domain.' },
+          { topic: 'Bacterial Morphology and Staining', subject: 'Microbiology', accuracy: 0, totalAttempts: 0, status: 'Unattempted' as const, diagnosticNote: 'Core microbiology baseline for gram identification.' },
+          { topic: 'RBC Indices and Morphologies', subject: 'Hematology', accuracy: 0, totalAttempts: 0, status: 'Unattempted' as const, diagnosticNote: 'Differential diagnosis of anemia.' },
+        ];
+        parsed.topicMasteryAnalysis = {
+          priorityWeakTopics: fallbackWeak.slice(0, 3).map((t) => ({
+            topic: t.topic,
+            subject: t.subject,
+            accuracy: t.accuracy,
+            totalAttempts: t.totalAttempts,
+            status: t.status as any,
+            diagnosticNote: (t as any).diagnosticNote || `Target review recommended: ${t.accuracy}% accuracy across ${t.totalAttempts} attempts.`,
+          })),
+          masteredAnchorTopics: strongestTopics.slice(0, 3).map((t) => ({
+            topic: t.topic,
+            subject: t.subject,
+            accuracy: t.accuracy,
+            totalAttempts: t.totalAttempts,
+            status: t.status as any,
+            diagnosticNote: (t as any).diagnosticNote || `Demonstrated solid retention with ${t.accuracy}% accuracy.`,
+          })),
+          overallTopicReadinessSummary: totalAttempts > 0
+            ? `${studentName} has active topic diagnostics across ${weakestTopics.length + strongestTopics.length} evaluated concepts. Complete targeted topic drills to reinforce high-yield board concepts.`
+            : 'Topic analytics calibration pending. Complete questions in Quest Arena to unlock full topic diagnostics.',
+        };
+      }
+      return parsed;
+    };
+
     // Check if user requested manual regeneration, but is still within 15-minute cooldown
     if (forceRefresh && cachedRecord?.analysis && !canRegenerate) {
       try {
         const parsed = JSON.parse(cachedRecord.analysis) as GenerateDiagnosticOutput;
+        const hydrated = hydrateCachedAnalysis(parsed);
         const minutesLeft = Math.ceil(cooldownSeconds / 60);
         return {
           success: true,
           cached: true,
           updatedAt: (cachedRecord.updatedAt instanceof Date ? cachedRecord.updatedAt : new Date(cachedRecord.updatedAt)).toISOString(),
-          analysis: parsed,
+          analysis: hydrated,
           canRegenerate: false,
           cooldownSeconds,
           cooldownExpiresAt,
@@ -283,8 +461,6 @@ export async function getAiDiagnosticAction(options?: {
     }
 
     // Automatic cache check (when forceRefresh is false):
-    // 1. If hash matches -> definitely serve cache.
-    // 2. OR if cache age is within 6-hour TTL -> serve cache to prevent score-jitter re-generation!
     if (!forceRefresh && cachedRecord?.analysis) {
       const isFreshByTtl = ageMs < CACHE_TTL_MS;
       const isHashMatch = cachedRecord.hash === dataHash;
@@ -292,11 +468,12 @@ export async function getAiDiagnosticAction(options?: {
       if (isFreshByTtl || isHashMatch) {
         try {
           const parsed = JSON.parse(cachedRecord.analysis) as GenerateDiagnosticOutput;
+          const hydrated = hydrateCachedAnalysis(parsed);
           return {
             success: true,
             cached: true,
             updatedAt: (cachedRecord.updatedAt instanceof Date ? cachedRecord.updatedAt : new Date(cachedRecord.updatedAt)).toISOString(),
-            analysis: parsed,
+            analysis: hydrated,
             canRegenerate,
             cooldownSeconds,
             cooldownExpiresAt,
@@ -320,8 +497,24 @@ export async function getAiDiagnosticAction(options?: {
         focusSubject,
         dailyQuota,
         subjects: fullMastery,
-        weakestTopics: [],
+        weakestTopics: weakestTopics.slice(0, 3).map((w) => ({
+          topic: w.topic,
+          subject: w.subject,
+          accuracy: w.accuracy,
+          totalAttempts: w.totalAttempts,
+          status: w.status,
+        })),
+        strongestTopics: strongestTopics.slice(0, 2).map((s) => ({
+          topic: s.topic,
+          subject: s.subject,
+          accuracy: s.accuracy,
+          totalAttempts: s.totalAttempts,
+          status: s.status,
+        })),
       });
+
+      // Ensure topicMasteryAnalysis is present
+      analysisResult = hydrateCachedAnalysis(analysisResult);
     } catch (aiError: any) {
       console.warn('Genkit AI Diagnostic flow encountered error or rate limit:', aiError?.message || aiError);
 
@@ -329,11 +522,12 @@ export async function getAiDiagnosticAction(options?: {
       if (cachedRecord?.analysis) {
         try {
           const parsed = JSON.parse(cachedRecord.analysis) as GenerateDiagnosticOutput;
+          const hydrated = hydrateCachedAnalysis(parsed);
           return {
             success: true,
             cached: true,
             updatedAt: (cachedRecord.updatedAt instanceof Date ? cachedRecord.updatedAt : new Date(cachedRecord.updatedAt)).toISOString(),
-            analysis: parsed,
+            analysis: hydrated,
             canRegenerate,
             cooldownSeconds,
             cooldownExpiresAt,
@@ -352,7 +546,9 @@ export async function getAiDiagnosticAction(options?: {
         focusSubject,
         dailyQuota,
         fullMastery,
-        totalAttempts
+        totalAttempts,
+        weakestTopics,
+        strongestTopics
       );
       isFallback = true;
     }
@@ -360,18 +556,25 @@ export async function getAiDiagnosticAction(options?: {
     // 5. Store / Upsert into AiAnalysis table
     const now = new Date();
     try {
-      await db.collection('AiAnalysis').updateOne(
-        { $or: idQueries },
-        {
-          $set: {
-            userId: userObjId || userId,
-            analysis: JSON.stringify(analysisResult),
-            hash: dataHash,
-            updatedAt: now,
-          },
-        },
-        { upsert: true }
-      );
+      if (cachedRecord?._id) {
+        await db.collection('AiAnalysis').updateOne(
+          { _id: cachedRecord._id },
+          {
+            $set: {
+              analysis: JSON.stringify(analysisResult),
+              hash: dataHash,
+              updatedAt: now,
+            },
+          }
+        );
+      } else {
+        await db.collection('AiAnalysis').insertOne({
+          userId: userObjId || userId,
+          analysis: JSON.stringify(analysisResult),
+          hash: dataHash,
+          updatedAt: now,
+        });
+      }
 
       // Also sync with Prisma if model is active
       if (typeof (prisma as any).aiAnalysis?.upsert === 'function') {
