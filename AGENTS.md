@@ -1,26 +1,49 @@
 # Strict Sprite & Boss Animation Protection Rules
 
 > **CRITICAL INVARIANT**: All sprite animations, attack effects, frame configurations, lunges, reset delays, impact delays, and sound effect bindings in BoardQuest across **BOTH Boss-Battle Mode and Learning Mode** have been fully tested, verified, and approved by the user. Under NO circumstances should any agent alter, revert, override, cross-contaminate, or degrade these sprite animation systems in either game mode without explicit user instruction.
+>
+> **VIEWPORT INDEPENDENCE & ISOLATION RULE**:
+> - **Web adjustments MUST NEVER alter mobile configurations**: Any agent adjusting desktop/web views must strictly edit `md:` prefixed Tailwind classes without modifying base or `sm:` mobile classes or mobile container rules.
+> - **Mobile adjustments MUST NEVER alter web configurations**: Any agent adjusting mobile views must strictly edit mobile-specific classes (`scale-[...]`, mobile `translate-x-[...]`, mobile `translate-y-[...]`, `right-2 sm:right-4`, `items-end`) without modifying any `md:` prefixed classes.
+> - **Universal Mode Parity**: Within each viewport (Web or Mobile), Boss-Battle Mode, Learning Mode, and Test Mode remain 100% identical.
 
 ---
 
 ## 1. Verified & Permanently Locked Enemy Sprite Configurations
 
 ### Clinical Chemistry
-- **Acid Slime (Stage 1 Minion - `cc-1`)**: All original attack animations, lunges, frame timings, and sound effects (`AcidSlimeNormal&HeavyAttack.mp3`) are permanently locked.
+- **Acid Slime (Stage 1 Minion - `cc-1`)**: Full animation sequence, lunges, and sound effects (`AcidSlimeNormal&HeavyAttack.mp3`) are permanently locked.
 - **Hyperglycemic Mutant (Stage 2 Mini-Boss - `cc-2`)**:
   - `miniBossIdleSpriteUrl`: `/images/bosses/clinchem_chapterOneMiniBoss_idleAnimation.png` (9 frames, 183x194, 0.9s loop)
-  - `miniBossAttackSpriteUrl`: `/images/bosses/clinchem_chapterOneMiniBoss_normalAttackAnimation.png` (8 frames, 250x210, 0.80s duration) with claw slash lunge (`min(-40px, calc(-100cqw + 310px))` / `calc(-100cqw + 460px)`, 42px) attacking right in front of the player and resetting cleanly to `translate(70px, 17px)`
-  - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/clinchem_chapterOneMiniBoss_heavyAttackAnimation.png` (8 frames, 190x154, 0.95s duration) with soaring leap dive ground shockwave slam lunge (`min(-50px, calc(-100cqw + 180px))` / `calc(-100cqw + 310px)`, -10px) slamming cleanly onto player and resetting cleanly to `translate(7px, -41px)`
-  - Scale & Positioning: `effectiveScale = scale * 1.55` with resting alignment `translate-x-[40px] sm:translate-x-[50px] md:translate-x-[80px] -translate-y-[45px] md:-translate-y-[55px]` in `src/app/quest/page.tsx` keeping the HP card on the right side and centering the mutant vertically in between its HP bar and the ground.
+  - `miniBossAttackSpriteUrl`: `/images/bosses/clinchem_chapterOneMiniBoss_normalAttackAnimation.png` (8 frames, 250x210, 0.80s duration) with claw slash lunge (`min(-40px, calc(-100cqw + 310px))` / `calc(-100cqw + 460px)`, 42px) and `translate(70px, 17px)` reset
+  - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/clinchem_chapterOneMiniBoss_heavyAttackAnimation.png` (8 frames, 190x154, 0.95s duration) with soaring leap dive ground shockwave slam lunge (`min(-50px, calc(-100cqw + 180px))` / `calc(-100cqw + 310px)`, -10px) and `translate(7px, -41px)` reset
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/SickleCellNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/AcidSlimeNormal&HeavyAttack.mp3`, with preloaded handlers via `preloadHyperglycemicMutantSounds` and `playHyperglycemicMutantAttack`.
-  - All animations, frame dimensions, timings, scale, position, delays, and sound effects are permanently locked to not change, alter, modify, or cross-contaminate. Must NEVER leak into other stages.
+  - Base Scale: `effectiveScale = scale * 1.55` in `BossSpriteAnimator.tsx`.
+  - **🖥️ Web Screen View (`md:` breakpoint and above)**:
+    - Alignment: `md:scale-100 md:translate-x-[80px] md:-translate-y-[55px]`
+    - Container: `md:top-16 md:right-8 items-end`
+    - Invariant: Desktop position kept clean under the right-side HP card on its pedestal.
+  - **📱 Mobile Screen View (default / `<md` breakpoint)**:
+    - Alignment: `scale-[0.78] sm:scale-[0.90] translate-x-[140px] sm:translate-x-[110px] -translate-y-[85px] sm:-translate-y-[70px]`
+    - Container: `top-14 right-4 items-end`
+    - Invariant: HP card sits on the right side; mutant is centered vertically between its HP bar and the ground.
+  - All animations, frame dimensions, timings, scale, position, delays, and sound effects are permanently locked. Must NEVER leak into other stages.
+
 - **Ketoacidosis Colossus (Stage 3 Chapter Boss - `cc-3`)**:
   - `idleSpriteUrl`: `/images/bosses/clinchem_chapterOneBoss_idleAnimation.png` (7 frames, 304x273, 1.0s loop)
   - `attackSpriteUrl`: `/images/bosses/clinchem_chapterOneBoss_normalAttackAnimation.png` (7 frames, 379x307, 0.70s duration) with `KetoacidosisColossusNormalAttack.mp3` and forward lunge target (`min(-40px, calc(-100cqw + 350px))` / `calc(-100cqw + 470px)`, -35px) hitting cleanly in front of player
   - `heavyAttackSpriteUrl`: `/images/bosses/clinchem_chapterOneBoss_heavyAttackAnimation.png` (8 frames, 493x639, 0.85s duration) with `KetoacidosisColossusHeavyAttack.mp3`, repositioned to the top (`-270px` resting/reset, `-280px` slam) and forward lunge target (`min(-50px, calc(-100cqw + 475px))` / `calc(-100cqw + 570px)`, -280px) hitting cleanly in front of player
-  - Scale & Positioning: `effectiveScale = scale * 1.18` with resting alignment `translate-x-[85px] sm:translate-x-[115px] md:translate-x-[165px] -translate-y-[68px] md:-translate-y-[80px]` in `src/app/quest/page.tsx` keeping the HP card on the right side, centered directly under its HP card and vertically centered between its HP bar and the ground.
-  - All animations, frame dimensions, timings, scale, position, delays, lunges, and sound effects are permanently locked to not change, alter, modify, or cross-contaminate. Must NEVER leak into other stages.
+  - Base Scale: `effectiveScale = scale * 1.18` in `BossSpriteAnimator.tsx`.
+  - **🖥️ Web Screen View (`md:` breakpoint and above)**:
+    - Alignment: `md:scale-100 md:translate-x-[165px] md:-translate-y-[80px]`
+    - Container: `md:top-16 md:right-8 items-end`
+    - Invariant: Positioned cleanly beneath the HP card with desktop proportions intact.
+  - **📱 Mobile Screen View (default / `<md` breakpoint)**:
+    - Alignment: `scale-[0.72] sm:scale-[0.88] translate-x-[215px] sm:translate-x-[185px] -translate-y-[110px] sm:-translate-y-[95px]`
+    - Container: `top-14 right-4 items-end`
+    - Invariant: HP card on the right side; Colossus is centered vertically between its HP bar and the ground on mobile.
+  - All animations, frame dimensions, timings, scale, position, delays, lunges, and sound effects are permanently locked. Must NEVER leak into other stages.
+
 - **Hyperglycemic Specter (Stage 4 Final Boss - `cc-4` / legacy `cc-3`)**: Scoped strictly to Final Boss with normal attack projectile, heavy beam attack, and sound effects permanently locked.
 
 ### Microbiology
@@ -47,9 +70,18 @@
     - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
   - `heavyAttackSpriteUrl`: `/images/bosses/hematology_chapterOneBoss_heavyAttackGlintAnimation-1.png` (14 frames, 176x196, playing in place as warning glint)
   - `heavyAttackFistUrl`: `/images/bosses/hematology_chapterOneBoss_heavyAttackFistAnimation-2.png` (9 frames, 176x196, scale 2.5 via `ColossusFistAnimator` on player body from 220ms to 940ms, impact at 460ms, reset at 1150ms) with `ErythrocyeColossusHeavyAttack.mp3` triggered at 220ms and smooth fade at end
-  - Scale & Positioning: `effectiveScale = scale * 0.90` with vertical alignment `translate-y-[8px] md:translate-y-[12px]` in `src/app/quest/page.tsx` ensuring generous clearance below the Enemy HP bar
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/BiohazardOverlordNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/ErythrocyeColossusHeavyAttack.mp3`, with preloaded handlers via `preloadErythrocyteColossusSounds`, `playErythrocyteColossusAttack`, and `stopErythrocyteColossusAttack` permanently locked.
+  - Base Scale: `effectiveScale = scale * 0.90` in `BossSpriteAnimator.tsx`.
+  - **🖥️ Web Screen View (`md:` breakpoint and above)**:
+    - Alignment: `md:translate-y-[12px]`
+    - Container: `md:top-16 md:right-8 bottom-0 items-center pointer-events-none`
+    - Invariant: Generous clearance below Enemy HP bar, vertically centered in arena column.
+  - **📱 Mobile Screen View (default / `<md` breakpoint)**:
+    - Alignment: `translate-y-[8px]`
+    - Container: `top-14 right-4 bottom-0 items-center pointer-events-none`
+    - Invariant: Clear separation below HP card, centered vertically between HP and ground.
   - All animations, timings, scale, position, sound effects, and components are permanently locked. Must NEVER leak into other stages.
+
 - **Sickle-Cell Reaper (Stage 4 Final Boss - `hem-4` / legacy `hem-3`)**:
   - `idleSpriteUrl`: `/images/bosses/hematology_finalboss_idleAnimation.png` (6 frames, 128x128)
   - `attackSpriteUrl`: `/images/bosses/hematology_finalboss_normalAttackGlintAnimation.png` (6 frames, 128x128)
@@ -61,32 +93,66 @@
 - **Lymphocyte Swarm (Stage 1 Minion - `is-1`)**: All animations, lightning overlays, and audio effects (`MicrobeSwarmNormalAttack.mp3`, `MicrobeSwarmHeavyAttack.wav`) are permanently locked.
 - **Antigen Titan (Stage 2 Mini-Boss - `is-2`)**:
   - `miniBossIdleSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_idleAnimation.png` (7 frames, 128x128, 1.0s loop)
-  - `miniBossAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_normalAttackAnimation.png` (8 frames, 128x128, 0.70s duration) with swift forward strike lunge (`min(-60px, calc(-100cqw + 260px))` / `calc(-100cqw + 330px)`, 15px, scale 1.12–1.14) hitting cleanly in front of player and resetting cleanly to `translate(0px, 0px)`
-  - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_heavyAttackAnimation.png` (9 frames, 183x153, 0.85s duration) with overhead ground slam heavy wave lunge (`min(-60px, calc(-100cqw + 245px))` / `calc(-100cqw + 320px)`, 20px, scale 1.16–1.18) hitting cleanly in front of player and resetting cleanly to `translate(0px, 0px)`
-  - Scale & Positioning: `effectiveScale = scale * 1.85` with resting alignment `translate-x-[40px] sm:translate-x-[50px] md:translate-x-[80px] -translate-y-[45px] md:-translate-y-[55px]` in `src/app/quest/page.tsx` keeping the HP card on the right side and centering vertically in between its HP bar and the ground.
+  - `miniBossAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_normalAttackAnimation.png` (8 frames, 128x128, 0.70s duration) with swift forward strike lunge (`min(-60px, calc(-100cqw + 200px))` / `calc(-100cqw + 330px)`, 15px, scale 1.12–1.14) hitting cleanly in front of player and resetting cleanly to `translate(0px, 0px)`
+  - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneMiniBoss_heavyAttackAnimation.png` (9 frames, 183x153, 0.85s duration) with overhead ground slam heavy wave lunge (`min(-60px, calc(-100cqw + 155px))` / `calc(-100cqw + 320px)`, 20px, scale 1.16–1.18) hitting cleanly in front of player and resetting cleanly to `translate(0px, 0px)`
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/KetoacidosisColossusNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/CrystalGolemNormalAttack.mp3`, with preloaded handlers via `preloadKetoacidosisSounds` and `preloadCrystalGolemSounds` (heavy SFX impact at 460ms, resetDelay = 750ms normal / 900ms heavy, impactDelay = 280ms normal / 480ms heavy).
-  - All animations, frame dimensions, timings, scale, position, delays, lunges, and sound effects are permanently locked to not change, alter, modify, or cross-contaminate. Must NEVER leak into other stages.
+  - Base Scale: `effectiveScale = scale * 1.85` in `BossSpriteAnimator.tsx`.
+  - **🖥️ Web Screen View (`md:` breakpoint and above)**:
+    - Alignment: `md:scale-100 md:translate-x-[80px] md:-translate-y-[55px]`
+    - Container: `md:top-16 md:right-8 items-end`
+    - Invariant: Desktop position kept clean under the right-side HP card.
+  - **📱 Mobile Screen View (default / `<md` breakpoint)**:
+    - Alignment: `scale-[0.78] sm:scale-[0.90] translate-x-[110px] sm:translate-x-[95px] -translate-y-[90px] sm:-translate-y-[70px]`
+    - Container: `top-14 right-4 items-end`
+    - Invariant: HP card on the right side; Titan centered vertically between its HP bar and the ground on mobile.
+  - All animations, frame dimensions, timings, scale, position, delays, lunges, and sound effects are permanently locked. Must NEVER leak into other stages.
+
 - **Immune Archon (Stage 3 Chapter Boss - `is-3` / legacy `is-1`)**:
   - `idleSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_idleAnimation.png` (7 frames, 284x220, 1.0s loop)
-  - `attackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_normalAttackAnimation.png` (11 frames, 252x177, 0.90s duration) with `ImmuneArchonNormalAttack.mp3` and forward whip strike lunge (`min(-60px, calc(-100cqw + 320px))` / `calc(-100cqw + 420px)`, 8px) hitting cleanly in front of player (impactDelay = 380ms, resetDelay = 900ms)
-  - `heavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackAnimation.png` (18 frames, 247x228, 1.05s duration) playing in-place as a warning glint animation (no lunge)
+  - `attackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_normalAttackAnimation.png` (11 frames, 252x177, 0.90s duration) with `ImmuneArchonNormalAttack.mp3` and forward whip strike lunge (`min(-60px, calc(-100cqw + 230px))` / `calc(-100cqw + 420px)`, 70px) hitting cleanly in front of player (impactDelay = 380ms, resetDelay = 900ms)
+  - `heavyAttackSpriteUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackAnimation.png` (18 frames, 247x228, 1.05s duration) playing in-place as a warning glint animation with resting position alignment (`translate(-70px, 0px)` on mobile so warning glint is not covered by the screen edge; `translate(0px, 0px)` on web)
   - `lightningAttackUrl`: `/images/bosses/immunohema_chapterOneBoss_heavyAttackThunderAnimation.png` (12 frames, 192x192 via `ArchonThunderAnimator`, scale 2.8, 720ms duration, and `AntiSerumHydraHeavyAttack.mp3` at 2.0x speed via `playImmuneArchonAttack`)
   - Heavy Attack Sequence & Timing:
-    - 0–250ms: Immune Archon summons the thunder storm while executing its warning glint animation on its pedestal (no forward lunge).
+    - 0–250ms: Immune Archon summons the thunder storm while executing its warning glint animation on its pedestal (no forward lunge; mobile resting offset `translate(-70px, 0px)` keeps sprite cleanly visible).
     - 250–970ms: Renders all 12 frames of the thunder animation directly centered over the aspirant's body with `AntiSerumHydraHeavyAttack.mp3` at 2.0x speed, impacting at 420ms (`impactDelay = 420ms`, hit spark, and shake).
     - 970–1120ms: Frame 12 clears cleanly with a smooth fade-out settling at `resetDelay = 1120ms`.
-  - Scale & Positioning: `effectiveScale = scale * 1.35` with resting alignment `translate-x-[85px] sm:translate-x-[115px] md:translate-x-[165px] -translate-y-[68px] md:-translate-y-[80px]` in `src/app/quest/page.tsx` keeping the HP card on the right side, centered directly under its HP card and vertically centered between its HP bar and the ground.
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/ImmuneArchonNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/AntiSerumHydraHeavyAttack.mp3` (in 2x speed), with preloaded handlers permanently locked.
-  - All animations, frame dimensions, timings, scale, position, delays, lunges, animator components (`ArchonThunderAnimator`), and sound effect bindings are permanently locked to not change, alter, modify, degrade, or cross-contaminate. Must NEVER leak into other stages.
+  - Base Scale: `effectiveScale = scale * 1.35` in `BossSpriteAnimator.tsx`.
+  - **🖥️ Web Screen View (`md:` breakpoint and above)**:
+    - Alignment: `md:scale-100 md:translate-x-[165px] md:-translate-y-[80px]`
+    - Container: `md:top-16 md:right-8 items-end`
+    - Invariant: Desktop position kept clean under the right-side HP card.
+  - **📱 Mobile Screen View (default / `<md` breakpoint)**:
+    - Alignment: `scale-[0.72] sm:scale-[0.88] translate-x-[220px] sm:translate-x-[190px] -translate-y-[110px] sm:-translate-y-[95px]`
+    - Container: `top-14 right-4 items-end`
+    - Invariant: HP card on the right side; Archon centered vertically between its HP bar and the ground on mobile.
+  - All animations, frame dimensions, timings, scale, position, delays, lunges, animator components (`ArchonThunderAnimator`), and sound effect bindings are permanently locked. Must NEVER leak into other stages.
+
 - **Anti-Serum Hydra (Stage 4 Final Boss - `is-4` / legacy `is-3`)**: All animations, lightning effects, frame dimensions, vertical spritesheet configuration, and audio effects are permanently locked.
 
 ### Clinical Microscopy & Parasitology
 - **Reagent Strip Slime (Stage 1 Minion - `cm-1`)**: Full animation sequence, lunges, and sound effects (`ReagentStripSlimeNormal&HeavyAttack.mp3`) are permanently locked.
+- **Nitrite Spectre (Stage 2 Mini-Boss - `cm-2`)**:
+  - `miniBossIdleSpriteUrl`: `/images/bosses/clinmicro_chapterOneMinionBoss_idleAnimation.png` (9 frames, 155x161, 1.0s loop)
+  - `miniBossAttackSpriteUrl`: `/images/bosses/clinmicro_chapterOneMinionBoss_normalAttackAnimation.png` (9 frames, 260x231)
+  - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/clinmicro_chapterOneMinionBoss_heavyAttackAnimation.png` (11 frames, 370x279)
+  - Sound effects: `normalAttackSfxUrl: /SoundEffects/KetoacidosisColossusNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/FungalSporeNormalAttack.mp3`
+  - Base Scale: `effectiveScale = scale * 1.25` in `BossSpriteAnimator.tsx`.
+  - **🖥️ Web Screen View (`md:` breakpoint and above)**:
+    - Alignment: `md:scale-100 md:translate-x-0 md:-translate-y-[12px]`
+    - Container: `md:top-16 md:right-8 bottom-0 md:items-center pointer-events-none`
+    - Invariant: Centered in arena column beneath HP card with standard desktop clearance.
+  - **📱 Mobile Screen View (default / `<md` breakpoint)**:
+    - Alignment: `scale-[0.72] sm:scale-[0.88] translate-x-[45px] sm:translate-x-[25px] translate-y-[6px] sm:translate-y-[0px]`
+    - Container: `top-14 right-2 sm:right-4 bottom-0 items-end pointer-events-none`
+    - Invariant: Flush against the right edge under HP card, centered vertically between its HP bar and the ground.
+  - All animations, frame dimensions, timings, scale, position, delays, lunges, and sound effects are permanently locked. Must NEVER leak into other stages.
+
 - **Urochrome Titan (Stage 3 Chapter Boss - `cm-3` / legacy `cm-1`)**:
   - `idleSpriteUrl`: `/images/bosses/clinmicro_chapterOneBoss_idleAnimation.png` (14 frames, 77x99, 1.0s loop)
   - `attackSpriteUrl`: `/images/bosses/clinmicro_chapterOneBoss_normalAttackAnimation.png` (14 frames, 219x128, 1.25s duration, `step-end` with 14 dedicated keyframes)
   - Normal Attack Sequence & Timing:
-    - 0–150ms: Swift dash directly in front of the player (`min(-45px, calc(-100cqw + 590px))` / `calc(-100cqw + 720px)`)
+    - 0–150ms: Swift dash directly in front of the player (`min(80px, calc(-100cqw + 560px))` / `calc(-100cqw + 720px)`)
     - 0–1250ms: Executes and renders all 14 frames of the normal claw strike attack in front of the player, with `BiohazardOverlordNormalAttack.mp3` triggered at ~350ms and claw impact at 420ms (`impactDelay = 420ms`, hit spark, and shake)
     - 1250ms–2184ms: Seamlessly transitions to `idleSpriteUrl` in a dedicated clipped 77x99 window at `left: 51 * effectiveScale px, top: 29 * effectiveScale px`, pausing for ~1 second in its Idle stance in front of the player
     - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
@@ -96,9 +162,18 @@
     - 0–1250ms: Executes and renders all 14 frames of the heavy claw ground slam attack in front of the player, with `CrystalGolemNormalAttack.mp3` triggered at ~420ms and slam impact at 450ms (`impactDelay = 450ms`, hit spark, and shake)
     - 1250ms–2184ms: Seamlessly transitions to `idleSpriteUrl` in a dedicated clipped 77x99 window at `left: 51 * effectiveScale px, top: 29 * effectiveScale px`, pausing for ~1 second in its Idle stance in front of the player
     - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
-  - Scale & Positioning: `effectiveScale = scale * 2.55` with vertical alignment `translate-y-[16px] md:translate-y-[20px]` in `src/app/quest/page.tsx` ensuring generous clearance below the Enemy HP bar and SHIELDED badge while matching the physical body size and silhouette of Crystal Golem.
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/BiohazardOverlordNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/CrystalGolemNormalAttack.mp3`, with preloaded handlers via `preloadBiohazardSounds` and `preloadCrystalGolemSounds` permanently locked.
-  - All animations, timings, frame dimensions, delays, scales, positions, keyframes, and sound effect bindings are permanently locked to not modify, alter, degrade, or cross-contaminate. Must NEVER leak into other stages.
+  - Base Scale: `effectiveScale = scale * 2.55` in `BossSpriteAnimator.tsx`.
+  - **🖥️ Web Screen View (`md:` breakpoint and above)**:
+    - Alignment: `md:scale-100 md:translate-x-0 md:translate-y-[20px]`
+    - Container: `md:top-16 md:right-8 bottom-0 md:items-center pointer-events-none`
+    - Invariant: Generous clearance below HP bar and SHIELDED badge; silhouette and scale match desktop arena.
+  - **📱 Mobile Screen View (default / `<md` breakpoint)**:
+    - Alignment: `scale-[0.72] sm:scale-[0.88] translate-x-[70px] sm:translate-x-[40px] -translate-y-[6px] sm:translate-y-[6px]`
+    - Container: `top-14 right-2 sm:right-4 bottom-0 items-end pointer-events-none`
+    - Invariant: Offsets transparent right frame margin; sits flush along right edge beneath HP card and vertically centered between HP and ground.
+  - All animations, timings, frame dimensions, delays, scales, positions, keyframes, and sound effect bindings are permanently locked. Must NEVER leak into other stages.
+
 - **Crystal Golem (Stage 4 Final Boss - `cm-4` / legacy `cm-3`)**: Scoped strictly to Final Boss with idle, normal, and heavy animations and audio (`CrystalGolemNormalAttack.mp3`, `CrystalGolemHeavyAttack.mp3`) permanently locked.
 
 ### Histopathology and Medtech Laws
@@ -113,9 +188,18 @@
     - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
   - `miniBossHeavyAttackSpriteUrl`: `/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackGlintAnimation-1.png` (13 frames, 128x128, playing in place as warning glint animation with no lunge)
   - `miniBossHeavyAttackBallsUrl`: `/images/bosses/hispatho_chapterOneMiniBoss_heavyAttackBallsAnimation-2.png` (12 frames, 192x192 via `ParaffinBallsAnimator` at scale 2.0 positioned on player body from 240ms to 1060ms, piercing impact at frame 7 ~718ms with `LegalBeholderHeavyAttack.mp3` and reset at 1150ms)
-  - Scale & Positioning: `effectiveScale = scale * 1.50` with vertical alignment `-translate-y-[8px] md:-translate-y-[12px]` in `src/app/quest/page.tsx`
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/BiohazardOverlordNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/LegalBeholderHeavyAttack.mp3`
-  - All animations, timings, frame dimensions, delays, scales, positions, and sound effect bindings are permanently locked to not modify, alter, degrade, or cross-contaminate. Must NEVER leak into other stages.
+  - Base Scale: `effectiveScale = scale * 1.50` in `BossSpriteAnimator.tsx`.
+  - **🖥️ Web Screen View (`md:` breakpoint and above)**:
+    - Alignment: `md:scale-100 md:translate-x-0 md:-translate-y-[12px]`
+    - Container: `md:top-16 md:right-8 bottom-0 md:items-center pointer-events-none`
+    - Invariant: Desktop position centered in the arena column beneath the HP card.
+  - **📱 Mobile Screen View (default / `<md` breakpoint)**:
+    - Alignment: `scale-[0.78] sm:scale-[0.90] translate-x-[50px] sm:translate-x-[30px] -translate-y-[16px] sm:-translate-y-[14px]`
+    - Container: `top-14 right-2 sm:right-4 bottom-0 items-end pointer-events-none`
+    - Invariant: Offsets transparent top/right canvas margins; sits flush against the right edge under HP card and vertically centered between HP and ground.
+  - All animations, timings, frame dimensions, delays, scales, positions, and sound effect bindings are permanently locked. Must NEVER leak into other stages.
+
 - **Fixation Overlord (Stage 3 Chapter Boss - `hp-3` / legacy `hp-1`)**:
   - `idleSpriteUrl`: `/images/bosses/hispatho_chapterOneBoss_idleAnimation.png` (8 frames, 128x128, 1.0s loop)
   - `attackSpriteUrl`: `/images/bosses/hispatho_chapterOneBoss_normalAttackAnimation.png` (15 frames, 256x176, 1.25s duration, `step-end` with 15 dedicated keyframes)
@@ -126,9 +210,18 @@
     - 2184ms–2600ms: Smoothly glides back to starting position while in Idle stance, settling cleanly onto its pedestal at 2600ms (`resetDelay = 2600ms`)
   - `heavyAttackSpriteUrl`: `/images/bosses/hispatho_chapterOneBoss_heavtAttackGlintAnimation-1.png` (10 frames, 144x191, playing in place as warning glint animation with no lunge, outer container `overflow-visible`, inner container `overflow-hidden` at `bottom: 0`, `left: -6 * effectiveScale px`)
   - `heavyAttackNailedUrl`: `/images/bosses/hispatho_chapterOneBoss_heavtAttackNailedAnimation-2.png` (15 frames, 256x128 via `FixationNailedAnimator` at scale 2.2 positioned on player body from 240ms to 1200ms with piercing impact at frame 7 ~688ms, holding frame 14 until 1260ms, smooth fade-out from 1260ms to 1480ms, and `resetDelay = 1550ms`)
-  - Scale & Positioning: `effectiveScale = scale * 1.50` with vertical alignment `translate-y-[52px] md:translate-y-[60px]` in `src/app/quest/page.tsx` ensuring generous clearance below the Enemy HP bar and SHIELDED badge
   - Sound effects: `normalAttackSfxUrl: /SoundEffects/BiohazardOverlordNormalAttack.mp3`, `heavyAttackSfxUrl: /SoundEffects/LegalBeholderHeavyAttack.mp3`
-  - All animations, timings, frame dimensions, delays, scales, positions, and sound effect bindings are permanently locked to not modify, alter, degrade, or cross-contaminate. Must NEVER leak into other stages.
+  - Base Scale: `effectiveScale = scale * 1.50` in `BossSpriteAnimator.tsx`.
+  - **🖥️ Web Screen View (`md:` breakpoint and above)**:
+    - Alignment: `md:scale-100 md:translate-x-0 md:translate-y-[60px]`
+    - Container: `md:top-16 md:right-8 bottom-0 md:items-center pointer-events-none`
+    - Invariant: Generous clearance below the Enemy HP bar and SHIELDED badge.
+  - **📱 Mobile Screen View (default / `<md` breakpoint)**:
+    - Alignment: `scale-[0.72] sm:scale-[0.88] translate-x-[55px] sm:translate-x-[30px] -translate-y-[10px] sm:translate-y-[10px]`
+    - Container: `top-14 right-2 sm:right-4 bottom-0 items-end pointer-events-none`
+    - Invariant: White cloak shifts flush to the right edge under HP card; vertically centered between HP card and ground without getting covered by question card.
+  - All animations, timings, frame dimensions, delays, scales, positions, and sound effect bindings are permanently locked. Must NEVER leak into other stages.
+
 - **Legal Beholder (Stage 4 Final Boss - `hp-4` / legacy `hp-3`)**:
   - `idleSpriteUrl`: `/images/bosses/hispatho_chapterThreeFinalBoss_idleAnimation.png` (6 frames, 160x140)
   - `attackSpriteUrl`: `/images/bosses/hispatho_chapterThreeFinalBoss_normalAttackGlintAnimation-1.png` (12 frames, 160x140)
@@ -200,5 +293,3 @@
 - **Minion Exclusion**: Minions are strictly reserved for Wave 1 of Learning/Boss modes and are excluded from the Test Mode candidate pool.
 - **100% Identical Choreography, Timings & Sound Effects**: The chosen enemy runs with complete parity to Boss-Battle and Learning Mode: identical frame dimensions, step-end keyframes, golden standard 4-phase lunges (swift forward dash, full in-place attack execution, 1-second idle pause, smooth glide return), impact delays, reset delays, hit sparks, screen shakes, overlay animators (`JudicialHammerAnimator`, `UndergroundBlastAnimator`, `UndergroundSpikesAnimator`, `HydraLightningAnimator`, `ArchonThunderAnimator`, `ParaffinBallsAnimator`, `FixationNailedAnimator`, `ColossusFistAnimator`, `AnemiaSlashAnimator`), and dedicated sound effect bindings.
 - **Alternating Attack Variety**: On player mistakes in Test Mode, the enemy alternates between normal attack and heavy attack (`Math.random() < 0.5`), rendering the authentic animations, overlays, and sound effects for each attack tier.
-
-

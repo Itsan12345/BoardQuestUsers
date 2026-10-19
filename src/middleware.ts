@@ -15,7 +15,38 @@ function applyRateLimit(request: NextRequest) {
     return true;
   }
 
+  const { pathname } = request.nextUrl;
+
+  // Never rate-limit static files, assets, audio, or images
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/images') ||
+    pathname.startsWith('/SoundEffects') ||
+    pathname.startsWith('/Music') ||
+    pathname.startsWith('/icons') ||
+    pathname.includes('.')
+  ) {
+    return true;
+  }
+
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '127.0.0.1';
+  const hostname = request.nextUrl.hostname;
+
+  // Exempt localhost / loopback addresses from rate limiting (e.g. testing production builds locally or on mobile devices)
+  const isLocal =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    ip === '127.0.0.1' ||
+    ip === '::1' ||
+    ip === 'localhost' ||
+    ip === '::ffff:127.0.0.1' ||
+    ip.startsWith('127.');
+
+  if (isLocal) {
+    return true;
+  }
+
   const now = Date.now();
 
   // Prune map to prevent memory leak in long running isolates
@@ -70,7 +101,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all routes except static files and api
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    // Match all routes except static files, public assets, and media
+    '/((?!_next/static|_next/image|favicon.ico|images/|SoundEffects/|Music/|icons/|.*\\.[\\w]+$).*)',
   ],
 };

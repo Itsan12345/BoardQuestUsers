@@ -317,37 +317,37 @@ export function BossSpriteAnimator({
                                     ? 22
                                     : isErythrocyteColossusIdle
                                       ? 8
-                                : isParaffinGolemHeavy
-                                  ? 13
-                                  : isParaffinGolemNormal
-                                    ? 17
-                                    : isParaffinGolemIdle
-                                      ? 7
-                                : isFixationOverlordHeavy
-                                  ? 10
-                                  : isFixationOverlordNormal
-                                    ? 15
-                                    : isFixationOverlordIdle
-                                      ? 8
-                                : isNitriteSpectreHeavy
-                                  ? 11
-                                  : isNitriteSpectreNormal
-                                    ? 9
-                                    : isNitriteSpectreIdle
-                                      ? 9
-                                : isUrochromeTitanHeavy
-                                  ? 14
-                                  : isUrochromeTitanNormal
-                                    ? 14
-                                    : isUrochromeTitanIdle
-                                      ? 14
-                                : isHeavy
-                      ? (heavyAttackFrames || 11)
-                      : (isNormalAttack && hasProjectile)
-                        ? idleFrames
-                        : isAttacking
-                          ? attackFrames
-                          : idleFrames;
+                                      : isParaffinGolemHeavy
+                                        ? 13
+                                        : isParaffinGolemNormal
+                                          ? 17
+                                          : isParaffinGolemIdle
+                                            ? 7
+                                            : isFixationOverlordHeavy
+                                              ? 10
+                                              : isFixationOverlordNormal
+                                                ? 15
+                                                : isFixationOverlordIdle
+                                                  ? 8
+                                                  : isNitriteSpectreHeavy
+                                                    ? 11
+                                                    : isNitriteSpectreNormal
+                                                      ? 9
+                                                      : isNitriteSpectreIdle
+                                                        ? 9
+                                                        : isUrochromeTitanHeavy
+                                                          ? 14
+                                                          : isUrochromeTitanNormal
+                                                            ? 14
+                                                            : isUrochromeTitanIdle
+                                                              ? 14
+                                                              : isHeavy
+                                                                ? (heavyAttackFrames || 11)
+                                                                : (isNormalAttack && hasProjectile)
+                                                                  ? idleFrames
+                                                                  : isAttacking
+                                                                    ? attackFrames
+                                                                    : idleFrames;
 
   const currentFrameWidth = isHydraHeavy
     ? 143
@@ -375,37 +375,37 @@ export function BossSpriteAnimator({
                           ? 208
                           : isErythrocyteColossusIdle
                             ? 128
-                      : isParaffinGolemHeavy
-                        ? 128
-                        : isParaffinGolemNormal
-                          ? 160
-                          : isParaffinGolemIdle
-                            ? 128
-                      : isFixationOverlordHeavy
-                        ? 128
-                        : isFixationOverlordNormal
-                          ? 256
-                          : isFixationOverlordIdle
-                            ? 128
-                      : isNitriteSpectreHeavy
-                        ? 370
-                        : isNitriteSpectreNormal
-                          ? 260
-                          : isNitriteSpectreIdle
-                            ? 155
-                      : isUrochromeTitanHeavy
-                        ? 151
-                        : isUrochromeTitanNormal
-                          ? 219
-                          : isUrochromeTitanIdle
-                            ? 77
-                      : isHeavy
-                  ? (heavyFrameWidth || 176)
-                  : (isNormalAttack && hasProjectile)
-                    ? (idleFrameWidth || 128)
-                    : isAttacking
-                      ? (attackFrameWidth || 128)
-                      : (idleFrameWidth || 128);
+                            : isParaffinGolemHeavy
+                              ? 128
+                              : isParaffinGolemNormal
+                                ? 160
+                                : isParaffinGolemIdle
+                                  ? 128
+                                  : isFixationOverlordHeavy
+                                    ? 128
+                                    : isFixationOverlordNormal
+                                      ? 256
+                                      : isFixationOverlordIdle
+                                        ? 128
+                                        : isNitriteSpectreHeavy
+                                          ? 370
+                                          : isNitriteSpectreNormal
+                                            ? 260
+                                            : isNitriteSpectreIdle
+                                              ? 155
+                                              : isUrochromeTitanHeavy
+                                                ? 151
+                                                : isUrochromeTitanNormal
+                                                  ? 219
+                                                  : isUrochromeTitanIdle
+                                                    ? 77
+                                                    : isHeavy
+                                                      ? (heavyFrameWidth || 176)
+                                                      : (isNormalAttack && hasProjectile)
+                                                        ? (idleFrameWidth || 128)
+                                                        : isAttacking
+                                                          ? (attackFrameWidth || 128)
+                                                          : (idleFrameWidth || 128);
 
   const currentFrameHeight = isHydraHeavy
     ? 144
@@ -433,37 +433,37 @@ export function BossSpriteAnimator({
                           ? 176
                           : isErythrocyteColossusIdle
                             ? 176
-                      : isParaffinGolemHeavy
-                        ? 128
-                        : isParaffinGolemNormal
-                          ? 128
-                          : isParaffinGolemIdle
-                            ? 128
-                      : isFixationOverlordHeavy
-                        ? 128
-                        : isFixationOverlordNormal
-                          ? 176
-                          : isFixationOverlordIdle
-                            ? 128
-                      : isNitriteSpectreHeavy
-                        ? 279
-                        : isNitriteSpectreNormal
-                          ? 231
-                          : isNitriteSpectreIdle
-                            ? 161
-                      : isUrochromeTitanHeavy
-                        ? 128
-                        : isUrochromeTitanNormal
-                          ? 128
-                          : isUrochromeTitanIdle
-                            ? 99
-                      : isHeavy
-                  ? (heavyFrameHeight || (heavyFrameWidth && heavyFrameWidth >= 300 ? 256 : 128))
-                  : (isNormalAttack && hasProjectile)
-                    ? (idleFrameHeight || 128)
-                    : isAttacking
-                      ? (attackFrameHeight || (attackFrameWidth && attackFrameWidth >= 300 ? 256 : 128))
-                      : (idleFrameHeight || 128);
+                            : isParaffinGolemHeavy
+                              ? 128
+                              : isParaffinGolemNormal
+                                ? 128
+                                : isParaffinGolemIdle
+                                  ? 128
+                                  : isFixationOverlordHeavy
+                                    ? 128
+                                    : isFixationOverlordNormal
+                                      ? 176
+                                      : isFixationOverlordIdle
+                                        ? 128
+                                        : isNitriteSpectreHeavy
+                                          ? 279
+                                          : isNitriteSpectreNormal
+                                            ? 231
+                                            : isNitriteSpectreIdle
+                                              ? 161
+                                              : isUrochromeTitanHeavy
+                                                ? 128
+                                                : isUrochromeTitanNormal
+                                                  ? 128
+                                                  : isUrochromeTitanIdle
+                                                    ? 99
+                                                    : isHeavy
+                                                      ? (heavyFrameHeight || (heavyFrameWidth && heavyFrameWidth >= 300 ? 256 : 128))
+                                                      : (isNormalAttack && hasProjectile)
+                                                        ? (idleFrameHeight || 128)
+                                                        : isAttacking
+                                                          ? (attackFrameHeight || (attackFrameWidth && attackFrameWidth >= 300 ? 256 : 128))
+                                                          : (idleFrameHeight || 128);
 
   const isReagentStripSlimeAttack = isAttacking && (
     attackSpriteUrl?.includes('clinmicro_chapterOneMinion') ||
@@ -543,11 +543,11 @@ export function BossSpriteAnimator({
                 ? scale * 1.50
                 : isNitriteSpectre
                   ? scale * 1.25
-                : isUrochromeTitan
-                  ? scale * 2.55
-                : isReagentStripSlimeAttack
-                ? Math.min(scale, 1.0)
-                : scale;
+                  : isUrochromeTitan
+                    ? scale * 2.55
+                    : isReagentStripSlimeAttack
+                      ? Math.min(scale, 1.0)
+                      : scale;
 
   // Frame rates (fps) - Tuned for fast, immediate and punchy combat animations
   const fps = isHeavy
@@ -685,18 +685,18 @@ export function BossSpriteAnimator({
                 : isMicrobeSwarmNormal
                   ? 0.65
                   : isSickleCellMinionHeavy
-                          ? 0.85
-                          : isSickleCellMinionNormal
-                            ? 0.72
-                            : isSickleCellMinionIdle
-                              ? (idleDuration || 1.3)
-                              : isAnemiaShadeHeavy
-                                ? 1.55
-                                : isAnemiaShadeNormal
-                                  ? 1.25
-                                  : isAnemiaShadeIdle
-                                    ? (idleDuration || 1.0)
-                                    : isSickleCellReaperHeavy
+                    ? 0.85
+                    : isSickleCellMinionNormal
+                      ? 0.72
+                      : isSickleCellMinionIdle
+                        ? (idleDuration || 1.3)
+                        : isAnemiaShadeHeavy
+                          ? 1.55
+                          : isAnemiaShadeNormal
+                            ? 1.25
+                            : isAnemiaShadeIdle
+                              ? (idleDuration || 1.0)
+                              : isSickleCellReaperHeavy
                                 ? 0.70
                                 : isReaperGlintNormal
                                   ? 0.45
@@ -780,9 +780,9 @@ export function BossSpriteAnimator({
                                                                                                                 ? 1.25
                                                                                                                 : isNitriteSpectreIdle
                                                                                                                   ? (idleDuration || 1.4)
-                                                                                          : isBiohazardIdle
-                                                                                            ? (idleDuration || (idleFps ? currentTotalFrames / idleFps : 1.05))
-                                                                                            : Math.max(0.48, Math.min(0.62, currentTotalFrames / fps));
+                                                                                                                  : isBiohazardIdle
+                                                                                                                    ? (idleDuration || (idleFps ? currentTotalFrames / idleFps : 1.05))
+                                                                                                                    : Math.max(0.48, Math.min(0.62, currentTotalFrames / fps));
 
   const totalAttackDuration = isGramPositiveHeavy
     ? spriteDuration * 2
@@ -805,76 +805,76 @@ export function BossSpriteAnimator({
                     : isAnemiaShadeNormal
                       ? 1.25
                       : isSickleCellReaperHeavy
-                    ? 0.70
-                    : isReaperGlintNormal
-                      ? 1.05
-                      : isSickleCellReaperNormal
-                        ? 1.05
-                        : isHyperglycemicMutantHeavy
-                          ? 0.95
-                          : isHyperglycemicMutantNormal
-                            ? 0.80
-                            : isBiohazardHeavy
-                              ? 0.82
-                              : isBiohazardNormal
-                                ? 0.48
-                                : isLegalBeholderHeavy
-                                  ? 1.15
-                                  : isLegalBeholderNormal
-                                    ? 0.66
-                                    : isHydraHeavy
-                                      ? 1.05
-                                      : isHydraNormal
-                                        ? 1.85
-                                        : isAcidSlimeHeavy
-                                          ? 0.82
-                                          : isAcidSlimeNormal
-                                            ? 0.58
-                                            : isGmsFungalSporeHeavy
-                                              ? 0.81
-                                              : isGmsFungalSporeNormal
-                                                ? 0.67
-                                                : isReagentStripSlimeHeavy
-                                                  ? 1.03
-                                                  : isReagentStripSlimeNormal
-                                                    ? 0.80
-                                                    : isLymphocyteSwarmHeavy
-                                                      ? 0.82
-                                                      : isLymphocyteSwarmNormal
-                                                        ? 0.78
-                                                        : isKetoacidosisColossusHeavy
-                                                          ? 0.85
-                                                          : isKetoacidosisColossusNormal
-                                                            ? 0.70
-                                                            : isAntigenTitanHeavy
+                        ? 0.70
+                        : isReaperGlintNormal
+                          ? 1.05
+                          : isSickleCellReaperNormal
+                            ? 1.05
+                            : isHyperglycemicMutantHeavy
+                              ? 0.95
+                              : isHyperglycemicMutantNormal
+                                ? 0.80
+                                : isBiohazardHeavy
+                                  ? 0.82
+                                  : isBiohazardNormal
+                                    ? 0.48
+                                    : isLegalBeholderHeavy
+                                      ? 1.15
+                                      : isLegalBeholderNormal
+                                        ? 0.66
+                                        : isHydraHeavy
+                                          ? 1.05
+                                          : isHydraNormal
+                                            ? 1.85
+                                            : isAcidSlimeHeavy
+                                              ? 0.82
+                                              : isAcidSlimeNormal
+                                                ? 0.58
+                                                : isGmsFungalSporeHeavy
+                                                  ? 0.81
+                                                  : isGmsFungalSporeNormal
+                                                    ? 0.67
+                                                    : isReagentStripSlimeHeavy
+                                                      ? 1.03
+                                                      : isReagentStripSlimeNormal
+                                                        ? 0.80
+                                                        : isLymphocyteSwarmHeavy
+                                                          ? 0.82
+                                                          : isLymphocyteSwarmNormal
+                                                            ? 0.78
+                                                            : isKetoacidosisColossusHeavy
                                                               ? 0.85
-                                                              : isAntigenTitanNormal
+                                                              : isKetoacidosisColossusNormal
                                                                 ? 0.70
-                                                                : isImmuneArchonHeavy
-                                                                  ? 1.55
-                                                                  : isImmuneArchonNormal
-                                                                    ? 0.80
-                                                                    : isErythrocyteColossusHeavy
-                                                                      ? 0.90
-                                                                      : isErythrocyteColossusNormal
-                                                                        ? 1.25
-                                                                        : isParaffinGolemHeavy
-                                                                          ? 1.15
-                                                                          : isParaffinGolemNormal
+                                                                : isAntigenTitanHeavy
+                                                                  ? 0.85
+                                                                  : isAntigenTitanNormal
+                                                                    ? 0.70
+                                                                    : isImmuneArchonHeavy
+                                                                      ? 1.55
+                                                                      : isImmuneArchonNormal
+                                                                        ? 0.80
+                                                                        : isErythrocyteColossusHeavy
+                                                                          ? 0.90
+                                                                          : isErythrocyteColossusNormal
                                                                             ? 1.25
-                                                                        : isFixationOverlordHeavy
-                                                                          ? 1.15
-                                                                          : isFixationOverlordNormal
-                                                                            ? 1.25
-                                                                        : isNitriteSpectreHeavy
-                                                                          ? 1.35
-                                                                          : isNitriteSpectreNormal
-                                                                            ? 1.25
-                                                                        : isUrochromeTitanHeavy
-                                                                          ? 1.25
-                                                                          : isUrochromeTitanNormal
-                                                                            ? 1.25
-                                                                : spriteDuration;
+                                                                            : isParaffinGolemHeavy
+                                                                              ? 1.15
+                                                                              : isParaffinGolemNormal
+                                                                                ? 1.25
+                                                                                : isFixationOverlordHeavy
+                                                                                  ? 1.15
+                                                                                  : isFixationOverlordNormal
+                                                                                    ? 1.25
+                                                                                    : isNitriteSpectreHeavy
+                                                                                      ? 1.35
+                                                                                      : isNitriteSpectreNormal
+                                                                                        ? 1.25
+                                                                                        : isUrochromeTitanHeavy
+                                                                                          ? 1.25
+                                                                                          : isUrochromeTitanNormal
+                                                                                            ? 1.25
+                                                                                            : spriteDuration;
 
   const lungeDuration = isAttacking
     ? (hasProjectile ? 0.45 : isAnemiaShadeHeavy ? 1.55 : isAnemiaShadeNormal ? 1.25 : isErythrocyteColossusHeavy ? 0.90 : isErythrocyteColossusNormal ? 2.60 : isParaffinGolemHeavy ? 1.15 : isParaffinGolemNormal ? 2.60 : isFixationOverlordHeavy ? 1.15 : isFixationOverlordNormal ? 2.60 : isNitriteSpectreHeavy ? 2.70 : isNitriteSpectreNormal ? 2.60 : isUrochromeTitanHeavy ? 2.60 : isUrochromeTitanNormal ? 2.60 : isReaperGlintNormal ? 1.05 : hasUndergroundSpikes ? 1.05 : isLegalBeholderHeavy ? 1.15 : isLegalBeholderNormal ? 1.05 : isHydraHeavy ? 1.05 : isHydraNormal ? 1.85 : isHyperglycemicMutantHeavy ? 0.95 : isHyperglycemicMutantNormal ? 0.80 : isKetoacidosisColossusHeavy ? 0.85 : isKetoacidosisColossusNormal ? 0.70 : isAntigenTitanHeavy ? 0.85 : isAntigenTitanNormal ? 0.70 : isImmuneArchonHeavy ? 1.05 : isImmuneArchonNormal ? 0.90 : totalAttackDuration + (isStaphSentinelHeavy ? 0.38 : (isBiohazardHeavy ? 0.36 : (isSickleCellMinionAttack ? 0.16 : (isGmsFungalSporeAttack ? 0.18 : (isReagentStripSlimeAttack ? 0.08 : (isLymphocyteSwarmAttack ? 0.12 : 0.35)))))))
@@ -1761,25 +1761,25 @@ export function BossSpriteAnimator({
                                               ? "bossParaffinHeavySpriteAnim"
                                               : isParaffinGolemNormal
                                                 ? "bossParaffinNormalSpriteAnim"
-                                            : isFixationOverlordHeavy
-                                              ? "bossFixationHeavySpriteAnim"
-                                              : isFixationOverlordNormal
-                                                ? "bossFixationNormalSpriteAnim"
-                                            : isNitriteSpectreHeavy
-                                              ? "bossNitriteSpectreHeavySpriteAnim"
-                                              : isNitriteSpectreNormal
-                                                ? "bossNitriteSpectreNormalSpriteAnim"
-                                                : isNitriteSpectreIdle
-                                                  ? "bossNitriteSpectreIdleSpriteAnim"
-                                              : isUrochromeTitanHeavy
-                                                ? "bossUrochromeHeavySpriteAnim"
-                                                : isUrochromeTitanNormal
-                                                  ? "bossUrochromeNormalSpriteAnim"
-                                                : isUrochromeTitanIdle
-                                                  ? "bossSpriteAnim"
-                                        : isAnemiaShadeNormal
-                                          ? "bossAnemiaNormalSpriteAnim"
-                                          : "bossSpriteAnim",
+                                                : isFixationOverlordHeavy
+                                                  ? "bossFixationHeavySpriteAnim"
+                                                  : isFixationOverlordNormal
+                                                    ? "bossFixationNormalSpriteAnim"
+                                                    : isNitriteSpectreHeavy
+                                                      ? "bossNitriteSpectreHeavySpriteAnim"
+                                                      : isNitriteSpectreNormal
+                                                        ? "bossNitriteSpectreNormalSpriteAnim"
+                                                        : isNitriteSpectreIdle
+                                                          ? "bossNitriteSpectreIdleSpriteAnim"
+                                                          : isUrochromeTitanHeavy
+                                                            ? "bossUrochromeHeavySpriteAnim"
+                                                            : isUrochromeTitanNormal
+                                                              ? "bossUrochromeNormalSpriteAnim"
+                                                              : isUrochromeTitanIdle
+                                                                ? "bossSpriteAnim"
+                                                                : isAnemiaShadeNormal
+                                                                  ? "bossAnemiaNormalSpriteAnim"
+                                                                  : "bossSpriteAnim",
                 animationDuration: isHydraVerticalSprite ? `${idleDuration || 1.8}s` : (isImmuneArchonHeavy ? '1.55s' : isImmuneArchonNormal ? '0.80s' : isErythrocyteColossusNormal ? '1.25s' : isErythrocyteColossusHeavy ? '0.90s' : isParaffinGolemNormal ? '1.25s' : isParaffinGolemHeavy ? '1.15s' : isFixationOverlordNormal ? '1.25s' : isFixationOverlordHeavy ? '1.15s' : isNitriteSpectreHeavy ? '1.35s' : isNitriteSpectreNormal ? '1.25s' : isNitriteSpectreIdle ? `${idleDuration || 1.4}s` : isUrochromeTitanHeavy ? '1.25s' : isUrochromeTitanNormal ? '1.25s' : isUrochromeTitanIdle ? `${idleDuration || 1.0}s` : isHyperglycemicMutantNormal ? '0.80s' : isHyperglycemicMutantHeavy ? '0.95s' : isAnemiaShadeNormal ? '1.25s' : `${spriteDuration}s`),
                 animationTimingFunction: isHydraNormal
                   ? `steps(${currentTotalFrames - 1})`
@@ -2644,10 +2644,10 @@ export function BossSpriteAnimator({
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           18% {
-            transform: translate(min(-60px, calc(-100cqw + 260px)), 15px) scale(1.12);
+            transform: translate(min(-60px, calc(-100cqw + 200px)), 15px) scale(1.12);
           }
           74% {
-            transform: translate(min(-60px, calc(-100cqw + 260px)), 15px) scale(1.12);
+            transform: translate(min(-60px, calc(-100cqw + 200px)), 15px) scale(1.12);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           100% {
@@ -2661,10 +2661,10 @@ export function BossSpriteAnimator({
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           18% {
-            transform: translate(min(-60px, calc(-100cqw + 245px)), 20px) scale(1.16);
+            transform: translate(min(-60px, calc(-100cqw + 155px)), 20px) scale(1.16);
           }
           74% {
-            transform: translate(min(-60px, calc(-100cqw + 245px)), 20px) scale(1.16);
+            transform: translate(min(-60px, calc(-100cqw + 155px)), 20px) scale(1.16);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           100% {
@@ -2678,10 +2678,10 @@ export function BossSpriteAnimator({
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           22% {
-            transform: translate(min(-60px, calc(-100cqw + 320px)), 8px) scale(1.06);
+            transform: translate(min(-60px, calc(-100cqw + 230px)), 70px) scale(1.06);
           }
           72% {
-            transform: translate(min(-60px, calc(-100cqw + 320px)), 8px) scale(1.06);
+            transform: translate(min(-60px, calc(-100cqw + 230px)), 70px) scale(1.06);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           100% {
@@ -2691,10 +2691,10 @@ export function BossSpriteAnimator({
 
         @keyframes bossImmuneArchonHeavyLunge {
           0% {
-            transform: translate(0px, 0px) scale(1);
+            transform: translate(-70px, 0px) scale(1);
           }
           100% {
-            transform: translate(0px, 0px) scale(1);
+            transform: translate(-70px, 0px) scale(1);
           }
         }
 
@@ -2838,11 +2838,11 @@ export function BossSpriteAnimator({
           }
           6% {
             /* Dash immediately in front of the player */
-            transform: translate(min(-45px, calc(-100cqw + 590px)), 6px) scale(1);
+            transform: translate(min(80px, calc(-100cqw + 560px)), 6px) scale(1);
           }
           84% {
             /* Stay in front of player while normal animation renders, then stop for ~1 second in idle stance */
-            transform: translate(min(-45px, calc(-100cqw + 590px)), 6px) scale(1);
+            transform: translate(min(80px, calc(-100cqw + 560px)), 6px) scale(1);
             animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
           }
           100% {
@@ -3602,26 +3602,26 @@ export function BossSpriteAnimator({
             12% {
               /* Lands just to the left side of the boss sprite on desktop */
               transform: ${isKetoacidosisColossus
-                ? 'translate(calc(100cqw - 640px), 10px) scale(1.2)'
-                : isAntigenTitan
-                  ? 'translate(calc(100cqw - 570px), 5px) scale(1.2)'
-                  : isHyperglycemicMutant
-                    ? 'translate(calc(100cqw - 560px), -10px) scale(1.2)'
-                    : isImmuneArchon
-                      ? 'translate(calc(100cqw - 500px), -10px) scale(1.2)'
-                      : 'translate(calc(100cqw - 410px), -30px) scale(1.2)'};
+          ? 'translate(calc(100cqw - 640px), 10px) scale(1.2)'
+          : isAntigenTitan
+            ? 'translate(calc(100cqw - 570px), 5px) scale(1.2)'
+            : isHyperglycemicMutant
+              ? 'translate(calc(100cqw - 560px), -10px) scale(1.2)'
+              : isImmuneArchon
+                ? 'translate(calc(100cqw - 500px), -10px) scale(1.2)'
+                : 'translate(calc(100cqw - 410px), -30px) scale(1.2)'};
             }
             78% {
               /* Slashes boss, then pauses cleanly in front of boss */
               transform: ${isKetoacidosisColossus
-                ? 'translate(calc(100cqw - 640px), 10px) scale(1.2)'
-                : isAntigenTitan
-                  ? 'translate(calc(100cqw - 570px), 5px) scale(1.2)'
-                  : isHyperglycemicMutant
-                    ? 'translate(calc(100cqw - 560px), -10px) scale(1.2)'
-                    : isImmuneArchon
-                      ? 'translate(calc(100cqw - 500px), -10px) scale(1.2)'
-                      : 'translate(calc(100cqw - 410px), -30px) scale(1.2)'};
+          ? 'translate(calc(100cqw - 640px), 10px) scale(1.2)'
+          : isAntigenTitan
+            ? 'translate(calc(100cqw - 570px), 5px) scale(1.2)'
+            : isHyperglycemicMutant
+              ? 'translate(calc(100cqw - 560px), -10px) scale(1.2)'
+              : isImmuneArchon
+                ? 'translate(calc(100cqw - 500px), -10px) scale(1.2)'
+                : 'translate(calc(100cqw - 410px), -30px) scale(1.2)'};
             }
             100% {
               /* Glides back smoothly to home spot */
@@ -3889,26 +3889,26 @@ export function BossSpriteAnimator({
           12% {
             /* Charge across arena to land directly to the left side of the boss sprite */
             transform: ${isKetoacidosisColossus
-              ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
-              : isAntigenTitan
-                ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'
-                : isHyperglycemicMutant
-                  ? 'translate(calc(100cqw - 460px), -15px) scale(1.15)'
-                  : isImmuneArchon
-                    ? 'translate(calc(100cqw - 440px), -15px) scale(1.15)'
-                    : 'translate(calc(100cqw - 340px), -20px) scale(1.15)'};
+          ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
+          : isAntigenTitan
+            ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'
+            : isHyperglycemicMutant
+              ? 'translate(calc(100cqw - 460px), -15px) scale(1.15)'
+              : isImmuneArchon
+                ? 'translate(calc(100cqw - 440px), -15px) scale(1.15)'
+                : 'translate(calc(100cqw - 340px), -20px) scale(1.15)'};
           }
           78% {
             /* Slash boss, then pause cleanly in front of boss */
             transform: ${isKetoacidosisColossus
-              ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
-              : isAntigenTitan
-                ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'
-                : isHyperglycemicMutant
-                  ? 'translate(calc(100cqw - 460px), -15px) scale(1.15)'
-                  : isImmuneArchon
-                    ? 'translate(calc(100cqw - 440px), -15px) scale(1.15)'
-                    : 'translate(calc(100cqw - 340px), -20px) scale(1.15)'};
+          ? 'translate(calc(100cqw - 520px), 0px) scale(1.15)'
+          : isAntigenTitan
+            ? 'translate(calc(100cqw - 470px), 0px) scale(1.15)'
+            : isHyperglycemicMutant
+              ? 'translate(calc(100cqw - 460px), -15px) scale(1.15)'
+              : isImmuneArchon
+                ? 'translate(calc(100cqw - 440px), -15px) scale(1.15)'
+                : 'translate(calc(100cqw - 340px), -20px) scale(1.15)'};
           }
           100% {
             /* Return to bottom-left home spot */

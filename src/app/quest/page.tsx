@@ -6483,8 +6483,14 @@ export default function LearningQuest() {
 
               return (
                 <div className={cn(
-                  "absolute top-14 right-4 md:top-16 md:right-8 transition-all duration-1000 ease-out z-10 flex flex-col",
-                  isSpecialCenteredBoss ? "bottom-0 items-center pointer-events-none" : "items-end",
+                  "absolute top-14",
+                  (isCurrentNitriteSpectre || isCurrentUrochromeTitan || isCurrentParaffinGolem || isCurrentFixationOverlord) ? "right-2 sm:right-4 md:right-8" : "right-4 md:right-8",
+                  "transition-all duration-1000 ease-out z-10 flex flex-col",
+                  isSpecialCenteredBoss
+                    ? ((isCurrentNitriteSpectre || isCurrentUrochromeTitan || isCurrentParaffinGolem || isCurrentFixationOverlord)
+                        ? "bottom-0 items-end md:items-center pointer-events-none"
+                        : "bottom-0 items-center pointer-events-none")
+                    : "items-end",
                   (introPhase === 'cutscene' || introPhase === 'hidden' || waveCharOffscreen) ? 'translate-x-[150%]' : 'translate-x-0',
                   isAnimating === "enemy" && "animate-shake scale-110"
                 )}>
@@ -6519,15 +6525,15 @@ export default function LearningQuest() {
                     isSpecialCenteredBoss
                       ? "flex-1 w-full min-h-0 flex items-center justify-center pointer-events-auto relative"
                       : "flex justify-end pr-2 md:pr-4 mt-2 relative items-center min-h-[96px]",
-                    isCurrentMutant && "translate-x-[40px] sm:translate-x-[50px] md:translate-x-[80px] -translate-y-[45px] md:-translate-y-[55px]",
-                    isCurrentAntigenTitan && "translate-x-[40px] sm:translate-x-[50px] md:translate-x-[80px] -translate-y-[45px] md:-translate-y-[55px]",
-                    isCurrentKetoacidosisColossus && "translate-x-[85px] sm:translate-x-[115px] md:translate-x-[165px] -translate-y-[68px] md:-translate-y-[80px]",
-                    isCurrentImmuneArchon && "translate-x-[85px] sm:translate-x-[115px] md:translate-x-[165px] -translate-y-[68px] md:-translate-y-[80px]",
+                    isCurrentMutant && "scale-[0.78] sm:scale-[0.90] md:scale-100 translate-x-[140px] sm:translate-x-[110px] md:translate-x-[80px] -translate-y-[85px] sm:-translate-y-[70px] md:-translate-y-[55px]",
+                    isCurrentAntigenTitan && "scale-[0.78] sm:scale-[0.90] md:scale-100 translate-x-[110px] sm:translate-x-[95px] md:translate-x-[80px] -translate-y-[90px] sm:-translate-y-[70px] md:-translate-y-[55px]",
+                    isCurrentKetoacidosisColossus && "scale-[0.72] sm:scale-[0.88] md:scale-100 translate-x-[215px] sm:translate-x-[185px] md:translate-x-[165px] -translate-y-[110px] sm:-translate-y-[95px] md:-translate-y-[80px]",
+                    isCurrentImmuneArchon && "scale-[0.72] sm:scale-[0.88] md:scale-100 translate-x-[220px] sm:translate-x-[190px] md:translate-x-[165px] -translate-y-[110px] sm:-translate-y-[95px] md:-translate-y-[80px]",
                     isCurrentErythrocyteColossus && "translate-y-[8px] md:translate-y-[12px]",
-                    isCurrentParaffinGolem && "-translate-y-[8px] md:-translate-y-[12px]",
-                    isCurrentFixationOverlord && "translate-y-[52px] md:translate-y-[60px]",
-                    isCurrentNitriteSpectre && "-translate-y-[8px] md:-translate-y-[12px]",
-                    isCurrentUrochromeTitan && "translate-y-[16px] md:translate-y-[20px]"
+                    isCurrentParaffinGolem && "scale-[0.78] sm:scale-[0.90] md:scale-100 translate-x-[50px] sm:translate-x-[30px] md:translate-x-0 -translate-y-[16px] sm:-translate-y-[14px] md:-translate-y-[12px]",
+                    isCurrentFixationOverlord && "scale-[0.72] sm:scale-[0.88] md:scale-100 translate-x-[55px] sm:translate-x-[30px] md:translate-x-0 -translate-y-[10px] sm:translate-y-[10px] md:translate-y-[60px]",
+                    isCurrentNitriteSpectre && "scale-[0.72] sm:scale-[0.88] md:scale-100 translate-x-[45px] sm:translate-x-[25px] md:translate-x-0 translate-y-[6px] sm:translate-y-[0px] md:-translate-y-[12px]",
+                    isCurrentUrochromeTitan && "scale-[0.72] sm:scale-[0.88] md:scale-100 translate-x-[70px] sm:translate-x-[40px] md:translate-x-0 -translate-y-[6px] sm:translate-y-[6px] md:translate-y-[20px]"
                   )}>
                     <div className={cn(
                       "relative inline-flex items-center justify-center transition-all duration-500 transform-gpu",
