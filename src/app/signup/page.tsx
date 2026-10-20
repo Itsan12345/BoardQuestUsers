@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   ArrowLeft,
   RefreshCw,
-  Edit3
+  Edit3,
+  ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { sendVerificationCode, verifyEmailAndSignUp } from '@/app/actions/auth';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { LoginBackgroundAnimator } from '@/components/auth/LoginBackgroundAnimator';
+import { cn } from '@/lib/utils';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -32,6 +35,16 @@ export default function SignupPage() {
   const [step, setStep] = useState<'info' | 'verify'>('info');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  function handleNavigate(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
+    e.preventDefault();
+    if (isNavigating) return;
+    setIsNavigating(true);
+    setTimeout(() => {
+      router.push(href);
+    }, 180);
+  }
   
   // Form fields
   const [name, setName] = useState('');
@@ -265,68 +278,107 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-      <div className="absolute top-4 right-4 z-50">
+    <div className="relative min-h-screen w-full flex items-center justify-center lg:justify-end overflow-hidden p-4 sm:p-6 lg:pr-14 xl:pr-24">
+      {/* Smooth Animated Pixel Art Background */}
+      <LoginBackgroundAnimator fps={8.5} enableSmoothing={true} />
+
+      {/* Floating Theme Toggle in Top Right */}
+      <div className="fixed top-4 right-4 z-50 bg-background/80 dark:bg-card/80 backdrop-blur-md border border-border/80 rounded-full p-1 shadow-lg transition-all hover:scale-105">
         <ThemeToggle />
       </div>
-      <Card className="max-w-md w-full border border-border shadow-2xl rounded-[2.5rem] bg-card overflow-visible">
-        <CardHeader className="p-8 pb-4 text-center space-y-1">
+
+      {/* SignUp Card matching Forgot Password Page container with smooth transition */}
+      <Card
+        className={cn(
+          "relative z-10 max-w-md w-full border border-border shadow-2xl rounded-[2.5rem] overflow-visible bg-card transform-gpu",
+          isNavigating
+            ? "opacity-0 scale-[0.97] -translate-y-2 transition-all duration-200 ease-in"
+            : "animate-in fade-in-0 zoom-in-[0.98] slide-in-from-bottom-2 duration-300 ease-out"
+        )}
+      >
+        <CardHeader className="px-8 pt-7 pb-2 text-center space-y-1">
+          {/* Logo Mark */}
           <div className="flex items-center justify-center">
             <Image
               src="/images/boardquestlogo2.png"
               alt="BoardQuest Logo"
               width={56}
               height={56}
-              className="w-20 h-20 -mb-3"
+              priority
+              className="w-20 h-20 -mb-3 object-contain"
             />
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight text-foreground -mt-1" style={{ fontFamily: "'Akira Expanded', sans-serif" }}>
+          {/* BOARDQUEST Branding Title */}
+          <h1
+            className="text-2xl font-bold tracking-tight text-foreground"
+            style={{ fontFamily: "'Akira Expanded', sans-serif" }}
+          >
             BOARDQUEST
           </h1>
 
-          <CardTitle className="text-xl font-black uppercase tracking-widest text-foreground" style={{ fontFamily: "'Inter', sans-serif" }}>
-            Aspirant <span className="text-primary tracking-tight" style={{ fontFamily: "'Inter-bold', sans-serif"}}>Enroll</span>
+          {/* Aspirant ENROLL Header */}
+          <CardTitle
+            className="text-xl font-black uppercase tracking-widest text-foreground"
+            style={{ fontFamily: "'Inter', sans-serif" }}
+          >
+            ASPIRANT{" "}
+            <span
+              className="text-[#851315] dark:text-[#dc2626] tracking-tight font-black"
+              style={{ fontFamily: "'Inter-bold', sans-serif" }}
+            >
+              ENROLL
+            </span>
           </CardTitle>
-          <CardDescription className="text-xs font-bold uppercase align-center text-muted-foreground" style={{ fontFamily: "'Inter', sans-serif" }}>
+
+          {/* Subtitle Description */}
+          <CardDescription
+            className="text-xs font-bold uppercase text-muted-foreground leading-tight"
+            style={{ fontFamily: "'Inter', sans-serif" }}
+          >
             {step === 'info' ? (
-              <>JOIN AND DEPLOY YOUR BOARD REVIEW<br />STRATEGY</>
+              <>JOIN AND DEPLOY YOUR BOARD REVIEW STRATEGY</>
             ) : (
-              <>VERIFY YOUR EMAIL TO INITIALIZE<br />EXPEDITION</>
+              <>VERIFY YOUR EMAIL TO INITIALIZE EXPEDITION</>
             )}
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="p-8 pt-0">
+        <CardContent className="px-8 pt-2 pb-6">
           {step === 'info' ? (
             /* ================= STEP 1: ASPIRANT INFORMATION ================= */
-            <form onSubmit={handleSendCode} className="space-y-4">
+            <form onSubmit={handleSendCode} className="space-y-3 animate-in fade-in-0 zoom-in-[0.99] duration-250 ease-out">
               {/* Full Name */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1" style={{ fontFamily: "'Inter-bold', sans-serif"}}>
-                  Full Name*
+              <div className="space-y-1">
+                <label
+                  className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-wider block"
+                  style={{ fontFamily: "'Inter-bold', sans-serif" }}
+                >
+                  FULL NAME*
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     name="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Aspirant Alex Rivera"
                     required
-                    className="pl-10 h-12 bg-muted border border-slate-300 rounded-xl focus-visible:ring-primary/20"
+                    className="pl-10 h-11 bg-muted border border-slate-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground rounded-xl focus-visible:ring-primary/20 text-sm font-medium"
                   />
                 </div>
               </div>
               
               {/* Email Address */}
-              <div className="space-y-2 relative">
-                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1" style={{ fontFamily: "'Inter-bold', sans-serif"}}>
-                  Email Address*
+              <div className="space-y-1 relative">
+                <label
+                  className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-wider block"
+                  style={{ fontFamily: "'Inter-bold', sans-serif" }}
+                >
+                  EMAIL ADRESS*
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     name="email"
                     type="email"
@@ -336,25 +388,29 @@ export default function SignupPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     onFocus={() => setIsEmailFocused(true)}
                     onBlur={() => setIsEmailFocused(false)}
-                    className={`pl-10 h-12 bg-muted border ${!isEmailValid && email.length > 0 ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-300'} rounded-xl focus-visible:ring-primary/20`}
+                    className={`pl-10 h-11 bg-muted border ${
+                      !isEmailValid && email.length > 0
+                        ? 'border-red-500 ring-1 ring-red-500'
+                        : 'border-slate-300 dark:border-slate-700'
+                    } text-foreground placeholder:text-muted-foreground rounded-xl focus-visible:ring-primary/20 text-sm font-medium`}
                   />
                   
                   {/* Email Validation Popover */}
                   {isEmailFocused && (
-                    <div className="absolute left-[calc(100%+1rem)] top-1/2 -translate-y-1/2 w-64 bg-background rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-4 border border-border z-50 hidden lg:block">
-                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-background border-l border-b border-border rotate-45 rounded-tl-sm" />
-                      <div className="space-y-3 relative z-10">
-                        <div className="flex items-center gap-3">
-                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${isEmailValid ? 'bg-[#d32f2f] text-white' : 'bg-slate-200 text-muted-foreground'}`}>
-                            <Check className="w-3.5 h-3.5" strokeWidth={4} />
+                    <div className="absolute left-[calc(100%+0.75rem)] top-1/2 -translate-y-1/2 w-60 bg-background rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-3 border border-border z-50 hidden lg:block">
+                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-background border-l border-b border-border rotate-45 rounded-tl-sm" />
+                      <div className="space-y-2 relative z-10">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${isEmailValid ? 'bg-[#851315] text-white' : 'bg-slate-200 dark:bg-slate-700 text-muted-foreground'}`}>
+                            <Check className="w-3 h-3" strokeWidth={4} />
                           </div>
-                          <span className="text-sm font-bold text-foreground">Must contain valid email address.</span>
+                          <span className="text-xs font-bold text-foreground">Must contain valid email address.</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${hasNoSpacesEmail ? 'bg-[#d32f2f] text-white' : 'bg-slate-200 text-muted-foreground'}`}>
-                            <Check className="w-3.5 h-3.5" strokeWidth={4} />
+                        <div className="flex items-center gap-2.5">
+                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${hasNoSpacesEmail ? 'bg-[#851315] text-white' : 'bg-slate-200 dark:bg-slate-700 text-muted-foreground'}`}>
+                            <Check className="w-3 h-3" strokeWidth={4} />
                           </div>
-                          <span className="text-sm font-bold text-foreground">No spaces allowed.</span>
+                          <span className="text-xs font-bold text-foreground">No spaces allowed.</span>
                         </div>
                       </div>
                     </div>
@@ -363,53 +419,57 @@ export default function SignupPage() {
               </div>
 
               {/* Password */}
-              <div className="space-y-2 relative">
-                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1" style={{ fontFamily: "'Inter-bold', sans-serif"}}>
-                  Password*
+              <div className="space-y-1 relative">
+                <label
+                  className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-wider block"
+                  style={{ fontFamily: "'Inter-bold', sans-serif" }}
+                >
+                  PASSWORD*
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
+                    placeholder="••••••••••••••••••••"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onFocus={() => setIsPasswordFocused(true)}
                     onBlur={() => setIsPasswordFocused(false)}
-                    className="pl-10 pr-10 h-12 bg-muted border border-slate-300 rounded-xl focus-visible:ring-primary/20"
+                    className="pl-10 pr-10 h-11 bg-muted border border-slate-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground rounded-xl focus-visible:ring-primary/20 text-sm font-medium"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-slate-600 focus:outline-none transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
 
                   {/* Password Validation Popover */}
                   {isPasswordFocused && (
-                    <div className="absolute left-[calc(100%+1rem)] top-1/2 -translate-y-1/2 w-64 bg-background rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-4 border border-border z-50 hidden lg:block">
-                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-background border-l border-b border-border rotate-45 rounded-tl-sm" />
-                      <div className="space-y-3 relative z-10">
-                        <div className="flex items-center gap-3">
-                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${isPasswordLongEnough ? 'bg-[#d32f2f] text-white' : 'bg-slate-200 text-muted-foreground'}`}>
-                            <Check className="w-3.5 h-3.5" strokeWidth={4} />
+                    <div className="absolute left-[calc(100%+0.75rem)] top-1/2 -translate-y-1/2 w-60 bg-background rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-3 border border-border z-50 hidden lg:block">
+                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-background border-l border-b border-border rotate-45 rounded-tl-sm" />
+                      <div className="space-y-2 relative z-10">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${isPasswordLongEnough ? 'bg-[#851315] text-white' : 'bg-slate-200 dark:bg-slate-700 text-muted-foreground'}`}>
+                            <Check className="w-3 h-3" strokeWidth={4} />
                           </div>
-                          <span className="text-sm font-bold text-foreground">At least 8 characters.</span>
+                          <span className="text-xs font-bold text-foreground">At least 8 characters.</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${hasPasswordNumber ? 'bg-[#d32f2f] text-white' : 'bg-slate-200 text-muted-foreground'}`}>
-                            <Check className="w-3.5 h-3.5" strokeWidth={4} />
+                        <div className="flex items-center gap-2.5">
+                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${hasPasswordNumber ? 'bg-[#851315] text-white' : 'bg-slate-200 dark:bg-slate-700 text-muted-foreground'}`}>
+                            <Check className="w-3 h-3" strokeWidth={4} />
                           </div>
-                          <span className="text-sm font-bold text-foreground">Contains a number.</span>
+                          <span className="text-xs font-bold text-foreground">Contains a number.</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${hasPasswordSpecial ? 'bg-[#d32f2f] text-white' : 'bg-slate-200 text-muted-foreground'}`}>
-                            <Check className="w-3.5 h-3.5" strokeWidth={4} />
+                        <div className="flex items-center gap-2.5">
+                          <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${hasPasswordSpecial ? 'bg-[#851315] text-white' : 'bg-slate-200 dark:bg-slate-700 text-muted-foreground'}`}>
+                            <Check className="w-3 h-3" strokeWidth={4} />
                           </div>
-                          <span className="text-sm font-bold text-foreground">Contains a special character.</span>
+                          <span className="text-xs font-bold text-foreground">Contains a special character.</span>
                         </div>
                       </div>
                     </div>
@@ -419,26 +479,29 @@ export default function SignupPage() {
               
               <Button
                 type="submit"
-                className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-lg transition-all active:scale-95 mt-4"
+                className="w-full h-12.5 bg-[#851315] hover:bg-[#720e10] active:scale-[0.98] text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-lg shadow-red-950/20 transition-all flex items-center justify-center gap-2 mt-2"
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Sending Code...</span>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>SENDING CODE...</span>
                   </div>
                 ) : (
-                  <>Verify Email & Continue</>
+                  <div className="flex items-center gap-2">
+                    <span>VERIFY EMAIL & CONTINUE</span>
+                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                  </div>
                 )}
               </Button>
             </form>
           ) : (
             /* ================= STEP 2: EMAIL OTP VERIFICATION ================= */
-            <form onSubmit={handleVerifyAndSignUp} className="space-y-5">
+            <form onSubmit={handleVerifyAndSignUp} className="space-y-4 animate-in fade-in-0 zoom-in-[0.99] duration-250 ease-out">
               {/* Email summary badge with edit action */}
-              <div className="bg-muted/70 border border-border/80 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+              <div className="bg-muted border border-border rounded-xl p-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  <div className="w-8 h-8 rounded-lg bg-[#851315]/10 flex items-center justify-center shrink-0 text-[#851315] dark:text-[#dc2626]">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
@@ -453,7 +516,7 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={() => setStep('info')}
-                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1 shrink-0 px-2 py-1 rounded-lg hover:bg-primary/5 transition-colors"
+                  className="text-xs font-bold text-[#851315] dark:text-[#dc2626] hover:underline flex items-center gap-1 shrink-0 px-2 py-1 rounded-lg hover:bg-[#851315]/5 transition-colors"
                 >
                   <Edit3 className="w-3 h-3" />
                   Edit
@@ -462,8 +525,8 @@ export default function SignupPage() {
 
               {/* Dev Mode Notification / Helper Banner */}
               {devCode && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center">
-                  <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-center">
+                  <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
                     Development OTP Code: <span className="font-mono text-sm tracking-widest font-black text-amber-700 dark:text-amber-300">{devCode}</span>
                   </p>
                 </div>
@@ -471,10 +534,13 @@ export default function SignupPage() {
 
               {/* 6-Digit OTP Inputs */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-muted-foreground ml-1 block text-center tracking-widest" style={{ fontFamily: "'Inter-bold', sans-serif"}}>
-                  Enter 6-Digit Code*
+                <label
+                  className="text-[10px] font-black uppercase text-muted-foreground ml-1 block text-center tracking-widest"
+                  style={{ fontFamily: "'Inter-bold', sans-serif" }}
+                >
+                  ENTER 6-DIGIT CODE*
                 </label>
-                <div className="flex items-center justify-center gap-2 sm:gap-2.5" onPaste={handleOtpPaste}>
+                <div className="flex items-center justify-center gap-2" onPaste={handleOtpPaste}>
                   {otp.map((digit, idx) => (
                     <input
                       key={idx}
@@ -487,9 +553,11 @@ export default function SignupPage() {
                       value={digit}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      className={`w-11 h-13 sm:w-12 sm:h-14 text-center text-xl font-black rounded-xl bg-muted border ${
-                        digit ? 'border-primary ring-2 ring-primary/20 bg-background text-foreground' : 'border-slate-300 text-foreground'
-                      } focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono`}
+                      className={`w-11 h-12 text-center text-xl font-black rounded-xl bg-muted border ${
+                        digit
+                          ? 'border-[#851315] dark:border-[#dc2626] ring-2 ring-[#851315]/20 bg-background text-foreground'
+                          : 'border-slate-300 dark:border-slate-700 text-foreground'
+                      } focus:outline-none focus:border-[#851315] focus:ring-2 focus:ring-[#851315]/20 transition-all font-mono`}
                     />
                   ))}
                 </div>
@@ -499,14 +567,14 @@ export default function SignupPage() {
               <div className="text-center pt-1">
                 {resendCooldown > 0 ? (
                   <p className="text-xs font-bold text-muted-foreground">
-                    Resend code in <span className="text-primary font-mono font-black">{Math.floor(resendCooldown / 60)}:{String(resendCooldown % 60).padStart(2, '0')}</span>
+                    Resend code in <span className="text-[#851315] dark:text-[#dc2626] font-mono font-black">{Math.floor(resendCooldown / 60)}:{String(resendCooldown % 60).padStart(2, '0')}</span>
                   </p>
                 ) : (
                   <button
                     type="button"
                     onClick={handleResendCode}
                     disabled={isResending}
-                    className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="text-xs font-bold text-[#851315] dark:text-[#dc2626] hover:underline inline-flex items-center gap-1 transition-colors disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3 h-3 ${isResending ? 'animate-spin' : ''}`} />
                     {isResending ? 'Sending new code...' : "Didn't receive code? Resend Code"}
@@ -518,16 +586,19 @@ export default function SignupPage() {
               <div className="space-y-2 pt-1">
                 <Button
                   type="submit"
-                  className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-lg transition-all active:scale-95"
+                  className="w-full h-12.5 bg-[#851315] hover:bg-[#720e10] active:scale-[0.98] text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-lg shadow-red-950/20 transition-all flex items-center justify-center gap-2"
                   disabled={isLoading || otp.join('').length !== 6}
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      <span>Verifying...</span>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>VERIFYING...</span>
                     </div>
                   ) : (
-                    <>Verify & Enroll</>
+                    <div className="flex items-center gap-2">
+                      <span>VERIFY & ENROLL</span>
+                      <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                    </div>
                   )}
                 </Button>
 
@@ -535,18 +606,26 @@ export default function SignupPage() {
                   type="button"
                   variant="ghost"
                   onClick={() => setStep('info')}
-                  className="w-full h-11 rounded-xl text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                  className="w-full h-9 rounded-xl text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />
                   Back to Details
                 </Button>
               </div>
             </form>
           )}
 
-          <div className="mt-6 text-center border-t border-border pt-4">
+          {/* Footer Call to Action */}
+          <div className="mt-4 text-center border-t border-border/60 pt-3">
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-              Already an Aspirant? <Link href="/login" className="text-primary hover:underline">Log In</Link>
+              ALREADY AN ASPIRANT?{" "}
+              <Link
+                href="/login"
+                onClick={(e) => handleNavigate(e, '/login')}
+                className="text-[#851315] dark:text-[#dc2626] font-black hover:underline transition-colors ml-1"
+              >
+                LOG IN
+              </Link>
             </p>
           </div>
         </CardContent>

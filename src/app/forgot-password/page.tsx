@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { sendPasswordResetCode, verifyAndResetPassword } from '@/app/actions/auth';
 import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { LoginBackgroundAnimator } from '@/components/auth/LoginBackgroundAnimator';
 import { cn } from '@/lib/utils';
 
 export default function ForgotPasswordPage() {
@@ -33,6 +34,16 @@ export default function ForgotPasswordPage() {
   const [step, setStep] = useState<'request' | 'reset'>('request');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  function handleNavigate(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
+    e.preventDefault();
+    if (isNavigating) return;
+    setIsNavigating(true);
+    setTimeout(() => {
+      router.push(href);
+    }, 180);
+  }
 
   // Form inputs
   const [email, setEmail] = useState('');
@@ -254,13 +265,24 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-background flex items-center justify-center p-4 py-8">
-      <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-      <div className="absolute top-4 right-4 z-50">
+    <div className="relative min-h-screen w-full flex items-center justify-center lg:justify-end overflow-hidden p-4 sm:p-6 lg:pr-14 xl:pr-24">
+      {/* Smooth Animated Pixel Art Background */}
+      <LoginBackgroundAnimator fps={8.5} enableSmoothing={true} />
+
+      {/* Floating Theme Toggle in Top Right */}
+      <div className="fixed top-4 right-4 z-50 bg-background/80 dark:bg-card/80 backdrop-blur-md border border-border/80 rounded-full p-1 shadow-lg transition-all hover:scale-105">
         <ThemeToggle />
       </div>
 
-      <Card className="max-w-md w-full border border-border shadow-2xl rounded-[2.5rem] overflow-hidden bg-card">
+      {/* Card with smooth navigation transition */}
+      <Card
+        className={cn(
+          "relative z-10 max-w-md w-full border border-border shadow-2xl rounded-[2.5rem] overflow-hidden bg-card transform-gpu",
+          isNavigating
+            ? "opacity-0 scale-[0.97] -translate-y-2 transition-all duration-200 ease-in"
+            : "animate-in fade-in-0 zoom-in-[0.98] slide-in-from-bottom-2 duration-300 ease-out"
+        )}
+      >
         <CardHeader className="p-8 pb-4 text-center space-y-1">
           <div className="flex items-center justify-center">
             <Image
@@ -292,7 +314,7 @@ export default function ForgotPasswordPage() {
               STEP 1: REQUEST RECOVERY CODE
              ========================================================================= */}
           {step === 'request' && (
-            <form onSubmit={handleSendCode} className="space-y-5">
+            <form onSubmit={handleSendCode} className="space-y-5 animate-in fade-in-0 zoom-in-[0.99] duration-250 ease-out">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase text-muted-foreground ml-1" style={{ fontFamily: "'Inter-bold', sans-serif" }}>
                   Registered Email Address
@@ -331,6 +353,7 @@ export default function ForgotPasswordPage() {
               <div className="pt-2 text-center">
                 <Link
                   href="/login"
+                  onClick={(e) => handleNavigate(e, '/login')}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-wider"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" /> Return to Log In
@@ -343,7 +366,7 @@ export default function ForgotPasswordPage() {
               STEP 2: VERIFY 6-DIGIT OTP & SET NEW PASSWORD
              ========================================================================= */}
           {step === 'reset' && (
-            <form onSubmit={handleResetSubmit} className="space-y-5">
+            <form onSubmit={handleResetSubmit} className="space-y-5 animate-in fade-in-0 zoom-in-[0.99] duration-250 ease-out">
               {/* Recipient Email Chip */}
               <div className="p-3 bg-muted/60 border border-border/80 rounded-2xl flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -536,7 +559,11 @@ export default function ForgotPasswordPage() {
           <div className="mt-8 text-center pt-4 border-t border-border/60">
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
               Remember your password?{' '}
-              <Link href="/login" className="text-primary hover:underline">
+              <Link
+                href="/login"
+                onClick={(e) => handleNavigate(e, '/login')}
+                className="text-primary hover:underline font-black"
+              >
                 Log In
               </Link>
             </p>
