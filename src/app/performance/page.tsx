@@ -504,7 +504,7 @@ function PerformanceContent() {
                 </div>
 
                 <Link href={`/study?subject=${encodeURIComponent(nextObjective.subject)}`} className="block">
-                  <Button variant="outline" className="w-full h-9 rounded-xl text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 flex items-center justify-center gap-1">
+                  <Button variant="outline" className="w-full h-9 rounded-xl text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:text-primary hover:border-primary/50 flex items-center justify-center gap-1 transition-colors">
                     <span>Deploy Target Milestone</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Button>

@@ -69,6 +69,7 @@ export default function StudyPage() {
   const [mounted, setMounted] = useState(false);
   const [focusSubject, setFocusSubject] = useState<string | null>(null);
   const [curriculum, setCurriculum] = useState<any[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<{ id: string; name: string; icon?: string | null }[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [targetDates, setTargetDates] = useState<Record<string, Date>>({});
   const [subjectPlans, setSubjectPlans] = useState<Record<string, { startDate: Date; endDate: Date }>>({});
@@ -144,6 +145,7 @@ export default function StudyPage() {
         setProgram(programData);
 
         const baseList = (dbCategories && Array.isArray(dbCategories)) ? dbCategories : [];
+        setAvailableCategories(baseList);
 
         if (baseList.length === 0) {
           setCurriculum([]);
@@ -604,6 +606,7 @@ export default function StudyPage() {
           <StudyScheduleTimeline
             initialPlans={rawPlans}
             program={program}
+            availableSubjects={availableCategories}
             subjectMetrics={Object.values(subjectMetrics)}
             onRefreshPlans={refreshStudyPlans}
             onSelectSubjectInCurriculum={(subjectTitle) => {
@@ -629,7 +632,7 @@ export default function StudyPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setSearchQuery('')}
-                className="text-[11px] font-bold rounded-xl h-8 border-primary/30 text-primary hover:bg-primary/10"
+                className="text-[11px] font-bold rounded-xl h-8 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-colors"
               >
                 Clear Search
               </Button>
@@ -906,7 +909,7 @@ export default function StudyPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => setSearchQuery('')}
-                          className="text-xs font-bold rounded-xl border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                          className="text-xs font-bold rounded-xl border-primary/30 text-primary hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-colors"
                         >
                           Clear Search Filter
                         </Button>

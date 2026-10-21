@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   format,
@@ -34,8 +34,11 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   ScheduleBlockModal,
-  MTLE_SUBJECTS,
+  resolveSubjectMeta,
+  type SubjectMetaConfig,
+  type SubjectOption,
 } from '@/components/study/ScheduleBlockModal';
+import { getCategories } from '@/app/actions/study';
 import type { ReviewCenterProgramData } from '@/app/actions/study-plan';
 import { useToast } from '@/hooks/use-toast';
 
@@ -56,6 +59,7 @@ export interface StudyPlanRecord {
 interface StudyScheduleTimelineProps {
   initialPlans: StudyPlanRecord[];
   program: ReviewCenterProgramData | null;
+  availableSubjects?: SubjectOption[];
   subjectMetrics?: any[];
   onRefreshPlans?: () => Promise<void>;
   onSelectSubjectInCurriculum?: (subjectTitle: string) => void;
@@ -64,6 +68,7 @@ interface StudyScheduleTimelineProps {
 export function StudyScheduleTimeline({
   initialPlans = [],
   program,
+  availableSubjects,
   subjectMetrics = [],
   onRefreshPlans,
   onSelectSubjectInCurriculum,
@@ -76,6 +81,32 @@ export function StudyScheduleTimeline({
   const [selectedPlanForEdit, setSelectedPlanForEdit] = useState<StudyPlanRecord | null>(null);
   const [selectedSubjectForModal, setSelectedSubjectForModal] = useState<string | undefined>(undefined);
   const [clickedDateForSchedule, setClickedDateForSchedule] = useState<Date | undefined>(undefined);
+
+  const [subjects, setSubjects] = useState<SubjectOption[]>(availableSubjects || []);
+
+  useEffect(() => {
+    if (availableSubjects && availableSubjects.length > 0) {
+      setSubjects(availableSubjects);
+      return;
+    }
+    let isMounted = true;
+    getCategories()
+      .then((cats) => {
+        if (isMounted && cats && Array.isArray(cats)) {
+          setSubjects(cats);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load categories in StudyScheduleTimeline:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [availableSubjects]);
+
+  const availableSubjectMetas: SubjectMetaConfig[] = useMemo(() => {
+    return subjects.map((s) => resolveSubjectMeta(s));
+  }, [subjects]);
 
   // Sync internal plans when initialPlans prop changes
   React.useEffect(() => {
@@ -162,7 +193,7 @@ export function StudyScheduleTimeline({
   };
 
   const scheduledCount = plans.length;
-  const totalSubjectCount = MTLE_SUBJECTS.length;
+  const totalSubjectCount = availableSubjectMetas.length;
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-300">
@@ -187,7 +218,7 @@ export function StudyScheduleTimeline({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl">
-                    {MTLE_SUBJECTS.find((s) => s.title === activeFocusPlan.subject)?.icon || '📚'}
+                    {availableSubjectMetas.find((s) => s.title.toLowerCase() === activeFocusPlan.subject.toLowerCase())?.icon || '📚'}
                   </span>
                   <h3 className="text-base sm:text-lg font-black text-foreground truncate">
                     {activeFocusPlan.subject}
@@ -471,7 +502,11 @@ export function StudyScheduleTimeline({
                       {/* On mobile show up to 2 chips; on desktop show up to 3 */}
                       {dayPlans.slice(0, 2).map((plan) => {
                         const meta =
-                          MTLE_SUBJECTS.find((s) => s.title === plan.subject) || MTLE_SUBJECTS[0];
+                          availableSubjectMetas.find(
+                            (s) => s.title.toLowerCase() === plan.subject.toLowerCase()
+                          ) ||
+                          availableSubjectMetas[0] ||
+                          resolveSubjectMeta(plan.subject);
 
                         return (
                           <div
@@ -502,26 +537,37 @@ export function StudyScheduleTimeline({
 
                       {/* Desktop 3rd plan if available */}
                       {dayPlans.length > 2 && (
-                        <>
-                          <div
-                            key={dayPlans[2].subject}
-                            className={cn(
-                              'hidden sm:flex text-[9.5px] font-bold px-1 py-0.5 rounded-md border items-center justify-between truncate transition-transform hover:scale-[1.02] leading-tight',
-                              (MTLE_SUBJECTS.find((s) => s.title === dayPlans[2].subject) || MTLE_SUBJECTS[0]).badgeBg,
-                              (MTLE_SUBJECTS.find((s) => s.title === dayPlans[2].subject) || MTLE_SUBJECTS[0]).badgeBorder,
-                              (MTLE_SUBJECTS.find((s) => s.title === dayPlans[2].subject) || MTLE_SUBJECTS[0]).badgeText
-                            )}
-                          >
-                            <span className="truncate flex items-center gap-1 font-extrabold min-w-0">
-                              <span>{(MTLE_SUBJECTS.find((s) => s.title === dayPlans[2].subject) || MTLE_SUBJECTS[0]).icon}</span>
-                              <span className="truncate">{dayPlans[2].subject}</span>
-                            </span>
-                          </div>
+                        (() => {
+                          const thirdMeta =
+                            availableSubjectMetas.find(
+                              (s) => s.title.toLowerCase() === dayPlans[2].subject.toLowerCase()
+                            ) ||
+                            availableSubjectMetas[0] ||
+                            resolveSubjectMeta(dayPlans[2].subject);
 
-                          <div className="text-[6.5px] sm:text-[8px] font-black text-muted-foreground text-center bg-muted/40 rounded-[2px] py-0.2 leading-none">
-                            +{dayPlans.length - 2} more
-                          </div>
-                        </>
+                          return (
+                            <>
+                              <div
+                                key={dayPlans[2].subject}
+                                className={cn(
+                                  'hidden sm:flex text-[9.5px] font-bold px-1 py-0.5 rounded-md border items-center justify-between truncate transition-transform hover:scale-[1.02] leading-tight',
+                                  thirdMeta.badgeBg,
+                                  thirdMeta.badgeBorder,
+                                  thirdMeta.badgeText
+                                )}
+                              >
+                                <span className="truncate flex items-center gap-1 font-extrabold min-w-0">
+                                  <span>{thirdMeta.icon}</span>
+                                  <span className="truncate">{dayPlans[2].subject}</span>
+                                </span>
+                              </div>
+
+                              <div className="text-[6.5px] sm:text-[8px] font-black text-muted-foreground text-center bg-muted/40 rounded-[2px] py-0.2 leading-none">
+                                +{dayPlans.length - 2} more
+                              </div>
+                            </>
+                          );
+                        })()
                       )}
                     </div>
 
@@ -544,7 +590,7 @@ export function StudyScheduleTimeline({
             <div className="p-2.5 sm:p-3 rounded-2xl bg-card/60 border border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[10px] sm:text-xs text-muted-foreground font-semibold">
               <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <span className="font-bold text-foreground">Subjects:</span>
-                {MTLE_SUBJECTS.map((sub) => (
+                {availableSubjectMetas.map((sub) => (
                   <span key={sub.title} className="flex items-center gap-1 bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/30">
                     <span>{sub.icon}</span>
                     <span>{sub.shortTitle}</span>
@@ -570,7 +616,7 @@ export function StudyScheduleTimeline({
         {viewMode === 'roadmap' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
-              {MTLE_SUBJECTS.map((sub) => {
+              {availableSubjectMetas.map((sub) => {
                 const plan = planBySubject.get(sub.title);
                 const isScheduled = !!plan;
                 const metric = subjectMetrics.find((m) => m.name === sub.title);
@@ -768,6 +814,7 @@ export function StudyScheduleTimeline({
       <ScheduleBlockModal
         open={modalOpen}
         onOpenChange={setModalOpen}
+        availableSubjects={subjects}
         initialSubject={selectedSubjectForModal || selectedPlanForEdit?.subject}
         initialStartDate={
           selectedPlanForEdit

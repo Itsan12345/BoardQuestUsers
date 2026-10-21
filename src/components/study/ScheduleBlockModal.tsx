@@ -23,6 +23,7 @@ import {
 import { format, addDays, startOfDay, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { saveStudyBlock, deleteStudyBlock, type StudyBlockInput } from '@/app/actions/study-plan';
+import { getCategories } from '@/app/actions/study';
 import { useToast } from '@/hooks/use-toast';
 import {
   Select,
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/select';
 
 export interface SubjectMetaConfig {
+  id?: string;
   title: string;
   shortTitle: string;
   color: string;
@@ -43,9 +45,14 @@ export interface SubjectMetaConfig {
   icon: string;
 }
 
-export const MTLE_SUBJECTS: SubjectMetaConfig[] = [
-  {
-    title: 'Clinical Chemistry',
+export interface SubjectOption {
+  id?: string;
+  name: string;
+  icon?: string | null;
+}
+
+const KNOWN_SUBJECT_MAP: Record<string, Omit<SubjectMetaConfig, 'id' | 'title'>> = {
+  'clinical chemistry': {
     shortTitle: 'CC',
     color: '#f59e0b',
     badgeBg: 'bg-amber-500/15',
@@ -54,8 +61,7 @@ export const MTLE_SUBJECTS: SubjectMetaConfig[] = [
     boardWeight: '20% of MTLE',
     icon: '🧪',
   },
-  {
-    title: 'Microbiology',
+  'microbiology': {
     shortTitle: 'Micro',
     color: '#10b981',
     badgeBg: 'bg-emerald-500/15',
@@ -64,8 +70,7 @@ export const MTLE_SUBJECTS: SubjectMetaConfig[] = [
     boardWeight: '20% of MTLE',
     icon: '🧫',
   },
-  {
-    title: 'Hematology',
+  'hematology': {
     shortTitle: 'Hema',
     color: '#ef4444',
     badgeBg: 'bg-rose-500/15',
@@ -74,8 +79,7 @@ export const MTLE_SUBJECTS: SubjectMetaConfig[] = [
     boardWeight: '20% of MTLE',
     icon: '🩸',
   },
-  {
-    title: 'Immunology & Serology',
+  'immunology & serology': {
     shortTitle: 'IS/BB',
     color: '#8b5cf6',
     badgeBg: 'bg-purple-500/15',
@@ -84,8 +88,16 @@ export const MTLE_SUBJECTS: SubjectMetaConfig[] = [
     boardWeight: '20% of MTLE',
     icon: '🛡️',
   },
-  {
-    title: 'Clinical Microscopy',
+  'immunology & serology and immunohematology': {
+    shortTitle: 'IS/BB',
+    color: '#8b5cf6',
+    badgeBg: 'bg-purple-500/15',
+    badgeBorder: 'border-purple-500/30',
+    badgeText: 'text-purple-500',
+    boardWeight: '20% of MTLE',
+    icon: '🛡️',
+  },
+  'clinical microscopy': {
     shortTitle: 'CM/Para',
     color: '#06b6d4',
     badgeBg: 'bg-cyan-500/15',
@@ -94,8 +106,16 @@ export const MTLE_SUBJECTS: SubjectMetaConfig[] = [
     boardWeight: '10% of MTLE',
     icon: '🔬',
   },
-  {
-    title: 'Histopathology and Medtech Laws',
+  'clinical microscopy & parasitology': {
+    shortTitle: 'CM/Para',
+    color: '#06b6d4',
+    badgeBg: 'bg-cyan-500/15',
+    badgeBorder: 'border-cyan-500/30',
+    badgeText: 'text-cyan-500',
+    boardWeight: '10% of MTLE',
+    icon: '🔬',
+  },
+  'histopathology and medtech laws': {
     shortTitle: 'Histo/Law',
     color: '#f43f5e',
     badgeBg: 'bg-pink-500/15',
@@ -104,6 +124,86 @@ export const MTLE_SUBJECTS: SubjectMetaConfig[] = [
     boardWeight: '10% of MTLE',
     icon: '📜',
   },
+  'histopathology & mt laws': {
+    shortTitle: 'Histo/Law',
+    color: '#f43f5e',
+    badgeBg: 'bg-pink-500/15',
+    badgeBorder: 'border-pink-500/30',
+    badgeText: 'text-pink-500',
+    boardWeight: '10% of MTLE',
+    icon: '📜',
+  },
+};
+
+const EMOJI_ICON_FALLBACKS: Record<string, string> = {
+  BookOpen: '📖',
+  FlaskConical: '🧪',
+  Microscope: '🔬',
+  Database: '🧫',
+  Stethoscope: '🩺',
+  ShieldAlert: '📜',
+  BookMarked: '📚',
+};
+
+export function resolveSubjectMeta(
+  subject: SubjectOption | string
+): SubjectMetaConfig {
+  const name = typeof subject === 'string' ? subject : subject.name;
+  const id = typeof subject === 'string' ? undefined : subject.id;
+  const rawIcon = typeof subject === 'string' ? undefined : subject.icon;
+
+  const key = name.trim().toLowerCase();
+  const known = KNOWN_SUBJECT_MAP[key];
+
+  let resolvedIcon = '📚';
+  if (rawIcon && EMOJI_ICON_FALLBACKS[rawIcon]) {
+    resolvedIcon = EMOJI_ICON_FALLBACKS[rawIcon];
+  } else if (rawIcon && rawIcon.length <= 4) {
+    resolvedIcon = rawIcon;
+  } else if (known?.icon) {
+    resolvedIcon = known.icon;
+  }
+
+  if (known) {
+    return {
+      id,
+      title: name,
+      shortTitle: known.shortTitle,
+      color: known.color,
+      badgeBg: known.badgeBg,
+      badgeBorder: known.badgeBorder,
+      badgeText: known.badgeText,
+      boardWeight: known.boardWeight,
+      icon: resolvedIcon,
+    };
+  }
+
+  // Derive dynamic short title from initials or first word
+  const words = name.trim().split(/\s+/);
+  const shortTitle = words.length > 1
+    ? words.map((w) => w[0]).join('').slice(0, 5).toUpperCase()
+    : name.slice(0, 5);
+
+  return {
+    id,
+    title: name,
+    shortTitle,
+    color: '#851315',
+    badgeBg: 'bg-primary/15',
+    badgeBorder: 'border-primary/30',
+    badgeText: 'text-primary',
+    boardWeight: 'Board Subject',
+    icon: resolvedIcon,
+  };
+}
+
+export const MTLE_SUBJECTS: SubjectMetaConfig[] = [
+  resolveSubjectMeta({ name: 'Clinical Chemistry' }),
+  resolveSubjectMeta({ name: 'Microbiology' }),
+  resolveSubjectMeta({ name: 'Hematology' }),
+  resolveSubjectMeta({ name: 'Immunology & Serology' }),
+  resolveSubjectMeta({ name: 'Clinical Microscopy' }),
+  resolveSubjectMeta({ name: 'Histopathology and Medtech Laws' }),
 ];
 
 export interface StudyPlanItemSummary {
@@ -121,6 +221,7 @@ export interface StudyPlanItemSummary {
 export interface ScheduleBlockModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  availableSubjects?: SubjectOption[];
   initialSubject?: string;
   initialStartDate?: Date;
   initialEndDate?: Date;
@@ -133,6 +234,7 @@ export interface ScheduleBlockModalProps {
 export function ScheduleBlockModal({
   open,
   onOpenChange,
+  availableSubjects,
   initialSubject,
   initialStartDate,
   initialEndDate,
@@ -143,6 +245,40 @@ export function ScheduleBlockModal({
 }: ScheduleBlockModalProps) {
   const { toast } = useToast();
   const today = startOfDay(new Date());
+
+  const [subjects, setSubjects] = useState<SubjectOption[]>(availableSubjects || []);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState<boolean>(
+    !availableSubjects || availableSubjects.length === 0
+  );
+
+  // Sync or fetch dynamic subjects directly from MongoDB Subject collection
+  useEffect(() => {
+    if (availableSubjects && availableSubjects.length > 0) {
+      setSubjects(availableSubjects);
+      setIsLoadingSubjects(false);
+      return;
+    }
+    let isMounted = true;
+    setIsLoadingSubjects(true);
+    getCategories()
+      .then((cats) => {
+        if (isMounted) {
+          setSubjects(cats || []);
+          setIsLoadingSubjects(false);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch subjects in ScheduleBlockModal:', err);
+        if (isMounted) setIsLoadingSubjects(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [availableSubjects]);
+
+  const displaySubjects: SubjectMetaConfig[] = useMemo(() => {
+    return subjects.map((s) => resolveSubjectMeta(s));
+  }, [subjects]);
 
   // Map of all currently scheduled plans keyed by lowercased subject name
   const plansBySubject = useMemo(() => {
@@ -161,8 +297,26 @@ export function ScheduleBlockModal({
   }, [allPlans, existingPlan]);
 
   const [selectedSubject, setSelectedSubject] = useState<string>(
-    initialSubject || MTLE_SUBJECTS[0].title
+    initialSubject || (displaySubjects[0]?.title ?? '')
   );
+
+  // Sync selectedSubject with dynamic subjects when loaded or if invalid
+  useEffect(() => {
+    if (displaySubjects.length > 0) {
+      setSelectedSubject((prev) => {
+        if (prev && displaySubjects.some((s) => s.title.toLowerCase() === prev.toLowerCase())) {
+          return prev;
+        }
+        if (initialSubject && displaySubjects.some((s) => s.title.toLowerCase() === initialSubject.toLowerCase())) {
+          return initialSubject;
+        }
+        if (existingPlan?.subject && displaySubjects.some((s) => s.title.toLowerCase() === existingPlan.subject.toLowerCase())) {
+          return existingPlan.subject;
+        }
+        return displaySubjects[0].title;
+      });
+    }
+  }, [displaySubjects, initialSubject, existingPlan]);
 
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -198,17 +352,18 @@ export function ScheduleBlockModal({
 
     // ONLY initialize form when the modal transitions from closed to open,
     // or when the parent intentionally passes a new explicit initialSubject prop.
-    // This strictly prevents resets back to CC when re-rendering or selecting other subjects!
     if (isFirstOpen || isSubjectPropChanged) {
       wasOpenRef.current = true;
       const todayDate = startOfDay(new Date());
       const maxDateVal = institutionalDeadline ? startOfDay(institutionalDeadline) : null;
 
-      // Prioritize explicit initial subject or existing plan subject, else first MTLE subject
+      // Prioritize explicit initial subject or existing plan subject, else first available subject
+      const fallbackTitle = displaySubjects[0]?.title || '';
       const sub =
         initialSubject ||
         (existingPlan ? existingPlan.subject : null) ||
-        MTLE_SUBJECTS[0].title;
+        selectedSubject ||
+        fallbackTitle;
 
       setSelectedSubject(sub);
 
@@ -265,6 +420,8 @@ export function ScheduleBlockModal({
     initialEndDate,
     institutionalDeadline,
     plansBySubject,
+    displaySubjects,
+    selectedSubject,
   ]);
 
   // When clicking a subject tile, load its existing plan or clear dates if unscheduled
@@ -543,17 +700,27 @@ export function ScheduleBlockModal({
   const endDateStr = endDate ? format(endDate, 'yyyy-MM-dd') : '';
   const daysCount = startDate && endDate ? Math.max(1, differenceInDays(endDate, startDate) + 1) : 0;
 
+  const gridColsClass = useMemo(() => {
+    const count = displaySubjects.length;
+    if (count <= 1) return 'grid-cols-1 max-w-xs';
+    if (count === 2) return 'grid-cols-2 max-w-md';
+    if (count === 3) return 'grid-cols-3 max-w-lg';
+    if (count === 4) return 'grid-cols-2 sm:grid-cols-4';
+    if (count === 5) return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5';
+    return 'grid-cols-3 sm:grid-cols-3 lg:grid-cols-6';
+  }, [displaySubjects.length]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-lg md:max-w-3xl lg:max-w-4xl max-h-[88dvh] sm:max-h-[90dvh] flex flex-col border-2 border-border/80 bg-background/95 backdrop-blur-xl shadow-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-5 lg:p-6 overflow-hidden gap-0">
+      <DialogContent className="w-[95vw] sm:w-full max-w-lg md:max-w-3xl lg:max-w-4xl max-h-[88dvh] sm:max-h-[90dvh] flex flex-col border border-slate-200 dark:border-border !bg-white dark:!bg-[#111318] bg-white dark:bg-card shadow-2xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 lg:p-6 overflow-hidden gap-0">
         {/* Pinned Header */}
-        <DialogHeader className="space-y-0.5 sm:space-y-1 pb-2 sm:pb-3 shrink-0 border-b border-border/60">
+        <DialogHeader className="space-y-0.5 sm:space-y-1 pb-2.5 sm:pb-3 shrink-0 border-b border-slate-200/80 dark:border-border/60">
           <div className="flex items-center gap-2 sm:gap-2.5">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-sm sm:text-base shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-sm sm:text-base shrink-0 shadow-2xs">
               📅
             </div>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="font-headline font-black text-sm sm:text-lg lg:text-xl text-foreground truncate">
+              <DialogTitle className="font-headline font-black text-sm sm:text-lg lg:text-xl text-slate-900 dark:text-foreground truncate tracking-tight">
                 {hasExistingSchedule ? (
                   <>
                     <span className="hidden sm:inline">Edit Schedule: </span>
@@ -568,7 +735,7 @@ export function ScheduleBlockModal({
                   </>
                 )}
               </DialogTitle>
-              <DialogDescription className="text-[10px] sm:text-xs text-muted-foreground font-semibold truncate">
+              <DialogDescription className="text-[10px] sm:text-xs text-slate-500 dark:text-muted-foreground font-medium truncate">
                 {hasExistingSchedule
                   ? `Modify review dates, priority, or actionable targets for ${selectedSubject}.`
                   : `Set review dates, priority, and actionable targets for your MTLE prep.`}
@@ -579,70 +746,90 @@ export function ScheduleBlockModal({
 
         {/* Scrollable Body - Strictly No Horizontal Overflow */}
         <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto overflow-x-hidden py-2.5 sm:py-3 space-y-3 sm:space-y-3.5 pr-1 sm:pr-1.5">
-            {/* 1. Subject Selector with Live Scheduled Indicators (6 cols on desktop, 3 on mobile/tablet) */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden py-2.5 sm:py-3.5 space-y-3 sm:space-y-3.5 pr-1 sm:pr-1.5">
+            {/* 1. Subject Selector with Live Scheduled Indicators */}
             <div className="space-y-1 sm:space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <Label className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-muted-foreground">
                   1. Choose Board Subject
                 </Label>
-                <span className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold hidden sm:inline">
+                <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-muted-foreground font-medium hidden sm:inline">
                   Tap subject to view or adjust schedule
                 </span>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-2">
-                {MTLE_SUBJECTS.map((sub) => {
-                  const isSelected = selectedSubject === sub.title;
-                  const existingSubPlan = plansBySubject.get(sub.title.toLowerCase());
-                  const isSubScheduled = Boolean(existingSubPlan);
 
-                  return (
-                    <button
-                      key={sub.title}
-                      type="button"
-                      onClick={() => handleSelectSubject(sub.title)}
-                      className={cn(
-                        'p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-0.5 sm:gap-1 group cursor-pointer relative min-w-0',
-                        isSelected
-                          ? 'border-primary bg-primary/10 shadow-sm sm:shadow-md shadow-primary/10 ring-1 ring-primary'
-                          : isSubScheduled
-                          ? 'border-emerald-500/40 bg-card hover:border-emerald-500/70 hover:bg-muted/40'
-                          : 'border-border/70 bg-card hover:border-slate-400 dark:hover:border-slate-600 hover:bg-muted/40'
-                      )}
-                    >
-                      <div className="flex items-center justify-start w-full">
-                        <span className="text-sm sm:text-base">{sub.icon}</span>
-                      </div>
+              {isLoadingSubjects && displaySubjects.length === 0 ? (
+                <div className="py-6 flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-muted-foreground font-semibold bg-slate-50/80 dark:bg-muted/20 rounded-2xl border border-dashed border-slate-200 dark:border-border/70">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span>Loading board subjects...</span>
+                </div>
+              ) : displaySubjects.length === 0 ? (
+                <div className="py-6 px-4 text-center rounded-2xl border border-dashed border-slate-200 dark:border-border/70 bg-slate-50/80 dark:bg-muted/20 space-y-1">
+                  <p className="text-xs font-bold text-slate-900 dark:text-foreground">No Board Subjects Found</p>
+                  <p className="text-[10px] text-slate-500 dark:text-muted-foreground">
+                    There are no board subjects in the database. Please add subjects to the database to schedule reviews.
+                  </p>
+                </div>
+              ) : (
+                <div className={cn('grid gap-1.5 sm:gap-2', gridColsClass)}>
+                  {displaySubjects.map((sub) => {
+                    const isSelected = selectedSubject.trim().toLowerCase() === sub.title.trim().toLowerCase();
+                    const existingSubPlan = plansBySubject.get(sub.title.toLowerCase());
+                    const isSubScheduled = Boolean(existingSubPlan);
 
-                      <div className="min-w-0 w-full">
-                        <p className="text-[10px] sm:text-xs font-black text-foreground leading-tight truncate">
-                          {sub.shortTitle}
-                        </p>
-                        <p className="text-[8px] sm:text-[9px] text-muted-foreground font-semibold truncate leading-tight hidden sm:block">
-                          {sub.title}
-                        </p>
-                      </div>
-
-                      {/* Schedule Status Indicator Badge */}
-                      <div className="pt-0.5 w-full">
-                        {isSubScheduled && existingSubPlan ? (
-                          <div className="flex items-center gap-0.5 sm:gap-1 text-[7.5px] sm:text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1 sm:px-1.5 py-0.5 rounded-md border border-emerald-500/25 w-full truncate">
-                            <CheckCircle2 className="w-2 h-2 sm:w-2.5 sm:h-2.5 shrink-0" />
-                            <span className="truncate">
-                              {format(new Date(existingSubPlan.startDate), 'MMM dd')}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-0.5 sm:gap-1 text-[7.5px] sm:text-[9px] font-semibold text-muted-foreground/70 bg-muted/60 px-1 sm:px-1.5 py-0.5 rounded-md border border-border/50 w-full truncate">
-                            <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                            <span className="truncate">None</span>
-                          </div>
+                    return (
+                      <button
+                        key={sub.title}
+                        type="button"
+                        onClick={() => handleSelectSubject(sub.title)}
+                        className={cn(
+                          'p-2 sm:p-2.5 rounded-xl sm:rounded-2xl border-2 text-left transition-all flex flex-col justify-between gap-1 group cursor-pointer relative min-w-0 shadow-2xs',
+                          isSelected
+                            ? 'border-primary bg-primary/[0.04] dark:bg-primary/15 shadow-sm ring-1 ring-primary/40'
+                            : isSubScheduled
+                            ? 'border-emerald-500/30 bg-white dark:bg-card hover:border-emerald-500/60 hover:bg-emerald-50/30 dark:hover:bg-muted/40'
+                            : 'border-slate-200 dark:border-border/70 bg-white dark:bg-card hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50/80 dark:hover:bg-muted/40'
                         )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      >
+                        <div className="flex items-center justify-start w-full">
+                          <span className="text-base sm:text-lg">{sub.icon}</span>
+                        </div>
+
+                        <div className="min-w-0 w-full">
+                          <p
+                            className={cn(
+                              'text-[11px] sm:text-xs font-black leading-tight truncate',
+                              isSelected ? 'text-primary dark:text-primary' : 'text-slate-900 dark:text-foreground'
+                            )}
+                          >
+                            {sub.shortTitle}
+                          </p>
+                          <p className="text-[8.5px] sm:text-[9.5px] text-slate-500 dark:text-muted-foreground font-medium truncate leading-tight hidden sm:block">
+                            {sub.title}
+                          </p>
+                        </div>
+
+                        {/* Schedule Status Indicator Badge */}
+                        <div className="pt-0.5 w-full">
+                          {isSubScheduled && existingSubPlan ? (
+                            <div className="flex items-center gap-0.5 sm:gap-1 text-[7.5px] sm:text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/25 w-full truncate">
+                              <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+                              <span className="truncate">
+                                {format(new Date(existingSubPlan.startDate), 'MMM dd')}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-0.5 sm:gap-1 text-[7.5px] sm:text-[9px] font-semibold text-slate-500 dark:text-muted-foreground/70 bg-slate-100 dark:bg-muted/60 px-1.5 py-0.5 rounded-md border border-slate-200/70 dark:border-border/50 w-full truncate">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-muted-foreground/40 shrink-0" />
+                              <span className="truncate">None</span>
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Two-Column Responsive Layout on md+ (Dates & Priority on Left, Targets on Right) */}
@@ -650,26 +837,26 @@ export function ScheduleBlockModal({
               {/* Left Column: Dates & Priority */}
               <div className="space-y-3">
                 {/* 2. Review Period Dates */}
-                <div className="space-y-2 sm:space-y-2.5 bg-muted/20 border border-border/70 rounded-2xl p-2.5 sm:p-3.5">
+                <div className="space-y-2.5 sm:space-y-3 bg-slate-50/90 dark:bg-muted/20 border border-slate-200/80 dark:border-border/70 rounded-2xl p-2.5 sm:p-3.5 shadow-2xs">
                   <div className="flex items-center justify-between flex-wrap gap-1.5">
                     <div className="flex items-center gap-1.5">
-                      <Label className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Label className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-muted-foreground flex items-center gap-1.5">
                         <CalendarIcon className="w-3.5 h-3.5 text-primary" />
                         2. Review Period Dates
                       </Label>
                       {hasExistingSchedule ? (
-                        <span className="text-[8.5px] sm:text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.2 rounded-full border border-emerald-500/20 flex items-center gap-0.5">
+                        <span className="text-[8.5px] sm:text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/25 flex items-center gap-0.5">
                           <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
                           Scheduled
                         </span>
                       ) : (
-                        <span className="text-[8.5px] sm:text-[9px] font-bold text-muted-foreground bg-muted px-1.5 py-0.2 rounded-full border border-border/60">
+                        <span className="text-[8.5px] sm:text-[9px] font-semibold text-slate-500 dark:text-muted-foreground bg-slate-100 dark:bg-muted px-2 py-0.5 rounded-full border border-slate-200/80 dark:border-border/60">
                           Not Scheduled
                         </span>
                       )}
                     </div>
                     {institutionalDeadline && (
-                      <span className="text-[8.5px] sm:text-[9px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 truncate">
+                      <span className="text-[8.5px] sm:text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/25 truncate">
                         Deadline: {format(institutionalDeadline, 'MMM dd, yyyy')}
                       </span>
                     )}
@@ -677,16 +864,16 @@ export function ScheduleBlockModal({
 
                   {/* Range Preview Summary Card or Empty Prompt */}
                   {startDate && endDate ? (
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/80 shadow-xs">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border/80 shadow-2xs">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
                           🗓️
                         </div>
                         <div className="min-w-0">
-                          <span className="text-[8.5px] sm:text-[9px] font-bold text-muted-foreground uppercase block leading-none">
+                          <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-500 dark:text-muted-foreground uppercase block leading-none">
                             Selected Review Period
                           </span>
-                          <span className="text-[11px] sm:text-xs font-black text-foreground truncate block leading-tight mt-0.5">
+                          <span className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-foreground truncate block leading-tight mt-0.5">
                             {format(startDate, 'MMM dd, yyyy')} – {format(endDate, 'MMM dd, yyyy')}
                           </span>
                         </div>
@@ -696,21 +883,21 @@ export function ScheduleBlockModal({
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-card/60 border border-dashed border-border/90 shadow-xs">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/[0.06] dark:bg-amber-500/10 border border-amber-500/25 dark:border-amber-500/30 shadow-2xs">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-muted text-muted-foreground flex items-center justify-center font-bold text-xs shrink-0">
+                        <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">
                           🗓️
                         </div>
                         <div className="min-w-0">
-                          <span className="text-[8.5px] sm:text-[9px] font-bold text-amber-500 uppercase block leading-none">
+                          <span className="text-[9px] sm:text-[9.5px] font-black text-amber-700 dark:text-amber-400 uppercase block leading-none">
                             No Review Period Selected Yet
                           </span>
-                          <span className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground truncate block leading-tight mt-0.5">
+                          <span className="text-[10px] sm:text-[11px] font-medium text-amber-900/70 dark:text-amber-200/80 truncate block leading-tight mt-0.5">
                             Set dates below or tap a quick preset.
                           </span>
                         </div>
                       </div>
-                      <span className="text-[8.5px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/60 shrink-0 ml-1.5">
+                      <span className="text-[8.5px] sm:text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0 ml-1.5">
                         Unscheduled
                       </span>
                     </div>
@@ -720,10 +907,10 @@ export function ScheduleBlockModal({
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-600 dark:text-muted-foreground uppercase tracking-wider">
                           Start Date
                         </span>
-                        <span className="text-[8.5px] sm:text-[9px] font-semibold text-emerald-500">
+                        <span className="text-[8.5px] sm:text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
                           Today ({format(today, 'MMM dd')})
                         </span>
                       </div>
@@ -733,18 +920,18 @@ export function ScheduleBlockModal({
                         min={minDateStr}
                         max={maxDateStr}
                         onChange={(e) => handleStartDateChange(e.target.value)}
-                        className="rounded-xl border-border/80 bg-card font-semibold text-xs h-9 px-2.5 dark:[color-scheme:dark] [color-scheme:light] cursor-pointer"
+                        className="rounded-xl border-slate-200 dark:border-border/80 bg-white dark:bg-card text-slate-900 dark:text-foreground font-semibold text-xs h-9 px-2.5 shadow-2xs focus:border-primary focus:ring-2 focus:ring-primary/10 dark:[color-scheme:dark] [color-scheme:light] cursor-pointer"
                         required
                       />
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-600 dark:text-muted-foreground uppercase tracking-wider">
                           End Date
                         </span>
                         {institutionalDeadline && (
-                          <span className="text-[8.5px] sm:text-[9px] font-semibold text-amber-500 truncate">
+                          <span className="text-[8.5px] sm:text-[9px] font-bold text-amber-600 dark:text-amber-400 truncate">
                             Max {format(institutionalDeadline, 'MMM dd')}
                           </span>
                         )}
@@ -755,15 +942,15 @@ export function ScheduleBlockModal({
                         min={startDateStr || minDateStr}
                         max={maxDateStr}
                         onChange={(e) => handleEndDateChange(e.target.value)}
-                        className="rounded-xl border-border/80 bg-card font-semibold text-xs h-9 px-2.5 dark:[color-scheme:dark] [color-scheme:light] cursor-pointer"
+                        className="rounded-xl border-slate-200 dark:border-border/80 bg-white dark:bg-card text-slate-900 dark:text-foreground font-semibold text-xs h-9 px-2.5 shadow-2xs focus:border-primary focus:ring-2 focus:ring-primary/10 dark:[color-scheme:dark] [color-scheme:light] cursor-pointer"
                         required
                       />
                     </div>
                   </div>
 
                   {/* Quick Presets (Clamped to Institutional Deadline) */}
-                  <div className="flex items-center gap-1 flex-wrap pt-0.5">
-                    <span className="text-[8.5px] sm:text-[9px] font-bold text-muted-foreground uppercase mr-1">
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-500 dark:text-muted-foreground uppercase mr-0.5">
                       Presets:
                     </span>
                     {[
@@ -787,7 +974,7 @@ export function ScheduleBlockModal({
                         key={preset.label}
                         type="button"
                         onClick={() => handleApplyPresetDays(preset.days)}
-                        className="text-[8.5px] sm:text-[9px] font-bold px-2 py-0.5 rounded-lg bg-card border border-border/80 hover:border-primary/50 text-foreground/80 hover:text-primary transition-all cursor-pointer"
+                        className="text-[8.5px] sm:text-[9px] font-bold px-2.5 py-0.5 rounded-lg bg-white dark:bg-card border border-slate-200 dark:border-border/80 hover:bg-primary/5 hover:border-primary/40 hover:text-primary text-slate-700 dark:text-foreground/80 transition-all cursor-pointer shadow-2xs"
                       >
                         +{preset.label}
                       </button>
@@ -796,12 +983,12 @@ export function ScheduleBlockModal({
                 </div>
 
                 {/* 3. Priority Level (What to Prioritize) */}
-                <div className="space-y-1 sm:space-y-1.5">
-                  <Label className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Flame className="w-3 h-3 text-primary" />
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-muted-foreground flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-primary" />
                     3. Study Priority (What to Prioritize)
                   </Label>
-                  <div className="grid grid-cols-3 gap-1 sm:gap-1.5">
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                     {[
                       {
                         id: 'HIGH',
@@ -809,8 +996,8 @@ export function ScheduleBlockModal({
                         shortLabel: 'High',
                         sub: 'Critical Weak Area',
                         shortSub: 'Critical Weak',
-                        color: 'border-red-500 bg-red-500/10 text-red-500',
-                        dot: 'bg-red-500',
+                        selectedClass: 'border-rose-500 bg-rose-50/90 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 ring-1 ring-rose-500/30',
+                        dot: 'bg-rose-500',
                       },
                       {
                         id: 'MEDIUM',
@@ -818,7 +1005,7 @@ export function ScheduleBlockModal({
                         shortLabel: 'Medium',
                         sub: 'Standard Review',
                         shortSub: 'Standard',
-                        color: 'border-amber-500 bg-amber-500/10 text-amber-500',
+                        selectedClass: 'border-amber-500 bg-amber-50/90 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 ring-1 ring-amber-500/30',
                         dot: 'bg-amber-500',
                       },
                       {
@@ -827,7 +1014,7 @@ export function ScheduleBlockModal({
                         shortLabel: 'Reinforce',
                         sub: 'Maintenance Only',
                         shortSub: 'Maintenance',
-                        color: 'border-blue-500 bg-blue-500/10 text-blue-500',
+                        selectedClass: 'border-blue-500 bg-blue-50/90 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 ring-1 ring-blue-500/30',
                         dot: 'bg-blue-500',
                       },
                     ].map((p) => {
@@ -838,20 +1025,20 @@ export function ScheduleBlockModal({
                           type="button"
                           onClick={() => setPriority(p.id as any)}
                           className={cn(
-                            'p-1.5 sm:p-2 rounded-xl border-2 text-left transition-all flex flex-col justify-between cursor-pointer min-w-0',
+                            'p-2 sm:p-2.5 rounded-xl border-2 text-left transition-all flex flex-col justify-between cursor-pointer min-w-0 shadow-2xs',
                             isSelected
-                              ? `${p.color} ring-1 ring-primary/40 font-bold shadow-xs`
-                              : 'border-border/70 bg-card hover:bg-muted/40 text-muted-foreground'
+                              ? `${p.selectedClass} font-bold shadow-xs`
+                              : 'border-slate-200 dark:border-border/70 bg-white dark:bg-card hover:bg-slate-50 dark:hover:bg-muted/40 text-slate-600 dark:text-muted-foreground'
                           )}
                         >
                           <div className="flex items-center gap-1 min-w-0">
-                            <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', p.dot)} />
-                            <span className="text-[9.5px] sm:text-[10px] font-bold leading-tight truncate">
+                            <span className={cn('w-2 h-2 rounded-full shrink-0', p.dot)} />
+                            <span className="text-[10px] sm:text-xs font-black leading-tight truncate">
                               <span className="sm:hidden">{p.shortLabel}</span>
                               <span className="hidden sm:inline">{p.label}</span>
                             </span>
                           </div>
-                          <span className="text-[7.5px] sm:text-[8px] text-muted-foreground font-semibold mt-0.5 truncate">
+                          <span className="text-[8px] sm:text-[9px] font-medium mt-0.5 truncate opacity-85">
                             <span className="sm:hidden">{p.shortSub}</span>
                             <span className="hidden sm:inline">{p.sub}</span>
                           </span>
@@ -863,8 +1050,8 @@ export function ScheduleBlockModal({
               </div>
 
               {/* Right Column: 4. Actionable Targets (What to Achieve) */}
-              <div className="space-y-2 sm:space-y-2.5 bg-muted/20 border border-border/70 rounded-2xl p-2.5 sm:p-3.5">
-                <Label className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <div className="space-y-2.5 sm:space-y-3 bg-slate-50/90 dark:bg-muted/20 border border-slate-200/80 dark:border-border/70 rounded-2xl p-2.5 sm:p-3.5 shadow-2xs">
+                <Label className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-muted-foreground flex items-center gap-1.5">
                   <Target className="w-3.5 h-3.5 text-primary" />
                   4. Target Quotas (What to Achieve)
                 </Label>
@@ -872,15 +1059,15 @@ export function ScheduleBlockModal({
                 <div className="grid grid-cols-2 gap-2 items-start">
                   <div className="space-y-1">
                     <div className="h-4 sm:h-4.5 flex items-center justify-between">
-                      <span className="text-[9.5px] sm:text-[10px] font-bold text-foreground leading-none">
+                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-700 dark:text-foreground leading-none">
                         Daily Question Target
                       </span>
                       {daysCount > 0 ? (
-                        <span className="text-[8.5px] sm:text-[9px] font-semibold text-muted-foreground truncate leading-none">
+                        <span className="text-[8.5px] sm:text-[9px] font-semibold text-slate-500 dark:text-muted-foreground truncate leading-none">
                           ~{targetQuestions * daysCount} Total
                         </span>
                       ) : (
-                        <span className="text-[8.5px] sm:text-[9px] font-semibold text-muted-foreground/60 leading-none">
+                        <span className="text-[8.5px] sm:text-[9px] font-semibold text-slate-400 dark:text-muted-foreground/60 leading-none">
                           Per Day
                         </span>
                       )}
@@ -889,10 +1076,10 @@ export function ScheduleBlockModal({
                       value={String(targetQuestions)}
                       onValueChange={(val) => setTargetQuestions(Number(val))}
                     >
-                      <SelectTrigger className="h-9 w-full text-xs font-bold rounded-xl bg-card border-border/80 focus:ring-1 focus:ring-primary/40 cursor-pointer">
+                      <SelectTrigger className="h-9 w-full text-xs font-bold rounded-xl bg-white dark:bg-card border-slate-200 dark:border-border/80 text-slate-900 dark:text-foreground shadow-2xs focus:ring-2 focus:ring-primary/20 cursor-pointer">
                         <SelectValue placeholder="Daily Target" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-border bg-card shadow-2xl z-[100]">
+                      <SelectContent className="rounded-xl border-slate-200 dark:border-border bg-white dark:bg-card shadow-2xl z-[100]">
                         <SelectItem value="20" className="text-xs font-bold cursor-pointer">
                           20Qs / day
                         </SelectItem>
@@ -919,10 +1106,10 @@ export function ScheduleBlockModal({
 
                   <div className="space-y-1">
                     <div className="h-4 sm:h-4.5 flex items-center justify-between">
-                      <span className="text-[9.5px] sm:text-[10px] font-bold text-foreground leading-none">
+                      <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-700 dark:text-foreground leading-none">
                         Accuracy Goal
                       </span>
-                      <span className="text-[8.5px] sm:text-[9px] font-semibold text-muted-foreground/60 leading-none">
+                      <span className="text-[8.5px] sm:text-[9px] font-semibold text-slate-400 dark:text-muted-foreground/60 leading-none">
                         Target %
                       </span>
                     </div>
@@ -934,10 +1121,10 @@ export function ScheduleBlockModal({
                         step={5}
                         value={targetAccuracy}
                         onChange={(e) => setTargetAccuracy(Number(e.target.value))}
-                        className="rounded-xl border-border bg-card font-bold text-xs h-9 pr-8"
+                        className="rounded-xl border-slate-200 dark:border-border bg-white dark:bg-card text-slate-900 dark:text-foreground font-bold text-xs h-9 pr-8 shadow-2xs focus:border-primary focus:ring-2 focus:ring-primary/10"
                         required
                       />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground pointer-events-none">
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 dark:text-muted-foreground pointer-events-none">
                         %
                       </span>
                     </div>
@@ -945,19 +1132,19 @@ export function ScheduleBlockModal({
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[9.5px] sm:text-[10px] font-bold text-foreground">
+                  <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-700 dark:text-foreground">
                     Key Focus Goals / High-Yield Topics
                   </span>
                   <Input
                     placeholder="e.g., Master Carbohydrates, Lipids, Enzymes & Quality Control"
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
-                    className="rounded-xl border-border bg-card text-xs h-9"
+                    className="rounded-xl border-slate-200 dark:border-border bg-white dark:bg-card text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground/60 text-xs h-9 shadow-2xs focus:border-primary focus:ring-2 focus:ring-primary/10"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[9.5px] sm:text-[10px] font-bold text-muted-foreground">
+                  <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-500 dark:text-muted-foreground">
                     Study Notes & Strategy (Optional)
                   </span>
                   <Textarea
@@ -965,7 +1152,7 @@ export function ScheduleBlockModal({
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={2}
-                    className="rounded-xl border-border bg-card text-xs resize-none"
+                    className="rounded-xl border-slate-200 dark:border-border bg-white dark:bg-card text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground/60 text-xs resize-none shadow-2xs focus:border-primary focus:ring-2 focus:ring-primary/10"
                   />
                 </div>
               </div>
@@ -973,7 +1160,7 @@ export function ScheduleBlockModal({
           </div>
 
           {/* Fixed Pinned Footer: Fully Responsive on Mobile & Desktop */}
-          <div className="pt-2 sm:pt-3 shrink-0 border-t border-border/60 mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="pt-2.5 sm:pt-3 shrink-0 border-t border-slate-200/80 dark:border-border/60 mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             {hasExistingSchedule ? (
               <Button
                 type="button"
@@ -1001,7 +1188,7 @@ export function ScheduleBlockModal({
                 size="sm"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting || isDeleting}
-                className="w-20 sm:w-24 h-9 text-xs font-bold rounded-xl shrink-0 cursor-pointer"
+                className="w-20 sm:w-24 h-9 text-xs font-bold rounded-xl shrink-0 cursor-pointer border-slate-200 dark:border-border bg-white dark:bg-card hover:bg-slate-100 dark:hover:bg-muted text-slate-700 dark:text-foreground shadow-2xs"
               >
                 Cancel
               </Button>
@@ -1009,7 +1196,12 @@ export function ScheduleBlockModal({
                 type="submit"
                 size="sm"
                 disabled={!startDate || !endDate || isSubmitting || isDeleting}
-                className="flex-1 sm:flex-none h-9 px-4 sm:px-5 text-xs font-black uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 rounded-xl cursor-pointer truncate disabled:opacity-50"
+                className={cn(
+                  "flex-1 sm:flex-none h-9 px-4 sm:px-5 text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer truncate transition-all shadow-sm",
+                  !startDate || !endDate
+                    ? "bg-slate-100 dark:bg-muted text-slate-400 dark:text-muted-foreground border border-slate-200/80 dark:border-border/50 shadow-none cursor-not-allowed"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20"
+                )}
               >
                 {isSubmitting ? (
                   <>

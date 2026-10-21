@@ -391,7 +391,7 @@ function ProfileContent() {
                     variant="outline"
                     size="sm"
                     onClick={() => setAccountSettingsOpen(true)}
-                    className="flex-1 md:flex-none rounded-xl border-primary/50 text-primary hover:bg-primary/10 font-semibold text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4"
+                    className="flex-1 md:flex-none rounded-xl border-primary/50 text-primary hover:bg-primary/10 hover:text-primary hover:border-primary/80 font-semibold text-xs sm:text-sm h-9 sm:h-10 px-3 sm:px-4 transition-colors"
                   >
                     <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Account Settings
                   </Button>

@@ -26,11 +26,13 @@ import { useToast } from '@/hooks/use-toast';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { LoginBackgroundAnimator } from '@/components/auth/LoginBackgroundAnimator';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { TermsAndConditionsModal, TermsTab } from '@/components/auth/TermsAndConditionsModal';
 
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
-  
+
   // Step state: 'info' (Fill registration details) -> 'verify' (Verify 6-digit OTP)
   const [step, setStep] = useState<'info' | 'verify'>('info');
   const [isLoading, setIsLoading] = useState(false);
@@ -45,15 +47,31 @@ export default function SignupPage() {
       router.push(href);
     }, 180);
   }
-  
+
   // Form fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [isEmailFocused, setIsEmailFocused] = useState(false);
-  
+
   const [password, setPassword] = useState('');
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Terms and Conditions agreement state
+  const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [termsActiveTab, setTermsActiveTab] = useState<TermsTab>('terms');
+  const [termsError, setTermsError] = useState(false);
+
+  function handleOpenTerms(tab: TermsTab = 'terms') {
+    setTermsActiveTab(tab);
+    setIsTermsModalOpen(true);
+  }
+
+  function handleAcceptTerms() {
+    setHasAgreedToTerms(true);
+    setTermsError(false);
+  }
 
   // 6-digit OTP code state
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
@@ -70,7 +88,7 @@ export default function SignupPage() {
   const hasPasswordSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
   const isPasswordValid = isPasswordLongEnough && hasPasswordNumber && hasPasswordSpecial;
 
-  const isInfoFormValid = name.trim().length > 0 && isEmailValid && hasNoSpacesEmail && isPasswordValid;
+  const isInfoFormValid = name.trim().length > 0 && isEmailValid && hasNoSpacesEmail && isPasswordValid && hasAgreedToTerms;
 
   // Countdown timer for Resend Code
   useEffect(() => {
@@ -93,6 +111,17 @@ export default function SignupPage() {
   // Step 1: Send verification code to email
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!hasAgreedToTerms) {
+      setTermsError(true);
+      toast({
+        variant: "destructive",
+        title: "Agreement Required",
+        description: "Please review and accept the Terms & Conditions and Acceptable Use Policy before proceeding.",
+      });
+      return;
+    }
+
     if (!isInfoFormValid) {
       toast({
         variant: "destructive",
@@ -252,7 +281,7 @@ export default function SignupPage() {
           localStorage.removeItem('bq_pref_school');
           localStorage.setItem('bq_pref_focus_subject', 'none');
           localStorage.removeItem('bq_read_notifications');
-        } catch (e) {}
+        } catch (e) { }
         toast({
           title: "Account Verified & Created",
           description: "Welcome to BoardQuest! Expedition initialized.",
@@ -368,14 +397,14 @@ export default function SignupPage() {
                   />
                 </div>
               </div>
-              
+
               {/* Email Address */}
               <div className="space-y-1 relative">
                 <label
                   className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-wider block"
                   style={{ fontFamily: "'Inter-bold', sans-serif" }}
                 >
-                  EMAIL ADRESS*
+                  EMAIL ADDRESS*
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -388,17 +417,20 @@ export default function SignupPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     onFocus={() => setIsEmailFocused(true)}
                     onBlur={() => setIsEmailFocused(false)}
-                    className={`pl-10 h-11 bg-muted border ${
-                      !isEmailValid && email.length > 0
-                        ? 'border-red-500 ring-1 ring-red-500'
-                        : 'border-slate-300 dark:border-slate-700'
-                    } text-foreground placeholder:text-muted-foreground rounded-xl focus-visible:ring-primary/20 text-sm font-medium`}
+                    className={`pl-10 h-11 bg-muted border ${!isEmailValid && email.length > 0
+                      ? 'border-red-500 ring-1 ring-red-500'
+                      : 'border-slate-300 dark:border-slate-700'
+                      } text-foreground placeholder:text-muted-foreground rounded-xl focus-visible:ring-primary/20 text-sm font-medium`}
                   />
-                  
+
                   {/* Email Validation Popover */}
                   {isEmailFocused && (
-                    <div className="absolute left-[calc(100%+0.75rem)] top-1/2 -translate-y-1/2 w-60 bg-background rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-3 border border-border z-50 hidden lg:block">
-                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-background border-l border-b border-border rotate-45 rounded-tl-sm" />
+                    <div className="absolute bottom-[calc(100%+0.5rem)] left-0 right-0 lg:bottom-auto lg:left-auto lg:right-[calc(100%+0.85rem)] lg:top-1/2 lg:-translate-y-1/2 lg:w-64 bg-card text-card-foreground rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6)] p-3.5 border border-border z-50 animate-in fade-in-0 zoom-in-95 duration-150">
+                      {/* Desktop pointer arrow pointing right towards the input */}
+                      <div className="hidden lg:block absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-card border-r border-t border-border rotate-45 rounded-tr-sm" />
+                      {/* Mobile pointer arrow pointing down towards the input */}
+                      <div className="block lg:hidden absolute -bottom-1.5 left-6 w-3 h-3 bg-card border-r border-b border-border rotate-45" />
+
                       <div className="space-y-2 relative z-10">
                         <div className="flex items-center gap-2.5">
                           <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${isEmailValid ? 'bg-[#851315] text-white' : 'bg-slate-200 dark:bg-slate-700 text-muted-foreground'}`}>
@@ -450,8 +482,12 @@ export default function SignupPage() {
 
                   {/* Password Validation Popover */}
                   {isPasswordFocused && (
-                    <div className="absolute left-[calc(100%+0.75rem)] top-1/2 -translate-y-1/2 w-60 bg-background rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-3 border border-border z-50 hidden lg:block">
-                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-background border-l border-b border-border rotate-45 rounded-tl-sm" />
+                    <div className="absolute bottom-[calc(100%+0.5rem)] left-0 right-0 lg:bottom-auto lg:left-auto lg:right-[calc(100%+0.85rem)] lg:top-1/2 lg:-translate-y-1/2 lg:w-64 bg-card text-card-foreground rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6)] p-3.5 border border-border z-50 animate-in fade-in-0 zoom-in-95 duration-150">
+                      {/* Desktop pointer arrow pointing right towards the input */}
+                      <div className="hidden lg:block absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-card border-r border-t border-border rotate-45 rounded-tr-sm" />
+                      {/* Mobile pointer arrow pointing down towards the input */}
+                      <div className="block lg:hidden absolute -bottom-1.5 left-6 w-3 h-3 bg-card border-r border-b border-border rotate-45" />
+
                       <div className="space-y-2 relative z-10">
                         <div className="flex items-center gap-2.5">
                           <div className={`rounded-full p-0.5 flex-shrink-0 transition-colors ${isPasswordLongEnough ? 'bg-[#851315] text-white' : 'bg-slate-200 dark:bg-slate-700 text-muted-foreground'}`}>
@@ -476,7 +512,64 @@ export default function SignupPage() {
                   )}
                 </div>
               </div>
-              
+
+              {/* Terms and Conditions Agreement */}
+              <div className="flex items-center gap-2.5 pt-1 px-1 select-none">
+                <Checkbox
+                  id="terms-checkbox"
+                  checked={hasAgreedToTerms}
+                  onCheckedChange={(checked) => {
+                    setHasAgreedToTerms(checked === true);
+                    if (checked) setTermsError(false);
+                  }}
+                  className={cn(
+                    "h-4 w-4 rounded-none border-slate-400 dark:border-slate-500 data-[state=checked]:bg-[#851315] dark:data-[state=checked]:bg-[#dc2626] data-[state=checked]:border-transparent transition-all shrink-0",
+                    termsError && "border-red-500 ring-2 ring-red-500/30"
+                  )}
+                />
+                <div className="text-[11px] leading-snug">
+                  <label
+                    htmlFor="terms-checkbox"
+                    className="text-foreground/90 font-medium cursor-pointer block"
+                  >
+                    I agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleOpenTerms("terms");
+                      }}
+                      className="font-bold text-[#851315] dark:text-[#dc2626] hover:underline"
+                    >
+                      Terms & Conditions
+                    </button>
+                    {", "}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleOpenTerms("aup");
+                      }}
+                      className="font-bold text-[#851315] dark:text-[#dc2626] hover:underline"
+                    >
+                      AUP
+                    </button>
+                    {", and "}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleOpenTerms("privacy");
+                      }}
+                      className="font-bold text-[#851315] dark:text-[#dc2626] hover:underline"
+                    >
+                      Privacy Notice
+                    </button>
+                    .
+                  </label>
+                </div>
+              </div>
+
               <Button
                 type="submit"
                 className="w-full h-12.5 bg-[#851315] hover:bg-[#720e10] active:scale-[0.98] text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-lg shadow-red-950/20 transition-all flex items-center justify-center gap-2 mt-2"
@@ -553,11 +646,10 @@ export default function SignupPage() {
                       value={digit}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      className={`w-11 h-12 text-center text-xl font-black rounded-xl bg-muted border ${
-                        digit
-                          ? 'border-[#851315] dark:border-[#dc2626] ring-2 ring-[#851315]/20 bg-background text-foreground'
-                          : 'border-slate-300 dark:border-slate-700 text-foreground'
-                      } focus:outline-none focus:border-[#851315] focus:ring-2 focus:ring-[#851315]/20 transition-all font-mono`}
+                      className={`w-11 h-12 text-center text-xl font-black rounded-xl bg-muted border ${digit
+                        ? 'border-[#851315] dark:border-[#dc2626] ring-2 ring-[#851315]/20 bg-background text-foreground'
+                        : 'border-slate-300 dark:border-slate-700 text-foreground'
+                        } focus:outline-none focus:border-[#851315] focus:ring-2 focus:ring-[#851315]/20 transition-all font-mono`}
                     />
                   ))}
                 </div>
@@ -630,6 +722,14 @@ export default function SignupPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Institutional Terms & Governance Modal */}
+      <TermsAndConditionsModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
+        onAccept={handleAcceptTerms}
+        defaultTab={termsActiveTab}
+      />
     </div>
   );
 }

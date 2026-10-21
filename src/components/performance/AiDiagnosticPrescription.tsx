@@ -444,7 +444,7 @@ export function AiDiagnosticPrescription({
                 size="sm"
                 variant="outline"
                 onClick={onOpenGoalSettings}
-                className="h-8 px-2.5 sm:px-3 rounded-xl text-xs font-bold border-primary/30 hover:bg-primary/10 text-primary flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                className="h-8 px-2.5 sm:px-3 rounded-xl text-xs font-bold border-primary/30 hover:bg-primary/10 hover:text-primary hover:border-primary/50 text-primary flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
               >
                 <Settings className="w-3.5 h-3.5 shrink-0" />
                 <span className="hidden sm:inline">Configure Goals</span>
@@ -710,7 +710,7 @@ export function AiDiagnosticPrescription({
                   size="sm"
                   variant="outline"
                   onClick={() => handleOpenTopicModal(priorityWeakTopics[0]?.subject || undefined)}
-                  className="h-7 px-2.5 rounded-xl text-[11px] font-bold border-primary/30 hover:bg-primary/10 text-primary flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer shadow-xs transition-all active:scale-95"
+                  className="h-7 px-2.5 rounded-xl text-[11px] font-bold border-primary/30 hover:bg-primary/10 hover:text-primary hover:border-primary/50 text-primary flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer shadow-xs transition-all active:scale-95"
                 >
                   <Layers className="w-3.5 h-3.5" />
                   <span>View Full Topic Matrix</span>
