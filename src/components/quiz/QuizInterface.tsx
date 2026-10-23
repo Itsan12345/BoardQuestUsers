@@ -186,7 +186,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       if (isCorrect) setScore(s => s + 1);
       if (onAnswer) onAnswer(isCorrect, currentQuestionIndex, letter, activeMove || undefined, currentQuestion);
       
-      const transitionDelay = (!isCorrect && activeMove === 'heavy') ? 2100 : 1500;
+      const transitionDelay = (!isCorrect && activeMove === 'heavy') ? 2100 : (activeMove === 'heavy' ? 1800 : 1500);
       setTimeout(() => {
         if (currentIndex < questions.length - 1) {
           const nextIdx = currentIndex + 1;
@@ -209,10 +209,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       // Trigger the battle animation (player attack or enemy counter-attack) IMMEDIATELY upon answering!
       if (onAnswer) onAnswer(finalIsCorrect, currentQuestionIndex, letter, undefined, currentQuestion);
 
-      // Allow animations to play out smoothly before transitioning to next question:
-      // Correct answer: 1400ms (player strike, hit reaction & floating damage text)
+      // Correct answer: 1600ms (player strike / heavy blast, hit reaction & floating damage text)
       // Incorrect answer: 2300ms (enemy lunge/strike, player hit reaction, idle pause & return glide)
-      const transitionDelay = finalIsCorrect ? 1400 : 2300;
+      const transitionDelay = finalIsCorrect ? 1600 : 2300;
 
       setTimeout(() => {
         if (currentIndex < questions.length - 1) {

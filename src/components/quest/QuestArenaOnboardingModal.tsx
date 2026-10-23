@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 import { Loader2, Sparkles, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 
 interface QuestArenaOnboardingModalProps {
@@ -145,8 +146,16 @@ export function QuestArenaOnboardingModal({
                     <Check className="w-3 h-3 stroke-[3]" />
                   </div>
                 )}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-inner">
-                  <div className="text-3xl sm:text-4xl">♂️</div>
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-inner overflow-hidden relative">
+                  <Image
+                    src="/images/player/userPlayer_placeholder.png"
+                    alt="Male Avatar"
+                    width={64}
+                    height={64}
+                    className="w-12 h-12 object-contain filter drop-shadow-sm"
+                    style={{ imageRendering: 'pixelated' }}
+                    unoptimized
+                  />
                 </div>
                 <div className="text-center">
                   <div className="font-headline font-bold text-sm sm:text-base text-foreground">
@@ -171,8 +180,29 @@ export function QuestArenaOnboardingModal({
                     <Check className="w-3 h-3 stroke-[3]" />
                   </div>
                 )}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-rose-500/20 to-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-inner">
-                  <div className="text-3xl sm:text-4xl">♀️</div>
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-rose-500/20 to-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-inner overflow-hidden relative">
+                  <div
+                    className="w-[72px] h-[64px] relative overflow-hidden"
+                    style={{ imageRendering: 'pixelated' }}
+                  >
+                    <div
+                      className="absolute top-0 left-0"
+                      style={{
+                        width: `${72 * 8}px`,
+                        height: '64px',
+                        backgroundImage: `url('/images/player/femaleCharacter_idleAnimation.png')`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundSize: `${72 * 8}px 64px`,
+                        animation: 'femaleOnboardingIdle 0.9s steps(8) infinite',
+                      }}
+                    />
+                  </div>
+                  <style jsx global>{`
+                    @keyframes femaleOnboardingIdle {
+                      from { transform: translateX(0px); }
+                      to { transform: translateX(-100%); }
+                    }
+                  `}</style>
                 </div>
                 <div className="text-center">
                   <div className="font-headline font-bold text-sm sm:text-base text-foreground">

@@ -1530,7 +1530,7 @@ export function BossSpriteAnimator({
             isUrochromeTitanNormal && "animate-boss-urochrome-titan-lunge",
             isHeavy && !isWideBeam && !isGramPositiveAttack && !isStaphSentinelAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderHeavy && !isHydraHeavy && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantHeavy && !isKetoacidosisColossusHeavy && !isAntigenTitanHeavy && !isImmuneArchonHeavy && !isErythrocyteColossusHeavy && !isParaffinGolemHeavy && !isFixationOverlordHeavy && !isNitriteSpectreHeavy && !isUrochromeTitanHeavy && !isAnemiaShadeAttack && "animate-boss-heavy-lunge",
             isAttacking && !isHeavy && !isWideBeam && !hasProjectile && !hasUndergroundSpikes && !isReaperGlintNormal && !isSickleCellReaperNormal && !isGramPositiveAttack && !isBiohazardAttack && !isAcidSlimeAttack && !isSickleCellMinionAttack && !isGmsFungalSporeAttack && !isLegalBeholderNormal && !isHydraNormal && !isReagentStripSlimeAttack && !isLymphocyteSwarmAttack && !isHyperglycemicMutantNormal && !isKetoacidosisColossusNormal && !isAntigenTitanNormal && !isImmuneArchonNormal && !isErythrocyteColossusNormal && !isParaffinGolemNormal && !isFixationOverlordNormal && !isNitriteSpectreNormal && !isUrochromeTitanNormal && !isAnemiaShadeAttack && "animate-boss-lunge",
-            isHit && "brightness-200 contrast-200 hue-rotate-90 animate-shake"
+            isHit && "animate-shake"
           )}
           style={{
             width: `${currentFrameWidth * effectiveScale}px`,

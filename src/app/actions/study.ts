@@ -590,17 +590,41 @@ export interface SubjectTopicMasteryResponse {
 }
 
 export async function getSubjectTopicMasteryAction(
-  subjectName: string
+  subjectName: string,
+  explicitUserId?: string
 ): Promise<SubjectTopicMasteryResponse> {
   try {
-    let userId: string | undefined;
+    let userId: string | undefined = explicitUserId;
     try {
       const cookieStore = await cookies();
-      userId = cookieStore.get('user_id')?.value;
+      if (!userId) {
+        userId = cookieStore.get('user_id')?.value;
+      }
+      if (!userId) {
+        const sessionToken = cookieStore.get('bq_session_token')?.value;
+        if (sessionToken) {
+          const client = await clientPromise;
+          const db = client.db('boardquest');
+          const activeSession = await db.collection('UserSession').findOne({ sessionId: sessionToken });
+          if (activeSession?.userId) {
+            userId = activeSession.userId.toString();
+          }
+        }
+      }
     } catch (_) {}
 
     const client = await clientPromise;
     const db = client.db('boardquest');
+
+    // If still no userId, check if there is an active session in UserSession
+    if (!userId) {
+      try {
+        const latestSession = await db.collection('UserSession').findOne({}, { sort: { lastActive: -1, createdAt: -1 } });
+        if (latestSession?.userId) {
+          userId = latestSession.userId.toString();
+        }
+      } catch (_) {}
+    }
 
     const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const cleanSub = subjectName.trim();
@@ -680,11 +704,23 @@ export async function getSubjectTopicMasteryAction(
         attempts.forEach(a => {
           const qId = a.questionId?.toString();
           if (qId) {
-            attemptMap.set(qId, {
-              attempts: typeof a.attempts === 'number' ? a.attempts : 1,
-              correct: typeof a.correct === 'number' ? a.correct : 0,
-              lastAttempt: a.lastAttempt ? new Date(a.lastAttempt).toISOString() : undefined
-            });
+            const existing = attemptMap.get(qId);
+            const numAttempts = typeof a.attempts === 'number' ? a.attempts : 1;
+            const numCorrect = typeof a.correct === 'number' ? a.correct : 0;
+            const lastAtt = a.lastAttempt ? new Date(a.lastAttempt).toISOString() : undefined;
+            if (existing) {
+              existing.attempts += numAttempts;
+              existing.correct += numCorrect;
+              if (lastAtt && (!existing.lastAttempt || new Date(lastAtt) > new Date(existing.lastAttempt))) {
+                existing.lastAttempt = lastAtt;
+              }
+            } else {
+              attemptMap.set(qId, {
+                attempts: numAttempts,
+                correct: numCorrect,
+                lastAttempt: lastAtt
+              });
+            }
           }
         });
       } catch (attErr) {

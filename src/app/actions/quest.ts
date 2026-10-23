@@ -23,6 +23,8 @@ export interface CompleteQuestParams {
   questMode: 'learning' | 'test' | 'boss-battle';
   subject: string;
   userAnswers?: { questionId: string; isCorrect: boolean; difficulty?: string }[];
+  userId?: string;
+  skipQuestionAttemptRecording?: boolean;
 }
 
 export interface CompleteQuestResponse {
@@ -37,8 +39,24 @@ export interface CompleteQuestResponse {
 
 export async function completeQuest(params: CompleteQuestParams): Promise<CompleteQuestResponse> {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('user_id')?.value;
+    let userId = params.userId;
+    if (!userId) {
+      try {
+        const cookieStore = await cookies();
+        userId = cookieStore.get('user_id')?.value;
+        if (!userId) {
+          const sessionToken = cookieStore.get('bq_session_token')?.value;
+          if (sessionToken) {
+            const client = await clientPromise;
+            const db = client.db('boardquest');
+            const activeSession = await db.collection('UserSession').findOne({ sessionId: sessionToken });
+            if (activeSession?.userId) {
+              userId = activeSession.userId.toString();
+            }
+          }
+        }
+      } catch (_) {}
+    }
 
     if (!userId) {
       return {
@@ -244,7 +262,7 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
     await syncSubjectMastery(userId, params.subject);
 
     // Record individual question attempts for Spaced Repetition logic
-    if (params.userAnswers && params.userAnswers.length > 0) {
+    if (!params.skipQuestionAttemptRecording && params.userAnswers && params.userAnswers.length > 0) {
       await Promise.all(
         params.userAnswers.map((ua) => {
           if (!ua.questionId) return Promise.resolve();
@@ -559,5 +577,135 @@ export async function getNodeStarsAction(): Promise<Record<string, number>> {
   } catch (error) {
     console.error('Failed to fetch node stars:', error);
     return {};
+  }
+}
+
+export async function recordQuestionAttemptAction(params: {
+  questionId: string;
+  isCorrect: boolean;
+  subject?: string;
+  userId?: string;
+}) {
+  try {
+    let userId = params.userId;
+    if (!userId) {
+      try {
+        const cookieStore = await cookies();
+        userId = cookieStore.get('user_id')?.value;
+        if (!userId) {
+          const sessionToken = cookieStore.get('bq_session_token')?.value;
+          if (sessionToken) {
+            const client = await clientPromise;
+            const db = client.db('boardquest');
+            const activeSession = await db.collection('UserSession').findOne({ sessionId: sessionToken });
+            if (activeSession?.userId) {
+              userId = activeSession.userId.toString();
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!userId || !params.questionId) {
+      return { success: false, error: 'User or question ID missing' };
+    }
+
+    const rawId = params.questionId.split('_cycle_')[0].trim();
+    if (!/^[0-9a-fA-F]{24}$/.test(rawId)) {
+      return { success: false, error: 'Invalid question ID format' };
+    }
+
+    await (prisma as any).userQuestionAttempt.upsert({
+      where: {
+        userId_questionId: { userId, questionId: rawId },
+      },
+      update: {
+        attempts: { increment: 1 },
+        correct: { increment: params.isCorrect ? 1 : 0 },
+        lastAttempt: new Date(),
+      },
+      create: {
+        userId,
+        questionId: rawId,
+        attempts: 1,
+        correct: params.isCorrect ? 1 : 0,
+        lastAttempt: new Date(),
+      },
+    });
+
+    if (params.subject) {
+      syncSubjectMastery(userId, params.subject).catch(() => {});
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.warn('Failed to record question attempt:', err);
+    return { success: false, error: err?.message };
+  }
+}
+
+export async function recordPartialQuestAnswersAction(params: {
+  subject: string;
+  userAnswers: { questionId: string; isCorrect: boolean }[];
+  userId?: string;
+}) {
+  try {
+    let userId = params.userId;
+    if (!userId) {
+      try {
+        const cookieStore = await cookies();
+        userId = cookieStore.get('user_id')?.value;
+        if (!userId) {
+          const sessionToken = cookieStore.get('bq_session_token')?.value;
+          if (sessionToken) {
+            const client = await clientPromise;
+            const db = client.db('boardquest');
+            const activeSession = await db.collection('UserSession').findOne({ sessionId: sessionToken });
+            if (activeSession?.userId) {
+              userId = activeSession.userId.toString();
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!userId || !params.userAnswers || params.userAnswers.length === 0) {
+      return { success: false };
+    }
+
+    await Promise.all(
+      params.userAnswers.map((ua) => {
+        if (!ua.questionId) return Promise.resolve();
+        const rawId = ua.questionId.split('_cycle_')[0].trim();
+        if (!/^[0-9a-fA-F]{24}$/.test(rawId)) return Promise.resolve();
+
+        return (prisma as any).userQuestionAttempt.upsert({
+          where: {
+            userId_questionId: { userId, questionId: rawId },
+          },
+          update: {
+            attempts: { increment: 1 },
+            correct: { increment: ua.isCorrect ? 1 : 0 },
+            lastAttempt: new Date(),
+          },
+          create: {
+            userId,
+            questionId: rawId,
+            attempts: 1,
+            correct: ua.isCorrect ? 1 : 0,
+            lastAttempt: new Date(),
+          },
+        }).catch((err: any) => console.warn('Partial question attempt record skipped:', err));
+      })
+    );
+
+    if (params.subject) {
+      syncSubjectMastery(userId, params.subject).catch(() => {});
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.warn('Failed to record partial quest answers:', err);
+    return { success: false };
   }
 }

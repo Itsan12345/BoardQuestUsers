@@ -293,3 +293,73 @@
 - **Minion Exclusion**: Minions are strictly reserved for Wave 1 of Learning/Boss modes and are excluded from the Test Mode candidate pool.
 - **100% Identical Choreography, Timings & Sound Effects**: The chosen enemy runs with complete parity to Boss-Battle and Learning Mode: identical frame dimensions, step-end keyframes, golden standard 4-phase lunges (swift forward dash, full in-place attack execution, 1-second idle pause, smooth glide return), impact delays, reset delays, hit sparks, screen shakes, overlay animators (`JudicialHammerAnimator`, `UndergroundBlastAnimator`, `UndergroundSpikesAnimator`, `HydraLightningAnimator`, `ArchonThunderAnimator`, `ParaffinBallsAnimator`, `FixationNailedAnimator`, `ColossusFistAnimator`, `AnemiaSlashAnimator`), and dedicated sound effect bindings.
 - **Alternating Attack Variety**: On player mistakes in Test Mode, the enemy alternates between normal attack and heavy attack (`Math.random() < 0.5`), rendering the authentic animations, overlays, and sound effects for each attack tier.
+
+---
+
+## 9. Verified & Permanently Locked Player Avatar Sprite Configurations
+
+### Female Character Avatar (`src/components/game/PlayerSpriteAnimator.tsx`)
+- **Idle Animation (`femaleCharacter_idleAnimation.png`)**:
+  - Asset: `/images/player/femaleCharacter_idleAnimation.png` (8 frames, 144x128, 0.9s loop, `steps(8) infinite`)
+  - **📱 Mobile Screen View**: Viewport `194x173px` (scale factor ~1.35x), ground shadow `w-36 h-5 bg-black/70 blur-md scale-y-50`, drop shadow `[0_6px_16px_rgba(0,0,0,0.7)]`, pixelated rendering.
+  - **🖥️ Web Screen View**: Viewport `310x275px` (scale factor ~2.15x), ground shadow `w-52 h-5 bg-black/70 blur-md scale-y-50`.
+  - All frame dimensions, timings, shadow, and styles are permanently locked.
+
+- **Normal Attack Animation (`femaleCharacter_normalAttackAnimation.png`)**:
+  - Asset: `/images/player/femaleCharacter_normalAttackAnimation.png` (17 frames, 352x256, 1.2s duration, `steps(17) 1 forwards`)
+  - Sound Effect: `/SoundEffects/PlayerSoundEffects/FemaleNormalAttack.mp3` triggered at attack initiation.
+  - Crossfade & Settle: `femaleAttackFadeOut` (1.38s ease-out, 100% visible 0–87%, dissolves 87%–100%) synchronized with `femaleIdleFadeIn` (0–87% hidden, fades in 87%–100%).
+  - **📱 Mobile Screen View**:
+    - Viewport: `476x346px` (scale factor ~1.35x, spritesheet `8092x346px`).
+    - Lunge (`femalePlayerLungeMobile`, 1.38s `cubic-bezier(0.25, 1, 0.5, 1)`):
+      - Frames 1–5 (0%–25.6%): Stationary at home spot matching Idle position and scale (`translate(0, 0) scale(1)`).
+      - Frames 6–13 (25.6%–65%): Forward dash to `translate(max(20px, calc(100cqw - 320px)), -16px) scale(0.63)` executing multi-strike slashes and jump dive on enemy.
+      - Frames 14–17 (65%–87%): Smooth glide return back to home spot at `scale(0.63)`.
+      - Settle (87%–100%): Smooth interpolation back to `translate(0, 0) scale(1)` settling into Idle stance.
+  - **🖥️ Web Screen View**:
+    - Viewport: `756x550px` (scale factor ~2.15x, spritesheet `12852x550px`).
+    - Lunge (`femalePlayerLungeDesktop`, 1.38s `cubic-bezier(0.25, 1, 0.5, 1)`):
+      - Frames 1–5 (0%–25.6%): Stationary at home spot (`translate(0, 0) scale(1)`).
+      - Frames 6–13 (25.6%–65%): Forward dash to `translate(calc(100cqw - 680px), -24px) scale(0.63)`.
+      - Frames 14–17 (65%–87%): Smooth glide return back to home spot at `scale(0.63)`.
+      - Settle (87%–100%): Smooth interpolation back to `translate(0, 0) scale(1)`.
+  - All animations, frame dimensions, timings, scale, lunge choreography, and sound effect bindings are permanently locked.
+
+- **Heavy Attack Glint Animation (`femaleCharacter_heavyAttackGlintAnimation-1.png`)**:
+  - Asset: `/images/player/femaleCharacter_heavyAttackGlintAnimation-1.png` (14 frames, 398x193)
+  - Phase 1 Charge (`femaleHeavyGlintStep`, 0.65s `steps(14) 1 forwards`): Plays frames 1 to 14.
+  - Phase 2 Blast Casting (`femaleHeavyGlintLoop`, 0.35s `steps(7) infinite`): Pulses glint energy along extended blade (frames 8–14 loop) during blast flight.
+  - Dissolve Settle: `femaleHeavyGlintFadeOutMobile` (0.88s ease-out) smoothly transitions back into Idle stance during 85%–100% while `femaleIdleHeavyFadeIn` fades Idle back in.
+  - **📱 Mobile Screen View**:
+    - Viewport: `538x261px` (scale factor ~1.35x, spritesheet `7532x261px`).
+    - Base Alignment: `transform-origin: bottom left`, `translate(-25px, 0) scale(0.82)` (~82% of Idle stance height: 95px body height vs 116px Idle).
+    - Responsive Breakpoints:
+      - Narrow mobile (`max-width: 374px`): `translate(-25px, 0) scale(0.74)`
+      - Standard mobile (`375px - 413px`): `translate(-25px, 0) scale(0.82)`
+      - Large mobile (`414px - 639px`): `translate(-25px, 0) scale(0.85)`
+      - Tablet (`640px - 767px`): `translate(0px, 0px) scale(0.92)`
+    - Return Keyframes: From 85% to 100%, interpolates from `translate(-25px, 0) scale(0.82)` to `translate(0, 0) scale(1)` cleanly matching Idle.
+  - **🖥️ Web Screen View**:
+    - Viewport: `855x415px` (scale factor ~2.15x, spritesheet `11970x415px`).
+    - Alignment: `transform: none !important;` beneath HP card.
+    - Settle: `femaleHeavyGlintFadeOutDesktop` (0.88s ease-out).
+  - All animations, frame dimensions, timings, scales, positions, and transitions are permanently locked.
+
+- **Heavy Attack Blast Animation (`femaleCharacter_heavyAttackBlastAnimation-2.png`)**:
+  - Asset: `/images/player/femaleCharacter_heavyAttackBlastAnimation-2.png` (15 frames, 414x320, 0.75s duration, `steps(15) 1 forwards`)
+  - Sound Effect: `/SoundEffects/PlayerSoundEffects/FemaleHeavyAttack.mp3` triggered synchronously upon blast emergence.
+  - **📱 Mobile Screen View**:
+    - Viewport: `269x208px` (scale factor 0.65x, spritesheet `4035x208px`).
+    - Emergence (0%–15%): `translate(261px, -40px)` scaling from 0.70 to 0.95, emerging with mathematical precision at the tip of the charged sword (`X = 318.5px, Y_bottom = 84.2px`).
+    - Flight & Detonation (70%–100%): Glides across arena to `translate(calc(100cqw - 180px), -24px) scale(1.10)` at 70%, detonates directly on enemy body at `translate(calc(100cqw - 175px), -24px) scale(1.20)` at 85%, and dissipates at 100%.
+    - Tablet (`640px - 767px`): Viewport `290x224px` (`4350x224px`), emerges at `translate(325px, -47px)`, detonates at `calc(100cqw - 260px)`.
+  - **🖥️ Web Screen View**:
+    - Viewport: `580x448px` (scale factor 1.40x, spritesheet `8700x448px`).
+    - Emergence (0%–15%): `translate(520px, -60px)` to `translate(540px, -60px)` at charged sword tip.
+    - Flight & Detonation (70%–100%): Glides across arena to `translate(calc(100cqw - 420px), -30px) scale(1.20)`, detonates at `translate(calc(100cqw - 400px), -30px) scale(1.35)`, dissipates at 100%.
+  - All animations, frame dimensions, timings, scale, trajectory, detonation coordinates, and sound effect bindings are permanently locked.
+
+- **Universal Mode Parity & Attack Trigger Rules**:
+  - 100% identical choreography, visuals, frame dimensions, lunges, and audio across **Boss-Battle Mode, Learning Mode, and Test Mode**.
+  - **50/50 Random Attack Variety**: On any correct answer in Boss-Battle Mode, Learning Mode, and Test Mode, the female player triggers either Normal Attack or Heavy Attack with equal 50% probability (`Math.random() < 0.5`), keeping battle feedback dynamic and satisfying across all modes.
+  - Under NO circumstances should any agent alter, revert, override, cross-contaminate, or degrade the Female Avatar sprite animations or sound effects in any game mode or viewport.

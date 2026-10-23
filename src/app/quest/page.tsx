@@ -52,16 +52,17 @@ import { ChapterWorldMap } from '@/components/quiz/ChapterWorldMap';
 import { XP_PER_QUESTION, calculatePlayerStats } from '@/lib/game-logic';
 import { provideExamFeedback } from '@/ai/flows/provide-exam-feedback';
 import { getQuestQuestions } from '@/app/actions/arena';
-import { completeQuest, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
-import { getCategories } from '@/app/actions/study';
+import { completeQuest, getNodeClearsAction, saveNodeClearAction, recordQuestionAttemptAction } from '@/app/actions/quest';
+import { getCategories, getSubjectTopicMasteryAction, type TopicMasteryDetail } from '@/app/actions/study';
 import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction, saveUserSettingsAction, saveArenaOnboardingAction } from '@/app/actions/user';
 import { QuestArenaOnboardingModal } from '@/components/quest/QuestArenaOnboardingModal';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
 import { getLocalTodayDateString } from '@/lib/notifications';
-import { playSfx, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds, playBgm, stopBgm, stopCombatBgm, isAnyVerdictMusicPlaying, preloadBgm, setAudioBgmVolume, setAudioAmbientMusicEnabled, setMapMusicMuted, setBattleMusicMuted } from '@/lib/audio-manager';
+import { playSfx, preloadFemalePlayerSounds, playFemalePlayerAttack, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds, playBgm, stopBgm, stopCombatBgm, isAnyVerdictMusicPlaying, preloadBgm, setAudioBgmVolume, setAudioAmbientMusicEnabled, setMapMusicMuted, setBattleMusicMuted } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
+import { PlayerSpriteAnimator, type PlayerAnimState } from '@/components/game/PlayerSpriteAnimator';
 import { HitEffectAnimator } from '@/components/game/HitEffectAnimator';
 import { UndergroundSpikesAnimator } from '@/components/game/UndergroundSpikesAnimator';
 import { JudicialHammerAnimator } from '@/components/game/JudicialHammerAnimator';
@@ -295,8 +296,10 @@ export default function LearningQuest() {
   const [leaveConfirmDialogOpen, setLeaveConfirmDialogOpen] = useState(false);
   const [isFleeing, setIsFleeing] = useState(false);
   const [fleeProgress, setFleeProgress] = useState(false);
-  const [setupStep, setSetupStep] = useState<'mode' | 'details' | 'limit'>('mode');
+  const [setupStep, setSetupStep] = useState<'mode' | 'topic' | 'details' | 'limit'>('mode');
   const [mobileModalStep, setMobileModalStep] = useState<'info' | 'action'>('info');
+  const [subjectTopics, setSubjectTopics] = useState<TopicMasteryDetail[]>([]);
+  const [isLoadingTopics, setIsLoadingTopics] = useState(false);
   const [score, setScore] = useState(0);
   const [fetchingExplanations, setFetchingExplanations] = useState<Record<number, boolean>>({});
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
@@ -306,7 +309,7 @@ export default function LearningQuest() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // Topic Mastery Quest Target (from Performance Topic Mastery Modal)
+  // Topic Mastery Quest Target (from Performance Topic Mastery Modal or In-Arena Topic Drill)
   const [selectedTopicFilter, setSelectedTopicFilter] = useState<string | null>(null);
 
   const isProgrammaticScrollRef = useRef(false);
@@ -415,6 +418,40 @@ export default function LearningQuest() {
   useEffect(() => {
     loadCategories();
   }, [loadCategories]);
+
+  const currentUserIdRef = useRef<string | null>(null);
+  const recordedQuestionIdsRef = useRef<Set<string>>(new Set());
+
+  // Fetch topics dynamically for the selected quest region
+  const loadSubjectTopics = useCallback(async (subjectName?: string) => {
+    const targetSubject = subjectName || selectedSubject;
+    if (!targetSubject) return;
+    setIsLoadingTopics(true);
+    try {
+      const activeUserId = currentUserIdRef.current || undefined;
+      const res = await getSubjectTopicMasteryAction(targetSubject, activeUserId);
+      if (res?.topics) {
+        setSubjectTopics(res.topics);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch topics for subject:', err);
+    } finally {
+      setIsLoadingTopics(false);
+    }
+  }, [selectedSubject]);
+
+  useEffect(() => {
+    if (selectedSubject) {
+      loadSubjectTopics(selectedSubject);
+    }
+  }, [selectedSubject, loadSubjectTopics]);
+
+  // Re-fetch topics dynamically whenever user enters Topic Drill step or opens the dialog
+  useEffect(() => {
+    if (modeSelectDialogOpen && setupStep === 'topic' && selectedSubject) {
+      loadSubjectTopics(selectedSubject);
+    }
+  }, [modeSelectDialogOpen, setupStep, selectedSubject, loadSubjectTopics]);
 
   const handleRescan = async () => {
     setCategoriesLoading(true);
@@ -583,7 +620,13 @@ export default function LearningQuest() {
   const [showArenaSettingsDialog, setShowArenaSettingsDialog] = useState<boolean>(false);
   const [arenaSettingsTab, setArenaSettingsTab] = useState<'character' | 'audio'>('character');
   const [renameInput, setRenameInput] = useState<string>('');
-  const [avatarGender, setAvatarGender] = useState<'male' | 'female'>('male');
+  const [avatarGender, setAvatarGender] = useState<'male' | 'female'>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('bq_arena_gender_last');
+      if (cached === 'female' || cached === 'male') return cached;
+    }
+    return 'male';
+  });
   const [renameGender, setRenameGender] = useState<'male' | 'female'>('male');
   const [isSavingSettings, setIsSavingSettings] = useState<boolean>(false);
   const [sfxVolume, setSfxVolume] = useState<number[]>([80]);
@@ -593,9 +636,8 @@ export default function LearningQuest() {
   const [battleMusicMuted, setBattleMusicMutedState] = useState<boolean>(false);
   const [floatingDamageText, setFloatingDamageText] = useState<boolean>(true);
   const [hitScreenFlash, setHitScreenFlash] = useState<boolean>(true);
-  const currentUserIdRef = useRef<string | null>(null);
   const [bossAnimState, setBossAnimState] = useState<BossAnimState>('idle');
-  const [playerAnimState, setPlayerAnimState] = useState<'idle' | 'attack'>('idle');
+  const [playerAnimState, setPlayerAnimState] = useState<PlayerAnimState>('idle');
 
   // Sync cross-tab or cross-dialog mute events & load on client mount to avoid SSR hydration mismatch
   useEffect(() => {
@@ -2027,6 +2069,7 @@ export default function LearningQuest() {
 
   // Preload Battle & Inventory Assets on Mount for Instant Rendering
   useEffect(() => {
+    preloadFemalePlayerSounds();
     preloadSpecterSounds();
     preloadBiohazardSounds();
     preloadStaphSentinelSounds();
@@ -2066,6 +2109,10 @@ export default function LearningQuest() {
       '/images/bossbattleItems/BufferedSaline.png',
       '/images/player/userPlayer_placeholder.png',
       '/images/player/hitAnimation.png',
+      '/images/player/femaleCharacter_idleAnimation.png',
+      '/images/player/femaleCharacter_normalAttackAnimation.png',
+      '/images/player/femaleCharacter_heavyAttackGlintAnimation-1.png',
+      '/images/player/femaleCharacter_heavyAttackBlastAnimation-2.png',
       '/ui/background_clinicalchem.png',
       '/images/bosses/hematology_chapterOneMinion_idleAnimation.png',
       '/images/bosses/hematology_chapterOneMinion_normalAttackAnimation.png',
@@ -2595,6 +2642,9 @@ export default function LearningQuest() {
         if (currentUserIdRef.current) {
           localStorage.setItem(`bq_arena_nickname_${currentUserIdRef.current}`, cleanNick);
           localStorage.setItem(`bq_arena_gender_${currentUserIdRef.current}`, renameGender);
+          localStorage.setItem('bq_arena_gender_last', renameGender);
+        } else {
+          localStorage.setItem('bq_arena_gender_last', renameGender);
         }
       }
 
@@ -2711,8 +2761,16 @@ export default function LearningQuest() {
                         <Check className="w-2.5 h-2.5 stroke-[3]" />
                       </div>
                     )}
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-                      <span className="text-xl">♂️</span>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-primary/20 border border-primary/30 flex items-center justify-center shrink-0 overflow-hidden relative">
+                      <Image
+                        src="/images/player/userPlayer_placeholder.png"
+                        alt="Male Avatar"
+                        width={36}
+                        height={36}
+                        className="w-8 h-8 object-contain filter drop-shadow-sm"
+                        style={{ imageRendering: 'pixelated' }}
+                        unoptimized
+                      />
                     </div>
                     <div>
                       <div className="font-headline font-bold text-sm text-foreground">Male</div>
@@ -2734,8 +2792,23 @@ export default function LearningQuest() {
                         <Check className="w-2.5 h-2.5 stroke-[3]" />
                       </div>
                     )}
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-                      <span className="text-xl">♀️</span>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-primary/20 border border-primary/30 flex items-center justify-center shrink-0 overflow-hidden relative">
+                      <div
+                        className="w-[45px] h-[40px] relative overflow-hidden"
+                        style={{ imageRendering: 'pixelated' }}
+                      >
+                        <div
+                          className="absolute top-0 left-0"
+                          style={{
+                            width: `${45 * 8}px`,
+                            height: '40px',
+                            backgroundImage: `url('/images/player/femaleCharacter_idleAnimation.png')`,
+                            backgroundRepeat: 'no-repeat',
+                            backgroundSize: `${45 * 8}px 40px`,
+                            animation: 'femaleOnboardingIdle 0.9s steps(8) infinite',
+                          }}
+                        />
+                      </div>
                     </div>
                     <div>
                       <div className="font-headline font-bold text-sm text-foreground">Female</div>
@@ -3317,6 +3390,7 @@ export default function LearningQuest() {
     setConfidenceDialogOpen(false);
     setThankYouDialogOpen(false);
     setQuestStartTime(Date.now());
+    recordedQuestionIdsRef.current.clear();
     isFinishingRef.current = false;
     hasSubmittedConfidenceRef.current = false;
     hasShownThankYouRef.current = false;
@@ -3725,6 +3799,18 @@ export default function LearningQuest() {
       difficulty: questionData?.difficulty
     }]);
 
+    // Asynchronously record attempt on the fly so attempts/mastery are 100% dynamic even during partial sessions
+    const rawQuestionId = questionData?.id;
+    if (rawQuestionId) {
+      recordedQuestionIdsRef.current.add(rawQuestionId);
+      recordQuestionAttemptAction({
+        questionId: rawQuestionId,
+        isCorrect,
+        subject: selectedSubject,
+        userId: currentUserIdRef.current || undefined
+      }).catch(err => console.warn('Background question attempt record failed:', err));
+    }
+
     // All XP, streaks, badges, and level-ups are strictly awarded upon completed quests via completeQuest
 
     const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
@@ -3952,7 +4038,7 @@ export default function LearningQuest() {
       setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
       playSfx('correct');
-      if (quizMode === 'boss-battle' || quizMode === 'learning') {
+      if (avatarGender !== 'female' && (quizMode === 'boss-battle' || quizMode === 'learning')) {
         setTimeout(() => playSfx('attack'), 150);
       }
     } else {
@@ -4119,6 +4205,10 @@ export default function LearningQuest() {
       }
     }
 
+    const isPlayerHeavy = (quizMode === 'learning' || quizMode === 'test')
+      ? Math.random() < 0.5
+      : action === 'heavy';
+
     // Apply health changes (Enemies NEVER heal)
     if (enemyDmg > 0) {
       const applyEnemyDamage = () => {
@@ -4163,16 +4253,40 @@ export default function LearningQuest() {
 
         addFloatingText(
           'enemy',
-          `-${Math.ceil(enemyDmg)} ${isCritHit ? '⚡ CRITICAL STRIKE!' : action === 'heavy' ? 'HEAVY HIT!' : 'DMG!'}`,
+          `-${Math.ceil(enemyDmg)} ${isCritHit ? '⚡ CRITICAL STRIKE!' : isPlayerHeavy ? 'HEAVY HIT!' : 'DMG!'}`,
           isCritHit ? 'text-amber-300 font-black' : 'text-yellow-400'
         );
       };
 
       if (isCorrect) {
         setBossAnimState('idle');
-        setPlayerAnimState('attack');
-        setTimeout(() => setPlayerAnimState('idle'), 1200);
-        setTimeout(applyEnemyDamage, 450);
+        if (avatarGender === 'female' && isPlayerHeavy) {
+          // Female Heavy Attack Sequence:
+          // Phase 1: Play Glint Animation first in-place (650ms)
+          setPlayerAnimState('heavy_glint');
+          setTimeout(() => {
+            // Phase 2: Unleash Blast Animation that glides smoothly across the arena towards enemy (750ms)
+            setPlayerAnimState('heavy_blast');
+            playFemalePlayerAttack('heavy');
+            // Enemy takes damage right on blast impact (~500ms into flight, 1150ms total)
+            setTimeout(applyEnemyDamage, 500);
+            // Complete blast and return player to idle stance
+            setTimeout(() => {
+              setPlayerAnimState('idle');
+            }, 880);
+          }, 650);
+        } else {
+          // Normal Attack Card (or default mode):
+          // Forward lunge attack with normal attack animation
+          setPlayerAnimState('attack');
+          if (avatarGender === 'female') {
+            setTimeout(() => {
+              playFemalePlayerAttack('normal');
+            }, 250);
+          }
+          setTimeout(() => setPlayerAnimState('idle'), avatarGender === 'female' ? 1380 : 1200);
+          setTimeout(applyEnemyDamage, avatarGender === 'female' ? 520 : 450);
+        }
       } else {
         applyEnemyDamage();
       }
@@ -4939,6 +5053,8 @@ export default function LearningQuest() {
         }
       }
 
+      const allRecorded = userAnswers.length > 0 && userAnswers.every(ua => ua.questionId && recordedQuestionIdsRef.current.has(ua.questionId));
+
       const result = await completeQuest({
         score,
         totalQuestions: questions.length,
@@ -4946,6 +5062,8 @@ export default function LearningQuest() {
         completionTime: questCompletionTime,
         questMode: quizMode,
         subject: selectedSubject,
+        userId: currentUserIdRef.current || undefined,
+        skipQuestionAttemptRecording: allRecorded,
         userAnswers: userAnswers.map(ua => ({
           questionId: ua.questionId || '',
           isCorrect: ua.isCorrect,
@@ -4954,6 +5072,8 @@ export default function LearningQuest() {
       });
 
       if (result.success) {
+        // Immediately refresh topic mastery so Topic Drill screen reflects latest attempts & accuracy
+        loadSubjectTopics(selectedSubject);
         if (result.totalXp !== undefined) {
           setEarnedQuestXp(result.totalXp);
         }
@@ -5652,6 +5772,7 @@ export default function LearningQuest() {
                     setShowBattleLog(false);
                     setEarnedQuestXp(null);
                     setLeveledUpDetails(null);
+                    loadSubjectTopics(selectedSubject);
                     setSetupStep('mode');
                     setModeSelectDialogOpen(true);
                     fetchUser();
@@ -5678,6 +5799,7 @@ export default function LearningQuest() {
                     setEarnedQuestXp(null);
                     setLeveledUpDetails(null);
                     setSelectedTopicFilter(null);
+                    loadSubjectTopics(selectedSubject);
                     fetchUser();
                     playBgm('map_selection');
                   }}
@@ -5758,6 +5880,7 @@ export default function LearningQuest() {
       setBattleOutcome(null);
       setJudgementText(null);
       setSelectedTopicFilter(null);
+      loadSubjectTopics(selectedSubject);
       toast({
         title: "Tactical Retreat",
         description: "You safely withdrew from the arena. XP and session rewards were forfeited.",
@@ -6694,7 +6817,9 @@ export default function LearningQuest() {
               {/* Standalone Foreground Player Character Sprite - Completely flush to bottom-left */}
               <div className={cn(
                 "relative flex flex-col items-center justify-end shrink-0 -mb-4 md:-mb-6 -ml-2 md:-ml-4 transition-all transform-gpu z-20 order-2 md:order-1",
-                playerAnimState === 'attack' && !judgementText && !battleOutcome && !isFinished && "animate-player-lunge"
+                playerAnimState === 'attack' && !judgementText && !battleOutcome && !isFinished && (
+                  avatarGender === 'female' ? "animate-female-player-lunge" : "animate-player-lunge"
+                )
               )}>
                 {/* Ground Shadow for Player Character */}
                 <div className="absolute bottom-4 w-36 md:w-52 h-5 bg-black/70 rounded-[100%] blur-md scale-y-50 pointer-events-none" />
@@ -7055,25 +7180,13 @@ export default function LearningQuest() {
                   );
                 })()}
 
-                <div className="relative z-10 w-44 h-44 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-84 lg:h-84 shrink-0 transition-transform">
-                  <Image
-                    src="/images/player/userPlayer_placeholder.png"
-                    alt="Aspirant Character Sprite"
-                    width={300}
-                    height={300}
-                    priority
-                    className="w-full h-full object-contain object-bottom filter drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]"
-                    style={{ imageRendering: 'pixelated' }}
-                    unoptimized
-                  />
-                  {/* Player Hit Animation directly on player chest/body */}
-                  <HitEffectAnimator
-                    isActive={hitEffectTarget === 'player'}
-                    triggerKey={hitEffectKey}
-                    scale={2.2}
-                    className="top-[45%] left-[52%]"
-                  />
-                </div>
+                <PlayerSpriteAnimator
+                  gender={avatarGender}
+                  animState={playerAnimState}
+                  isHit={isAnimating === "player"}
+                  hitEffectTarget={hitEffectTarget}
+                  hitEffectKey={hitEffectKey}
+                />
 
                 {/* Player Floating Text - Directly on top of player sprite head */}
                 {floatingTexts.filter(ft => ft.target === 'player').map(ft => (
@@ -7474,17 +7587,19 @@ export default function LearningQuest() {
           <div className="relative w-[800px] max-w-full aspect-[4/3] flex items-center justify-center overflow-hidden">
             <Image
               src={
-                setupStep === 'details'
-                  ? quizMode === 'learning'
-                    ? "/ui/LearningMode_OverviewModal.png"
-                    : quizMode === 'test'
-                      ? "/ui/TestMode_OverviewModal.png"
-                      : "/ui/BossBattleMode_OverviewModal.png"
-                  : selectedTopicFilter
-                    ? "/ui/TopicDrill_Modal.png"
-                    : "/ui/modal-bg.png"
+                setupStep === 'topic'
+                  ? "/ui/TopicDrill_Modal.png"
+                  : setupStep === 'details'
+                    ? quizMode === 'learning'
+                      ? "/ui/LearningMode_OverviewModal.png"
+                      : quizMode === 'test'
+                        ? "/ui/TestMode_OverviewModal.png"
+                        : "/ui/BossBattleMode_OverviewModal.png"
+                    : selectedTopicFilter
+                      ? "/ui/TopicDrill_Modal.png"
+                      : "/ui/modal-bg.png"
               }
-              alt={selectedTopicFilter ? "Topic Drill Background" : "Select Mode Background"}
+              alt={setupStep === 'topic' || selectedTopicFilter ? "Topic Drill Background" : "Select Mode Background"}
               fill
               className="object-contain"
               style={{ imageRendering: 'pixelated' }}
@@ -7497,6 +7612,7 @@ export default function LearningQuest() {
               onClick={() => {
                 setModeSelectDialogOpen(false);
                 setSelectedTopicFilter(null);
+                setSetupStep('mode');
                 if (typeof window !== 'undefined') {
                   const newUrl = new URL(window.location.href);
                   if (newUrl.searchParams.has('topic') || newUrl.searchParams.has('subject')) {
@@ -7523,7 +7639,7 @@ export default function LearningQuest() {
                   <>
                     {/* Learning Mode Button */}
                     <button
-                      onClick={() => { setQuizMode('learning'); setSetupStep('details'); setMobileModalStep('info'); }}
+                      onClick={() => { setQuizMode('learning'); setSetupStep('details'); /* setSetupStep('topic'); // UNCOMMENT TO RE-ENABLE TOPIC DRILL */ setMobileModalStep('info'); }}
                       className="relative flex-1 h-full max-h-[80%] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
                     >
                       <Image src="/ui/btn-learning.png" alt="Learning Mode" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
@@ -7539,7 +7655,7 @@ export default function LearningQuest() {
 
                     {/* Test Mode Button */}
                     <button
-                      onClick={() => { setQuizMode('test'); setSetupStep('details'); setMobileModalStep('info'); }}
+                      onClick={() => { setQuizMode('test'); setSetupStep('details'); /* setSetupStep('topic'); // UNCOMMENT TO RE-ENABLE TOPIC DRILL */ setMobileModalStep('info'); }}
                       className="relative flex-1 h-full max-h-[80%] group hover:scale-105 active:scale-95 hover:brightness-110 transition-all cursor-pointer"
                     >
                       <Image src="/ui/btn-test.png" alt="Test Mode" fill className="object-contain" style={{ imageRendering: 'pixelated' }} unoptimized />
@@ -7627,6 +7743,157 @@ export default function LearningQuest() {
                       );
                     })()}
                   </>
+                ) : /* =========================================================================
+                    [FEATURE: TOPIC DRILL MASTERY SELECTION STEP - CURRENTLY COMMENTED OUT]
+                    To re-enable Topic Drill in the future:
+                    1) Change `false && setupStep === 'topic'` below back to `setupStep === 'topic'`.
+                    2) In Learning and Test mode buttons above, change setSetupStep('details') to setSetupStep('topic').
+                    3) In the Details screen Back buttons below, change setSetupStep('mode') back to setSetupStep('topic').
+                    ========================================================================= */
+                false && setupStep === 'topic' ? (
+                  <div className="flex flex-col w-full h-full p-1 min-[375px]:p-2 md:p-5 overflow-hidden animate-in fade-in zoom-in-95 relative justify-between">
+                    {/* Header */}
+                    <div className="text-center space-y-0.5 sm:space-y-1 shrink-0 mt-3 sm:mt-4 md:mt-6 mb-1 sm:mb-2">
+                      <h3 className="font-bytebounce text-amber-300 text-sm sm:text-base md:text-xl uppercase tracking-wider block leading-tight drop-shadow-[1px_1px_0_#000]">
+                        {selectedSubject} Syllabus
+                      </h3>
+                      <p
+                        className="text-white/85 font-sans text-[8.5px] min-[375px]:text-[10px] sm:text-xs max-w-md mx-auto leading-tight"
+                        style={{ textShadow: '1px 1px 0 #000' }}
+                      >
+                        Select an approved topic to concentrate your drill, or choose All Topics.
+                      </p>
+                    </div>
+
+                    {/* Scrollable Topics List */}
+                    <div className="flex-1 min-h-0 my-1 sm:my-2 overflow-y-auto px-1 sm:px-2 py-1 space-y-1.5 sm:space-y-2 no-scrollbar focus:outline-none">
+                      {/* 1. All Topics Card */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTopicFilter(null);
+                          setSetupStep('details');
+                        }}
+                        className={cn(
+                          "w-full text-left rounded-lg sm:rounded-xl p-2 sm:p-2.5 transition-all cursor-pointer flex items-center justify-between gap-2 border-2 group",
+                          !selectedTopicFilter
+                            ? "bg-amber-500/25 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.35)]"
+                            : "bg-black/60 hover:bg-black/80 border-amber-500/40 hover:border-amber-400"
+                        )}
+                      >
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-amber-400 text-xs sm:text-sm">⭐</span>
+                            <span className="font-bytebounce text-amber-300 text-xs sm:text-sm md:text-base tracking-wide uppercase leading-tight font-bold truncate drop-shadow-[1px_1px_0_#000]">
+                              ALL TOPICS (FULL REALM)
+                            </span>
+                          </div>
+                          <p className="text-[8px] sm:text-[10px] text-amber-100/80 font-sans leading-none truncate">
+                            Randomized comprehensive licensure exam mix across all realm topics
+                          </p>
+                        </div>
+                        <span className="font-bytebounce text-[9px] sm:text-xs uppercase px-1.5 sm:px-2 py-0.5 rounded bg-amber-400 text-black font-bold shrink-0 shadow-sm leading-none">
+                          Select &rarr;
+                        </span>
+                      </button>
+
+                      {/* 2. Dynamic Topic List from Database */}
+                      {isLoadingTopics ? (
+                        <div className="flex flex-col items-center justify-center py-6 sm:py-8 gap-2">
+                          <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin text-amber-400" />
+                          <span className="font-bytebounce text-white/90 text-xs sm:text-sm uppercase tracking-wider drop-shadow-[1px_1px_0_#000]">
+                            Loading Syllabus Topics...
+                          </span>
+                        </div>
+                      ) : subjectTopics.length > 0 ? (
+                        subjectTopics.map((topic) => {
+                          const isSelected = selectedTopicFilter === topic.name;
+                          return (
+                            <button
+                              key={topic.id || topic.name}
+                              type="button"
+                              onClick={() => {
+                                setSelectedTopicFilter(topic.name);
+                                setSetupStep('details');
+                              }}
+                              className={cn(
+                                "w-full text-left rounded-lg sm:rounded-xl p-2 sm:p-2.5 transition-all cursor-pointer flex items-center justify-between gap-2 border-2 group",
+                                isSelected
+                                  ? "bg-primary/25 border-primary shadow-[0_0_12px_rgba(59,130,246,0.4)]"
+                                  : "bg-black/55 hover:bg-black/80 border-slate-700/80 hover:border-amber-400/80"
+                              )}
+                            >
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-white/80 group-hover:text-amber-300 transition-colors text-[10px] sm:text-xs">🎯</span>
+                                  <span className="font-bytebounce text-white group-hover:text-amber-300 transition-colors text-xs sm:text-sm md:text-base tracking-wide leading-tight drop-shadow-[1px_1px_0_#000] truncate">
+                                    {topic.name}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[8px] sm:text-[9.5px] text-slate-300/80 font-sans leading-none">
+                                  <span>{topic.totalQuestions} Questions</span>
+                                  {topic.totalAttempts > 0 && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{topic.accuracy}% Accuracy</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Status Pill */}
+                              <div className="shrink-0 flex items-center">
+                                {topic.status === 'Mastered' ? (
+                                  <span className="font-bytebounce text-[8px] sm:text-[10px] md:text-xs uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/60 font-bold whitespace-nowrap shadow-sm">
+                                    Mastered
+                                  </span>
+                                ) : topic.status === 'Needs Review' ? (
+                                  <span className="font-bytebounce text-[8px] sm:text-[10px] md:text-xs uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/60 font-bold whitespace-nowrap shadow-sm">
+                                    Needs Review
+                                  </span>
+                                ) : topic.status === 'Proficient' ? (
+                                  <span className="font-bytebounce text-[8px] sm:text-[10px] md:text-xs uppercase px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/60 font-bold whitespace-nowrap shadow-sm">
+                                    Proficient
+                                  </span>
+                                ) : (
+                                  <span className="font-bytebounce text-[8px] sm:text-[10px] md:text-xs uppercase px-1.5 py-0.5 rounded bg-slate-700/50 text-slate-300 border border-slate-600/60 font-bold whitespace-nowrap shadow-sm">
+                                    Unattempted
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="text-center py-4 text-slate-300/80 font-sans text-xs">
+                          No specific sub-topics categorized for this realm yet. Choose &quot;ALL TOPICS&quot; above.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer Back Button */}
+                    <div className="shrink-0 pt-0.5 sm:pt-1 flex items-center justify-between w-full px-1 sm:px-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSetupStep('mode');
+                          setSelectedTopicFilter(null);
+                        }}
+                        className="text-white/70 hover:text-white font-bytebounce text-xs sm:text-sm md:text-base uppercase tracking-widest transition-colors flex items-center gap-1 cursor-pointer active:translate-y-0.5"
+                        style={{ textShadow: '1px 1px 0 #000' }}
+                      >
+                        &larr; Back to Modes
+                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {isLoadingTopics && (
+                          <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin text-amber-300 inline" />
+                        )}
+                        <span className="font-bytebounce text-white/50 text-[10px] sm:text-xs tracking-wider uppercase">
+                          {isLoadingTopics ? "Syncing..." : `${subjectTopics.length} Topics Available`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 ) : setupStep === 'details' ? (
                   <div className="flex flex-col w-full h-full p-1 min-[375px]:p-2 md:p-6 overflow-hidden no-scrollbar animate-in fade-in zoom-in-95 relative justify-between">
 
@@ -7682,11 +7949,11 @@ export default function LearningQuest() {
                         </div>
                       )}
 
-                      {/* Mobile Back to Modes */}
+                      {/* Mobile Back to Modes (Uncomment setSetupStep('topic') if re-enabling Topic Drill) */}
                       {mobileModalStep === 'info' && (
                         <div className="md:hidden mt-auto pt-1 pb-0.5 w-full flex justify-center">
                           <button
-                            onClick={() => setSetupStep('mode')}
+                            onClick={() => { setSetupStep('mode'); /* setSetupStep('topic'); loadSubjectTopics(selectedSubject); // Uncomment to restore Topic Drill */ }}
                             className="text-white/70 hover:text-white font-bytebounce text-[10px] min-[375px]:text-xs uppercase tracking-widest transition-colors"
                             style={{ textShadow: '1px 1px 0 #000' }}
                           >
@@ -7848,7 +8115,8 @@ export default function LearningQuest() {
                           </div>
                         </>
                       )}
-                      <Button variant="ghost" onClick={() => setSetupStep('mode')} className="hidden md:flex text-white/60 hover:text-white hover:bg-transparent h-8 text-xs font-bold uppercase tracking-wider">
+                      {/* Desktop Back to Modes (Uncomment setSetupStep('topic') if re-enabling Topic Drill) */}
+                      <Button variant="ghost" onClick={() => { setSetupStep('mode'); /* setSetupStep('topic'); loadSubjectTopics(selectedSubject); // Uncomment to restore Topic Drill */ }} className="hidden md:flex text-white/60 hover:text-white hover:bg-transparent h-8 text-xs font-bold uppercase tracking-wider cursor-pointer">
                         &larr; Back to Modes
                       </Button>
                     </div>
@@ -7887,11 +8155,18 @@ export default function LearningQuest() {
         initialName={initialProfileName || userLastName}
         onComplete={async (data) => {
           setUserLastName(data.nickname);
+          setAvatarGender(data.avatarGender);
           if (currentUserIdRef.current) {
             try {
               localStorage.setItem(`bq_arena_nickname_${currentUserIdRef.current}`, data.nickname);
+              localStorage.setItem(`bq_arena_gender_${currentUserIdRef.current}`, data.avatarGender);
+              localStorage.setItem('bq_arena_gender_last', data.avatarGender);
               localStorage.setItem(`bq_arena_onboarding_completed_${currentUserIdRef.current}`, 'true');
               localStorage.setItem('bq_pref_daily_quota', data.dailyQuota.toString());
+            } catch (e) {}
+          } else {
+            try {
+              localStorage.setItem('bq_arena_gender_last', data.avatarGender);
             } catch (e) {}
           }
           const res = await saveArenaOnboardingAction(data);
