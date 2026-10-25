@@ -167,6 +167,30 @@ export async function syncSubjectMastery(userId: string, subject: string) {
       update: { proficiency, status },
       create: { userId, subject, proficiency, status },
     });
+
+    try {
+      const client = await clientPromise;
+      const db = client.db('boardquest');
+      const { ObjectId } = await import('mongodb');
+      const userObjId = ObjectId.isValid(userId) ? new ObjectId(userId) : null;
+      await db.collection('SubjectMastery').updateOne(
+        {
+          subject,
+          $or: [
+            { userId },
+            ...(userObjId ? [{ userId: userObjId }] : [])
+          ]
+        },
+        {
+          $set: {
+            topicCoverage,
+            passingTopics,
+            totalTopics,
+            updatedAt: new Date()
+          }
+        }
+      );
+    } catch (_) {}
   } catch (error) {
     console.error(`Failed to sync SubjectMastery for ${subject}:`, error);
   }
@@ -250,13 +274,16 @@ export async function getUserLessonCompletions(): Promise<Record<string, string>
   }
 }
 
-export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
+export async function getSubjectMetrics(explicitUserId?: string): Promise<SubjectMetrics[]> {
   try {
-    const cookieStore = await cookies();
-    let userId = cookieStore.get('user_id')?.value;
+    let userId: string | undefined = explicitUserId;
+    try {
+      const cookieStore = await cookies();
+      if (!userId) {
+        userId = cookieStore.get('user_id')?.value;
+      }
 
-    if (!userId) {
-      try {
+      if (!userId) {
         const sessionToken = cookieStore.get('bq_session_token')?.value;
         if (sessionToken) {
           const client = await clientPromise;
@@ -266,8 +293,8 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
             userId = activeSession.userId.toString();
           }
         }
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
 
     if (!userId) {
       try {

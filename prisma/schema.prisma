@@ -246,10 +246,13 @@ model SubjectMastery {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   userId      String   @db.ObjectId
   subject     String
-  proficiency Int      @default(0)
-  minScore    Int      @default(0)
-  status      String   @default("In Training")
-  updatedAt   DateTime @updatedAt
+  proficiency   Int      @default(0)
+  topicCoverage Int      @default(0)
+  passingTopics Int      @default(0)
+  totalTopics   Int      @default(0)
+  minScore      Int      @default(0)
+  status        String   @default("In Training")
+  updatedAt     DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
