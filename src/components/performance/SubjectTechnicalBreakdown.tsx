@@ -26,6 +26,9 @@ export interface SubjectMasteryItem {
   mastery: number;
   status: string;
   points?: number;
+  topicCoverage?: number;
+  passingTopics?: number;
+  totalTopics?: number;
 }
 
 export interface SubjectTechnicalBreakdownProps {
@@ -115,16 +118,18 @@ export function SubjectTechnicalBreakdown({
                 <Badge
                   variant="outline"
                   className={`text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-lg shrink-0 ${
-                    item.status === 'Mastered' || (item.mastery >= 90 && item.completion >= 50)
+                    item.status === 'Mastered'
                       ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                      : item.status === 'Proficient' || (item.mastery >= 75 && item.completion >= 25)
+                      : item.status === 'Proficient'
                       ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
-                      : item.status === 'In Training' || item.mastery >= 50 || item.completion > 0
+                      : item.status === 'In Training'
                       ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                      : item.status === 'Needs Focus'
+                      ? 'bg-red-500/10 text-red-500 border-red-500/30'
                       : 'bg-muted text-muted-foreground border-border'
                   }`}
                 >
-                  {item.status || ((item.mastery >= 90 && item.completion >= 50) ? 'Mastered' : (item.mastery >= 75 && item.completion >= 25) ? 'Proficient' : (item.mastery >= 50 || item.completion > 0) ? 'In Training' : 'Needs Focus')}
+                  {item.status || 'In Training'}
                 </Badge>
               </div>
 
@@ -152,6 +157,34 @@ export function SubjectTechnicalBreakdown({
                     <span className="font-bold text-primary font-mono">{item.mastery}%</span>
                   </div>
                   <Progress value={item.mastery} className="h-1.5 rounded-full bg-muted" />
+                </div>
+
+                {/* 3. Subject Topic Mastery Bar */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-[10.5px] font-semibold">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-emerald-500" />
+                      Subject Topic Mastery
+                    </span>
+                    <span className="font-bold text-foreground font-mono">
+                      {typeof item.totalTopics === 'number' && item.totalTopics > 0 ? (
+                        <>
+                          {item.topicCoverage ?? 0}%
+                          <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                            ({item.passingTopics ?? 0}/{item.totalTopics} Passing)
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground font-normal">
+                          0% (No Topics Available)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <Progress
+                    value={typeof item.totalTopics === 'number' && item.totalTopics > 0 ? (item.topicCoverage ?? 0) : 0}
+                    className="h-1.5 rounded-full bg-muted [&>div]:bg-emerald-500"
+                  />
                 </div>
               </div>
 

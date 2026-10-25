@@ -198,10 +198,10 @@ export function TopicMasteryModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl w-[95vw] sm:w-[90vw] md:w-[85vw] max-h-[92vh] sm:max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden bg-card border-2 border-primary/20 shadow-2xl rounded-2xl sm:rounded-3xl">
+      <DialogContent className="max-w-3xl w-[95vw] sm:w-[90vw] md:w-[85vw] h-[90dvh] sm:h-[85dvh] max-h-[92dvh] sm:max-h-[88dvh] flex flex-col p-0 gap-0 overflow-hidden bg-card border-2 border-primary/20 shadow-2xl rounded-2xl sm:rounded-3xl">
         
         {/* Top Header Banner */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border-b border-border/80 p-3.5 sm:p-5 md:p-6 shrink-0">
+        <div className="relative overflow-hidden bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border-b border-border/80 p-3 sm:p-5 md:p-6 shrink-0">
           <div className="flex items-start justify-between gap-3 sm:gap-4 relative z-10 pr-9 sm:pr-10">
             <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
               <div className="w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl sm:rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shadow-sm shrink-0">
@@ -226,33 +226,158 @@ export function TopicMasteryModal({
             </div>
           </div>
 
+          {/* Quick Stats Metric Pills Skeleton when loading initially */}
+          {loading && !data && (
+            <div className="grid grid-cols-6 sm:grid-cols-5 gap-1.5 sm:gap-2.5 mt-2.5 sm:mt-4 pt-2 sm:pt-3.5 border-t border-border/60">
+              <div className="col-span-2 sm:col-span-1 h-12 sm:h-14 rounded-xl bg-muted/50 border border-border/40 animate-pulse" />
+              <div className="col-span-2 sm:col-span-1 h-12 sm:h-14 rounded-xl bg-emerald-500/5 border border-emerald-500/15 animate-pulse" />
+              <div className="col-span-2 sm:col-span-1 h-12 sm:h-14 rounded-xl bg-blue-500/5 border border-blue-500/15 animate-pulse" />
+              <div className="col-span-3 sm:col-span-1 h-12 sm:h-14 rounded-xl bg-amber-500/5 border border-amber-500/15 animate-pulse" />
+              <div className="col-span-3 sm:col-span-1 h-12 sm:h-14 rounded-xl bg-primary/5 border border-primary/15 animate-pulse" />
+            </div>
+          )}
+
           {/* Quick Stats Metric Pills */}
-          {data && !loading && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5 mt-3 sm:mt-4 pt-2.5 sm:pt-3.5 border-t border-border/60">
-              <div className="bg-background/80 backdrop-blur-sm border border-border/80 rounded-xl p-1.5 sm:p-2.5 text-center">
-                <span className="text-[8.5px] sm:text-[10px] uppercase font-bold text-muted-foreground block truncate">Total Topics</span>
-                <span className="text-sm sm:text-base md:text-lg font-black font-mono text-foreground">{data.totalTopics}</span>
-              </div>
-              <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-1.5 sm:p-2.5 text-center">
-                <span className="text-[8.5px] sm:text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block truncate">Mastered</span>
-                <span className="text-sm sm:text-base md:text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">{data.masteredCount}</span>
-              </div>
-              <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-1.5 sm:p-2.5 text-center">
-                <span className="text-[8.5px] sm:text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 block truncate">Needs Review</span>
-                <span className="text-sm sm:text-base md:text-lg font-black font-mono text-amber-600 dark:text-amber-400">{data.needsReviewCount}</span>
-              </div>
-              <div className="bg-primary/10 border border-primary/25 rounded-xl p-1.5 sm:p-2.5 text-center">
-                <span className="text-[8.5px] sm:text-[10px] uppercase font-bold text-primary block truncate">Avg Accuracy</span>
+          {data && (
+            <div className="grid grid-cols-6 sm:grid-cols-5 gap-1.5 sm:gap-2.5 mt-2.5 sm:mt-4 pt-2 sm:pt-3.5 border-t border-border/60">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className={cn(
+                  "col-span-2 sm:col-span-1 bg-background/80 backdrop-blur-sm border rounded-xl p-1.5 sm:p-2.5 text-center transition-all duration-200 cursor-pointer hover:border-primary/50 active:scale-[0.98]",
+                  statusFilter === 'ALL'
+                    ? "border-primary/60 ring-1 ring-primary/40 shadow-xs"
+                    : "border-border/80"
+                )}
+                title="Filter: All Topics"
+              >
+                <span className="text-[8.5px] sm:text-[10px] uppercase font-bold text-muted-foreground block truncate">
+                  Total Topics
+                </span>
+                <span className="text-sm sm:text-base md:text-lg font-black font-mono text-foreground">
+                  {data.totalTopics}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter('MASTERED')}
+                className={cn(
+                  "col-span-2 sm:col-span-1 bg-emerald-500/10 border rounded-xl p-1.5 sm:p-2.5 text-center transition-all duration-200 cursor-pointer hover:border-emerald-500/60 active:scale-[0.98]",
+                  statusFilter === 'MASTERED'
+                    ? "border-emerald-500/70 ring-1 ring-emerald-500/50 shadow-xs"
+                    : "border-emerald-500/25"
+                )}
+                title="Filter: Mastered Topics"
+              >
+                <span className="text-[8.5px] sm:text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block truncate">
+                  Mastered
+                </span>
+                <span className="text-sm sm:text-base md:text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
+                  {data.masteredCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter('PROFICIENT')}
+                className={cn(
+                  "col-span-2 sm:col-span-1 bg-blue-500/10 border rounded-xl p-1.5 sm:p-2.5 text-center transition-all duration-200 cursor-pointer hover:border-blue-500/60 active:scale-[0.98]",
+                  statusFilter === 'PROFICIENT'
+                    ? "border-blue-500/70 ring-1 ring-blue-500/50 shadow-xs"
+                    : "border-blue-500/25"
+                )}
+                title="Filter: Proficient Topics"
+              >
+                <span className="text-[8.5px] sm:text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 block truncate">
+                  Proficient
+                </span>
+                <span className="text-sm sm:text-base md:text-lg font-black font-mono text-blue-600 dark:text-blue-400">
+                  {data.proficientCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter('NEEDS_REVIEW')}
+                className={cn(
+                  "col-span-3 sm:col-span-1 bg-amber-500/10 border rounded-xl p-1.5 sm:p-2.5 text-center transition-all duration-200 cursor-pointer hover:border-amber-500/60 active:scale-[0.98]",
+                  statusFilter === 'NEEDS_REVIEW'
+                    ? "border-amber-500/70 ring-1 ring-amber-500/50 shadow-xs"
+                    : "border-amber-500/25"
+                )}
+                title="Filter: Needs Review Topics"
+              >
+                <span className="text-[8.5px] sm:text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 block truncate">
+                  Needs Review
+                </span>
+                <span className="text-sm sm:text-base md:text-lg font-black font-mono text-amber-600 dark:text-amber-400">
+                  {data.needsReviewCount}
+                </span>
+              </button>
+
+              <div
+                className="col-span-3 sm:col-span-1 bg-primary/10 border border-primary/25 rounded-xl p-1.5 sm:p-2.5 text-center select-none"
+              >
+                <span className="text-[8.5px] sm:text-[10px] uppercase font-bold text-primary block truncate">
+                  Avg Accuracy
+                </span>
                 <span className="text-sm sm:text-base md:text-lg font-black font-mono text-primary">
                   {data.overallAccuracy > 0 ? `${data.overallAccuracy}%` : (overallMastery ? `${overallMastery}%` : '0%')}
                 </span>
               </div>
             </div>
           )}
+
+          {/* Topic Coverage Gate Notice */}
+          {data && (
+            <div className="mt-2 sm:mt-2.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-background/80 border border-border/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-1.5 text-xs">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className="text-muted-foreground font-medium text-[11px]">Subject Topic Mastery:</span>
+                <span className="font-bold text-foreground font-mono text-xs">
+                  {data.totalTopics > 0 ? (
+                    <>
+                      {Math.round(((data.masteredCount + data.proficientCount) / data.totalTopics) * 100)}%
+                      <span className="text-muted-foreground font-normal ml-1 text-[11px]">
+                        ({data.masteredCount + data.proficientCount}/{data.totalTopics} Passing)
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground font-normal text-[11px]">
+                      0% (No Topics Available Yet)
+                    </span>
+                  )}
+                </span>
+              </div>
+              {data.totalTopics > 0 ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[9.5px] font-bold uppercase py-0.5 px-2 rounded-lg shrink-0",
+                    ((data.masteredCount + data.proficientCount) / data.totalTopics) >= 0.75
+                      ? "text-emerald-500 border-emerald-500/40 bg-emerald-500/10"
+                      : "text-amber-500 border-amber-500/40 bg-amber-500/10"
+                  )}
+                >
+                  {((data.masteredCount + data.proficientCount) / data.totalTopics) >= 0.75
+                    ? "✓ Goal Met (≥75%)"
+                    : `Goal: Need ${Math.max(1, Math.ceil(data.totalTopics * 0.75) - (data.masteredCount + data.proficientCount))} more for Proficient`}
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="text-[9.5px] font-medium uppercase py-0.5 px-2 rounded-lg shrink-0 text-muted-foreground border-border bg-muted/40"
+                >
+                  Syllabus In Preparation
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Toolbar: Search, Filter Tabs & Sort Dropdown */}
-        <div className="p-3 sm:p-4 bg-muted/30 border-b border-border/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
+        <div className="p-2.5 sm:p-3.5 bg-muted/30 border-b border-border/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 shrink-0">
           {/* Search Box */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -260,7 +385,7 @@ export function TopicMasteryModal({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search topics (e.g., Enzymes, Cocci, Urinalysis)..."
-              className="pl-9 h-9 text-xs rounded-xl bg-background border-border focus-visible:ring-primary/30"
+              className="pl-9 h-8 sm:h-9 text-xs rounded-xl bg-background border-border focus-visible:ring-primary/30"
             />
           </div>
 
@@ -268,7 +393,7 @@ export function TopicMasteryModal({
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
             <div className="flex-1 sm:flex-none">
               <Select value={sortBy} onValueChange={(val) => setSortBy(val as SortOption)}>
-                <SelectTrigger className="h-9 w-full sm:w-[200px] md:w-[220px] text-xs font-semibold rounded-xl bg-background border border-border/80 shadow-xs hover:bg-muted/60 hover:border-primary/40 focus:ring-1 focus:ring-primary/40 transition-all duration-200 gap-2 cursor-pointer">
+                <SelectTrigger className="h-8 sm:h-9 w-full sm:w-[200px] md:w-[220px] text-xs font-semibold rounded-xl bg-background border border-border/80 shadow-xs hover:bg-muted/60 hover:border-primary/40 focus:ring-1 focus:ring-primary/40 transition-all duration-200 gap-2 cursor-pointer">
                   <div className="flex items-center gap-2 truncate">
                     <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                     <SelectValue placeholder="Sort topics..." />
@@ -300,7 +425,7 @@ export function TopicMasteryModal({
               onClick={refreshData}
               disabled={loading}
               title="Refresh Topic Analytics"
-              className="h-9 w-9 rounded-xl border border-border/80 bg-background hover:bg-muted hover:border-primary/40 text-muted-foreground hover:text-foreground transition-all duration-200 active:scale-95 shrink-0 cursor-pointer shadow-xs"
+              className="h-8 sm:h-9 w-8 sm:w-9 rounded-xl border border-border/80 bg-background hover:bg-muted hover:border-primary/40 text-muted-foreground hover:text-foreground transition-all duration-200 active:scale-95 shrink-0 cursor-pointer shadow-xs"
             >
               <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin text-primary")} />
             </Button>
@@ -308,7 +433,7 @@ export function TopicMasteryModal({
         </div>
 
         {/* Status Filter Tab Pills */}
-        <div className="px-3 sm:px-4 py-2 border-b border-border/60 bg-muted/20 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden shrink-0">
+        <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 border-b border-border/60 bg-muted/20 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden shrink-0">
           <Button
             size="sm"
             variant="ghost"
@@ -385,7 +510,7 @@ export function TopicMasteryModal({
         </div>
 
         {/* Scrollable Topics Body */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-5 space-y-2.5 sm:space-y-3 min-h-[220px] max-h-[50vh]">
+        <div className="flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-4 md:p-5 space-y-2 sm:space-y-3">
           {loading ? (
             <div className="py-16 flex flex-col items-center justify-center gap-3 text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -515,17 +640,17 @@ export function TopicMasteryModal({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="p-3 sm:p-4 bg-muted/40 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 shrink-0">
-          <p className="text-[10px] sm:text-[11px] text-muted-foreground font-medium text-center sm:text-left order-2 sm:order-1">
+        <div className="p-2.5 sm:p-4 bg-muted/40 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 shrink-0">
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground font-medium text-center sm:text-left order-2 sm:order-1 line-clamp-1 sm:line-clamp-none">
             Topic accuracy is updated dynamically as you answer questions in Quest Arena and Practice Exams.
           </p>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end order-1 sm:order-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end order-1 sm:order-2 shrink-0">
             <Button
               size="sm"
               variant="outline"
               onClick={handleStudyModule}
-              className="flex-1 sm:flex-none h-8 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 border border-border/80 bg-background hover:bg-muted hover:border-border text-foreground transition-all duration-200 active:scale-95 shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-none h-8 sm:h-9 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 border border-border/80 bg-background hover:bg-muted hover:border-border text-foreground transition-all duration-200 active:scale-95 shadow-xs cursor-pointer px-3 sm:px-4"
             >
               <BookOpen className="w-3.5 h-3.5" />
               Study Hub
@@ -533,7 +658,7 @@ export function TopicMasteryModal({
             <Button
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="flex-1 sm:flex-none h-8 text-xs font-bold rounded-xl px-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs hover:shadow-md transition-all duration-200 active:scale-95 cursor-pointer"
+              className="flex-1 sm:flex-none h-8 sm:h-9 text-xs font-bold rounded-xl px-4 sm:px-5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs hover:shadow-md transition-all duration-200 active:scale-95 cursor-pointer"
             >
               Close
             </Button>

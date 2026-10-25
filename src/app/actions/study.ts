@@ -142,14 +142,21 @@ export async function syncSubjectMastery(userId: string, subject: string) {
       proficiency = Math.round(rawAccuracy * volumeWeight);
     }
 
+    const topicStats = await getSubjectTopicMasteryAction(subject, userId).catch(() => null);
+    const totalTopics = topicStats?.totalTopics || 0;
+    const passingTopics = (topicStats?.masteredCount || 0) + (topicStats?.proficientCount || 0);
+    const topicCoverage = totalTopics > 0 ? Math.round((passingTopics / totalTopics) * 100) : 0;
+    const meetsProficientCoverage = totalTopics > 0 && topicCoverage >= 75;
+    const meetsMasteredCoverage = totalTopics > 0 && topicCoverage >= 85;
+
     let status = "Not Started";
     if (totalQAnswered === 0 && completion === 0) {
       status = "Not Started";
-    } else if (proficiency >= 90 && completion >= 50) {
+    } else if (proficiency >= 90 && completion >= 50 && meetsMasteredCoverage) {
       status = "Mastered";
-    } else if (proficiency >= 75 && completion >= 25) {
+    } else if (proficiency >= 75 && completion >= 25 && meetsProficientCoverage) {
       status = "Proficient";
-    } else if (proficiency >= 50 || completion > 0) {
+    } else if (proficiency >= 50 || completion > 0 || totalQAnswered > 0) {
       status = "In Training";
     } else {
       status = "Needs Focus";
@@ -173,6 +180,9 @@ export interface SubjectMetrics {
   totalQuestionsAnswered: number;
   totalCorrect: number;
   masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' | 'Needs Focus';
+  topicCoverage?: number; // 0-100: percentage of syllabus topics attempted with passing accuracy (≥70%)
+  totalTopics?: number;
+  passingTopics?: number;
 }
 
 export async function getCategories(): Promise<{ id: string; name: string; icon?: string | null }[]> {
@@ -243,7 +253,32 @@ export async function getUserLessonCompletions(): Promise<Record<string, string>
 export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get('user_id')?.value;
+    let userId = cookieStore.get('user_id')?.value;
+
+    if (!userId) {
+      try {
+        const sessionToken = cookieStore.get('bq_session_token')?.value;
+        if (sessionToken) {
+          const client = await clientPromise;
+          const db = client.db('boardquest');
+          const activeSession = await db.collection('UserSession').findOne({ sessionId: sessionToken });
+          if (activeSession?.userId) {
+            userId = activeSession.userId.toString();
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!userId) {
+      try {
+        const client = await clientPromise;
+        const db = client.db('boardquest');
+        const latestSession = await db.collection('UserSession').findOne({}, { sort: { lastActive: -1, createdAt: -1 } });
+        if (latestSession?.userId) {
+          userId = latestSession.userId.toString();
+        }
+      } catch (_) {}
+    }
 
     if (!userId) {
       return [];
@@ -301,9 +336,15 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
       }).catch(err => console.warn('SubjectMastery cleanup notice:', err));
     }
 
+    // Fetch topic mastery breakdowns for each subject to determine syllabus topic coverage
+    const topicBreakdowns = await Promise.all(
+      subjects.map(s => getSubjectTopicMasteryAction(s, userId).catch(() => null))
+    );
+
     const metrics: SubjectMetrics[] = [];
 
-    for (const subject of subjects) {
+    for (let i = 0; i < subjects.length; i++) {
+      const subject = subjects[i];
       const normSubject = subject.trim().toLowerCase();
       const catMatch = categoriesList.find(c => c.name.trim().toLowerCase() === normSubject);
       const catId = catMatch?.id;
@@ -352,14 +393,22 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
         proficiency = 0;
       }
 
+      // Compute topic coverage gate (≥75% topics with passing accuracy for Proficient, ≥85% for Mastered)
+      const topicStats = topicBreakdowns[i];
+      const totalTopics = topicStats?.totalTopics ?? 0;
+      const passingTopics = (topicStats?.masteredCount ?? 0) + (topicStats?.proficientCount ?? 0);
+      const topicCoverage = totalTopics > 0 ? Math.round((passingTopics / totalTopics) * 100) : 0;
+      const meetsProficientCoverage = totalTopics > 0 && topicCoverage >= 75;
+      const meetsMasteredCoverage = totalTopics > 0 && topicCoverage >= 85;
+
       let masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' | 'Needs Focus' = 'Not Started';
       if (totalQAnswered === 0 && completion === 0) {
         masteryStatus = 'Not Started';
-      } else if (proficiency >= 90 && completion >= 50) {
+      } else if (proficiency >= 90 && completion >= 50 && meetsMasteredCoverage) {
         masteryStatus = 'Mastered';
-      } else if (proficiency >= 75 && completion >= 25) {
+      } else if (proficiency >= 75 && completion >= 25 && meetsProficientCoverage) {
         masteryStatus = 'Proficient';
-      } else if (proficiency >= 50 || completion > 0) {
+      } else if (proficiency >= 50 || completion > 0 || totalQAnswered > 0) {
         masteryStatus = 'In Training';
       } else {
         masteryStatus = 'Needs Focus';
@@ -373,6 +422,9 @@ export async function getSubjectMetrics(): Promise<SubjectMetrics[]> {
         totalQuestionsAnswered: totalQAnswered,
         totalCorrect,
         masteryStatus,
+        topicCoverage,
+        totalTopics,
+        passingTopics,
       });
     }
 

@@ -297,7 +297,8 @@ export function StudyScheduleTimeline({
                 : 'November 30, 2026'}
             </p>
             <p className="text-xs text-muted-foreground font-semibold mt-0.5">
-              {program?.companyName || 'Review Center Program'} • {program?.title || 'MTLE Batch'}
+              {program?.authorName || program?.companyName || 'Super Admin'} • {program?.title || 'Game Deadline'}
+              {program?.labels && program.labels.length > 0 && ` • ${Array.isArray(program.labels) ? program.labels.join(', ') : String(program.labels)}`}
             </p>
           </div>
 

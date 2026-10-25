@@ -261,67 +261,159 @@ export async function getStudyPlans(): Promise<any[]> {
   }
 }
 
-export interface ReviewCenterProgramData {
+export interface CalendarEventData {
   id: string;
   title: string;
-  description?: string;
-  companyName: string;
-  category?: string;
-  startDate?: string;
+  category: string;
   endDate: string;
-  status: string;
+  labels: string[];
+  authorName: string;
+  companyName?: string;
+  description?: string;
+  startDate?: string;
+  status?: string;
 }
 
-export async function getReviewCenterProgram(): Promise<ReviewCenterProgramData | null> {
+export type ReviewCenterProgramData = CalendarEventData;
+
+export async function getGameDeadlineEvent(): Promise<CalendarEventData | null> {
   try {
+    // 1. Attempt using Prisma Client model if generated
     try {
-      const p = await (prisma as any).reviewCenterProgram.findFirst({
-        where: { status: 'ACTIVE' },
-        orderBy: { createdAt: 'desc' }
-      });
-      if (p) return JSON.parse(JSON.stringify(p));
+      const prismaClient = prisma as any;
+      if (prismaClient.calendarEvents?.findFirst) {
+        const p = await prismaClient.calendarEvents.findFirst({
+          where: { category: 'Game Deadline' },
+          orderBy: { createdAt: 'desc' }
+        });
+        if (p) {
+          const rawEndDate = p.endDate;
+          const rawStartDate = p.startDate;
+          let parsedEndDate: string;
+          if (typeof rawEndDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawEndDate)) {
+            const [y, m, d] = rawEndDate.split('-').map(Number);
+            parsedEndDate = new Date(y, m - 1, d, 23, 59, 59).toISOString();
+          } else if (rawEndDate) {
+            parsedEndDate = new Date(rawEndDate).toISOString();
+          } else {
+            parsedEndDate = new Date(2026, 10, 30).toISOString();
+          }
+
+          return {
+            id: String(p.id),
+            title: p.title || 'Final Review for game',
+            category: p.category || 'Game Deadline',
+            endDate: parsedEndDate,
+            labels: Array.isArray(p.labels) ? p.labels : (p.labels ? [String(p.labels)] : []),
+            authorName: p.authorName || 'Super Admin',
+            companyName: p.companyName || '',
+            description: p.description || '',
+            startDate: rawStartDate ? new Date(rawStartDate).toISOString() : undefined,
+            status: p.status || 'UPCOMING'
+          };
+        }
+      }
     } catch (_) {
-      // Fall through to raw command
+      // Fall through to direct MongoDB driver
     }
 
-    const rawResult: any = await prisma.$runCommandRaw({
-      find: "ReviewCenterProgram",
-      filter: { status: "ACTIVE" },
-      limit: 1
-    });
+    // 2. Direct MongoDB driver query on CalendarEvents
+    const client = await clientPromise;
+    const db = client.db('boardquest');
 
-    let firstBatch = rawResult?.cursor?.firstBatch;
+    // Query CalendarEvents collection strictly for category: "Game Deadline"
+    const doc = await db.collection('CalendarEvents').findOne(
+      { category: 'Game Deadline' },
+      {
+        projection: {
+          category: 1,
+          endDate: 1,
+          title: 1,
+          labels: 1,
+          authorName: 1,
+          startDate: 1,
+          companyName: 1,
+          description: 1,
+          status: 1
+        },
+        sort: { createdAt: -1 }
+      }
+    );
 
-    if (!firstBatch || firstBatch.length === 0) {
-      const rawResultFallback: any = await prisma.$runCommandRaw({
-        find: "ReviewCenterProgram",
-        limit: 1
-      });
-      firstBatch = rawResultFallback?.cursor?.firstBatch;
-    }
+    if (doc) {
+      const rawDoc = doc as any;
+      const rawEndDate = rawDoc.endDate?.$date || rawDoc.endDate;
+      const rawStartDate = rawDoc.startDate?.$date || rawDoc.startDate;
+      const idVal = rawDoc._id?.$oid || rawDoc._id;
 
-    if (firstBatch && firstBatch.length > 0) {
-      const doc = firstBatch[0];
-      const endDateVal = doc.endDate?.$date || doc.endDate;
-      const startDateVal = doc.startDate?.$date || doc.startDate;
-      const idVal = doc._id?.$oid || doc._id;
+      let parsedEndDate: string;
+      if (typeof rawEndDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawEndDate)) {
+        const [y, m, d] = rawEndDate.split('-').map(Number);
+        parsedEndDate = new Date(y, m - 1, d, 23, 59, 59).toISOString();
+      } else if (rawEndDate) {
+        parsedEndDate = new Date(rawEndDate).toISOString();
+      } else {
+        parsedEndDate = new Date(2026, 10, 30).toISOString();
+      }
 
       return {
         id: String(idVal),
-        title: doc.title || 'Review Period',
+        title: doc.title || 'Final Review for game',
+        category: doc.category || 'Game Deadline',
+        endDate: parsedEndDate,
+        labels: Array.isArray(doc.labels) ? doc.labels : (doc.labels ? [String(doc.labels)] : []),
+        authorName: doc.authorName || 'Super Admin',
+        companyName: doc.companyName || '',
         description: doc.description || '',
-        companyName: doc.companyName || 'berndt review center',
-        category: doc.category || 'Board Review',
-        startDate: startDateVal ? new Date(startDateVal).toISOString() : undefined,
-        endDate: endDateVal ? new Date(endDateVal).toISOString() : new Date(2026, 10, 30).toISOString(),
-        status: doc.status || 'ACTIVE'
+        startDate: rawStartDate ? new Date(rawStartDate).toISOString() : undefined,
+        status: doc.status || 'UPCOMING'
+      };
+    }
+
+    // Fallback using prisma raw command on CalendarEvents
+    const rawResult: any = await prisma.$runCommandRaw({
+      find: "CalendarEvents",
+      filter: { category: "Game Deadline" },
+      limit: 1
+    });
+
+    const firstBatch = rawResult?.cursor?.firstBatch;
+    if (firstBatch && firstBatch.length > 0) {
+      const rawDoc = firstBatch[0];
+      const rawEndDate = rawDoc.endDate?.$date || rawDoc.endDate;
+      const rawStartDate = rawDoc.startDate?.$date || rawDoc.startDate;
+      const idVal = rawDoc._id?.$oid || rawDoc._id;
+
+      let parsedEndDate: string;
+      if (typeof rawEndDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawEndDate)) {
+        const [y, m, d] = rawEndDate.split('-').map(Number);
+        parsedEndDate = new Date(y, m - 1, d, 23, 59, 59).toISOString();
+      } else if (rawEndDate) {
+        parsedEndDate = new Date(rawEndDate).toISOString();
+      } else {
+        parsedEndDate = new Date(2026, 10, 30).toISOString();
+      }
+
+      return {
+        id: String(idVal),
+        title: rawDoc.title || 'Final Review for game',
+        category: rawDoc.category || 'Game Deadline',
+        endDate: parsedEndDate,
+        labels: Array.isArray(rawDoc.labels) ? rawDoc.labels : (rawDoc.labels ? [String(rawDoc.labels)] : []),
+        authorName: rawDoc.authorName || 'Super Admin',
+        companyName: rawDoc.companyName || '',
+        description: rawDoc.description || '',
+        startDate: rawStartDate ? new Date(rawStartDate).toISOString() : undefined,
+        status: rawDoc.status || 'UPCOMING'
       };
     }
 
     return null;
   } catch (error) {
-    console.error('Failed to fetch ReviewCenterProgram:', error);
+    console.error('Failed to fetch Game Deadline from CalendarEvents:', error);
     return null;
   }
 }
+
+export const getReviewCenterProgram = getGameDeadlineEvent;
 

@@ -143,14 +143,39 @@ export async function getQuestQuestions(
   mode: string = 'learning', 
   limit: number = 50, 
   specificDifficulty?: string,
-  specificTopic?: string
+  specificTopic?: string,
+  explicitUserId?: string
 ): Promise<QuizQuestion[]> {
   try {
-    let userId: string | undefined = undefined;
+    let userId: string | undefined = explicitUserId;
     try {
       const cookieStore = await cookies();
-      userId = cookieStore.get('user_id')?.value;
+      if (!userId) {
+        userId = cookieStore.get('user_id')?.value;
+      }
+      if (!userId) {
+        const sessionToken = cookieStore.get('bq_session_token')?.value;
+        if (sessionToken) {
+          const client = await clientPromise;
+          const db = client.db('boardquest');
+          const activeSession = await db.collection('UserSession').findOne({ sessionId: sessionToken });
+          if (activeSession?.userId) {
+            userId = activeSession.userId.toString();
+          }
+        }
+      }
     } catch (e) {}
+
+    if (!userId) {
+      try {
+        const client = await clientPromise;
+        const db = client.db('boardquest');
+        const latestSession = await db.collection('UserSession').findOne({}, { sort: { lastActive: -1, createdAt: -1 } });
+        if (latestSession?.userId) {
+          userId = latestSession.userId.toString();
+        }
+      } catch (_) {}
+    }
 
     const { matchingSubjectIds, matchingObjectIds } = await resolveSubjectIds(subject);
 
@@ -288,21 +313,24 @@ export async function getQuestQuestions(
       topic: typeof q.topic === 'string' ? q.topic.trim() : ''
     }));
 
-    let selected = [...allQuestions];
+    let selected: any[] = [];
 
-    // Spaced Repetition / Mastery Algorithm (Optimized native Mongo lookup)
+    // Spaced Repetition / Active Learning & Mastery Exclusion Algorithm
     if (userId && allQuestions.length > 0) {
       let attempts: any[] = [];
       try {
         const client = await clientPromise;
         const db = client.db('boardquest');
         const qIds = allQuestions.map(q => q.id);
-        const userObjId = ObjectId.isValid(userId) ? new ObjectId(userId) : null;
-        const userFilter = userObjId ? { $or: [{ userId }, { userId: userObjId }] } : { userId };
+        const qObjIds = qIds.filter(id => ObjectId.isValid(id)).map(id => new ObjectId(id));
+        const userConditions: any[] = [userId];
+        if (ObjectId.isValid(userId)) {
+          userConditions.push(new ObjectId(userId));
+        }
 
         attempts = await db.collection('UserQuestionAttempt').find({
-          ...userFilter,
-          questionId: { $in: qIds }
+          userId: { $in: userConditions },
+          questionId: { $in: [...qIds, ...qObjIds] }
         }).toArray();
       } catch (err) {
         try {
@@ -312,90 +340,227 @@ export async function getQuestQuestions(
         } catch (e) {}
       }
       
-      const attemptMap = new Map(attempts.map(a => [a.questionId, a]));
-
-      // Sort questions based on mastery algorithm
-      selected.sort((a, b) => {
-        const attemptA = attemptMap.get(a.id);
-        const attemptB = attemptMap.get(b.id);
-        
-        // Priority 1: High attempts, low correct ratio (Struggling)
-        const ratioA = attemptA && attemptA.attempts > 0 ? attemptA.correct / attemptA.attempts : 1;
-        const ratioB = attemptB && attemptB.attempts > 0 ? attemptB.correct / attemptB.attempts : 1;
-        
-        // Priority 2: Unanswered (ratio = 1 by default, but attempts = 0)
-        const attemptsA = attemptA ? attemptA.attempts : 0;
-        const attemptsB = attemptB ? attemptB.attempts : 0;
-
-        let scoreA = 0;
-        let scoreB = 0;
-
-        if (attemptsA > 0 && ratioA < 0.6) scoreA = -10 + ratioA; // Struggling (very high priority)
-        else if (attemptsA === 0) scoreA = 0; // Unanswered (high priority)
-        else scoreA = 10 + ratioA; // Mastered (low priority)
-
-        if (attemptsB > 0 && ratioB < 0.6) scoreB = -10 + ratioB;
-        else if (attemptsB === 0) scoreB = 0;
-        else scoreB = 10 + ratioB;
-
-        // Add a tiny bit of randomness to break ties within the same priority bracket
-        const randomFactorA = Math.random() * 0.1;
-        const randomFactorB = Math.random() * 0.1;
-        
-        return (scoreA + randomFactorA) - (scoreB + randomFactorB);
+      const attemptMap = new Map<string, { attempts: number; correct: number; lastAttempt?: any }>();
+      attempts.forEach(a => {
+        const qId = a.questionId?.toString();
+        if (qId) {
+          const existing = attemptMap.get(qId);
+          if (existing) {
+            existing.attempts += (a.attempts || 1);
+            existing.correct += (a.correct || 0);
+            if (a.lastAttempt && (!existing.lastAttempt || new Date(a.lastAttempt) > new Date(existing.lastAttempt))) {
+              existing.lastAttempt = a.lastAttempt;
+            }
+          } else {
+            attemptMap.set(qId, {
+              attempts: a.attempts || 1,
+              correct: a.correct || 0,
+              lastAttempt: a.lastAttempt
+            });
+          }
+        }
       });
-    } else {
-      // Random shuffle if no user
-      selected = selected.sort(() => 0.5 - Math.random());
-    }
 
-    // Enforce structure based on mode
-    const easySelected: any[] = [];
-    const mediumSelected: any[] = [];
-    const hardSelected: any[] = [];
-    const leftovers: any[] = [];
+      // Strict Mastery Definition: Answered correctly at least 2 times with >= 70% accuracy
+      const isQuestionMastered = (qId: string) => {
+        const att = attemptMap.get(qId);
+        if (!att) return false;
+        return att.correct >= 2 && (att.correct / att.attempts) >= 0.70;
+      };
 
-    const isTestMode = mode === 'test';
-    
-    // Pro-rate difficulties based on limit (30% Easy, 40% Medium, 30% Hard)
-    const easyLimit = Math.max(1, Math.floor(limit * 0.3));
-    const hardLimit = Math.max(1, Math.floor(limit * 0.3));
-    const mediumLimit = limit - easyLimit - hardLimit;
+      // Partition questions into Active Learning Pool vs Retired Mastered Pool
+      const activePool = allQuestions.filter(q => !isQuestionMastered(q.id));
+      const masteredPool = allQuestions.filter(q => isQuestionMastered(q.id));
 
-    for (const q of selected) {
-      const diff = String(q.difficulty || 'EASY').toUpperCase();
-      if (diff === 'EASY' && easySelected.length < easyLimit) {
-        easySelected.push(q);
-      } else if (diff === 'MEDIUM' && mediumSelected.length < mediumLimit) {
-        mediumSelected.push(q);
-      } else if (diff === 'HARD' && hardSelected.length < hardLimit) {
-        hardSelected.push(q);
-      } else {
-        leftovers.push(q);
+      // Compute Topic Stats across questions to identify topics needing coverage
+      const topicStatsMap = new Map<string, {
+        totalQuestions: number;
+        attemptedQuestions: number;
+        totalAttempts: number;
+        totalCorrect: number;
+        isPassing: boolean;
+      }>();
+
+      allQuestions.forEach(q => {
+        const topicName = (q.topic || 'General Concepts').trim();
+        let stats = topicStatsMap.get(topicName);
+        if (!stats) {
+          stats = { totalQuestions: 0, attemptedQuestions: 0, totalAttempts: 0, totalCorrect: 0, isPassing: false };
+          topicStatsMap.set(topicName, stats);
+        }
+        stats.totalQuestions++;
+        const att = attemptMap.get(q.id);
+        if (att && att.attempts > 0) {
+          stats.attemptedQuestions++;
+          stats.totalAttempts += att.attempts;
+          stats.totalCorrect += att.correct;
+        }
+      });
+
+      topicStatsMap.forEach(stats => {
+        const accuracy = stats.totalAttempts > 0 ? (stats.totalCorrect / stats.totalAttempts) : 0;
+        stats.isPassing = stats.totalAttempts >= 2 && accuracy >= 0.70;
+      });
+
+      // Score active questions:
+      // Priority 1: Struggling / Incorrect questions (Player got wrong) -> Score: -1000 to -900
+      // Priority 2: Unattempted in non-passing topics (Drives 75% topic coverage) -> Score: -500 to -400
+      // Priority 3: Unattempted in passing topics -> Score: -200
+      // Priority 4: Answered correctly once (Needs reinforcement) -> Score: 100
+      const computeActiveScore = (q: any) => {
+        const att = attemptMap.get(q.id);
+        const topicName = (q.topic || 'General Concepts').trim();
+        const topicStats = topicStatsMap.get(topicName);
+        const isTopicPassing = topicStats?.isPassing ?? false;
+
+        const attempts = att ? att.attempts : 0;
+        const correct = att ? att.correct : 0;
+
+        if (attempts > 0 && correct < attempts) {
+          const accuracyRatio = correct / attempts;
+          const topicBonus = !isTopicPassing ? -50 : 0;
+          return -1000 + (accuracyRatio * 80) + topicBonus;
+        }
+
+        if (attempts === 0) {
+          if (!isTopicPassing) {
+            const topicProgress = topicStats && topicStats.totalQuestions > 0
+              ? (topicStats.attemptedQuestions / topicStats.totalQuestions)
+              : 0;
+            return -500 + (topicProgress * 80);
+          } else {
+            return -200;
+          }
+        }
+
+        return 100;
+      };
+
+      // Sort active pool by priority
+      activePool.sort((a, b) => {
+        const scoreA = computeActiveScore(a);
+        const scoreB = computeActiveScore(b);
+        if (Math.abs(scoreA - scoreB) > 0.001) return scoreA - scoreB;
+        return Math.random() - 0.5;
+      });
+
+      // Sort mastered pool by least recently attempted
+      masteredPool.sort((a, b) => {
+        const dateA = attemptMap.get(a.id)?.lastAttempt ? new Date(attemptMap.get(a.id)!.lastAttempt).getTime() : 0;
+        const dateB = attemptMap.get(b.id)?.lastAttempt ? new Date(attemptMap.get(b.id)!.lastAttempt).getTime() : 0;
+        return dateA - dateB;
+      });
+
+      // Interleave active pool across topics if not filtering by specific topic
+      let candidateList = activePool;
+      if (!hasTopicFilter && activePool.length > 0) {
+
+        // Build prioritized, topic-interleaved pools for each difficulty tier
+        // Ensures Wave 1 (Easy), Wave 2 (Medium), and Wave 3 (Hard) are all populated and preserved
+        const buildTierPool = (tierDiff: 'EASY' | 'MEDIUM' | 'HARD') => {
+          const tierQuestions = allQuestions.filter(q => String(q.difficulty || 'EASY').toUpperCase() === tierDiff);
+          
+          const tierBuckets = new Map<string, any[]>();
+          for (const q of tierQuestions) {
+            const t = (q.topic || 'General Concepts').trim();
+            if (!tierBuckets.has(t)) tierBuckets.set(t, []);
+            tierBuckets.get(t)!.push(q);
+          }
+
+          // Sort each bucket by computeActiveScore
+          tierBuckets.forEach(bucket => {
+            bucket.sort((a: any, b: any) => computeActiveScore(a) - computeActiveScore(b));
+          });
+
+          const tierTopics = Array.from(tierBuckets.keys());
+          const tierNonPassingTopics = tierTopics.filter(t => !topicStatsMap.get(t)?.isPassing);
+          const tierPassingTopics = tierTopics.filter(t => topicStatsMap.get(t)?.isPassing);
+
+          // 1. Interleave active unmastered questions in non-passing topics
+          const nonPassingActive: any[] = [];
+          let hasMoreNp = true;
+          let npIdx = 0;
+          while (hasMoreNp) {
+            hasMoreNp = false;
+            for (const t of tierNonPassingTopics) {
+              const b = tierBuckets.get(t)!.filter(q => !isQuestionMastered(q.id));
+              if (npIdx < b.length) {
+                nonPassingActive.push(b[npIdx]);
+                hasMoreNp = true;
+              }
+            }
+            npIdx++;
+          }
+
+          // 2. Interleave active unmastered questions in passing topics
+          const passingActive: any[] = [];
+          let hasMoreP = true;
+          let pIdx = 0;
+          while (hasMoreP) {
+            hasMoreP = false;
+            for (const t of tierPassingTopics) {
+              const b = tierBuckets.get(t)!.filter(q => !isQuestionMastered(q.id));
+              if (pIdx < b.length) {
+                passingActive.push(b[pIdx]);
+                hasMoreP = true;
+              }
+            }
+            pIdx++;
+          }
+
+          // 3. Mastered questions in this tier (sorted least-recently attempted)
+          const tierMastered = tierQuestions.filter(q => isQuestionMastered(q.id));
+          tierMastered.sort((a, b) => {
+            const dateA = attemptMap.get(a.id)?.lastAttempt ? new Date(attemptMap.get(a.id)!.lastAttempt).getTime() : 0;
+            const dateB = attemptMap.get(b.id)?.lastAttempt ? new Date(attemptMap.get(b.id)!.lastAttempt).getTime() : 0;
+            return dateA - dateB;
+          });
+
+          return [...nonPassingActive, ...passingActive, ...tierMastered];
+        };
+
+        const easyTier = buildTierPool('EASY');
+        const mediumTier = buildTierPool('MEDIUM');
+        const hardTier = buildTierPool('HARD');
+
+        // Wave targets: Wave 1 (Easy), Wave 2 (Medium), Wave 3 (Hard)
+        const easyTarget = Math.max(1, Math.floor(limit * 0.3));
+        const hardTarget = Math.max(1, Math.floor(limit * 0.3));
+        const mediumTarget = limit - easyTarget - hardTarget;
+
+        const easyChosen = easyTier.slice(0, easyTarget);
+        const hardChosen = hardTier.slice(0, hardTarget);
+        const mediumChosen = mediumTier.slice(0, mediumTarget);
+
+        const combined = [...easyChosen, ...mediumChosen, ...hardChosen];
+
+        // If any tier had a shortfall, fill from remaining active candidates
+        if (combined.length < limit) {
+          const chosenIds = new Set(combined.map(q => q.id));
+          const leftovers = [...mediumTier, ...easyTier, ...hardTier].filter(q => !chosenIds.has(q.id));
+          combined.push(...leftovers.slice(0, limit - combined.length));
+        }
+
+        candidateList = combined;
       }
-    }
 
-    let finalSelection = [...easySelected, ...mediumSelected, ...hardSelected];
+      let finalSelection = candidateList.slice(0, limit);
 
-    // Fill any remaining spots from leftovers (which are already sorted by mastery priority)
-    if (finalSelection.length < limit) {
-      const needed = limit - finalSelection.length;
-      finalSelection.push(...leftovers.slice(0, needed));
-    }
+      const isTestMode = mode === 'test';
+      if (isTestMode) {
+        finalSelection = finalSelection.sort(() => 0.5 - Math.random());
+      } else {
+        finalSelection.sort((a, b) => {
+          const diffA = difficultyOrder[String(a.difficulty || 'EASY').toUpperCase()] || 1;
+          const diffB = difficultyOrder[String(b.difficulty || 'EASY').toUpperCase()] || 1;
+          return diffA - diffB;
+        });
+      }
 
-    if (isTestMode) {
-      // Tower Climb: Shuffle everything so CAT can pull dynamically
-      finalSelection = finalSelection.sort(() => 0.5 - Math.random());
+      selected = finalSelection;
     } else {
-      // Finally, sort the final selection by difficulty (Easy -> Medium -> Hard) to strictly form "Waves"
-      finalSelection.sort((a, b) => {
-        const diffA = difficultyOrder[String(a.difficulty || 'EASY').toUpperCase()] || 1;
-        const diffB = difficultyOrder[String(b.difficulty || 'EASY').toUpperCase()] || 1;
-        return diffA - diffB;
-      });
+      selected = allQuestions.sort(() => 0.5 - Math.random()).slice(0, limit);
     }
-
-    selected = finalSelection;
 
     // In boss battle mode, loop the question pool if total available questions < 50
     // so the battle NEVER runs out of questions before the boss or player HP reaches 0!

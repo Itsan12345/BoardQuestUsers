@@ -346,6 +346,33 @@ model ReviewCenterProgram {
   updatedAt   DateTime? @updatedAt
 }
 
+model CalendarEvents {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  title              String?
+  category           String?
+  startDate          String?
+  endDate            String?
+  startTime          String?
+  endTime            String?
+  location           String?
+  link               String?
+  conferenceType     String?
+  description        String?
+  companyName        String?
+  status             String?
+  colorKey           String?
+  labels             String[]
+  startReminderSent  Boolean?
+  endReminderSent    Boolean?
+  solutionNotes      String?
+  authorId           String?
+  authorName         String?
+  authorEmail        String?
+  createdBy          String?
+  createdAt          String?
+  updatedAt          String?
+}
+
 model EmailVerification {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique

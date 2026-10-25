@@ -2017,6 +2017,16 @@ export default function LearningQuest() {
   const [hitEffectTarget, setHitEffectTarget] = useState<'player' | 'enemy' | null>(null);
   const [hitEffectKey, setHitEffectKey] = useState<number>(0);
 
+  const triggerHitAnimation = (target: "player" | "enemy") => {
+    setIsAnimating(target);
+    setHitEffectTarget(target);
+    setHitEffectKey(k => k + 1);
+    setTimeout(() => {
+      setIsAnimating(prev => (prev === target ? null : prev));
+      setHitEffectTarget(prev => (prev === target ? null : prev));
+    }, 500);
+  };
+
   // Inventory & Consumables State
   const [userXp, setUserXp] = useState<number>(100);
   const userXpRef = useRef<number>(100);
@@ -3407,7 +3417,7 @@ export default function LearningQuest() {
       }
       const topicToUse = topicOverride !== undefined ? topicOverride : selectedTopicFilter;
       const [selected, freshProfile] = await Promise.all([
-        getQuestQuestions(selectedSubject, quizMode, limit, specificDifficulty, topicToUse || undefined),
+        getQuestQuestions(selectedSubject, quizMode, limit, specificDifficulty, topicToUse || undefined, currentUserIdRef.current || undefined),
         getUserProfile().catch(() => null)
       ]);
 
@@ -4212,9 +4222,7 @@ export default function LearningQuest() {
     // Apply health changes (Enemies NEVER heal)
     if (enemyDmg > 0) {
       const applyEnemyDamage = () => {
-        setIsAnimating("enemy");
-        setHitEffectTarget('enemy');
-        setHitEffectKey(k => k + 1);
+        triggerHitAnimation('enemy');
         const nextHp = Math.max(0, enemyHealth - enemyDmg);
 
         if (quizMode === 'boss-battle' && nextHp <= 0) {
@@ -4230,7 +4238,7 @@ export default function LearningQuest() {
           }, 800);
         } else if (quizMode === 'learning' && nextHp <= 0) {
           setEnemyHealth(0);
-          setIsAnimating("enemy");
+          triggerHitAnimation('enemy');
           setBossAnimState('idle');
           if (currentWaveStage === 1) {
             addFloatingText('enemy', '👾 MINION DEFEATED!', 'text-amber-300 font-black');
@@ -4294,9 +4302,7 @@ export default function LearningQuest() {
 
     if (playerDmg > 0) {
       const applyPlayerDamage = () => {
-        setIsAnimating("player");
-        setHitEffectTarget('player');
-        setHitEffectKey(k => k + 1);
+        triggerHitAnimation('player');
         const nextHp = Math.max(0, playerHealth - playerDmg);
         setPlayerHealth(nextHp);
 
@@ -4666,87 +4672,59 @@ export default function LearningQuest() {
         setTimeout(applyPlayerDamage, impactDelay);
         if (isGramPositiveHeavy) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 950);
         } else if (isStaphSentinelHeavy) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 840);
         } else if (isAcidSlimeHeavy) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 680);
         } else if (isReagentStripSlimeHeavy) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 660);
         } else if (isAnemiaShadeHeavy) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 750);
         } else if (isImmuneArchonHeavy) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 420);
         } else if (isImmuneArchonNormal) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 380);
         } else if (isErythrocyteColossusNormal) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 1050);
         } else if (isParaffinGolemNormal) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 750);
         } else if (isParaffinGolemHeavy) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 700);
         } else if (isFixationOverlordNormal) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 750);
         } else if (isFixationOverlordHeavy) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 660);
         } else if (isUrochromeTitanNormal) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 420);
         } else if (isUrochromeTitanHeavy) {
           setTimeout(() => {
-            setIsAnimating("player");
-            setHitEffectTarget('player');
-            setHitEffectKey(k => k + 1);
+            triggerHitAnimation("player");
           }, 450);
         }
         bossAttackResetDelay = resetDelay;
@@ -4770,7 +4748,7 @@ export default function LearningQuest() {
       const currentMaxHp = getPlayerMaxHp();
       const actualHeal = Math.min(playerHeal, Math.max(0, currentMaxHp - playerHealth));
       if (actualHeal > 0) {
-        setIsAnimating("player");
+        triggerHitAnimation("player");
         playSfx('heal');
         setPlayerHealth(prev => Math.min(currentMaxHp, prev + actualHeal));
         addFloatingText('player', `+${Math.ceil(actualHeal)} HEALED!`, 'text-emerald-400 font-black');
@@ -4792,15 +4770,13 @@ export default function LearningQuest() {
 
         if (isOverallPassing) {
           setEnemyHealth(0);
-          setHitEffectTarget('enemy');
-          setHitEffectKey(k => k + 1);
+          triggerHitAnimation('enemy');
           addFloatingText('enemy', '👑 BOSS DEFEATED!', 'text-amber-300 font-black');
           setJudgementText('YOU WON');
           playLearningModeMusic('victory');
         } else {
           setPlayerHealth(0);
-          setHitEffectTarget('player');
-          setHitEffectKey(k => k + 1);
+          triggerHitAnimation('player');
           addFloatingText('player', '💀 ASPIRANT DEFEATED!', 'text-red-500 font-black');
           setJudgementText('YOU FAILED');
           playLearningModeMusic('defeat');
@@ -6614,8 +6590,7 @@ export default function LearningQuest() {
                         ? "bottom-0 items-end md:items-center pointer-events-none"
                         : "bottom-0 items-center pointer-events-none")
                     : "items-end",
-                  (introPhase === 'cutscene' || introPhase === 'hidden' || waveCharOffscreen) ? 'translate-x-[150%]' : 'translate-x-0',
-                  isAnimating === "enemy" && "animate-shake scale-110"
+                  (introPhase === 'cutscene' || introPhase === 'hidden' || waveCharOffscreen) ? 'translate-x-[150%]' : 'translate-x-0'
                 )}>
                   <div className={cn(
                     "bg-black/60 backdrop-blur-md border border-white/15 p-1.5 sm:p-2 md:p-3 rounded-[4px] md:rounded-lg shadow-2xl w-[136px] sm:w-[155px] md:min-w-[160px] md:w-auto",
@@ -6811,12 +6786,12 @@ export default function LearningQuest() {
             <div className={cn(
               "absolute bottom-0 left-0 transition-all duration-1000 ease-out z-30 flex flex-col md:flex-row items-start md:items-end gap-1 md:gap-3",
               (introPhase === 'cutscene' || introPhase === 'hidden' || waveCharOffscreen) ? '-translate-x-[150%]' : 'translate-x-0',
-              isAnimating === "player" && "animate-shake scale-105",
               isFleeing && "-translate-x-full opacity-0 duration-700 pointer-events-none"
             )}>
               {/* Standalone Foreground Player Character Sprite - Completely flush to bottom-left */}
               <div className={cn(
                 "relative flex flex-col items-center justify-end shrink-0 -mb-4 md:-mb-6 -ml-2 md:-ml-4 transition-all transform-gpu z-20 order-2 md:order-1",
+                isAnimating === "player" && "animate-shake scale-105",
                 playerAnimState === 'attack' && !judgementText && !battleOutcome && !isFinished && (
                   avatarGender === 'female' ? "animate-female-player-lunge" : "animate-player-lunge"
                 )

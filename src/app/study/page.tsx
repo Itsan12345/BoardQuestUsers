@@ -32,7 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { getStudyPlans, getReviewCenterProgram, type ReviewCenterProgramData } from '@/app/actions/study-plan';
+import { getStudyPlans, getGameDeadlineEvent, type CalendarEventData } from '@/app/actions/study-plan';
 import { StudyScheduleTimeline, type StudyPlanRecord } from '@/components/study/StudyScheduleTimeline';
 import {
   getSubjectMetrics,
@@ -74,7 +74,7 @@ export default function StudyPage() {
   const [targetDates, setTargetDates] = useState<Record<string, Date>>({});
   const [subjectPlans, setSubjectPlans] = useState<Record<string, { startDate: Date; endDate: Date }>>({});
   const [subjectMetrics, setSubjectMetrics] = useState<Record<string, SubjectMetrics>>({});
-  const [program, setProgram] = useState<ReviewCenterProgramData | null>(null);
+  const [program, setProgram] = useState<CalendarEventData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Tab State: 'modules' (Curriculum Modules) vs 'timeline' (Study Schedule & Timeline)
@@ -130,7 +130,7 @@ export default function StudyPage() {
           getLearningModules().catch(() => []),
           getStudyPlans().catch(() => []),
           getSubjectMetrics().catch(() => []),
-          getReviewCenterProgram().catch(() => null),
+          getGameDeadlineEvent().catch(() => null),
           getUserLessonCompletions().catch(() => ({} as Record<string, string>)),
           getUserSettingsAction().catch(() => null),
         ]);
@@ -512,9 +512,19 @@ export default function StudyPage() {
 
                 <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground truncate pt-0.5 border-t border-border/40">
                   <Building2 className="w-3 h-3 text-primary shrink-0" />
-                  <span className="font-semibold text-foreground/90 capitalize truncate">{program.companyName}</span>
+                  <span className="font-semibold text-foreground/90 capitalize truncate">
+                    {program.authorName || program.companyName || 'Super Admin'}
+                  </span>
                   <span className="text-muted-foreground/60">•</span>
                   <span className="font-medium truncate">{program.title}</span>
+                  {program.labels && program.labels.length > 0 && (
+                    <>
+                      <span className="text-muted-foreground/60">•</span>
+                      <span className="font-medium truncate capitalize">
+                        {Array.isArray(program.labels) ? program.labels.join(', ') : String(program.labels)}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
