@@ -36,9 +36,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
 .genkit/*
+
+# env files (secrets kept hidden)
 .env*
+!.env.example
 
 # firebase
 firebase-debug.log
