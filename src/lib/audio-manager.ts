@@ -3,7 +3,7 @@
 // Web Audio API Synthesizer for Retro RPG Sound Effects
 // Zero external assets required - lightweight, crisp, and performant.
 
-type SfxType = 'click' | 'correct' | 'wrong' | 'attack' | 'heal' | 'victory' | 'defeat' | 'flee' | 'debuff' | 'poison' | 'specter_normal' | 'specter_heavy' | 'biohazard_normal' | 'biohazard_heavy' | 'staph_sentinel_normal' | 'staph_sentinel_heavy' | 'acid_slime_normal' | 'acid_slime_heavy' | 'crystal_golem_normal' | 'crystal_golem_heavy' | 'microbe_swarm_normal' | 'microbe_swarm_heavy' | 'sickle_cell_minion_normal' | 'sickle_cell_minion_heavy' | 'sickle_reaper_normal' | 'sickle_reaper_heavy' | 'fungal_spore_normal' | 'fungal_spore_heavy' | 'gram_positive_normal' | 'gram_positive_heavy' | 'reagent_strip_slime_normal' | 'reagent_strip_slime_heavy' | 'female_normal' | 'female_heavy' | 'final_boss_victory' | 'final_boss_defeat' | 'boss_battle_win' | 'boss_battle_lost' | 'learning_win' | 'learning_lost' | 'test_win' | 'test_lost';
+type SfxType = 'click' | 'correct' | 'wrong' | 'attack' | 'heal' | 'victory' | 'defeat' | 'flee' | 'debuff' | 'poison' | 'specter_normal' | 'specter_heavy' | 'biohazard_normal' | 'biohazard_heavy' | 'staph_sentinel_normal' | 'staph_sentinel_heavy' | 'acid_slime_normal' | 'acid_slime_heavy' | 'crystal_golem_normal' | 'crystal_golem_heavy' | 'microbe_swarm_normal' | 'microbe_swarm_heavy' | 'sickle_cell_minion_normal' | 'sickle_cell_minion_heavy' | 'sickle_reaper_normal' | 'sickle_reaper_heavy' | 'fungal_spore_normal' | 'fungal_spore_heavy' | 'gram_positive_normal' | 'gram_positive_heavy' | 'reagent_strip_slime_normal' | 'reagent_strip_slime_heavy' | 'female_normal' | 'female_heavy' | 'male_normal' | 'male_heavy' | 'final_boss_victory' | 'final_boss_defeat' | 'boss_battle_win' | 'boss_battle_lost' | 'learning_win' | 'learning_lost' | 'test_win' | 'test_lost';
 
 let audioCtx: AudioContext | null = null;
 
@@ -681,6 +681,16 @@ export function playSfx(type: SfxType) {
 
       case 'female_heavy': {
         playFemalePlayerAttack('heavy');
+        break;
+      }
+
+      case 'male_normal': {
+        playMalePlayerAttack('normal');
+        break;
+      }
+
+      case 'male_heavy': {
+        playMalePlayerAttack('heavy');
         break;
       }
     }
@@ -2865,3 +2875,81 @@ export function stopFemalePlayerAttack() {
     }
   } catch (e) { }
 }
+
+let maleNormalAttackAudio: HTMLAudioElement | null = null;
+let maleHeavyAttackAudio: HTMLAudioElement | null = null;
+
+export function preloadMalePlayerSounds() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!maleNormalAttackAudio) {
+      maleNormalAttackAudio = new Audio('/SoundEffects/PlayerSoundEffects/MaleNormalAttack.mp3');
+      maleNormalAttackAudio.preload = 'auto';
+      maleNormalAttackAudio.playbackRate = 1.0;
+      maleNormalAttackAudio.defaultPlaybackRate = 1.0;
+      maleNormalAttackAudio.load();
+    }
+    if (!maleHeavyAttackAudio) {
+      maleHeavyAttackAudio = new Audio('/SoundEffects/PlayerSoundEffects/MaleHeavyAttack.mp3');
+      maleHeavyAttackAudio.preload = 'auto';
+      maleHeavyAttackAudio.playbackRate = 1.4;
+      maleHeavyAttackAudio.defaultPlaybackRate = 1.4;
+      maleHeavyAttackAudio.load();
+    }
+  } catch (e) { }
+}
+
+export function playMalePlayerAttack(type: 'normal' | 'heavy') {
+  if (typeof window === 'undefined') return;
+  try {
+    const masterVolume = getSfxVolume();
+    if (masterVolume <= 0) return;
+
+    if (type === 'normal') {
+      const src = '/SoundEffects/PlayerSoundEffects/MaleNormalAttack.mp3';
+      const audio = maleNormalAttackAudio || new Audio(src);
+      audio.currentTime = 0;
+      audio.playbackRate = 1.0;
+      audio.defaultPlaybackRate = 1.0;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Male Player normal attack:', err);
+        });
+      }
+    } else {
+      const src = '/SoundEffects/PlayerSoundEffects/MaleHeavyAttack.mp3';
+      const audio = maleHeavyAttackAudio || new Audio(src);
+      audio.currentTime = 0;
+      // 1.4x playback rate perfectly synchronizes the 1.39s sound with the 0.75s blast flight,
+      // landing the audio peak impact precisely at 500ms with visual detonation and damage
+      audio.playbackRate = 1.4;
+      audio.defaultPlaybackRate = 1.4;
+      audio.volume = Math.max(0, Math.min(1, masterVolume));
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Playback error for Male Player heavy attack:', err);
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to play Male Player attack sound:', err);
+  }
+}
+
+export function stopMalePlayerAttack() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (maleNormalAttackAudio) {
+      maleNormalAttackAudio.pause();
+      maleNormalAttackAudio.currentTime = 0;
+    }
+    if (maleHeavyAttackAudio) {
+      maleHeavyAttackAudio.pause();
+      maleHeavyAttackAudio.currentTime = 0;
+    }
+  } catch (e) { }
+}
+

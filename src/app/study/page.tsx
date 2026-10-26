@@ -847,13 +847,22 @@ export default function StudyPage() {
                       <span className="text-[11px] sm:text-xs font-semibold text-foreground">
                         {currentProficiency}%
                       </span>
-                      <span className={cn(
-                        "text-[8px] sm:text-[9px] font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full uppercase",
-                        currentMasteryStatus === 'Mastered' ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" :
-                          currentMasteryStatus === 'Proficient' ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" :
-                            currentMasteryStatus === 'In Training' ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
-                              "bg-secondary text-slate-600 dark:text-slate-400"
-                      )}>
+                      <span 
+                        title={
+                          currentMasteryStatus === 'Mastered'
+                            ? 'Mastered: ≥90% Proficiency, ≥85% Topic Mastery, and ≥75% Syllabus Completion'
+                            : currentMasteryStatus === 'Proficient'
+                            ? 'Proficient: ≥75% Proficiency, ≥75% Topic Mastery, and ≥25% Syllabus Completion'
+                            : 'In Training: Reach ≥75% Proficiency, ≥75% Topic Mastery, and ≥25% Syllabus Completion to unlock Proficient'
+                        }
+                        className={cn(
+                          "text-[8px] sm:text-[9px] font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full uppercase cursor-help",
+                          currentMasteryStatus === 'Mastered' ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400" :
+                            currentMasteryStatus === 'Proficient' ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" :
+                              currentMasteryStatus === 'In Training' ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
+                                "bg-secondary text-slate-600 dark:text-slate-400"
+                        )}
+                      >
                         {currentMasteryStatus}
                       </span>
                     </div>

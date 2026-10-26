@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
 import { Loader2, Sparkles, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 
 interface QuestArenaOnboardingModalProps {
@@ -129,37 +128,43 @@ export function QuestArenaOnboardingModal({
             </div>
 
             {/* Avatar Cards Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {/* Male Character */}
               <button
                 type="button"
                 onClick={() => setAvatarGender('male')}
                 className={cn(
-                  "p-5 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer relative group text-left",
+                  "p-0 rounded-2xl sm:rounded-3xl border-2 flex flex-col items-center justify-end h-[155px] sm:h-[195px] transition-all duration-300 cursor-pointer relative group text-left overflow-hidden",
                   avatarGender === 'male'
-                    ? "border-primary bg-primary/10 shadow-[0_0_20px_rgba(239,68,68,0.25)] ring-2 ring-primary/40"
-                    : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/30"
+                    ? "border-blue-500 bg-gradient-to-t from-blue-500/20 via-blue-500/5 to-transparent shadow-[0_0_24px_rgba(59,130,246,0.25)] ring-2 ring-blue-500/40"
+                    : "border-border/60 bg-muted/15 hover:border-blue-400/50 hover:bg-muted/25"
                 )}
               >
-                {avatarGender === 'male' && (
-                  <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                )}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-inner overflow-hidden relative">
-                  <Image
-                    src="/images/player/userPlayer_placeholder.png"
-                    alt="Male Avatar"
-                    width={64}
-                    height={64}
-                    className="w-12 h-12 object-contain filter drop-shadow-sm"
-                    style={{ imageRendering: 'pixelated' }}
-                    unoptimized
-                  />
+                {/* Gender Emoji Badge (replaces checkbox) */}
+                <div
+                  className={cn(
+                    "absolute top-2.5 right-2.5 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 z-20 shadow-xs",
+                    avatarGender === 'male'
+                      ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] ring-2 ring-blue-300/50 scale-105"
+                      : "bg-background/80 backdrop-blur-xs text-muted-foreground border border-border/70 group-hover:scale-105 group-hover:border-blue-400/50 group-hover:text-blue-500"
+                  )}
+                  title="Male Avatar"
+                >
+                  <span className="text-sm sm:text-base leading-none select-none">♂️</span>
                 </div>
-                <div className="text-center">
-                  <div className="font-headline font-bold text-sm sm:text-base text-foreground">
-                    Male
+
+                {/* Ambient Top Glow when selected */}
+                {avatarGender === 'male' && (
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent pointer-events-none" />
+                )}
+
+                {/* Avatar Preview Viewport - Repositioned flush at the bottom */}
+                <div className="relative z-10 w-full flex items-end justify-center -mb-1">
+                  <div
+                    className="onboarding-avatar-male relative overflow-hidden shrink-0 transition-transform duration-300 group-hover:scale-105 origin-bottom"
+                    style={{ imageRendering: 'pixelated' }}
+                  >
+                    <div className="absolute top-0 left-0 onboarding-avatar-male-sheet" />
                   </div>
                 </div>
               </button>
@@ -169,48 +174,102 @@ export function QuestArenaOnboardingModal({
                 type="button"
                 onClick={() => setAvatarGender('female')}
                 className={cn(
-                  "p-5 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer relative group text-left",
+                  "p-0 rounded-2xl sm:rounded-3xl border-2 flex flex-col items-center justify-end h-[155px] sm:h-[195px] transition-all duration-300 cursor-pointer relative group text-left overflow-hidden",
                   avatarGender === 'female'
-                    ? "border-primary bg-primary/10 shadow-[0_0_20px_rgba(239,68,68,0.25)] ring-2 ring-primary/40"
-                    : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/30"
+                    ? "border-rose-500 bg-gradient-to-t from-rose-500/20 via-rose-500/5 to-transparent shadow-[0_0_24px_rgba(244,63,94,0.25)] ring-2 ring-rose-500/40"
+                    : "border-border/60 bg-muted/15 hover:border-rose-400/50 hover:bg-muted/25"
                 )}
               >
+                {/* Gender Emoji Badge (replaces checkbox) */}
+                <div
+                  className={cn(
+                    "absolute top-2.5 right-2.5 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 z-20 shadow-xs",
+                    avatarGender === 'female'
+                      ? "bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-[0_0_12px_rgba(244,63,94,0.6)] ring-2 ring-rose-300/50 scale-105"
+                      : "bg-background/80 backdrop-blur-xs text-muted-foreground border border-border/70 group-hover:scale-105 group-hover:border-rose-400/50 group-hover:text-rose-500"
+                  )}
+                  title="Female Avatar"
+                >
+                  <span className="text-sm sm:text-base leading-none select-none">♀️</span>
+                </div>
+
+                {/* Ambient Top Glow when selected */}
                 {avatarGender === 'female' && (
-                  <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-rose-500/20 via-transparent to-transparent pointer-events-none" />
                 )}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-rose-500/20 to-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-inner overflow-hidden relative">
+
+                {/* Avatar Preview Viewport - Repositioned flush at the bottom */}
+                <div className="relative z-10 w-full flex items-end justify-center -mb-1">
                   <div
-                    className="w-[72px] h-[64px] relative overflow-hidden"
+                    className="onboarding-avatar-female relative overflow-hidden shrink-0 transition-transform duration-300 group-hover:scale-105 origin-bottom"
                     style={{ imageRendering: 'pixelated' }}
                   >
-                    <div
-                      className="absolute top-0 left-0"
-                      style={{
-                        width: `${72 * 8}px`,
-                        height: '64px',
-                        backgroundImage: `url('/images/player/femaleCharacter_idleAnimation.png')`,
-                        backgroundRepeat: 'no-repeat',
-                        backgroundSize: `${72 * 8}px 64px`,
-                        animation: 'femaleOnboardingIdle 0.9s steps(8) infinite',
-                      }}
-                    />
-                  </div>
-                  <style jsx global>{`
-                    @keyframes femaleOnboardingIdle {
-                      from { transform: translateX(0px); }
-                      to { transform: translateX(-100%); }
-                    }
-                  `}</style>
-                </div>
-                <div className="text-center">
-                  <div className="font-headline font-bold text-sm sm:text-base text-foreground">
-                    Female
+                    <div className="absolute top-0 left-0 onboarding-avatar-female-sheet" />
                   </div>
                 </div>
               </button>
             </div>
+
+            <style jsx global>{`
+              /* Male Onboarding Avatar Preview */
+              .onboarding-avatar-male {
+                width: 120px;
+                height: 120px;
+              }
+              .onboarding-avatar-male-sheet {
+                width: 840px; /* 120 * 7 */
+                height: 120px;
+                background-image: url('/images/player/maleCharacter_idleAnimation.png');
+                background-repeat: no-repeat;
+                background-size: 840px 120px;
+                animation: maleOnboardingIdle 0.8s steps(7) infinite;
+              }
+              @media (min-width: 640px) {
+                .onboarding-avatar-male {
+                  width: 152px;
+                  height: 152px;
+                }
+                .onboarding-avatar-male-sheet {
+                  width: 1064px; /* 152 * 7 */
+                  height: 152px;
+                  background-size: 1064px 152px;
+                }
+              }
+
+              /* Female Onboarding Avatar Preview */
+              .onboarding-avatar-female {
+                width: 135px;
+                height: 120px;
+              }
+              .onboarding-avatar-female-sheet {
+                width: 1080px; /* 135 * 8 */
+                height: 120px;
+                background-image: url('/images/player/femaleCharacter_idleAnimation.png');
+                background-repeat: no-repeat;
+                background-size: 1080px 120px;
+                animation: femaleOnboardingIdle 0.9s steps(8) infinite;
+              }
+              @media (min-width: 640px) {
+                .onboarding-avatar-female {
+                  width: 171px;
+                  height: 152px;
+                }
+                .onboarding-avatar-female-sheet {
+                  width: 1368px; /* 171 * 8 */
+                  height: 152px;
+                  background-size: 1368px 152px;
+                }
+              }
+
+              @keyframes maleOnboardingIdle {
+                from { transform: translateX(0px); }
+                to { transform: translateX(-100%); }
+              }
+              @keyframes femaleOnboardingIdle {
+                from { transform: translateX(0px); }
+                to { transform: translateX(-100%); }
+              }
+            `}</style>
 
             {/* Navigation Buttons */}
             <div className="flex items-center gap-3 pt-2">

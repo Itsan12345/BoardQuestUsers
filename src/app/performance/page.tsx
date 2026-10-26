@@ -168,15 +168,15 @@ function PerformanceContent() {
     const topicCoverage = (metrics as any)?.topicCoverage ?? 0;
     const passingTopics = (metrics as any)?.passingTopics ?? 0;
     const totalTopics = (metrics as any)?.totalTopics ?? 0;
-    const meetsProficientCoverage = totalTopics > 0 && topicCoverage >= 75;
-    const meetsMasteredCoverage = totalTopics > 0 && topicCoverage >= 85;
+    const meetsProficientTopicCoverage = totalTopics > 0 ? topicCoverage >= 75 : true;
+    const meetsMasteredTopicCoverage = totalTopics > 0 ? topicCoverage >= 85 : true;
 
     let status: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' | 'Needs Focus' = 'Not Started';
     if (totalQAnswered === 0 && completionVal === 0) {
       status = "Not Started";
-    } else if (proficiencyVal >= 90 && completionVal >= 50 && meetsMasteredCoverage) {
+    } else if (proficiencyVal >= 90 && meetsMasteredTopicCoverage && completionVal >= 75) {
       status = "Mastered";
-    } else if (proficiencyVal >= 75 && completionVal >= 25 && meetsProficientCoverage) {
+    } else if (proficiencyVal >= 75 && meetsProficientTopicCoverage && completionVal >= 25) {
       status = "Proficient";
     } else if (proficiencyVal >= 50 || completionVal > 0 || totalQAnswered > 0) {
       status = "In Training";

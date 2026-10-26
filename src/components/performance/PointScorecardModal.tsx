@@ -41,8 +41,23 @@ export function PointScorecardModal({
     const doc = printFrame.contentWindow?.document;
     if (!doc) return;
 
+    const subjectsWithTopics = subjects.filter(s => typeof s.totalTopics === 'number' && s.totalTopics > 0);
+    const avgTopicCoverage = subjectsWithTopics.length > 0
+      ? (subjectsWithTopics.reduce((acc, s) => acc + (s.topicCoverage ?? 0), 0) / subjectsWithTopics.length).toFixed(1) + '%'
+      : '-';
+
     const subjectsHtml = subjects.map(s => {
-      const statusText = s.status || ((s.mastery >= 90 && s.completion >= 50) ? 'Mastered' : (s.mastery >= 75 && s.completion >= 25) ? 'Proficient' : (s.mastery >= 50 || s.completion > 0) ? 'In Training' : 'Needs Focus');
+      const meetsProficientTopics = typeof s.totalTopics === 'number' && s.totalTopics > 0 ? (s.topicCoverage ?? 0) >= 75 : true;
+      const meetsMasteredTopics = typeof s.totalTopics === 'number' && s.totalTopics > 0 ? (s.topicCoverage ?? 0) >= 85 : true;
+      const statusText = s.status || (
+        (s.mastery >= 90 && meetsMasteredTopics && s.completion >= 75) 
+          ? 'Mastered' 
+          : (s.mastery >= 75 && meetsProficientTopics && s.completion >= 25) 
+          ? 'Proficient' 
+          : (s.mastery >= 50 || s.completion > 0) 
+          ? 'In Training' 
+          : 'Needs Focus'
+      );
       const pts = s.points ?? Math.round(s.mastery * 10 + s.completion * 5);
       const statusStyle = statusText === 'Mastered' 
         ? 'background:#d1fae5; color:#047857; border:1px solid #a7f3d0;' 
@@ -52,12 +67,17 @@ export function PointScorecardModal({
         ? 'background:#fef3c7; color:#b45309; border:1px solid #fde68a;'
         : 'background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb;';
 
+      const topicMasteryText = typeof s.totalTopics === 'number' && s.totalTopics > 0
+        ? `${s.topicCoverage ?? 0}% <span style="font-size: 8.5pt; color: #64748b; font-weight: 600;">(${s.passingTopics ?? 0}/${s.totalTopics})</span>`
+        : '<span style="color: #94a3b8; font-weight: 600;">0%</span>';
+
       return `
         <tr style="border-bottom: 1px solid #e2e8f0;">
           <td style="padding: 10px 14px; font-weight: 700; color: #0f172a; font-size: 10.5pt;">${s.subject}</td>
           <td style="padding: 10px 14px; text-align: center; font-family: 'Consolas', monospace; font-weight: 800; font-size: 11pt; color: #800000;">${pts} pts</td>
           <td style="padding: 10px 14px; text-align: center; font-family: 'Consolas', monospace; font-weight: 700; font-size: 10.5pt; color: #0f172a;">${s.completion}%</td>
           <td style="padding: 10px 14px; text-align: center; font-family: 'Consolas', monospace; font-weight: 800; font-size: 11pt; color: #047857;">${s.mastery}%</td>
+          <td style="padding: 10px 14px; text-align: center; font-family: 'Consolas', monospace; font-weight: 800; font-size: 11pt; color: #059669;">${topicMasteryText}</td>
           <td style="padding: 10px 14px; text-align: right;">
             <span style="display: inline-block; padding: 4px 12px; border-radius: 14px; font-size: 8.5pt; font-weight: 800; ${statusStyle}">${statusText}</span>
           </td>
@@ -121,7 +141,7 @@ export function PointScorecardModal({
           </div>
           <div class="card" style="display: flex; flex-direction: column; justify-content: center;">
             <div style="font-size: 8.5pt; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Academic Performance Summary</div>
-            <div style="font-size: 12pt; font-weight: 800; color: #800000; margin-bottom: 4px;">${avgAccuracy >= 85 ? 'High Distinction Tier' : avgAccuracy >= 70 ? 'Proficient Standing' : 'In Training Tier'}</div>
+            <div style="font-size: 12pt; font-weight: 800; color: #800000; margin-bottom: 4px;">${avgAccuracy >= 85 ? 'High Distinction Tier' : avgAccuracy >= 70 ? 'Proficient Status' : 'In Training Tier'}</div>
             <div style="font-size: 8.5pt; color: #475569; line-height: 1.45;">Discipline point metrics compiled across Quest Arena exams, spaced retention quizzes, and syllabus review modules.</div>
           </div>
         </div>
@@ -134,7 +154,8 @@ export function PointScorecardModal({
                 <th style="text-align:center;">Earned Points</th>
                 <th style="text-align:center;">Syllabus Completion</th>
                 <th style="text-align:center;">Subject Proficiency</th>
-                <th style="text-align:right;">Standing</th>
+                <th style="text-align:center;">Subject Topic Mastery</th>
+                <th style="text-align:right;">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -146,6 +167,7 @@ export function PointScorecardModal({
                 <td style="padding: 12px 14px; text-align: center; font-family: 'Consolas', monospace; font-weight: 900; color: #800000; font-size: 12pt;">${totalPoints.toLocaleString()} pts</td>
                 <td style="padding: 12px 14px; text-align: center; font-family: 'Consolas', monospace; font-weight: 900; font-size: 11pt;">-</td>
                 <td style="padding: 12px 14px; text-align: center; font-family: 'Consolas', monospace; font-weight: 900; color: #047857; font-size: 12pt;">${avgAccuracy.toFixed(1)}%</td>
+                <td style="padding: 12px 14px; text-align: center; font-family: 'Consolas', monospace; font-weight: 900; color: #059669; font-size: 12pt;">${avgTopicCoverage}</td>
                 <td style="padding: 12px 14px; text-align: right; font-weight: 900; color: #800000; font-size: 10pt;">${avgAccuracy >= 85 ? 'Distinction' : 'Active'}</td>
               </tr>
             </tfoot>
@@ -175,7 +197,7 @@ export function PointScorecardModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[92vh] overflow-y-auto p-3.5 sm:p-7 bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl">
+      <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[92vh] overflow-y-auto p-3.5 sm:p-7 bg-background border border-border shadow-2xl rounded-2xl sm:rounded-3xl">
         <DialogHeader className="sr-only">
           <DialogTitle>Official Student Performance Scorecard</DialogTitle>
           <DialogDescription>Itemized Points and Technical Breakdown</DialogDescription>
@@ -232,59 +254,82 @@ export function PointScorecardModal({
 
           {/* Table */}
           <div className="rounded-2xl border border-border overflow-hidden bg-background">
-            <div className="p-2.5 bg-muted/50 border-b border-border flex justify-between items-center">
-              <h4 className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-foreground">
+            <div className="p-2.5 sm:p-3 bg-muted/50 border-b border-border flex justify-between items-center">
+              <h4 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-foreground">
                 Official Discipline Breakdown
               </h4>
-              <span className="text-[9px] text-muted-foreground font-semibold">6 Subjects</span>
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground font-semibold">
+                {subjects.length} {subjects.length === 1 ? 'Subject' : 'Subjects'}
+              </span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse min-w-[480px]">
+              <table className="w-full text-left text-xs border-collapse min-w-[620px] sm:min-w-full">
                 <thead>
-                  <tr className="border-b border-border bg-muted/20 text-muted-foreground font-semibold text-[9px] uppercase">
-                    <th className="py-2 px-3">Subject Discipline</th>
-                    <th className="py-2 px-2 text-center">Earned Points</th>
-                    <th className="py-2 px-2 text-center">Syllabus Completion</th>
-                    <th className="py-2 px-2 text-center">Subject Proficiency</th>
-                    <th className="py-2 px-3 text-right">Standing</th>
+                  <tr className="border-b border-border bg-muted/20 text-muted-foreground font-semibold text-[9px] sm:text-[10px] uppercase">
+                    <th className="py-2.5 px-3">Subject Discipline</th>
+                    <th className="py-2.5 px-2 text-center">Earned Points</th>
+                    <th className="py-2.5 px-2 text-center">Syllabus Completion</th>
+                    <th className="py-2.5 px-2 text-center">Subject Proficiency</th>
+                    <th className="py-2.5 px-2 text-center">Subject Topic Mastery</th>
+                    <th className="py-2.5 px-3 text-right">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/50 text-[10.5px]">
+                <tbody className="divide-y divide-border/50 text-[10.5px] sm:text-xs">
                   {subjects.map((s) => {
                     const pts = s.points ?? Math.round(s.mastery * 10 + s.completion * 5);
+                    const meetsProficientTopics = typeof s.totalTopics === 'number' && s.totalTopics > 0 ? (s.topicCoverage ?? 0) >= 75 : true;
+                    const meetsMasteredTopics = typeof s.totalTopics === 'number' && s.totalTopics > 0 ? (s.topicCoverage ?? 0) >= 85 : true;
+                    const statusText = s.status || (
+                      (s.mastery >= 90 && meetsMasteredTopics && s.completion >= 75) 
+                        ? 'Mastered' 
+                        : (s.mastery >= 75 && meetsProficientTopics && s.completion >= 25) 
+                        ? 'Proficient' 
+                        : (s.mastery >= 50 || s.completion > 0) 
+                        ? 'In Training' 
+                        : 'Needs Focus'
+                    );
 
                     return (
                       <tr key={s.subject} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-2 px-3 font-semibold text-foreground">
+                        <td className="py-2.5 px-3 font-semibold text-foreground">
                           {s.subject}
                         </td>
-                        <td className="py-2 px-2 text-center font-mono font-bold text-xs text-primary">
+                        <td className="py-2.5 px-2 text-center font-mono font-bold text-xs text-primary">
                           {pts} pts
                         </td>
-                        <td className="py-2 px-2 text-center font-mono font-bold text-[11px] text-foreground">
+                        <td className="py-2.5 px-2 text-center font-mono font-bold text-[11px] sm:text-xs text-foreground">
                           {s.completion}%
                         </td>
-                        <td className="py-2 px-2 text-center font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400">
+                        <td className="py-2.5 px-2 text-center font-mono font-bold text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400">
                           {s.mastery}%
                         </td>
-                        <td className="py-2 px-3 text-right">
-                          {(() => {
-                            const statusText = s.status || ((s.mastery >= 90 && s.completion >= 50) ? 'Mastered' : (s.mastery >= 75 && s.completion >= 25) ? 'Proficient' : (s.mastery >= 50 || s.completion > 0) ? 'In Training' : 'Needs Focus');
-                            return (
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8.5px] font-bold ${
-                                statusText === 'Mastered'
-                                  ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
-                                  : statusText === 'Proficient'
-                                  ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                                  : statusText === 'In Training'
-                                  ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
-                                  : 'bg-muted text-muted-foreground border border-border'
-                              }`}>
-                                {statusText}
+                        <td className="py-2.5 px-2 text-center font-mono font-bold text-[11px] sm:text-xs">
+                          {typeof s.totalTopics === 'number' && s.totalTopics > 0 ? (
+                            <div className="flex flex-col items-center justify-center">
+                              <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{s.topicCoverage ?? 0}%</span>
+                              <span className="text-[9px] text-muted-foreground font-normal">
+                                ({s.passingTopics ?? 0}/{s.totalTopics} Passing)
                               </span>
-                            );
-                          })()}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground font-normal">
+                              0%
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold ${
+                            statusText === 'Mastered'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                              : statusText === 'Proficient'
+                              ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                              : statusText === 'In Training'
+                              ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+                              : 'bg-muted text-muted-foreground border border-border'
+                          }`}>
+                            {statusText}
+                          </span>
                         </td>
                       </tr>
                     );

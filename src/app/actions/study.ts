@@ -146,15 +146,15 @@ export async function syncSubjectMastery(userId: string, subject: string) {
     const totalTopics = topicStats?.totalTopics || 0;
     const passingTopics = (topicStats?.masteredCount || 0) + (topicStats?.proficientCount || 0);
     const topicCoverage = totalTopics > 0 ? Math.round((passingTopics / totalTopics) * 100) : 0;
-    const meetsProficientCoverage = totalTopics > 0 && topicCoverage >= 75;
-    const meetsMasteredCoverage = totalTopics > 0 && topicCoverage >= 85;
+    const meetsProficientTopicCoverage = totalTopics > 0 ? topicCoverage >= 75 : true;
+    const meetsMasteredTopicCoverage = totalTopics > 0 ? topicCoverage >= 85 : true;
 
     let status = "Not Started";
     if (totalQAnswered === 0 && completion === 0) {
       status = "Not Started";
-    } else if (proficiency >= 90 && completion >= 50 && meetsMasteredCoverage) {
+    } else if (proficiency >= 90 && meetsMasteredTopicCoverage && completion >= 75) {
       status = "Mastered";
-    } else if (proficiency >= 75 && completion >= 25 && meetsProficientCoverage) {
+    } else if (proficiency >= 75 && meetsProficientTopicCoverage && completion >= 25) {
       status = "Proficient";
     } else if (proficiency >= 50 || completion > 0 || totalQAnswered > 0) {
       status = "In Training";
@@ -425,15 +425,15 @@ export async function getSubjectMetrics(explicitUserId?: string): Promise<Subjec
       const totalTopics = topicStats?.totalTopics ?? 0;
       const passingTopics = (topicStats?.masteredCount ?? 0) + (topicStats?.proficientCount ?? 0);
       const topicCoverage = totalTopics > 0 ? Math.round((passingTopics / totalTopics) * 100) : 0;
-      const meetsProficientCoverage = totalTopics > 0 && topicCoverage >= 75;
-      const meetsMasteredCoverage = totalTopics > 0 && topicCoverage >= 85;
+      const meetsProficientTopicCoverage = totalTopics > 0 ? topicCoverage >= 75 : true;
+      const meetsMasteredTopicCoverage = totalTopics > 0 ? topicCoverage >= 85 : true;
 
       let masteryStatus: 'Not Started' | 'In Training' | 'Proficient' | 'Mastered' | 'Needs Focus' = 'Not Started';
       if (totalQAnswered === 0 && completion === 0) {
         masteryStatus = 'Not Started';
-      } else if (proficiency >= 90 && completion >= 50 && meetsMasteredCoverage) {
+      } else if (proficiency >= 90 && meetsMasteredTopicCoverage && completion >= 75) {
         masteryStatus = 'Mastered';
-      } else if (proficiency >= 75 && completion >= 25 && meetsProficientCoverage) {
+      } else if (proficiency >= 75 && meetsProficientTopicCoverage && completion >= 25) {
         masteryStatus = 'Proficient';
       } else if (proficiency >= 50 || completion > 0 || totalQAnswered > 0) {
         masteryStatus = 'In Training';

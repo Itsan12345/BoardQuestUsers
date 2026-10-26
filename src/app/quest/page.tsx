@@ -30,7 +30,6 @@ import {
   X,
   Lock,
   AlertTriangle,
-  Check,
   Settings,
   Volume2,
   VolumeX,
@@ -58,7 +57,7 @@ import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettin
 import { QuestArenaOnboardingModal } from '@/components/quest/QuestArenaOnboardingModal';
 import { calculateEarnedBadges, type Badge as BadgeType } from '@/lib/badge-system';
 import { getLocalTodayDateString } from '@/lib/notifications';
-import { playSfx, preloadFemalePlayerSounds, playFemalePlayerAttack, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds, playBgm, stopBgm, stopCombatBgm, isAnyVerdictMusicPlaying, preloadBgm, setAudioBgmVolume, setAudioAmbientMusicEnabled, setMapMusicMuted, setBattleMusicMuted } from '@/lib/audio-manager';
+import { playSfx, preloadFemalePlayerSounds, playFemalePlayerAttack, preloadMalePlayerSounds, playMalePlayerAttack, preloadSpecterSounds, preloadBiohazardSounds, preloadStaphSentinelSounds, preloadCrystalGolemSounds, preloadMicrobeSwarmSounds, preloadSickleCellReaperSounds, preloadAcidSlimeSounds, preloadDebuffSound, playDebuffSound, preloadBossBattleMusic, playBossBattleMusic, stopBossBattleMusic, stopFinalBossMusic, preloadLearningModeMusic, playLearningModeMusic, stopLearningModeMusic, preloadTestModeMusic, playTestModeMusic, stopTestModeMusic, preloadAnemiaShadeSounds, preloadErythrocyteColossusSounds, preloadHydraSounds, preloadImmuneArchonSounds, preloadKetoacidosisSounds, preloadLegalBeholderSounds, preloadHyperglycemicMutantSounds, preloadGramPositiveSounds, preloadSickleCellMinionSounds, preloadFungalSporeSounds, preloadReagentStripSlimeSounds, playBgm, stopBgm, stopCombatBgm, isAnyVerdictMusicPlaying, preloadBgm, setAudioBgmVolume, setAudioAmbientMusicEnabled, setMapMusicMuted, setBattleMusicMuted } from '@/lib/audio-manager';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { BossSpriteAnimator, type BossAnimState } from '@/components/game/BossSpriteAnimator';
@@ -2080,6 +2079,7 @@ export default function LearningQuest() {
   // Preload Battle & Inventory Assets on Mount for Instant Rendering
   useEffect(() => {
     preloadFemalePlayerSounds();
+    preloadMalePlayerSounds();
     preloadSpecterSounds();
     preloadBiohazardSounds();
     preloadStaphSentinelSounds();
@@ -2119,6 +2119,10 @@ export default function LearningQuest() {
       '/images/bossbattleItems/BufferedSaline.png',
       '/images/player/userPlayer_placeholder.png',
       '/images/player/hitAnimation.png',
+      '/images/player/maleCharacter_idleAnimation.png',
+      '/images/player/maleCharacter_normalAttackAnimation.png',
+      '/images/player/maleCharacter_heavyAttackGlintAnimation-1.png',
+      '/images/player/maleCharacter_heavyAttackBlastAnimation-2.png',
       '/images/player/femaleCharacter_idleAnimation.png',
       '/images/player/femaleCharacter_normalAttackAnimation.png',
       '/images/player/femaleCharacter_heavyAttackGlintAnimation-1.png',
@@ -2756,75 +2760,146 @@ export default function LearningQuest() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-muted-foreground">Avatar Gender</Label>
                 <div className="grid grid-cols-2 gap-3">
+                  {/* Male Avatar Button */}
                   <button
                     type="button"
                     onClick={() => setRenameGender('male')}
                     className={cn(
-                      "p-3 rounded-2xl border-2 flex items-center gap-3 transition-all cursor-pointer relative text-left",
+                      "p-0 rounded-2xl border-2 flex flex-col items-center justify-end h-[140px] sm:h-[160px] transition-all duration-300 cursor-pointer relative group text-left overflow-hidden",
                       renameGender === 'male'
-                        ? "border-primary bg-primary/10 shadow-[0_0_16px_rgba(239,68,68,0.25)] ring-2 ring-primary/40"
-                        : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/30"
+                        ? "border-blue-500 bg-gradient-to-t from-blue-500/20 via-blue-500/5 to-transparent shadow-[0_0_20px_rgba(59,130,246,0.25)] ring-2 ring-blue-500/40"
+                        : "border-border/60 bg-muted/15 hover:border-blue-400/50 hover:bg-muted/25"
                     )}
                   >
-                    {renameGender === 'male' && (
-                      <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      </div>
-                    )}
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-primary/20 border border-primary/30 flex items-center justify-center shrink-0 overflow-hidden relative">
-                      <Image
-                        src="/images/player/userPlayer_placeholder.png"
-                        alt="Male Avatar"
-                        width={36}
-                        height={36}
-                        className="w-8 h-8 object-contain filter drop-shadow-sm"
-                        style={{ imageRendering: 'pixelated' }}
-                        unoptimized
-                      />
+                    {/* Gender Emoji Badge */}
+                    <div
+                      className={cn(
+                        "absolute top-2.5 right-2.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 z-20 shadow-xs",
+                        renameGender === 'male'
+                          ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] ring-2 ring-blue-300/50 scale-105"
+                          : "bg-background/80 backdrop-blur-xs text-muted-foreground border border-border/70 group-hover:scale-105 group-hover:border-blue-400/50 group-hover:text-blue-500"
+                      )}
+                      title="Male Avatar"
+                    >
+                      <span className="text-sm sm:text-base leading-none select-none">♂️</span>
                     </div>
-                    <div>
-                      <div className="font-headline font-bold text-sm text-foreground">Male</div>
+
+                    {/* Ambient Glow */}
+                    {renameGender === 'male' && (
+                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent pointer-events-none" />
+                    )}
+
+                    {/* Avatar Preview Viewport */}
+                    <div className="relative z-10 w-full flex items-end justify-center -mb-1">
+                      <div
+                        className="arena-settings-avatar-male relative overflow-hidden shrink-0 transition-transform duration-300 group-hover:scale-105 origin-bottom"
+                        style={{ imageRendering: 'pixelated' }}
+                      >
+                        <div className="absolute top-0 left-0 arena-settings-avatar-male-sheet" />
+                      </div>
                     </div>
                   </button>
 
+                  {/* Female Avatar Button */}
                   <button
                     type="button"
                     onClick={() => setRenameGender('female')}
                     className={cn(
-                      "p-3 rounded-2xl border-2 flex items-center gap-3 transition-all cursor-pointer relative text-left",
+                      "p-0 rounded-2xl border-2 flex flex-col items-center justify-end h-[140px] sm:h-[160px] transition-all duration-300 cursor-pointer relative group text-left overflow-hidden",
                       renameGender === 'female'
-                        ? "border-primary bg-primary/10 shadow-[0_0_16px_rgba(239,68,68,0.25)] ring-2 ring-primary/40"
-                        : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/30"
+                        ? "border-rose-500 bg-gradient-to-t from-rose-500/20 via-rose-500/5 to-transparent shadow-[0_0_20px_rgba(244,63,94,0.25)] ring-2 ring-rose-500/40"
+                        : "border-border/60 bg-muted/15 hover:border-rose-400/50 hover:bg-muted/25"
                     )}
                   >
+                    {/* Gender Emoji Badge */}
+                    <div
+                      className={cn(
+                        "absolute top-2.5 right-2.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 z-20 shadow-xs",
+                        renameGender === 'female'
+                          ? "bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-[0_0_12px_rgba(244,63,94,0.6)] ring-2 ring-rose-300/50 scale-105"
+                          : "bg-background/80 backdrop-blur-xs text-muted-foreground border border-border/70 group-hover:scale-105 group-hover:border-rose-400/50 group-hover:text-rose-500"
+                      )}
+                      title="Female Avatar"
+                    >
+                      <span className="text-sm sm:text-base leading-none select-none">♀️</span>
+                    </div>
+
+                    {/* Ambient Glow */}
                     {renameGender === 'female' && (
-                      <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
-                      </div>
+                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-rose-500/20 via-transparent to-transparent pointer-events-none" />
                     )}
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-primary/20 border border-primary/30 flex items-center justify-center shrink-0 overflow-hidden relative">
+
+                    {/* Avatar Preview Viewport */}
+                    <div className="relative z-10 w-full flex items-end justify-center -mb-1">
                       <div
-                        className="w-[45px] h-[40px] relative overflow-hidden"
+                        className="arena-settings-avatar-female relative overflow-hidden shrink-0 transition-transform duration-300 group-hover:scale-105 origin-bottom"
                         style={{ imageRendering: 'pixelated' }}
                       >
-                        <div
-                          className="absolute top-0 left-0"
-                          style={{
-                            width: `${45 * 8}px`,
-                            height: '40px',
-                            backgroundImage: `url('/images/player/femaleCharacter_idleAnimation.png')`,
-                            backgroundRepeat: 'no-repeat',
-                            backgroundSize: `${45 * 8}px 40px`,
-                            animation: 'femaleOnboardingIdle 0.9s steps(8) infinite',
-                          }}
-                        />
+                        <div className="absolute top-0 left-0 arena-settings-avatar-female-sheet" />
                       </div>
-                    </div>
-                    <div>
-                      <div className="font-headline font-bold text-sm text-foreground">Female</div>
                     </div>
                   </button>
                 </div>
+                <style jsx global>{`
+                  /* Male Settings Avatar */
+                  .arena-settings-avatar-male {
+                    width: 104px;
+                    height: 104px;
+                  }
+                  .arena-settings-avatar-male-sheet {
+                    width: 728px; /* 104 * 7 */
+                    height: 104px;
+                    background-image: url('/images/player/maleCharacter_idleAnimation.png');
+                    background-repeat: no-repeat;
+                    background-size: 728px 104px;
+                    animation: maleArenaSettingsIdle 0.8s steps(7) infinite;
+                  }
+                  @media (min-width: 640px) {
+                    .arena-settings-avatar-male {
+                      width: 120px;
+                      height: 120px;
+                    }
+                    .arena-settings-avatar-male-sheet {
+                      width: 840px; /* 120 * 7 */
+                      height: 120px;
+                      background-size: 840px 120px;
+                    }
+                  }
+
+                  /* Female Settings Avatar */
+                  .arena-settings-avatar-female {
+                    width: 117px;
+                    height: 104px;
+                  }
+                  .arena-settings-avatar-female-sheet {
+                    width: 936px; /* 117 * 8 */
+                    height: 104px;
+                    background-image: url('/images/player/femaleCharacter_idleAnimation.png');
+                    background-repeat: no-repeat;
+                    background-size: 936px 104px;
+                    animation: femaleArenaSettingsIdle 0.9s steps(8) infinite;
+                  }
+                  @media (min-width: 640px) {
+                    .arena-settings-avatar-female {
+                      width: 135px;
+                      height: 120px;
+                    }
+                    .arena-settings-avatar-female-sheet {
+                      width: 1080px; /* 135 * 8 */
+                      height: 120px;
+                      background-size: 1080px 120px;
+                    }
+                  }
+
+                  @keyframes maleArenaSettingsIdle {
+                    from { transform: translateX(0px); }
+                    to { transform: translateX(-100%); }
+                  }
+                  @keyframes femaleArenaSettingsIdle {
+                    from { transform: translateX(0px); }
+                    to { transform: translateX(-100%); }
+                  }
+                `}</style>
               </div>
             </TabsContent>
 
@@ -4048,9 +4123,6 @@ export default function LearningQuest() {
       setScore(prev => prev + 1);
       setStreak(prev => prev + 1);
       playSfx('correct');
-      if (avatarGender !== 'female' && (quizMode === 'boss-battle' || quizMode === 'learning')) {
-        setTimeout(() => playSfx('attack'), 150);
-      }
     } else {
       setStreak(0);
       if (!shouldSuppressWrongSfx) {
@@ -4268,14 +4340,18 @@ export default function LearningQuest() {
 
       if (isCorrect) {
         setBossAnimState('idle');
-        if (avatarGender === 'female' && isPlayerHeavy) {
-          // Female Heavy Attack Sequence:
+        if (isPlayerHeavy) {
+          // Heavy Attack Sequence (Female and Male):
           // Phase 1: Play Glint Animation first in-place (650ms)
           setPlayerAnimState('heavy_glint');
           setTimeout(() => {
             // Phase 2: Unleash Blast Animation that glides smoothly across the arena towards enemy (750ms)
             setPlayerAnimState('heavy_blast');
-            playFemalePlayerAttack('heavy');
+            if (avatarGender === 'female') {
+              playFemalePlayerAttack('heavy');
+            } else {
+              playMalePlayerAttack('heavy');
+            }
             // Enemy takes damage right on blast impact (~500ms into flight, 1150ms total)
             setTimeout(applyEnemyDamage, 500);
             // Complete blast and return player to idle stance
@@ -4287,13 +4363,15 @@ export default function LearningQuest() {
           // Normal Attack Card (or default mode):
           // Forward lunge attack with normal attack animation
           setPlayerAnimState('attack');
-          if (avatarGender === 'female') {
-            setTimeout(() => {
+          setTimeout(() => {
+            if (avatarGender === 'female') {
               playFemalePlayerAttack('normal');
-            }, 250);
-          }
-          setTimeout(() => setPlayerAnimState('idle'), avatarGender === 'female' ? 1380 : 1200);
-          setTimeout(applyEnemyDamage, avatarGender === 'female' ? 520 : 450);
+            } else {
+              playMalePlayerAttack('normal');
+            }
+          }, 250);
+          setTimeout(() => setPlayerAnimState('idle'), 1380);
+          setTimeout(applyEnemyDamage, 520);
         }
       } else {
         applyEnemyDamage();
@@ -6793,7 +6871,7 @@ export default function LearningQuest() {
                 "relative flex flex-col items-center justify-end shrink-0 -mb-4 md:-mb-6 -ml-2 md:-ml-4 transition-all transform-gpu z-20 order-2 md:order-1",
                 isAnimating === "player" && "animate-shake scale-105",
                 playerAnimState === 'attack' && !judgementText && !battleOutcome && !isFinished && (
-                  avatarGender === 'female' ? "animate-female-player-lunge" : "animate-player-lunge"
+                  avatarGender === 'female' ? "animate-female-player-lunge" : "animate-male-player-lunge"
                 )
               )}>
                 {/* Ground Shadow for Player Character */}

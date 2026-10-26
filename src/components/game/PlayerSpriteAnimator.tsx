@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { HitEffectAnimator } from "@/components/game/HitEffectAnimator";
 
@@ -25,36 +24,672 @@ export function PlayerSpriteAnimator({
   className,
 }: PlayerSpriteAnimatorProps) {
   const isFemale = gender === "female";
+  const isNormalAttack = animState === "attack";
+  const isHeavyGlint = animState === "heavy_glint";
+  const isHeavyBlast = animState === "heavy_blast";
+  const showHeavyGlint = isHeavyGlint || isHeavyBlast;
 
-  // When male, render existing userPlayer_placeholder
+  // --- MALE AVATAR SPRITE SYSTEM ---
+  // Dimensions and frame configuration:
+  // Idle: 7 frames, 128x128
+  // Normal Attack: 11 frames, 510x275
+  // Heavy Glint: 17 frames, 192x145
+  // Heavy Blast Projectile: 13 frames, 464x223
   if (!isFemale) {
     return (
       <div
         className={cn(
-          "relative z-10 w-44 h-44 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-84 lg:h-84 shrink-0 transition-transform select-none",
+          "relative z-10 w-44 h-44 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-84 lg:h-84 shrink-0 transition-transform overflow-visible select-none",
           className
         )}
       >
-        <Image
-          src="/images/player/userPlayer_placeholder.png"
-          alt="Aspirant Character Sprite"
-          width={300}
-          height={300}
-          priority
-          className="w-full h-full object-contain object-bottom filter drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]"
-          style={{ imageRendering: "pixelated" }}
-          unoptimized
-        />
-        {/* Player Hit Animation directly on player chest/body */}
+        {/* 1. IDLE ANIMATION (Looping continuously when idle or during blast projectile flight) */}
+        <div
+          className={cn(
+            "absolute bottom-0 left-0 pointer-events-none",
+            isNormalAttack
+              ? "male-idle-during-attack"
+              : isHeavyGlint
+              ? "opacity-0 invisible"
+              : isHeavyBlast
+              ? "male-idle-heavy-blast"
+              : "opacity-100 visible"
+          )}
+        >
+          <div
+            className="male-idle-viewport relative overflow-hidden filter drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]"
+            style={{ imageRendering: "pixelated" }}
+          >
+            <div className="male-idle-sheet absolute top-0 left-0" />
+          </div>
+        </div>
+
+        {/* 2. NORMAL ATTACK ANIMATION (11 frames, 510x275, plays on correct Normal Attack Card) */}
+        {isNormalAttack && (
+          <div className="male-normal-attack-container absolute bottom-0 left-0 pointer-events-none z-20">
+            <div
+              className="male-normal-attack-viewport relative overflow-hidden filter drop-shadow-[0_6px_16px_rgba(0,0,0,0.7)]"
+              style={{ imageRendering: "pixelated" }}
+            >
+              <div className="male-normal-attack-sheet absolute top-0 left-0" />
+            </div>
+          </div>
+        )}
+
+        {/* 3. HEAVY ATTACK GLINT ANIMATION (17 frames, 192x145, plays in-place during charge & blast casting) */}
+        {showHeavyGlint && (
+          <div
+            className={cn(
+              "male-heavy-glint-container absolute bottom-0 left-0 pointer-events-none z-20",
+              isHeavyBlast ? "male-heavy-glint-during-blast" : ""
+            )}
+          >
+            <div
+              className="male-heavy-glint-viewport relative overflow-hidden filter drop-shadow-[0_0_18px_rgba(245,158,11,0.6)] drop-shadow-[0_6px_16px_rgba(0,0,0,0.8)]"
+              style={{ imageRendering: "pixelated" }}
+            >
+              <div
+                className={cn(
+                  "male-heavy-glint-sheet absolute top-0 left-0",
+                  isHeavyBlast ? "male-heavy-glint-sheet-casting" : "male-heavy-glint-sheet-charge"
+                )}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 4. HEAVY ATTACK BLAST PROJECTILE (13 frames, 464x223, flies smoothly towards enemy) */}
+        {isHeavyBlast && (
+          <div className="male-heavy-blast-container absolute bottom-0 left-0 pointer-events-none z-40">
+            <div
+              className="male-heavy-blast-viewport relative overflow-hidden filter drop-shadow-[0_0_20px_rgba(245,158,11,0.95)] drop-shadow-[0_0_35px_rgba(239,68,68,0.9)]"
+              style={{ imageRendering: "pixelated" }}
+            >
+              <div className="male-heavy-blast-sheet absolute top-0 left-0" />
+            </div>
+            {/* Smooth Explosion Detonation Flare & Shockwave on Enemy Impact */}
+            <div className="male-heavy-blast-explosion absolute pointer-events-none" />
+          </div>
+        )}
+
+        {/* Player Hit Reaction Flash/Spark on Chest */}
         <HitEffectAnimator
           isActive={hitEffectTarget === "player"}
           triggerKey={hitEffectKey}
           scale={2.2}
           className="top-[45%] left-[52%]"
         />
+
+        <style jsx global>{`
+          /* ========================================================= */
+          /* MALE AVATAR SPRITE STYLES (MOBILE / BASE VIEWPORT)        */
+          /* Scale Factor: ~1.35x base (Idle 173x173)                   */
+          /* ========================================================= */
+
+          /* --- 1. Idle Animation (7 frames, 128x128) --- */
+          .male-idle-viewport {
+            width: 173px;
+            height: 173px;
+          }
+          .male-idle-sheet {
+            width: 1211px; /* 173px * 7 frames */
+            height: 173px;
+            background-image: url('/images/player/maleCharacter_idleAnimation.png');
+            background-repeat: no-repeat;
+            background-size: 1211px 173px;
+            animation: maleIdleStep 0.8s steps(7) infinite;
+          }
+          @keyframes maleIdleStep {
+            from { transform: translateX(0px); }
+            to { transform: translateX(-100%); }
+          }
+
+          /* --- 2. Normal Attack Animation (11 frames, 510x275) --- */
+          /* Exact same scale factor as Idle Animation (173 / 128 = 1.3515625) */
+          /* Horizontal alignment offset: frame 0 dx = 142px (-142 * 1.3515625 = -192px) */
+          .male-normal-attack-viewport {
+            width: 689px;
+            height: 372px;
+            transform: translateX(-192px);
+          }
+          .male-normal-attack-sheet {
+            width: 7579px; /* 689px * 11 frames */
+            height: 372px;
+            background-image: url('/images/player/maleCharacter_normalAttackAnimation.png');
+            background-repeat: no-repeat;
+            background-size: 7579px 372px;
+            animation: maleNormalAttackStep 1.2s steps(11) 1 forwards;
+          }
+          @keyframes maleNormalAttackStep {
+            from { transform: translateX(0px); }
+            to { transform: translateX(-100%); }
+          }
+
+          /* --- Normal Attack Crossfade Fadeout --- */
+          .male-normal-attack-container {
+            animation: maleAttackFadeOut 1.38s ease-out forwards;
+          }
+          @keyframes maleAttackFadeOut {
+            0% { opacity: 1; }
+            86.9% { opacity: 1; }
+            87% { opacity: 1; }
+            100% { opacity: 0; }
+          }
+
+          /* --- Idle Crossfade during Normal Attack Settle --- */
+          .male-idle-during-attack {
+            animation: maleIdleFadeIn 1.38s ease-out forwards;
+          }
+          @keyframes maleIdleFadeIn {
+            0% { opacity: 0; }
+            86.9% { opacity: 0; }
+            87% { opacity: 0; }
+            100% { opacity: 1; }
+          }
+
+          /* --- Male Normal Attack Lunge (Mobile) --- */
+          /* Frames 0-3 (0% to 28%): stationary at home spot, matching Idle position and size */
+          /* Frames 4-10 (28% to 87%): lunges forward smoothly towards enemy, scale(0.63) consistent throughout, and returns */
+          /* Settle (87% to 100%): smoothly settles into Idle stance home spot with seamless crossfade */
+          .animate-male-player-lunge {
+            transform-origin: bottom left;
+            animation-name: malePlayerLungeMobile;
+            animation-duration: 1.38s;
+            animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+            animation-fill-mode: forwards;
+          }
+          @keyframes malePlayerLungeMobile {
+            0% {
+              transform: translate(0px, 0px) scale(1);
+            }
+            28% {
+              /* Frames 0-3: stationary at exact Idle stance and position */
+              transform: translate(0px, 0px) scale(1);
+            }
+            28.01% {
+              /* Frame 4 begins: forward strike dash begins */
+              transform: translate(0px, -16px) scale(0.63);
+            }
+            42% {
+              /* Frames 4-6: smoothly accelerates forward closer to enemy */
+              transform: translate(max(20px, calc(100cqw - 320px)), -16px) scale(0.63);
+            }
+            65% {
+              /* Frames 7-8: executes explosive slash impact directly on enemy */
+              transform: translate(max(20px, calc(100cqw - 320px)), -16px) scale(0.63);
+            }
+            76% {
+              /* Frames 9-10: glides smoothly back across the arena at consistent scale(0.63) */
+              transform: translate(calc(max(20px, calc(100cqw - 320px)) * 0.40), -16px) scale(0.63);
+            }
+            83% {
+              /* Frame 10: glides smoothly towards home spot at consistent scale(0.63) */
+              transform: translate(calc(max(20px, calc(100cqw - 320px)) * 0.08), -16px) scale(0.63);
+            }
+            87% {
+              /* Finishes cleanly at home spot at consistent scale(0.63) */
+              transform: translate(0px, -16px) scale(0.63);
+              animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            100% {
+              /* Smoothly settles into Idle Stance home position and scale */
+              transform: translate(0px, 0px) scale(1);
+            }
+          }
+
+          /* --- 3. Heavy Attack Glint Animation (17 frames, 192x145) --- */
+          /* Exact same scale factor as Idle Animation (173 / 128 = 1.3515625) */
+          /* 1:1 pixel scale with Idle Stance */
+          .male-heavy-glint-container {
+            transform-origin: bottom left;
+            transform: translate(0px, 0px);
+          }
+          .male-heavy-glint-viewport {
+            width: 259px; /* 192px * 1.3515625 */
+            height: 196px; /* 145px * 1.3515625 */
+          }
+          .male-heavy-glint-sheet {
+            width: 4403px; /* 259px * 17 frames */
+            height: 196px;
+            background-image: url('/images/player/maleCharacter_heavyAttackGlintAnimation-1.png');
+            background-repeat: no-repeat;
+            background-size: 4403px 196px;
+          }
+          /* Phase 1 Charge: Plays frames 1 to 17 */
+          .male-heavy-glint-sheet-charge {
+            animation: maleHeavyGlintStep 0.65s steps(17) 1 forwards;
+          }
+          /* Phase 2 Blast Casting: Actively pulses glint energy along extended sword (frames 12-16 loop) */
+          .male-heavy-glint-sheet-casting {
+            animation: maleHeavyGlintLoop 0.35s steps(5) infinite;
+          }
+          /* Dissolves casting pose smoothly back into Idle after the blast detonates on mobile */
+          .male-heavy-glint-during-blast {
+            animation: maleHeavyGlintFadeOutMobile 0.88s ease-out forwards;
+          }
+          /* Fades Idle smoothly back in after blast detonation settle */
+          .male-idle-heavy-blast {
+            animation: maleIdleHeavyFadeIn 0.88s ease-out forwards;
+          }
+          @keyframes maleHeavyGlintStep {
+            from { transform: translateX(0px); }
+            to { transform: translateX(-100%); }
+          }
+          @keyframes maleHeavyGlintLoop {
+            from { transform: translateX(-70.588%); }
+            to { transform: translateX(-100%); }
+          }
+          @keyframes maleHeavyGlintFadeOutMobile {
+            0% {
+              opacity: 1;
+            }
+            85% {
+              opacity: 1;
+              animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            100% {
+              opacity: 0;
+            }
+          }
+          @keyframes maleIdleHeavyFadeIn {
+            0% { opacity: 0; }
+            85% { opacity: 0; }
+            100% { opacity: 1; }
+          }
+
+          /* --- 4. Heavy Attack Blast Animation (13 frames, 464x223) --- */
+          .male-heavy-blast-container {
+            transform-origin: 82% 50%;
+            animation: maleHeavyBlastFlightMobile 0.75s cubic-bezier(0.2, 0.85, 0.25, 1) forwards;
+          }
+          .male-heavy-blast-viewport {
+            width: 302px; /* 464 * 0.65 */
+            height: 145px; /* 223 * 0.65 */
+          }
+          .male-heavy-blast-sheet {
+            width: 3926px; /* 302px * 13 frames */
+            height: 145px;
+            background-image: url('/images/player/maleCharacter_heavyAttackBlastAnimation-2.png');
+            background-repeat: no-repeat;
+            background-size: 3926px 145px;
+            animation: maleHeavyBlastStep 0.75s steps(13) 1 forwards;
+          }
+          .male-heavy-blast-explosion {
+            left: 247px;
+            top: 72px;
+            width: 110px;
+            height: 110px;
+            margin-left: -55px;
+            margin-top: -55px;
+            border-radius: 9999px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(251, 191, 36, 0.9) 35%, rgba(239, 68, 68, 0.75) 60%, transparent 80%);
+            filter: drop-shadow(0 0 20px rgba(251, 191, 36, 1)) drop-shadow(0 0 35px rgba(239, 68, 68, 0.9));
+            pointer-events: none;
+            opacity: 0;
+            animation: maleHeavyBlastExplosionMobile 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
+          @keyframes maleHeavyBlastStep {
+            from { transform: translateX(0px); }
+            to { transform: translateX(-100%); }
+          }
+          @keyframes maleHeavyBlastFlightMobile {
+            0% {
+              /* Emerges directly at the tip of the charged sword */
+              transform: translate(80px, -20px) scale(0.70);
+              opacity: 0;
+              filter: brightness(1);
+            }
+            15% {
+              /* Bursts into radiant flame energy at the sword tip */
+              transform: translate(95px, -20px) scale(0.95);
+              opacity: 1;
+              filter: brightness(1.1);
+            }
+            64% {
+              /* Smoothly glides across arena directly to the enemy's body */
+              transform: translate(calc(100cqw - 350px), -16px) scale(1.05);
+              opacity: 1;
+              filter: brightness(1.15);
+            }
+            67% {
+              /* EXPLOSIVE IMPACT: Detonates directly ON the enemy's body */
+              transform: translate(calc(100cqw - 350px), -16px) scale(1.40);
+              opacity: 1;
+              filter: brightness(2.0);
+            }
+            76% {
+              /* Shockwave expands over the enemy and smoothly dissipates */
+              transform: translate(calc(100cqw - 350px), -16px) scale(1.65);
+              opacity: 0;
+              filter: brightness(1.3);
+            }
+            100% {
+              /* Remains completely invisible */
+              transform: translate(calc(100cqw - 350px), -16px) scale(1.70);
+              opacity: 0;
+              filter: brightness(1);
+            }
+          }
+          @keyframes maleHeavyBlastExplosionMobile {
+            0% {
+              transform: scale(0.2);
+              opacity: 0;
+            }
+            63% {
+              transform: scale(0.3);
+              opacity: 0;
+            }
+            67% {
+              /* Explosive shockwave burst on enemy body */
+              transform: scale(1.0);
+              opacity: 1;
+              filter: brightness(2.0);
+            }
+            74% {
+              /* Shockwave ring expands outward */
+              transform: scale(1.5);
+              opacity: 0.7;
+            }
+            80% {
+              /* Smoothly dissolves completely */
+              transform: scale(1.8);
+              opacity: 0;
+              filter: brightness(1.2);
+            }
+            100% {
+              transform: scale(1.9);
+              opacity: 0;
+            }
+          }
+
+          /* Intermediate tablet breakpoint (640px to 767px) */
+          @media (min-width: 640px) and (max-width: 767px) {
+            .male-heavy-blast-viewport {
+              width: 325px;
+              height: 156px;
+            }
+            .male-heavy-blast-sheet {
+              width: 4225px;
+              height: 156px;
+              background-size: 4225px 156px;
+            }
+            .male-heavy-blast-explosion {
+              left: 266px;
+              top: 78px;
+              width: 130px;
+              height: 130px;
+              margin-left: -65px;
+              margin-top: -65px;
+              border-radius: 9999px;
+              background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(251, 191, 36, 0.9) 35%, rgba(239, 68, 68, 0.75) 60%, transparent 80%);
+              filter: drop-shadow(0 0 25px rgba(251, 191, 36, 1)) drop-shadow(0 0 40px rgba(239, 68, 68, 0.9));
+              animation: maleHeavyBlastExplosionTablet 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+            .male-heavy-blast-container {
+              transform-origin: 82% 50%;
+              animation: maleHeavyBlastFlightTablet 0.75s cubic-bezier(0.2, 0.85, 0.25, 1) forwards;
+            }
+            @keyframes maleHeavyBlastFlightTablet {
+              0% {
+                transform: translate(110px, -25px) scale(0.65);
+                opacity: 0;
+                filter: brightness(1);
+              }
+              15% {
+                transform: translate(125px, -25px) scale(0.95);
+                opacity: 1;
+                filter: brightness(1.1);
+              }
+              64% {
+                /* Smoothly glides across arena directly to the enemy's body */
+                transform: translate(calc(100cqw - 410px), -18px) scale(1.10);
+                opacity: 1;
+                filter: brightness(1.15);
+              }
+              67% {
+                /* EXPLOSIVE IMPACT: Detonates directly ON the enemy's body */
+                transform: translate(calc(100cqw - 410px), -18px) scale(1.45);
+                opacity: 1;
+                filter: brightness(2.0);
+              }
+              76% {
+                /* Shockwave expands over the enemy and smoothly dissipates */
+                transform: translate(calc(100cqw - 410px), -18px) scale(1.70);
+                opacity: 0;
+                filter: brightness(1.3);
+              }
+              100% {
+                /* Remains completely invisible */
+                transform: translate(calc(100cqw - 410px), -18px) scale(1.75);
+                opacity: 0;
+                filter: brightness(1);
+              }
+            }
+            @keyframes maleHeavyBlastExplosionTablet {
+              0% {
+                transform: scale(0.2);
+                opacity: 0;
+              }
+              63% {
+                transform: scale(0.3);
+                opacity: 0;
+              }
+              67% {
+                transform: scale(1.0);
+                opacity: 1;
+                filter: brightness(2.0);
+              }
+              74% {
+                transform: scale(1.5);
+                opacity: 0.7;
+              }
+              80% {
+                transform: scale(1.8);
+                opacity: 0;
+                filter: brightness(1.2);
+              }
+              100% {
+                transform: scale(1.9);
+                opacity: 0;
+              }
+            }
+          }
+
+          /* ========================================================= */
+          /* MALE AVATAR SPRITE STYLES (DESKTOP md: AND ABOVE)         */
+          /* Scale Factor: ~2.15x base (Idle 275x275)                   */
+          /* ========================================================= */
+          @media (min-width: 768px) {
+            /* --- 1. Idle Animation Desktop --- */
+            .male-idle-viewport {
+              width: 275px;
+              height: 275px;
+            }
+            .male-idle-sheet {
+              width: 1925px; /* 275px * 7 frames */
+              height: 275px;
+              background-size: 1925px 275px;
+            }
+
+            /* --- 2. Normal Attack Desktop --- */
+            /* Exact same scale factor as Idle Animation (275 / 128 = 2.1484375) */
+            /* Offset dx = 142px (-142 * 2.1484375 = -305px) */
+            .male-normal-attack-viewport {
+              width: 1096px;
+              height: 591px;
+              transform: translateX(-305px);
+            }
+            .male-normal-attack-sheet {
+              width: 12056px; /* 1096px * 11 frames */
+              height: 591px;
+              background-size: 12056px 591px;
+            }
+
+            /* --- Male Normal Attack Lunge (Desktop md:) --- */
+            .animate-male-player-lunge {
+              transform-origin: bottom left;
+              animation-name: malePlayerLungeDesktop;
+              animation-duration: 1.38s;
+              animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+              animation-fill-mode: forwards;
+            }
+            @keyframes malePlayerLungeDesktop {
+              0% {
+                transform: translate(0px, 0px) scale(1);
+              }
+              28% {
+                /* Frames 0-3: stationary at exact Idle stance and position */
+                transform: translate(0px, 0px) scale(1);
+              }
+              28.01% {
+                /* Frame 4 begins: scale(0.63) consistent with vertical offset */
+                transform: translate(0px, -24px) scale(0.63);
+              }
+              42% {
+                /* Frames 4-6: smoothly accelerates forward into dash closer to enemy */
+                transform: translate(max(40px, calc(100cqw - 510px)), -24px) scale(0.63);
+              }
+              65% {
+                /* Frames 7-8: executes explosive slash impact directly on enemy */
+                transform: translate(max(40px, calc(100cqw - 510px)), -24px) scale(0.63);
+              }
+              76% {
+                /* Frames 9-10: glides smoothly back across the arena at consistent scale(0.63) */
+                transform: translate(calc(max(40px, calc(100cqw - 510px)) * 0.40), -24px) scale(0.63);
+              }
+              83% {
+                /* Glides smoothly towards home spot at consistent scale(0.63) */
+                transform: translate(calc(max(40px, calc(100cqw - 510px)) * 0.08), -24px) scale(0.63);
+              }
+              87% {
+                /* Finishes cleanly at home spot at consistent scale(0.63) */
+                transform: translate(0px, -24px) scale(0.63);
+                animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+              }
+              100% {
+                /* Smoothly settles into Idle Stance home position and scale */
+                transform: translate(0px, 0px) scale(1);
+              }
+            }
+
+            /* --- 3. Heavy Attack Glint Desktop --- */
+            .male-heavy-glint-container {
+              transform: none !important;
+            }
+            .male-heavy-glint-during-blast {
+              animation: maleHeavyGlintFadeOutDesktop 0.88s ease-out forwards;
+            }
+            @keyframes maleHeavyGlintFadeOutDesktop {
+              0% { opacity: 1; }
+              85% { opacity: 1; }
+              100% { opacity: 0; }
+            }
+            .male-heavy-glint-viewport {
+              width: 413px; /* 192px * 2.1484375 */
+              height: 312px; /* 145px * 2.1484375 */
+            }
+            .male-heavy-glint-sheet {
+              width: 7021px; /* 413px * 17 frames */
+              height: 312px;
+              background-size: 7021px 312px;
+            }
+
+            /* --- 4. Heavy Attack Blast Desktop --- */
+            .male-heavy-blast-container {
+              transform-origin: 82% 50%;
+              animation: maleHeavyBlastFlightDesktop 0.75s cubic-bezier(0.2, 0.85, 0.25, 1) forwards;
+            }
+            .male-heavy-blast-viewport {
+              width: 650px; /* 464 * 1.40 */
+              height: 312px; /* 223 * 1.40 */
+            }
+            .male-heavy-blast-sheet {
+              width: 8450px; /* 650px * 13 frames */
+              height: 312px;
+              background-size: 8450px 312px;
+            }
+            .male-heavy-blast-explosion {
+              left: 533px;
+              top: 156px;
+              width: 190px;
+              height: 190px;
+              margin-left: -95px;
+              margin-top: -95px;
+              border-radius: 9999px;
+              background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(251, 191, 36, 0.9) 35%, rgba(239, 68, 68, 0.75) 60%, transparent 80%);
+              filter: drop-shadow(0 0 30px rgba(251, 191, 36, 1)) drop-shadow(0 0 55px rgba(239, 68, 68, 0.9));
+              animation: maleHeavyBlastExplosionDesktop 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+            @keyframes maleHeavyBlastFlightDesktop {
+              0% {
+                transform: translate(140px, -40px) scale(0.65);
+                opacity: 0;
+                filter: brightness(1);
+              }
+              15% {
+                transform: translate(160px, -40px) scale(1);
+                opacity: 1;
+                filter: brightness(1.1);
+              }
+              64% {
+                /* Smoothly glides across arena directly to the enemy's body */
+                transform: translate(calc(100cqw - 700px), -24px) scale(1.15);
+                opacity: 1;
+                filter: brightness(1.15);
+              }
+              67% {
+                /* EXPLOSIVE IMPACT: Detonates directly ON the enemy's body */
+                transform: translate(calc(100cqw - 700px), -24px) scale(1.45);
+                opacity: 1;
+                filter: brightness(2.0);
+              }
+              76% {
+                /* Shockwave expands over the enemy and smoothly dissipates */
+                transform: translate(calc(100cqw - 700px), -24px) scale(1.75);
+                opacity: 0;
+                filter: brightness(1.3);
+              }
+              100% {
+                /* Remains completely invisible */
+                transform: translate(calc(100cqw - 700px), -24px) scale(1.80);
+                opacity: 0;
+                filter: brightness(1);
+              }
+            }
+            @keyframes maleHeavyBlastExplosionDesktop {
+              0% {
+                transform: scale(0.2);
+                opacity: 0;
+              }
+              63% {
+                transform: scale(0.3);
+                opacity: 0;
+              }
+              67% {
+                transform: scale(1.0);
+                opacity: 1;
+                filter: brightness(2.0);
+              }
+              74% {
+                transform: scale(1.5);
+                opacity: 0.7;
+              }
+              80% {
+                transform: scale(1.8);
+                opacity: 0;
+                filter: brightness(1.2);
+              }
+              100% {
+                transform: scale(1.9);
+                opacity: 0;
+              }
+            }
+          }
+        `}</style>
       </div>
     );
   }
+
 
   // --- FEMALE AVATAR SPRITE SYSTEM ---
   // Dimensions and frame configuration:
@@ -63,12 +698,8 @@ export function PlayerSpriteAnimator({
   // Heavy Glint: 14 frames, 224x193
   // Heavy Blast Projectile: 15 frames, 414x320
 
-  const isNormalAttack = animState === "attack";
-  const isHeavyGlint = animState === "heavy_glint";
-  const isHeavyBlast = animState === "heavy_blast";
-  const showHeavyGlint = isHeavyGlint || isHeavyBlast;
-
   return (
+
     <div
       className={cn(
         "relative z-10 w-44 h-44 sm:w-56 sm:h-56 md:w-72 md:h-72 lg:w-84 lg:h-84 shrink-0 transition-transform overflow-visible select-none",

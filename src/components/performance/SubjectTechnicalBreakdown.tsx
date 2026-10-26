@@ -117,7 +117,14 @@ export function SubjectTechnicalBreakdown({
 
                 <Badge
                   variant="outline"
-                  className={`text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-lg shrink-0 ${
+                  title={
+                    item.status === 'Mastered'
+                      ? 'Mastered: ≥90% Proficiency, ≥85% Topic Mastery, and ≥75% Syllabus Completion'
+                      : item.status === 'Proficient'
+                      ? 'Proficient: ≥75% Proficiency, ≥75% Topic Mastery, and ≥25% Syllabus Completion'
+                      : 'In Training: Reach ≥75% Proficiency, ≥75% Topic Mastery, and ≥25% Syllabus Completion to unlock Proficient'
+                  }
+                  className={`text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-lg shrink-0 cursor-help ${
                     item.status === 'Mastered'
                       ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
                       : item.status === 'Proficient'
