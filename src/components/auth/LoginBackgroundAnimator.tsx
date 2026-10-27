@@ -1,48 +1,159 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 
 interface LoginBackgroundAnimatorProps {
   className?: string;
-  fps?: number; // base frame rate, defaults to 8.5 (approx 1.4s per 12-frame loop)
+  fps?: number; // base frame rate, defaults to 8.5 (approx 2.8s per 12-frame loop)
   enableSmoothing?: boolean; // smooth crossfade interpolation between frames
 }
 
 // Global in-memory cache so switching between /login, /signup, and /forgot-password
-// never unloads or re-fetches the sprite image, eliminating transition glitches.
-let globalLoadedImage: HTMLImageElement | null = null;
+// never unloads or re-fetches the sprite images, eliminating transition glitches.
+let globalLoadedLightImage: HTMLImageElement | null = null;
+let globalLoadedDarkImage: HTMLImageElement | null = null;
+let globalAnimationStartTime: number | null = null;
 
 export function LoginBackgroundAnimator({
   className = "",
   fps = 8.5,
   enableSmoothing = true,
 }: LoginBackgroundAnimatorProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const imageRef = useRef<HTMLImageElement | null>(null);
+  const { resolvedTheme, theme } = useTheme();
 
+  const lightCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const darkCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const [imagesReady, setImagesReady] = useState(false);
+  const lightImageRef = useRef<HTMLImageElement | null>(null);
+  const darkImageRef = useRef<HTMLImageElement | null>(null);
+
+  // Theme resolution: track if dark mode is active
+  const [isDark, setIsDark] = useState(false);
+  // Only enable CSS transitions after initial mount so there is no flash on page load
+  const [enableTransition, setEnableTransition] = useState(false);
+
+  // Sync dark mode state with next-themes, <html> class, and system preferences
   useEffect(() => {
-    if (globalLoadedImage && globalLoadedImage.complete && globalLoadedImage.naturalWidth > 0) {
-      imageRef.current = globalLoadedImage;
-      setImageLoaded(true);
-      return;
+    const determineIsDark = () => {
+      if (typeof document !== "undefined") {
+        if (document.documentElement.classList.contains("dark")) {
+          return true;
+        }
+      }
+      if (resolvedTheme === "dark") return true;
+      if (resolvedTheme === "light") return false;
+      if (theme === "dark") return true;
+      if (theme === "light") return false;
+      if (typeof window !== "undefined") {
+        return window.matchMedia("(prefers-color-scheme: dark)").matches;
+      }
+      return false;
+    };
+
+    // Set initial state immediately
+    const initialDark = determineIsDark();
+    setIsDark(initialDark);
+
+    // Enable smooth transitions after a brief tick so initial render doesn't animate
+    const timer = setTimeout(() => {
+      setEnableTransition(true);
+    }, 120);
+
+    // Watch for class changes on document.documentElement (toggled by ThemeToggle)
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    // Also listen for system OS dark mode changes if using system preference
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleMediaChange = (e: MediaQueryListEvent) => {
+      if (theme === "system" || !theme) {
+        setIsDark(e.matches || document.documentElement.classList.contains("dark"));
+      }
+    };
+    mediaQuery.addEventListener("change", handleMediaChange);
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+      mediaQuery.removeEventListener("change", handleMediaChange);
+    };
+  }, [resolvedTheme, theme]);
+
+  // Preload and cache both light and dark sprite sheets
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkReady = () => {
+      if (
+        lightImageRef.current?.complete &&
+        darkImageRef.current?.complete &&
+        isMounted
+      ) {
+        setImagesReady(true);
+      }
+    };
+
+    // Light sprite
+    if (globalLoadedLightImage && globalLoadedLightImage.complete) {
+      lightImageRef.current = globalLoadedLightImage;
+    } else {
+      const lightImg = new Image();
+      lightImg.src = "/images/login-signup/LoginSignUpScreenBoardquest.png";
+      lightImg.onload = () => {
+        globalLoadedLightImage = lightImg;
+        if (isMounted) {
+          lightImageRef.current = lightImg;
+          checkReady();
+        }
+      };
     }
 
-    const img = new Image();
-    img.src = "/images/login-signup/LoginSignUpScreenBoardquest.png";
-    img.onload = () => {
-      globalLoadedImage = img;
-      imageRef.current = img;
-      setImageLoaded(true);
+    // Dark sprite
+    if (globalLoadedDarkImage && globalLoadedDarkImage.complete) {
+      darkImageRef.current = globalLoadedDarkImage;
+    } else {
+      const darkImg = new Image();
+      darkImg.src = "/images/login-signup/LoginSignUpScreenBoardquestDarkMode.png";
+      darkImg.onload = () => {
+        globalLoadedDarkImage = darkImg;
+        if (isMounted) {
+          darkImageRef.current = darkImg;
+          checkReady();
+        }
+      };
+    }
+
+    if (
+      lightImageRef.current?.complete &&
+      darkImageRef.current?.complete
+    ) {
+      setImagesReady(true);
+    }
+
+    return () => {
+      isMounted = false;
     };
   }, []);
 
+  // Shared synchronized rendering loop for both light and dark canvases
   useEffect(() => {
-    if (!imageLoaded) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d", { alpha: false });
-    if (!ctx) return;
+    if (!imagesReady) return;
+
+    const lightCanvas = lightCanvasRef.current;
+    const darkCanvas = darkCanvasRef.current;
+    if (!lightCanvas || !darkCanvas) return;
+
+    const lightCtx = lightCanvas.getContext("2d", { alpha: false });
+    const darkCtx = darkCanvas.getContext("2d", { alpha: false });
+    if (!lightCtx || !darkCtx) return;
 
     let animationFrameId: number;
     const totalFrames = 12;
@@ -50,40 +161,52 @@ export function LoginBackgroundAnimator({
     const frameHeight = 216;
     const frameDurationMs = 2000 / fps;
     const totalDurationMs = frameDurationMs * totalFrames;
-    const startTime = performance.now();
 
-    const resizeCanvas = () => {
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
+    // Use global start time so switching between /login, /signup, /forgot-password
+    // keeps the animation continuous without jumping back to frame 0
+    if (globalAnimationStartTime === null) {
+      globalAnimationStartTime = performance.now();
+    }
+    const startTime = globalAnimationStartTime;
+
+    const resizeCanvases = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
+      if (lightCanvas) {
+        const rect = lightCanvas.getBoundingClientRect();
+        lightCanvas.width = Math.floor(rect.width * dpr);
+        lightCanvas.height = Math.floor(rect.height * dpr);
+      }
+      if (darkCanvas) {
+        const rect = darkCanvas.getBoundingClientRect();
+        darkCanvas.width = Math.floor(rect.width * dpr);
+        darkCanvas.height = Math.floor(rect.height * dpr);
+      }
     };
 
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
+    resizeCanvases();
+    window.addEventListener("resize", resizeCanvases);
 
-    const render = (currentTime: number) => {
-      const img = imageRef.current || globalLoadedImage;
-      if (!img || !canvas || !ctx) return;
-
-      const elapsed = (currentTime - startTime) % totalDurationMs;
-      const progress = elapsed / frameDurationMs; // e.g. 0.0 to 12.0
-      const currentFrame = Math.floor(progress) % totalFrames;
-      const nextFrame = (currentFrame + 1) % totalFrames;
-      const blend = progress - Math.floor(progress); // 0.0 to 1.0
-
+    // Draw single canvas frame helper
+    const renderFrame = (
+      canvas: HTMLCanvasElement,
+      ctx: CanvasRenderingContext2D,
+      img: HTMLImageElement,
+      bgColor: string,
+      currentFrame: number,
+      nextFrame: number,
+      blend: number
+    ) => {
       const cW = canvas.width;
       const cH = canvas.height;
+      if (cW === 0 || cH === 0) return;
 
-      // Fill canvas background with sky blue so no empty or dark edges appear
-      ctx.fillStyle = "#70b6fd";
+      // Base solid background fill matching the theme sky
+      ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, cW, cH);
 
       const screenAspect = cW / cH;
-      const frameAspect = frameWidth / frameHeight; // 384 / 216 = 1.7778 (16:9)
+      const frameAspect = frameWidth / frameHeight;
 
-      let scale: number;
       let drawW: number;
       let drawH: number;
       let drawX = 0;
@@ -91,26 +214,24 @@ export function LoginBackgroundAnimator({
 
       if (screenAspect >= frameAspect) {
         // Landscape 16:9 or wider (desktop/laptop)
-        // Maintain the current vertical scale (height = cH) and span the full canvas width (drawW = cW)
-        // to cleanly eliminate any cut line, seam, or duplicate slice on the right edge.
+        // Maintain vertical scale (height = cH) and span the full canvas width
         drawH = cH;
         drawW = cW;
         drawX = 0;
         drawY = 0;
       } else {
-        // Tablet / Mobile portrait (narrower than 16:9)
-        // Top-aligned so sword pommel is always fully visible at top-left
-        scale = cW / frameWidth;
+        // Mobile portrait (narrower than 16:9)
+        // Top-aligned so sword pommel remains visible at top-left
+        const scale = cW / frameWidth;
         drawW = cW;
         drawH = Math.max(cH, frameHeight * scale);
         drawX = 0;
         drawY = 0;
       }
 
-      // Pixel art crisp rendering
       ctx.imageSmoothingEnabled = false;
 
-      // Draw base frame
+      // Draw base current frame
       ctx.globalAlpha = 1.0;
       ctx.drawImage(
         img,
@@ -139,27 +260,83 @@ export function LoginBackgroundAnimator({
           drawH
         );
       }
+    };
+
+    const render = (currentTime: number) => {
+      const lightImg = lightImageRef.current || globalLoadedLightImage;
+      const darkImg = darkImageRef.current || globalLoadedDarkImage;
+      if (!lightImg || !darkImg) return;
+
+      const elapsed = (currentTime - startTime) % totalDurationMs;
+      const progress = elapsed / frameDurationMs;
+      const currentFrame = Math.floor(progress) % totalFrames;
+      const nextFrame = (currentFrame + 1) % totalFrames;
+      const blend = progress - Math.floor(progress);
+
+      // Render Light Mode Canvas
+      renderFrame(
+        lightCanvas,
+        lightCtx,
+        lightImg,
+        "#70b6fd",
+        currentFrame,
+        nextFrame,
+        blend
+      );
+
+      // Render Dark Mode Canvas
+      renderFrame(
+        darkCanvas,
+        darkCtx,
+        darkImg,
+        "#2e337e",
+        currentFrame,
+        nextFrame,
+        blend
+      );
 
       animationFrameId = requestAnimationFrame(render);
     };
 
-    // Render immediately on mount so there is zero black or blank frame
     render(performance.now());
 
     return () => {
-      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("resize", resizeCanvases);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [imageLoaded, fps, enableSmoothing]);
+  }, [imagesReady, fps, enableSmoothing]);
 
   return (
-    <div className={`fixed inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0 bg-[#70b6fd] ${className}`}>
+    <div
+      className={`fixed inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0 ${
+        enableTransition ? "transition-colors duration-700 ease-in-out" : ""
+      } ${isDark ? "bg-[#2e337e]" : "bg-[#70b6fd]"} ${className}`}
+    >
+      {/* Light Mode Canvas Layer */}
       <canvas
-        ref={canvasRef}
-        className="w-full h-full block"
+        ref={lightCanvasRef}
+        className="absolute inset-0 w-full h-full block"
       />
+
+      {/* Dark Mode Canvas Layer with smooth GPU-accelerated crossfade */}
+      <canvas
+        ref={darkCanvasRef}
+        className={`absolute inset-0 w-full h-full block ${
+          enableTransition ? "transition-opacity duration-700 ease-in-out" : ""
+        }`}
+        style={{ opacity: isDark ? 1 : 0 }}
+      />
+
       {/* Subtle atmospheric vignette overlay to frame the screen cleanly */}
-      <div className="absolute inset-0 bg-radial-gradient from-transparent via-transparent to-black/20 pointer-events-none" />
+      <div
+        className={`absolute inset-0 pointer-events-none ${
+          enableTransition ? "transition-opacity duration-700 ease-in-out" : ""
+        } ${
+          isDark
+            ? "bg-radial-gradient from-transparent via-transparent to-black/35"
+            : "bg-radial-gradient from-transparent via-transparent to-black/20"
+        }`}
+      />
     </div>
   );
 }

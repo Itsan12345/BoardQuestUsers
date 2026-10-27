@@ -109,91 +109,124 @@ export async function getCurriculumLessonsForSubject(subject: string) {
   ];
 }
 
+const inFlightMasterySyncs = new Map<string, Promise<void>>();
+
 export async function syncSubjectMastery(userId: string, subject: string) {
-  try {
-    const lessons = await getCurriculumLessonsForSubject(subject);
-    const validLessonIds = lessons.map(l => l.id);
-    const totalLessons = lessons.length;
+  if (!userId || !subject) return;
+  const syncKey = `${userId}:${subject}`;
 
-    const completedLessons = await prisma.lessonCompletion.count({
-      where: {
-        userId,
-        subject,
-        status: 'completed',
-        lessonId: { in: validLessonIds }
-      },
-    });
-    const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
+  // Deduplicate concurrent in-flight syncs for the exact same user and subject
+  if (inFlightMasterySyncs.has(syncKey)) {
+    return inFlightMasterySyncs.get(syncKey);
+  }
 
-    const examResults = await prisma.examResult.findMany({
-      where: { userId, subject },
-      select: { accuracy: true, score: true, total: true },
-    });
-
-    const totalQAnswered = examResults.reduce((sum, result) => sum + (result.total || 0), 0);
-    const totalCorrect = examResults.reduce((sum, result) => sum + (result.score || 0), 0);
-    const rawAccuracy = totalQAnswered > 0 ? (totalCorrect / totalQAnswered) * 100 : 0;
-
-    // Volume Weight Factor: Requires answering at least 100 questions for full accuracy weight (matches 1 full 100-question PRC board paper per subject)
-    const volumeWeight = Math.min(1.0, totalQAnswered / 100);
-
-    let proficiency = 0;
-    if (totalQAnswered > 0) {
-      proficiency = Math.round(rawAccuracy * volumeWeight);
-    }
-
-    const topicStats = await getSubjectTopicMasteryAction(subject, userId).catch(() => null);
-    const totalTopics = topicStats?.totalTopics || 0;
-    const passingTopics = (topicStats?.masteredCount || 0) + (topicStats?.proficientCount || 0);
-    const topicCoverage = totalTopics > 0 ? Math.round((passingTopics / totalTopics) * 100) : 0;
-    const meetsProficientTopicCoverage = totalTopics > 0 ? topicCoverage >= 75 : true;
-    const meetsMasteredTopicCoverage = totalTopics > 0 ? topicCoverage >= 85 : true;
-
-    let status = "Not Started";
-    if (totalQAnswered === 0 && completion === 0) {
-      status = "Not Started";
-    } else if (proficiency >= 90 && meetsMasteredTopicCoverage && completion >= 75) {
-      status = "Mastered";
-    } else if (proficiency >= 75 && meetsProficientTopicCoverage && completion >= 25) {
-      status = "Proficient";
-    } else if (proficiency >= 50 || completion > 0 || totalQAnswered > 0) {
-      status = "In Training";
-    } else {
-      status = "Needs Focus";
-    }
-
-    await prisma.subjectMastery.upsert({
-      where: { userId_subject: { userId, subject } },
-      update: { proficiency, status },
-      create: { userId, subject, proficiency, status },
-    });
-
+  const syncPromise = (async () => {
     try {
-      const client = await clientPromise;
-      const db = client.db('boardquest');
-      const { ObjectId } = await import('mongodb');
-      const userObjId = ObjectId.isValid(userId) ? new ObjectId(userId) : null;
-      await db.collection('SubjectMastery').updateOne(
-        {
+      const lessons = await getCurriculumLessonsForSubject(subject);
+      const validLessonIds = lessons.map(l => l.id);
+      const totalLessons = lessons.length;
+
+      const completedLessons = await prisma.lessonCompletion.count({
+        where: {
+          userId,
           subject,
-          $or: [
-            { userId },
-            ...(userObjId ? [{ userId: userObjId }] : [])
-          ]
+          status: 'completed',
+          lessonId: { in: validLessonIds }
         },
-        {
-          $set: {
-            topicCoverage,
-            passingTopics,
-            totalTopics,
-            updatedAt: new Date()
+      });
+      const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
+
+      const examResults = await prisma.examResult.findMany({
+        where: { userId, subject },
+        select: { accuracy: true, score: true, total: true },
+      });
+
+      const totalQAnswered = examResults.reduce((sum, result) => sum + (result.total || 0), 0);
+      const totalCorrect = examResults.reduce((sum, result) => sum + (result.score || 0), 0);
+      const rawAccuracy = totalQAnswered > 0 ? (totalCorrect / totalQAnswered) * 100 : 0;
+
+      // Volume Weight Factor: Requires answering at least 100 questions for full accuracy weight (matches 1 full 100-question PRC board paper per subject)
+      const volumeWeight = Math.min(1.0, totalQAnswered / 100);
+
+      let proficiency = 0;
+      if (totalQAnswered > 0) {
+        proficiency = Math.round(rawAccuracy * volumeWeight);
+      }
+
+      const topicStats = await getSubjectTopicMasteryAction(subject, userId).catch(() => null);
+      const totalTopics = topicStats?.totalTopics || 0;
+      const passingTopics = (topicStats?.masteredCount || 0) + (topicStats?.proficientCount || 0);
+      const topicCoverage = totalTopics > 0 ? Math.round((passingTopics / totalTopics) * 100) : 0;
+      const meetsProficientTopicCoverage = totalTopics > 0 ? topicCoverage >= 75 : true;
+      const meetsMasteredTopicCoverage = totalTopics > 0 ? topicCoverage >= 85 : true;
+
+      let status = "Not Started";
+      if (totalQAnswered === 0 && completion === 0) {
+        status = "Not Started";
+      } else if (proficiency >= 90 && meetsMasteredTopicCoverage && completion >= 75) {
+        status = "Mastered";
+      } else if (proficiency >= 75 && meetsProficientTopicCoverage && completion >= 25) {
+        status = "Proficient";
+      } else if (proficiency >= 50 || completion > 0 || totalQAnswered > 0) {
+        status = "In Training";
+      } else {
+        status = "Needs Focus";
+      }
+
+      // Upsert via Prisma with retry on MongoDB write conflict/deadlock (P2034)
+      let attempts = 0;
+      while (attempts < 3) {
+        try {
+          await prisma.subjectMastery.upsert({
+            where: { userId_subject: { userId, subject } },
+            update: { proficiency, status, topicCoverage, passingTopics, totalTopics },
+            create: { userId, subject, proficiency, status, topicCoverage, passingTopics, totalTopics },
+          });
+          break;
+        } catch (upsertErr: any) {
+          if (upsertErr?.code === 'P2034' && attempts < 2) {
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 60 * attempts + Math.floor(Math.random() * 40)));
+          } else {
+            throw upsertErr;
           }
         }
-      );
-    } catch (_) {}
-  } catch (error) {
-    console.error(`Failed to sync SubjectMastery for ${subject}:`, error);
-  }
+      }
+
+      try {
+        const client = await clientPromise;
+        const db = client.db('boardquest');
+        const { ObjectId } = await import('mongodb');
+        const userObjId = ObjectId.isValid(userId) ? new ObjectId(userId) : null;
+        await db.collection('SubjectMastery').updateOne(
+          {
+            subject,
+            $or: [
+              { userId },
+              ...(userObjId ? [{ userId: userObjId }] : [])
+            ]
+          },
+          {
+            $set: {
+              proficiency,
+              status,
+              topicCoverage,
+              passingTopics,
+              totalTopics,
+              updatedAt: new Date()
+            }
+          }
+        );
+      } catch (_) {}
+    } catch (error) {
+      console.error(`Failed to sync SubjectMastery for ${subject}:`, error);
+    }
+  })().finally(() => {
+    inFlightMasterySyncs.delete(syncKey);
+  });
+
+  inFlightMasterySyncs.set(syncKey, syncPromise);
+  return syncPromise;
 }
 
 export interface SubjectMetrics {

@@ -4960,7 +4960,7 @@ export default function LearningQuest() {
           // If questions ended while player survived with HP > 0, judge outcome by accuracy!
           const actualTotal = userAnswers.length || finalScore || 1;
           const calcAcc = (finalScore / actualTotal) * 100;
-          finalOutcome = calcAcc >= 60 ? 'victory' : 'defeat';
+          finalOutcome = calcAcc >= 75 ? 'victory' : 'defeat';
           if (finalOutcome === 'victory') {
             setEnemyHealth(0);
           } else {
@@ -4978,8 +4978,10 @@ export default function LearningQuest() {
           setPlayerHealth(0); // Boss counter: Player defeated
         }
       } else {
-        // Test mode: standard 60% passing baseline
-        finalOutcome = finalScore >= Math.ceil(questions.length * 0.6) ? 'victory' : 'defeat';
+        // Test mode: PRC Board Licensure Passing Benchmark (75%)
+        const actualTotal = questions.length || 20;
+        const passPercent = (finalScore / actualTotal) * 100;
+        finalOutcome = passPercent >= 75 ? 'victory' : 'defeat';
         if (finalOutcome === 'victory') {
           setEnemyHealth(0); // Player wins, Enemy dies
         } else {
@@ -5005,7 +5007,7 @@ export default function LearningQuest() {
     }
 
     // Show Judgement Text
-    if (quizMode === 'learning') {
+    if (quizMode === 'learning' || quizMode === 'test') {
       setJudgementText(finalOutcome === 'victory' ? 'YOU WON' : 'YOU FAILED');
     } else {
       setJudgementText(finalOutcome === 'victory' ? 'VICTORY' : 'GAME OVER');
@@ -5220,7 +5222,7 @@ export default function LearningQuest() {
   const EnemyIcon = subjectMeta.icon;
 
   if (isFinished) {
-    const isVictor = quizMode === 'boss-battle' ? battleOutcome === 'victory' : ((score / questions.length) >= 0.75);
+    const isVictor = battleOutcome ? battleOutcome === 'victory' : ((score / Math.max(1, questions.length)) >= 0.75);
 
     return (
       <div
@@ -6671,7 +6673,7 @@ export default function LearningQuest() {
                   (introPhase === 'cutscene' || introPhase === 'hidden' || waveCharOffscreen) ? 'translate-x-[150%]' : 'translate-x-0'
                 )}>
                   <div className={cn(
-                    "bg-black/60 backdrop-blur-md border border-white/15 p-1.5 sm:p-2 md:p-3 rounded-[4px] md:rounded-lg shadow-2xl w-[136px] sm:w-[155px] md:min-w-[160px] md:w-auto",
+                    "relative bg-black/60 backdrop-blur-md border border-white/15 p-1.5 sm:p-2 md:p-3 rounded-[4px] md:rounded-lg shadow-2xl w-[136px] sm:w-[155px] md:min-w-[160px] md:w-auto",
                     isSpecialCenteredBoss && "shrink-0 pointer-events-auto"
                   )}>
                     <div className="flex justify-between items-center mb-0.5 md:mb-1 gap-1 md:gap-2">
@@ -6696,6 +6698,26 @@ export default function LearningQuest() {
                     <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-[2px] md:rounded-full overflow-hidden border border-white/10">
                       <div className="h-full bg-primary transition-all duration-500 rounded-[2px] md:rounded-full" style={{ width: `${Math.min(100, (displayEnemyHp / stageMaxHp) * 100)}%` }} />
                     </div>
+
+                    {/* Enemy Floating Text - Anchored below HP Card directly over enemy, right-aligned to prevent any screen overflow */}
+                    {floatingTexts.filter(ft => ft.target === 'enemy').map(ft => (
+                      <div
+                        key={ft.id}
+                        className="absolute top-full mt-2 sm:mt-3 md:mt-4 right-0 pointer-events-none z-50 whitespace-nowrap text-right"
+                      >
+                        <div
+                          className={cn(
+                            "font-bytebounce text-3xl md:text-5xl animate-float-up",
+                            ft.color
+                          )}
+                          style={{
+                            textShadow: '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000',
+                          }}
+                        >
+                          {ft.text}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                   <div className={cn(
                     isSpecialCenteredBoss
@@ -6849,12 +6871,6 @@ export default function LearningQuest() {
                         className="top-[32%] left-[48%]"
                       />
                     </div>
-                    {/* Enemy Floating Text */}
-                    {floatingTexts.filter(ft => ft.target === 'enemy').map(ft => (
-                      <div key={ft.id} className={cn("absolute -top-4 right-10 font-bytebounce text-2xl md:text-3xl animate-float-up pointer-events-none z-50 whitespace-nowrap", ft.color)} style={{ textShadow: '2px 2px 0 #000' }}>
-                        {ft.text}
-                      </div>
-                    ))}
                   </div>
                 </div>
               );

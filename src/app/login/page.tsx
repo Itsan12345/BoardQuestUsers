@@ -58,9 +58,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center lg:justify-end overflow-hidden p-4 sm:p-6 lg:pr-14 xl:pr-24">
+    <div className="relative min-h-screen w-full flex items-center justify-center lg:justify-end overflow-x-hidden overflow-y-auto p-4 sm:p-6 pt-20 sm:pt-24 lg:py-6 lg:pr-14 xl:pr-24">
       {/* Smooth Animated Pixel Art Background */}
       <LoginBackgroundAnimator fps={8.5} enableSmoothing={true} />
+
+      {/* Institutional Logos at Top Left */}
+      <div className="fixed top-4 left-4 sm:top-6 sm:left-6 z-50 flex items-center gap-2.5 sm:gap-3.5 select-none pointer-events-auto">
+        <div className="relative w-11 h-11 sm:w-14 sm:h-14 transition-transform hover:scale-105 duration-200">
+          <Image
+            src="/images/login-signup/SWU_Logo.png"
+            alt="Southwestern University PHINMA Logo"
+            width={64}
+            height={64}
+            priority
+            className="w-full h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+          />
+        </div>
+        <div className="relative w-11 h-11 sm:w-14 sm:h-14 transition-transform hover:scale-105 duration-200">
+          <Image
+            src="/images/login-signup/MedTech_Logo.png"
+            alt="Medical Technology Logo"
+            width={64}
+            height={64}
+            priority
+            className="w-full h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+          />
+        </div>
+      </div>
 
       {/* Floating Theme Toggle in Top Right */}
       <div className="fixed top-4 right-4 z-50 bg-background/80 dark:bg-card/80 backdrop-blur-md border border-border/80 rounded-full p-1 shadow-lg transition-all hover:scale-105">

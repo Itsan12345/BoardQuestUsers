@@ -7,7 +7,8 @@ import {
   BookOpen, 
   FileText, 
   TrendingUp,
-  Calculator
+  Calculator,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +55,12 @@ export function StudentPointingCard({
     return acc + Math.round((s.mastery || 0) * 12 + (s.completion || 0) * 6);
   }, 0);
   const estimatedSystemXp = Math.max(0, totalPoints - disciplinePointsSum);
+
+  const totalPassingTopics = subjects.reduce((sum, s) => sum + (s.passingTopics || 0), 0);
+  const totalCurriculumTopics = subjects.reduce((sum, s) => sum + (s.totalTopics || 0), 0);
+  const overallTopicMastery = totalCurriculumTopics > 0
+    ? Math.round((totalPassingTopics / totalCurriculumTopics) * 100)
+    : 0;
 
   return (
     <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border p-4 sm:p-6 lg:p-8 shadow-xl space-y-6">
@@ -273,6 +280,55 @@ export function StudentPointingCard({
               <div className="text-[11.5px] text-muted-foreground space-y-1.5 leading-relaxed pt-1">
                 <p>• <strong>Subject Completion:</strong> Percentage of syllabus study modules completed in each subject.</p>
                 <p>• <strong>Divided by 6:</strong> Simply add your 6 subject completion percentages together and divide by 6.</p>
+              </div>
+            </div>
+
+            {/* Formula 4: Subject Topic Mastery */}
+            <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
+                <h4 className="font-bold text-amber-500 flex items-center gap-2 text-xs uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                  4. Subject Topic Mastery
+                </h4>
+                <Badge variant="outline" className="text-[10px] font-bold border-amber-500/30 text-amber-500">
+                  Topic Coverage Formula
+                </Badge>
+              </div>
+
+              {/* Simple Direct Equation Box */}
+              <div className="p-3.5 rounded-xl bg-slate-950 text-slate-100 font-headline text-sm sm:text-base overflow-x-auto border border-slate-800 shadow-inner text-center font-bold">
+                <span className="text-amber-400">Subject Topic Mastery</span> = (<span className="text-emerald-400">Passing Topics</span> ÷ <span className="text-blue-400">Total Subject Topics</span>) × <span className="text-purple-400">100%</span>
+              </div>
+
+              {/* Live Candidate Substitution */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                  Your Live Current Score Calculation:
+                </span>
+                {totalCurriculumTopics > 0 ? (
+                  <>
+                    <div className="text-xs sm:text-sm text-foreground font-black font-mono overflow-x-auto">
+                      ({totalPassingTopics} Passing Topics ÷ {totalCurriculumTopics} Total Topics) × 100% = <span className="text-amber-500 font-bold">{overallTopicMastery}%</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground font-mono flex flex-wrap gap-x-2.5 gap-y-1 pt-1 border-t border-amber-500/20">
+                      {subjects.map(s => (
+                        <span key={s.subject} className="whitespace-nowrap">
+                          {s.shortName || s.subject.split(' ')[0]}: <strong className="text-foreground">{s.passingTopics ?? 0}/{s.totalTopics ?? 0}</strong> ({s.topicCoverage ?? 0}%)
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-xs text-muted-foreground font-mono">
+                    ({subjects.map(s => `${s.topicCoverage ?? 0}%`).join(' • ')}) — Topics calibrating dynamically from attempts.
+                  </div>
+                )}
+              </div>
+
+              <div className="text-[11.5px] text-muted-foreground space-y-1.5 leading-relaxed pt-1">
+                <p>• <strong>Passing Topics:</strong> Sum of topics with <strong>Mastered</strong> (≥85% accuracy, min. 3 questions answered) and <strong>Proficient</strong> (≥70% accuracy, min. 2 attempts) standing.</p>
+                <p>• <strong>Total Subject Topics:</strong> Total recognized curriculum modules and topics established for that subject discipline.</p>
+                <p>• <strong>Status Gate Prerequisites:</strong> Requires <strong>≥75% Topic Mastery</strong> to unlock <span className="text-blue-500 font-bold">Proficient</span> status, and <strong>≥85% Topic Mastery</strong> to unlock <span className="text-amber-500 font-bold">Mastered</span> status in that discipline.</p>
               </div>
             </div>
 

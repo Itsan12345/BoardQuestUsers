@@ -479,64 +479,66 @@ export default function StudyPage() {
               </p>
             </div>
 
-            {/* Dynamic Review Center Program Deadline */}
-            {program ? (
-              <div id="tour-study-program" className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-3.5 sm:p-4 lg:p-5 shadow-xs space-y-2 w-full sm:w-auto min-w-0 sm:min-w-[280px] lg:min-w-[340px]">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                      <CalendarIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            {/* Dynamic Review Center Program Deadline - Only displayed in Syllabus Curriculum tab */}
+            {activeTab === 'modules' && (
+              program ? (
+                <div id="tour-study-program" className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-3.5 sm:p-4 lg:p-5 shadow-xs space-y-2 w-full sm:w-auto min-w-0 sm:min-w-[280px] lg:min-w-[340px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <CalendarIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      </div>
+                      <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-primary">Final Deadline</span>
                     </div>
-                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-primary">Final Deadline</span>
+                    {(() => {
+                      const daysLeft = differenceInDays(new Date(program.endDate), new Date());
+                      return (
+                        <span className={cn(
+                          "text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider border shrink-0",
+                          daysLeft <= 14
+                            ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/40"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40"
+                        )}>
+                          {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
+                        </span>
+                      );
+                    })()}
                   </div>
-                  {(() => {
-                    const daysLeft = differenceInDays(new Date(program.endDate), new Date());
-                    return (
-                      <span className={cn(
-                        "text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider border shrink-0",
-                        daysLeft <= 14
-                          ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/40"
-                          : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40"
-                      )}>
-                        {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
-                      </span>
-                    );
-                  })()}
-                </div>
 
-                <div>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-black text-foreground tracking-tight leading-none">
-                    {format(new Date(program.endDate), "MMMM dd, yyyy")}
-                  </p>
-                </div>
+                  <div>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-black text-foreground tracking-tight leading-none">
+                      {format(new Date(program.endDate), "MMMM dd, yyyy")}
+                    </p>
+                  </div>
 
-                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground truncate pt-0.5 border-t border-border/40">
-                  <Building2 className="w-3 h-3 text-primary shrink-0" />
-                  <span className="font-semibold text-foreground/90 capitalize truncate">
-                    {program.authorName || program.companyName || 'Super Admin'}
-                  </span>
-                  <span className="text-muted-foreground/60">•</span>
-                  <span className="font-medium truncate">{program.title}</span>
-                  {program.labels && program.labels.length > 0 && (
-                    <>
-                      <span className="text-muted-foreground/60">•</span>
-                      <span className="font-medium truncate capitalize">
-                        {Array.isArray(program.labels) ? program.labels.join(', ') : String(program.labels)}
-                      </span>
-                    </>
-                  )}
+                  <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground truncate pt-0.5 border-t border-border/40">
+                    <Building2 className="w-3 h-3 text-primary shrink-0" />
+                    <span className="font-semibold text-foreground/90 capitalize truncate">
+                      {program.authorName || program.companyName || 'Super Admin'}
+                    </span>
+                    <span className="text-muted-foreground/60">•</span>
+                    <span className="font-medium truncate">{program.title}</span>
+                    {program.labels && program.labels.length > 0 && (
+                      <>
+                        <span className="text-muted-foreground/60">•</span>
+                        <span className="font-medium truncate capitalize">
+                          {Array.isArray(program.labels) ? program.labels.join(', ') : String(program.labels)}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="bg-card border-2 border-border rounded-2xl p-3.5 sm:p-4 lg:p-5 flex items-center gap-3 text-foreground shadow-xs w-full sm:w-auto">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <AlertCircle className="w-4 h-4" />
+              ) : (
+                <div className="bg-card border-2 border-border rounded-2xl p-3.5 sm:p-4 lg:p-5 flex items-center gap-3 text-foreground shadow-xs w-full sm:w-auto">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-muted-foreground">Final Deadline</p>
+                    <p className="text-xs font-bold text-foreground">Loading schedule...</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-muted-foreground">Final Deadline</p>
-                  <p className="text-xs font-bold text-foreground">Loading schedule...</p>
-                </div>
-              </div>
+              )
             )}
           </div>
 
