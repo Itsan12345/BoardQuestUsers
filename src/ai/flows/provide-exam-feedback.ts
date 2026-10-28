@@ -36,10 +36,34 @@ export type ProvideExamFeedbackOutput = z.infer<
   typeof ProvideExamFeedbackOutputSchema
 >;
 
+const inFlightExplanations = new Map<string, Promise<ProvideExamFeedbackOutput>>();
+
 export async function provideExamFeedback(
   input: ProvideExamFeedbackInput
 ): Promise<ProvideExamFeedbackOutput> {
-  return provideExamFeedbackFlow(input);
+  const rawId = input.questionId ? input.questionId.split('_cycle_')[0].trim() : '';
+  const cleanQuestionId = /^[0-9a-fA-F]{24}$/.test(rawId) ? rawId : undefined;
+  const normalizedInput: ProvideExamFeedbackInput = {
+    ...input,
+    questionId: cleanQuestionId,
+  };
+
+  const cacheKey = (input.userAnswer || 'default').trim().toLowerCase();
+  const inFlightKey = `${cleanQuestionId || input.question}:::${cacheKey}`;
+
+  const existingInFlight = inFlightExplanations.get(inFlightKey);
+  if (existingInFlight) {
+    return existingInFlight;
+  }
+
+  const promise = provideExamFeedbackFlow(normalizedInput);
+  inFlightExplanations.set(inFlightKey, promise);
+
+  try {
+    return await promise;
+  } finally {
+    inFlightExplanations.delete(inFlightKey);
+  }
 }
 
 const prompt = ai.definePrompt({

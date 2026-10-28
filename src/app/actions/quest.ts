@@ -162,81 +162,71 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
     const newTotalXp = user.xp + totalXpEarned;
     const newLevel = getLevelFromXp(newTotalXp);
 
-    // Update user XP, level, and streak
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        xp: newTotalXp,
-        level: newLevel,
-        streak: newStreak,
-      },
-    });
+    // Update user XP/level/streak, save ExamResult, and create primary Achievement concurrently
+    await Promise.all([
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          xp: newTotalXp,
+          level: newLevel,
+          streak: newStreak,
+        },
+      }),
+      prisma.examResult.create({
+        data: {
+          userId,
+          score: params.score,
+          total: actualTotal,
+          accuracy,
+          subject: params.subject,
+        },
+      }),
+      prisma.achievement.create({
+        data: {
+          userId,
+          task: `Completed quest: ${params.subject} (${Math.round(accuracy)}% accuracy)`,
+          type: 'quest',
+          xp: totalXpEarned,
+          confidenceLevel: params.confidenceLevel,
+          accuracy,
+          questMode: params.questMode,
+          subject: params.subject,
+        } as any,
+      }),
+    ]);
 
-    // Save ExamResult
-    await prisma.examResult.create({
-      data: {
-        userId,
-        score: params.score,
-        total: actualTotal,
-        accuracy,
-        subject: params.subject,
-      },
-    });
-
-    // ALWAYS create a primary achievement record for completing the quest with the total XP
-    await prisma.achievement.create({
-      data: {
-        userId,
-        task: `Completed quest: ${params.subject} (${Math.round(accuracy)}% accuracy)`,
-        type: 'quest',
-        xp: totalXpEarned,
-        confidenceLevel: params.confidenceLevel,
-        accuracy,
-        questMode: params.questMode,
-        subject: params.subject,
-      } as any,
-    });
-
-    // Create Achievement records & upsert UserBadge documents for each earned badge
+    // Create Achievement records & upsert UserBadge documents for each earned badge in batch
     if (earnedBadges.length > 0) {
       try {
         const client = await clientPromise;
-        const db = client.db();
+        const db = client.db('boardquest');
 
         let userObjId: ObjectId | null = null;
         try {
           userObjId = new ObjectId(userId);
         } catch (e) {}
 
-        await Promise.all(
-          earnedBadges.map(async (badge) => {
-            // 1. Save Achievement log
-            await prisma.achievement.create({
-              data: {
-                userId,
-                task: `Earned ${badge.name}: ${badge.description}`,
-                type: 'quest',
-                xp: 0,
-                badge: badge.id as string,
-                confidenceLevel: params.confidenceLevel,
-                accuracy,
-                questMode: params.questMode,
-                subject: params.subject,
-              } as any,
-            });
+        const badgeSlugs = earnedBadges.map((b) => b.id as string);
+        const masterBadgeDocs = await db
+          .collection('Badge')
+          .find({ badgeId: { $in: badgeSlugs } })
+          .toArray();
+        const badgeDocMap = new Map<string, any>();
+        masterBadgeDocs.forEach((doc) => {
+          if (doc.badgeId) badgeDocMap.set(doc.badgeId, doc._id);
+        });
 
-            // 2. Find master Badge document created by Admin
-            const badgeDoc = await db.collection('Badge').findOne({ badgeId: badge.id });
-            const badgeObjId = badgeDoc?._id || null;
+        const now = new Date();
+        const userBadgeBulkOps = earnedBadges.map((badge) => {
+          const badgeObjId = badgeDocMap.get(badge.id as string) || null;
+          const filterQuery = userObjId
+            ? { userId: userObjId, badgeSlug: badge.id }
+            : { userId, badgeSlug: badge.id };
 
-            // 3. Upsert into UserBadge collection
-            const filterQuery = userObjId
-              ? { userId: userObjId, badgeSlug: badge.id }
-              : { userId, badgeSlug: badge.id };
-
-            await db.collection('UserBadge').updateOne(
-              filterQuery,
-              {
+          return {
+            updateOne: {
+              filter: filterQuery,
+              update: {
                 $set: {
                   userId: userObjId || userId,
                   badgeId: badgeObjId,
@@ -246,52 +236,42 @@ export async function completeQuest(params: CompleteQuestParams): Promise<Comple
                   accuracy,
                   confidenceLevel: params.confidenceLevel,
                   xpEarned: badge.xpReward || 50,
-                  unlockedAt: new Date(),
-                }
+                  unlockedAt: now,
+                },
               },
-              { upsert: true }
-            );
-          })
-        );
+              upsert: true,
+            },
+          };
+        });
+
+        await Promise.all([
+          prisma.achievement.createMany({
+            data: earnedBadges.map((badge) => ({
+              userId,
+              task: `Earned ${badge.name}: ${badge.description}`,
+              type: 'quest',
+              xp: 0,
+              badge: badge.id as string,
+              confidenceLevel: params.confidenceLevel,
+              accuracy,
+              questMode: params.questMode,
+              subject: params.subject,
+            })) as any,
+          }),
+          db.collection('UserBadge').bulkWrite(userBadgeBulkOps, { ordered: false }),
+        ]);
       } catch (badgeErr) {
         console.error('Failed to sync UserBadge collection:', badgeErr);
       }
     }
 
+    // Record individual question attempts in a single bulkWrite roundtrip before syncing mastery
+    if (!params.skipQuestionAttemptRecording && params.userAnswers && params.userAnswers.length > 0) {
+      await bulkRecordQuestionAttempts(userId, params.userAnswers);
+    }
+
     // Sync Subject Mastery
     await syncSubjectMastery(userId, params.subject);
-
-    // Record individual question attempts for Spaced Repetition logic
-    if (!params.skipQuestionAttemptRecording && params.userAnswers && params.userAnswers.length > 0) {
-      await Promise.all(
-        params.userAnswers.map((ua) => {
-          if (!ua.questionId) return Promise.resolve();
-          // Extract base MongoDB ObjectId and strip any looping cycle suffixes like "_cycle_7"
-          const rawId = ua.questionId.split('_cycle_')[0].trim();
-          // Ensure rawId is a valid 24-char hex string
-          if (!/^[0-9a-fA-F]{24}$/.test(rawId)) {
-            return Promise.resolve();
-          }
-
-          return (prisma as any).userQuestionAttempt.upsert({
-            where: {
-              userId_questionId: { userId, questionId: rawId },
-            },
-            update: {
-              attempts: { increment: 1 },
-              correct: { increment: ua.isCorrect ? 1 : 0 },
-              lastAttempt: new Date(),
-            },
-            create: {
-              userId,
-              questionId: rawId,
-              attempts: 1,
-              correct: ua.isCorrect ? 1 : 0,
-            },
-          }).catch((err: any) => console.warn('Question attempt record skipped:', err));
-        })
-      );
-    }
 
     // Revalidate related pages
     revalidatePath('/');
@@ -615,23 +595,7 @@ export async function recordQuestionAttemptAction(params: {
       return { success: false, error: 'Invalid question ID format' };
     }
 
-    await (prisma as any).userQuestionAttempt.upsert({
-      where: {
-        userId_questionId: { userId, questionId: rawId },
-      },
-      update: {
-        attempts: { increment: 1 },
-        correct: { increment: params.isCorrect ? 1 : 0 },
-        lastAttempt: new Date(),
-      },
-      create: {
-        userId,
-        questionId: rawId,
-        attempts: 1,
-        correct: params.isCorrect ? 1 : 0,
-        lastAttempt: new Date(),
-      },
-    });
+    await bulkRecordQuestionAttempts(userId, [{ questionId: rawId, isCorrect: params.isCorrect }]);
 
     if (params.subject) {
       syncSubjectMastery(userId, params.subject).catch(() => {});
@@ -642,6 +606,71 @@ export async function recordQuestionAttemptAction(params: {
     console.warn('Failed to record question attempt:', err);
     return { success: false, error: err?.message };
   }
+}
+
+async function bulkRecordQuestionAttempts(
+  userId: string,
+  userAnswers: { questionId: string; isCorrect: boolean }[]
+) {
+  const aggregated = new Map<string, { attempts: number; correct: number }>();
+  for (const ua of userAnswers) {
+    if (!ua?.questionId) continue;
+    const rawId = ua.questionId.split('_cycle_')[0].trim();
+    if (!/^[0-9a-fA-F]{24}$/.test(rawId)) continue;
+    const existing = aggregated.get(rawId) || { attempts: 0, correct: 0 };
+    existing.attempts += 1;
+    if (ua.isCorrect) existing.correct += 1;
+    aggregated.set(rawId, existing);
+  }
+
+  if (aggregated.size === 0) return;
+
+  const now = new Date();
+  if (ObjectId.isValid(userId)) {
+    try {
+      const client = await clientPromise;
+      const db = client.db('boardquest');
+      const userObjId = new ObjectId(userId);
+      const bulkOps = Array.from(aggregated.entries()).map(([rawId, stats]) => ({
+        updateOne: {
+          filter: { userId: userObjId, questionId: new ObjectId(rawId) },
+          update: {
+            $inc: { attempts: stats.attempts, correct: stats.correct },
+            $set: { lastAttempt: now },
+          },
+          upsert: true,
+        },
+      }));
+      await db.collection('UserQuestionAttempt').bulkWrite(bulkOps, { ordered: false });
+      return;
+    } catch (bulkErr) {
+      console.warn('Bulk question attempt write fallback to Prisma:', bulkErr);
+    }
+  }
+
+  await Promise.all(
+    Array.from(aggregated.entries()).map(([rawId, stats]) =>
+      (prisma as any).userQuestionAttempt
+        .upsert({
+          where: {
+            userId_questionId: { userId, questionId: rawId },
+          },
+          update: {
+            attempts: { increment: stats.attempts },
+            correct: { increment: stats.correct },
+            lastAttempt: now,
+          },
+          create: {
+            userId,
+            questionId: rawId,
+            attempts: stats.attempts,
+            correct: stats.correct,
+            lastAttempt: now,
+          },
+        })
+        .catch((err: any) => console.warn('Question attempt record skipped:', err))
+    )
+  );
 }
 
 export async function recordPartialQuestAnswersAction(params: {
@@ -673,31 +702,7 @@ export async function recordPartialQuestAnswersAction(params: {
       return { success: false };
     }
 
-    await Promise.all(
-      params.userAnswers.map((ua) => {
-        if (!ua.questionId) return Promise.resolve();
-        const rawId = ua.questionId.split('_cycle_')[0].trim();
-        if (!/^[0-9a-fA-F]{24}$/.test(rawId)) return Promise.resolve();
-
-        return (prisma as any).userQuestionAttempt.upsert({
-          where: {
-            userId_questionId: { userId, questionId: rawId },
-          },
-          update: {
-            attempts: { increment: 1 },
-            correct: { increment: ua.isCorrect ? 1 : 0 },
-            lastAttempt: new Date(),
-          },
-          create: {
-            userId,
-            questionId: rawId,
-            attempts: 1,
-            correct: ua.isCorrect ? 1 : 0,
-            lastAttempt: new Date(),
-          },
-        }).catch((err: any) => console.warn('Partial question attempt record skipped:', err));
-      })
-    );
+    await bulkRecordQuestionAttempts(userId, params.userAnswers);
 
     if (params.subject) {
       syncSubjectMastery(userId, params.subject).catch(() => {});

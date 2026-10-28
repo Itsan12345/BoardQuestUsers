@@ -109,6 +109,10 @@ model Question {
 
   aiExplanation QuestionExplanation?
   attempts      UserQuestionAttempt[]
+
+  @@index([subjectId, status, isPublished])
+  @@index([categoryId, status, isPublished])
+  @@index([topic])
 }
 
 model QuestionExplanation {
@@ -133,6 +137,7 @@ model UserQuestionAttempt {
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, questionId])
+  @@index([userId, lastAttempt])
 }
 
 model Subject {
@@ -168,6 +173,8 @@ model LearningModule {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([subjectId, isPublished, order])
 }
 
 model Topic {

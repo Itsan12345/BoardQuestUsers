@@ -16,12 +16,19 @@ function escapeRegex(str: string) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const subjectCache = new Map<string, { matchingSubjectIds: string[]; matchingObjectIds: ObjectId[] }>();
+const subjectCache = new Map<string, { matchingSubjectIds: string[]; matchingObjectIds: ObjectId[]; expiresAt: number }>();
+const subjectTopicsCache = new Map<string, { topics: string[]; expiresAt: number }>();
+const inFlightSubjectTopics = new Map<string, Promise<string[]>>();
+const questionPoolCache = new Map<string, { questions: any[]; expiresAt: number }>();
+const inFlightQuestionPool = new Map<string, Promise<any[]>>();
+const CACHE_TTL_MS = 60_000; // 60s dynamic TTL for high-concurrency bursts
 
 async function resolveSubjectIds(subject: string) {
   const normKey = subject.trim().toLowerCase();
   const cached = subjectCache.get(normKey);
-  if (cached) return cached;
+  if (cached && cached.expiresAt > Date.now()) {
+    return { matchingSubjectIds: cached.matchingSubjectIds, matchingObjectIds: cached.matchingObjectIds };
+  }
 
   const matchingSubjectIds: string[] = [];
   const matchingObjectIds: ObjectId[] = [];
@@ -57,85 +64,105 @@ async function resolveSubjectIds(subject: string) {
 
   const result = { matchingSubjectIds, matchingObjectIds };
   if (matchingSubjectIds.length > 0) {
-    subjectCache.set(normKey, result);
+    subjectCache.set(normKey, { ...result, expiresAt: Date.now() + CACHE_TTL_MS * 5 });
   }
   return result;
 }
 
 export async function getSubjectTopics(subject: string): Promise<string[]> {
-  try {
-    const { matchingSubjectIds, matchingObjectIds } = await resolveSubjectIds(subject);
-
-    const client = await clientPromise;
-    const db = client.db('boardquest');
-
-    const idOrConditions: any[] = [];
-    matchingSubjectIds.forEach(idStr => {
-      idOrConditions.push({ categoryId: idStr });
-      idOrConditions.push({ subjectId: idStr });
-    });
-    matchingObjectIds.forEach(objId => {
-      idOrConditions.push({ categoryId: objId });
-      idOrConditions.push({ subjectId: objId });
-    });
-    idOrConditions.push({ topic: new RegExp(escapeRegex(subject), 'i') });
-
-    const queryFilter: any = idOrConditions.length > 0 ? { $or: idOrConditions } : {};
-
-    const approvedStatusFilter = {
-      $or: [
-        { status: { $regex: /^approved$/i } },
-        { isPublished: true },
-        { status: { $exists: false } }
-      ]
-    };
-
-    let rawTopics: any[] = [];
-    try {
-      rawTopics = await db.collection('Question').distinct('topic', {
-        $and: [queryFilter, approvedStatusFilter]
-      });
-    } catch (e) {
-      const docs = await db.collection('Question').find(queryFilter, { projection: { topic: 1 } }).toArray();
-      rawTopics = docs.map(d => d.topic);
-    }
-
-    if (!rawTopics || rawTopics.length === 0) {
-      try {
-        const prismaQuestions = await prisma.question.findMany({
-          where: {
-            OR: [
-              ...(matchingSubjectIds.length > 0 ? [{ categoryId: { in: matchingSubjectIds } }] : []),
-              ...(matchingSubjectIds.length > 0 ? [{ subjectId: { in: matchingSubjectIds } }] : []),
-              { topic: { contains: subject, mode: 'insensitive' } }
-            ]
-          } as any,
-          select: { topic: true },
-          distinct: ['topic']
-        });
-        rawTopics = prismaQuestions.map((q: any) => q.topic);
-      } catch (e) {}
-    }
-
-    const cleanTopics = (rawTopics || [])
-      .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
-      .map(t => t.trim());
-
-    const seen = new Set<string>();
-    const uniqueTopics: string[] = [];
-    for (const t of cleanTopics) {
-      const lower = t.toLowerCase();
-      if (!seen.has(lower)) {
-        seen.add(lower);
-        uniqueTopics.push(t);
-      }
-    }
-
-    return uniqueTopics.sort((a, b) => a.localeCompare(b));
-  } catch (error) {
-    console.error('Failed to get subject topics:', error);
-    return [];
+  const normKey = subject.trim().toLowerCase();
+  const cachedTopics = subjectTopicsCache.get(normKey);
+  if (cachedTopics && cachedTopics.expiresAt > Date.now()) {
+    return cachedTopics.topics;
   }
+  if (inFlightSubjectTopics.has(normKey)) {
+    return inFlightSubjectTopics.get(normKey)!;
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const { matchingSubjectIds, matchingObjectIds } = await resolveSubjectIds(subject);
+
+      const client = await clientPromise;
+      const db = client.db('boardquest');
+
+      const idOrConditions: any[] = [];
+      matchingSubjectIds.forEach(idStr => {
+        idOrConditions.push({ categoryId: idStr });
+        idOrConditions.push({ subjectId: idStr });
+      });
+      matchingObjectIds.forEach(objId => {
+        idOrConditions.push({ categoryId: objId });
+        idOrConditions.push({ subjectId: objId });
+      });
+      idOrConditions.push({ topic: new RegExp(escapeRegex(subject), 'i') });
+
+      const queryFilter: any = idOrConditions.length > 0 ? { $or: idOrConditions } : {};
+
+      const approvedStatusFilter = {
+        $or: [
+          { status: { $regex: /^approved$/i } },
+          { isPublished: true },
+          { status: { $exists: false } }
+        ]
+      };
+
+      let rawTopics: any[] = [];
+      try {
+        rawTopics = await db.collection('Question').distinct('topic', {
+          $and: [queryFilter, approvedStatusFilter]
+        });
+      } catch (e) {
+        const docs = await db.collection('Question').find(queryFilter, { projection: { topic: 1 } }).toArray();
+        rawTopics = docs.map(d => d.topic);
+      }
+
+      if (!rawTopics || rawTopics.length === 0) {
+        try {
+          const prismaQuestions = await prisma.question.findMany({
+            where: {
+              OR: [
+                ...(matchingSubjectIds.length > 0 ? [{ categoryId: { in: matchingSubjectIds } }] : []),
+                ...(matchingSubjectIds.length > 0 ? [{ subjectId: { in: matchingSubjectIds } }] : []),
+                { topic: { contains: subject, mode: 'insensitive' } }
+              ]
+            } as any,
+            select: { topic: true },
+            distinct: ['topic']
+          });
+          rawTopics = prismaQuestions.map((q: any) => q.topic);
+        } catch (e) {}
+      }
+
+      const cleanTopics = (rawTopics || [])
+        .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+        .map(t => t.trim());
+
+      const seen = new Set<string>();
+      const uniqueTopics: string[] = [];
+      for (const t of cleanTopics) {
+        const lower = t.toLowerCase();
+        if (!seen.has(lower)) {
+          seen.add(lower);
+          uniqueTopics.push(t);
+        }
+      }
+
+      const sorted = uniqueTopics.sort((a, b) => a.localeCompare(b));
+      if (sorted.length > 0) {
+        subjectTopicsCache.set(normKey, { topics: sorted, expiresAt: Date.now() + CACHE_TTL_MS });
+      }
+      return sorted;
+    } catch (error) {
+      console.error('Failed to get subject topics:', error);
+      return [];
+    } finally {
+      inFlightSubjectTopics.delete(normKey);
+    }
+  })();
+
+  inFlightSubjectTopics.set(normKey, fetchPromise);
+  return fetchPromise;
 }
 
 export async function getQuestQuestions(
@@ -166,152 +193,169 @@ export async function getQuestQuestions(
       }
     } catch (e) {}
 
-    if (!userId) {
-      try {
-        const client = await clientPromise;
-        const db = client.db('boardquest');
-        const latestSession = await db.collection('UserSession').findOne({}, { sort: { lastActive: -1, createdAt: -1 } });
-        if (latestSession?.userId) {
-          userId = latestSession.userId.toString();
-        }
-      } catch (_) {}
-    }
-
-    const { matchingSubjectIds, matchingObjectIds } = await resolveSubjectIds(subject);
-
     const isBossBattle = mode === 'boss-battle';
     const targetDiff = specificDifficulty ? specificDifficulty.toUpperCase() : undefined;
     const cleanTopic = typeof specificTopic === 'string' ? specificTopic.trim() : '';
     const hasTopicFilter = cleanTopic.length > 0;
 
-    let rawQuestions: any[] = [];
+    const poolCacheKey = `${subject.trim().toLowerCase()}|${isBossBattle ? 'boss' : (targetDiff || 'ALL')}|${cleanTopic.toLowerCase()}`;
+    let baseQuestions: any[] | null = null;
 
-    // 2. Fetch questions using Raw MongoDB Driver for max compatibility with ObjectId / String fields
-    try {
-      const client = await clientPromise;
-      const db = client.db('boardquest');
+    const cachedPool = questionPoolCache.get(poolCacheKey);
+    if (cachedPool && cachedPool.expiresAt > Date.now()) {
+      baseQuestions = cachedPool.questions;
+    } else if (inFlightQuestionPool.has(poolCacheKey)) {
+      baseQuestions = await inFlightQuestionPool.get(poolCacheKey)!;
+    } else {
+      const poolFetchPromise = (async () => {
+        const { matchingSubjectIds, matchingObjectIds } = await resolveSubjectIds(subject);
+        let rawQuestions: any[] = [];
 
-      const idOrConditions: any[] = [];
-      matchingSubjectIds.forEach(idStr => {
-        idOrConditions.push({ categoryId: idStr });
-        idOrConditions.push({ subjectId: idStr });
-      });
+        // 2. Fetch questions using Raw MongoDB Driver for max compatibility with ObjectId / String fields
+        try {
+          const client = await clientPromise;
+          const db = client.db('boardquest');
 
-      matchingObjectIds.forEach(objId => {
-        idOrConditions.push({ categoryId: objId });
-        idOrConditions.push({ subjectId: objId });
-      });
+          const idOrConditions: any[] = [];
+          matchingSubjectIds.forEach(idStr => {
+            idOrConditions.push({ categoryId: idStr });
+            idOrConditions.push({ subjectId: idStr });
+          });
 
-      idOrConditions.push({ topic: new RegExp(escapeRegex(subject), 'i') });
+          matchingObjectIds.forEach(objId => {
+            idOrConditions.push({ categoryId: objId });
+            idOrConditions.push({ subjectId: objId });
+          });
 
-      const queryFilter: any = {
-        $or: idOrConditions.length > 0 ? idOrConditions : [{ topic: new RegExp(escapeRegex(subject), 'i') }]
-      };
+          idOrConditions.push({ topic: new RegExp(escapeRegex(subject), 'i') });
 
-      const approvedStatusFilter = {
-        $or: [
-          { status: { $regex: /^approved$/i } },
-          { isPublished: true },
-          { status: { $exists: false } }
-        ]
-      };
+          const queryFilter: any = {
+            $or: idOrConditions.length > 0 ? idOrConditions : [{ topic: new RegExp(escapeRegex(subject), 'i') }]
+          };
 
-      if (hasTopicFilter) {
-        // Fast direct topic lookup
-        const topicRegex = new RegExp(escapeRegex(cleanTopic), 'i');
-        const topicSubjectQuery: any = {
-          $and: [
-            approvedStatusFilter,
-            { topic: topicRegex },
-            ...(idOrConditions.length > 0 ? [{ $or: [...idOrConditions, { topic: topicRegex }] }] : [])
-          ]
-        };
-        rawQuestions = await db.collection('Question').find(topicSubjectQuery).toArray();
-
-        // If no questions found with strict subject binding, search topic across Question collection
-        if (rawQuestions.length === 0) {
-          rawQuestions = await db.collection('Question').find({
-            $and: [
-              approvedStatusFilter,
-              { topic: topicRegex }
+          const approvedStatusFilter = {
+            $or: [
+              { status: { $regex: /^approved$/i } },
+              { isPublished: true },
+              { status: { $exists: false } }
             ]
-          }).toArray();
-        }
-      } else {
-        const fullQuery: any = {
-          $and: [
-            queryFilter,
-            approvedStatusFilter,
-            ...(!isBossBattle && targetDiff ? [{ difficulty: { $regex: new RegExp('^' + targetDiff + '$', 'i') } }] : [])
-          ]
-        };
+          };
 
-        rawQuestions = await db.collection('Question').find(fullQuery).toArray();
+          if (hasTopicFilter) {
+            // Fast direct topic lookup
+            const topicRegex = new RegExp(escapeRegex(cleanTopic), 'i');
+            const topicSubjectQuery: any = {
+              $and: [
+                approvedStatusFilter,
+                { topic: topicRegex },
+                ...(idOrConditions.length > 0 ? [{ $or: [...idOrConditions, { topic: topicRegex }] }] : [])
+              ]
+            };
+            rawQuestions = await db.collection('Question').find(topicSubjectQuery).toArray();
 
-        if (rawQuestions.length === 0 && !isBossBattle && targetDiff) {
-          rawQuestions = await db.collection('Question').find({
-            $and: [queryFilter, approvedStatusFilter]
-          }).toArray();
-        }
-
-        if (rawQuestions.length === 0) {
-          rawQuestions = await db.collection('Question').find(queryFilter).limit(limit * 2).toArray();
-        }
-      }
-    } catch (dbErr) {
-      console.warn('Raw MongoDB question query failed, attempting Prisma query fallback:', dbErr);
-      try {
-        const prismaQuestions = await prisma.question.findMany({
-          where: {
-            AND: [
-              {
-                OR: [
-                  ...(matchingSubjectIds.length > 0 ? [{ categoryId: { in: matchingSubjectIds } }] : []),
-                  ...(matchingSubjectIds.length > 0 ? [{ subjectId: { in: matchingSubjectIds } }] : []),
-                  { topic: { contains: subject, mode: 'insensitive' } }
+            // If no questions found with strict subject binding, search topic across Question collection
+            if (rawQuestions.length === 0) {
+              rawQuestions = await db.collection('Question').find({
+                $and: [
+                  approvedStatusFilter,
+                  { topic: topicRegex }
                 ]
-              },
-              ...(hasTopicFilter ? [{ topic: { contains: cleanTopic, mode: 'insensitive' } }] : [])
-            ]
-          } as any,
-          select: {
-            id: true,
-            question: true,
-            choices: true,
-            choiceImages: true,
-            imageUrl: true,
-            correctAnswer: true,
-            difficulty: true,
-            type: true,
-            topic: true,
+              }).toArray();
+            }
+          } else {
+            const fullQuery: any = {
+              $and: [
+                queryFilter,
+                approvedStatusFilter,
+                ...(!isBossBattle && targetDiff ? [{ difficulty: { $regex: new RegExp('^' + targetDiff + '$', 'i') } }] : [])
+              ]
+            };
+
+            rawQuestions = await db.collection('Question').find(fullQuery).toArray();
+
+            if (rawQuestions.length === 0 && !isBossBattle && targetDiff) {
+              rawQuestions = await db.collection('Question').find({
+                $and: [queryFilter, approvedStatusFilter]
+              }).toArray();
+            }
+
+            if (rawQuestions.length === 0) {
+              rawQuestions = await db.collection('Question').find(queryFilter).limit(limit * 2).toArray();
+            }
           }
-        });
-        rawQuestions = prismaQuestions;
-      } catch (prismaErr) {
-        console.error('Prisma question query failed:', prismaErr);
-      }
+        } catch (dbErr) {
+          console.warn('Raw MongoDB question query failed, attempting Prisma query fallback:', dbErr);
+          try {
+            const prismaQuestions = await prisma.question.findMany({
+              where: {
+                AND: [
+                  {
+                    OR: [
+                      ...(matchingSubjectIds.length > 0 ? [{ categoryId: { in: matchingSubjectIds } }] : []),
+                      ...(matchingSubjectIds.length > 0 ? [{ subjectId: { in: matchingSubjectIds } }] : []),
+                      { topic: { contains: subject, mode: 'insensitive' } }
+                    ]
+                  },
+                  ...(hasTopicFilter ? [{ topic: { contains: cleanTopic, mode: 'insensitive' } }] : [])
+                ]
+              } as any,
+              select: {
+                id: true,
+                question: true,
+                choices: true,
+                choiceImages: true,
+                imageUrl: true,
+                correctAnswer: true,
+                difficulty: true,
+                type: true,
+                topic: true,
+              }
+            });
+            rawQuestions = prismaQuestions;
+          } catch (prismaErr) {
+            console.error('Prisma question query failed:', prismaErr);
+          }
+        }
+
+        if (!rawQuestions || rawQuestions.length === 0) {
+          return [];
+        }
+
+        const normalized = rawQuestions.map((q: any) => ({
+          id: q._id ? q._id.toString() : q.id,
+          question: q.question || 'Untitled Question',
+          choices: q.choices || q.options || [],
+          choiceImages: Array.isArray(q.choiceImages)
+            ? q.choiceImages.map((img: any) => (typeof img === 'string' && img.trim().length > 0 && img !== 'null' && img !== 'undefined') ? img.trim() : null)
+            : [],
+          imageUrl: (typeof q.imageUrl === 'string' && q.imageUrl.trim().length > 0 && q.imageUrl !== 'null' && q.imageUrl !== 'undefined')
+            ? q.imageUrl.trim()
+            : null,
+          correctAnswer: q.correctAnswer || '',
+          difficulty: String(q.difficulty || 'EASY').toUpperCase(),
+          type: q.type || 'MCQ',
+          topic: typeof q.topic === 'string' ? q.topic.trim() : ''
+        }));
+
+        if (normalized.length > 0) {
+          questionPoolCache.set(poolCacheKey, { questions: normalized, expiresAt: Date.now() + CACHE_TTL_MS });
+        }
+        return normalized;
+      })().finally(() => {
+        inFlightQuestionPool.delete(poolCacheKey);
+      });
+
+      inFlightQuestionPool.set(poolCacheKey, poolFetchPromise);
+      baseQuestions = await poolFetchPromise;
     }
 
-    if (!rawQuestions || rawQuestions.length === 0) {
+    if (!baseQuestions || baseQuestions.length === 0) {
       console.warn(`No questions found for subject ${subject} in Question collection.`);
       return [];
     }
 
-    const allQuestions = rawQuestions.map((q: any) => ({
-      id: q._id ? q._id.toString() : q.id,
-      question: q.question || 'Untitled Question',
-      choices: q.choices || q.options || [],
-      choiceImages: Array.isArray(q.choiceImages)
-        ? q.choiceImages.map((img: any) => (typeof img === 'string' && img.trim().length > 0 && img !== 'null' && img !== 'undefined') ? img.trim() : null)
-        : [],
-      imageUrl: (typeof q.imageUrl === 'string' && q.imageUrl.trim().length > 0 && q.imageUrl !== 'null' && q.imageUrl !== 'undefined')
-        ? q.imageUrl.trim()
-        : null,
-      correctAnswer: q.correctAnswer || '',
-      difficulty: String(q.difficulty || 'EASY').toUpperCase(),
-      type: q.type || 'MCQ',
-      topic: typeof q.topic === 'string' ? q.topic.trim() : ''
-    }));
+    // Clone question references per request so per-user spaced repetition / shuffling never mutates the shared pool
+    const allQuestions = baseQuestions.map((q: any) => ({ ...q }));
 
     let selected: any[] = [];
 
@@ -361,11 +405,15 @@ export async function getQuestQuestions(
         }
       });
 
-      // Strict Mastery Definition: Answered correctly at least 2 times with >= 70% accuracy
+      // Mastery Definition:
+      // - Answered correctly >= 2 times with >= 70% accuracy, OR
+      // - Answered correctly >= 3 times with >= 60% accuracy, OR
+      // - Answered correctly >= 5 times (prevents early wrong attempts from locking a question in Tier 1 forever)
       const isQuestionMastered = (qId: string) => {
         const att = attemptMap.get(qId);
         if (!att) return false;
-        return att.correct >= 2 && (att.correct / att.attempts) >= 0.70;
+        const ratio = att.attempts > 0 ? (att.correct / att.attempts) : 0;
+        return (att.correct >= 2 && ratio >= 0.70) || (att.correct >= 3 && ratio >= 0.60) || att.correct >= 5;
       };
 
       // Partition questions into Active Learning Pool vs Retired Mastered Pool
@@ -402,11 +450,15 @@ export async function getQuestQuestions(
         stats.isPassing = stats.totalAttempts >= 2 && accuracy >= 0.70;
       });
 
-      // Score active questions:
-      // Priority 1: Struggling / Incorrect questions (Player got wrong) -> Score: -1000 to -900
-      // Priority 2: Unattempted in non-passing topics (Drives 75% topic coverage) -> Score: -500 to -400
-      // Priority 3: Unattempted in passing topics -> Score: -200
-      // Priority 4: Answered correctly once (Needs reinforcement) -> Score: 100
+      const nowMs = Date.now();
+
+      // Dynamic Spaced Repetition Priority Score (lower score = higher priority):
+      // - Unattempted in non-passing / unattempted topics: -1050 to -1000 (immediately reduces Unattempted count & builds coverage)
+      // - Fresh struggling / incorrect questions (1-2 attempts): -1000 to -920
+      // - Unattempted in passing topics: -900 (ensures all unattempted questions are shown before repeating multi-attempt questions)
+      // - Repeated struggling questions (3+ attempts): -550 + progressive fatigue offset (prevents endless loops on the same question)
+      // - Answered correctly once (needs 1 more correct for mastery): +100
+      // - Recency cooldown: +800 if attempted within 15 mins (+400 within 60 mins) so back-to-back quests always rotate fresh questions
       const computeActiveScore = (q: any) => {
         const att = attemptMap.get(q.id);
         const topicName = (q.topic || 'General Concepts').trim();
@@ -416,10 +468,14 @@ export async function getQuestQuestions(
         const attempts = att ? att.attempts : 0;
         const correct = att ? att.correct : 0;
 
-        if (attempts > 0 && correct < attempts) {
-          const accuracyRatio = correct / attempts;
-          const topicBonus = !isTopicPassing ? -50 : 0;
-          return -1000 + (accuracyRatio * 80) + topicBonus;
+        let recencyPenalty = 0;
+        if (att?.lastAttempt) {
+          const ageMs = nowMs - new Date(att.lastAttempt).getTime();
+          if (ageMs < 15 * 60 * 1000) {
+            recencyPenalty = 800;
+          } else if (ageMs < 60 * 60 * 1000) {
+            recencyPenalty = 400;
+          }
         }
 
         if (attempts === 0) {
@@ -427,20 +483,26 @@ export async function getQuestQuestions(
             const topicProgress = topicStats && topicStats.totalQuestions > 0
               ? (topicStats.attemptedQuestions / topicStats.totalQuestions)
               : 0;
-            return -500 + (topicProgress * 80);
-          } else {
-            return -200;
+            return -1050 + (topicProgress * 50);
           }
+          return -900;
         }
 
-        return 100;
+        if (attempts > 0 && correct < attempts) {
+          const accuracyRatio = correct / attempts;
+          const topicBonus = !isTopicPassing ? -40 : 0;
+          const repeatFatigue = attempts >= 3 ? Math.min(650, (attempts - 2) * 220) : 0;
+          return -1000 + (accuracyRatio * 80) + topicBonus + repeatFatigue + recencyPenalty;
+        }
+
+        return 100 + recencyPenalty;
       };
 
-      // Sort active pool by priority
+      // Sort active pool by priority with random tie-breaking for equal scores
       activePool.sort((a, b) => {
         const scoreA = computeActiveScore(a);
         const scoreB = computeActiveScore(b);
-        if (Math.abs(scoreA - scoreB) > 0.001) return scoreA - scoreB;
+        if (Math.abs(scoreA - scoreB) > 15) return scoreA - scoreB;
         return Math.random() - 0.5;
       });
 
@@ -448,100 +510,139 @@ export async function getQuestQuestions(
       masteredPool.sort((a, b) => {
         const dateA = attemptMap.get(a.id)?.lastAttempt ? new Date(attemptMap.get(a.id)!.lastAttempt).getTime() : 0;
         const dateB = attemptMap.get(b.id)?.lastAttempt ? new Date(attemptMap.get(b.id)!.lastAttempt).getTime() : 0;
-        return dateA - dateB;
+        if (dateA !== dateB) return dateA - dateB;
+        return Math.random() - 0.5;
       });
 
       // Interleave active pool across topics if not filtering by specific topic
-      let candidateList = activePool;
-      if (!hasTopicFilter && activePool.length > 0) {
+      let candidateList = [...activePool, ...masteredPool];
+      if (!hasTopicFilter && allQuestions.length > 0) {
+        // Build prioritized, topic-interleaved ACTIVE (unmastered) pools for each difficulty tier
+        const buildActiveTierPool = (tierDiff: 'EASY' | 'MEDIUM' | 'HARD') => {
+          const tierActiveQuestions = activePool.filter(
+            q => String(q.difficulty || 'EASY').toUpperCase() === tierDiff
+          );
 
-        // Build prioritized, topic-interleaved pools for each difficulty tier
-        // Ensures Wave 1 (Easy), Wave 2 (Medium), and Wave 3 (Hard) are all populated and preserved
-        const buildTierPool = (tierDiff: 'EASY' | 'MEDIUM' | 'HARD') => {
-          const tierQuestions = allQuestions.filter(q => String(q.difficulty || 'EASY').toUpperCase() === tierDiff);
-          
           const tierBuckets = new Map<string, any[]>();
-          for (const q of tierQuestions) {
+          for (const q of tierActiveQuestions) {
             const t = (q.topic || 'General Concepts').trim();
             if (!tierBuckets.has(t)) tierBuckets.set(t, []);
             tierBuckets.get(t)!.push(q);
           }
 
-          // Sort each bucket by computeActiveScore
+          // Sort each topic bucket by computeActiveScore with random tie-breaking
           tierBuckets.forEach(bucket => {
-            bucket.sort((a: any, b: any) => computeActiveScore(a) - computeActiveScore(b));
+            bucket.sort((a: any, b: any) => {
+              const diff = computeActiveScore(a) - computeActiveScore(b);
+              if (Math.abs(diff) > 15) return diff;
+              return Math.random() - 0.5;
+            });
           });
 
           const tierTopics = Array.from(tierBuckets.keys());
-          const tierNonPassingTopics = tierTopics.filter(t => !topicStatsMap.get(t)?.isPassing);
-          const tierPassingTopics = tierTopics.filter(t => topicStatsMap.get(t)?.isPassing);
+          const interleaved: any[] = [];
+          let roundIdx = 0;
+          let hasMore = true;
 
-          // 1. Interleave active unmastered questions in non-passing topics
-          const nonPassingActive: any[] = [];
-          let hasMoreNp = true;
-          let npIdx = 0;
-          while (hasMoreNp) {
-            hasMoreNp = false;
-            for (const t of tierNonPassingTopics) {
-              const b = tierBuckets.get(t)!.filter(q => !isQuestionMastered(q.id));
-              if (npIdx < b.length) {
-                nonPassingActive.push(b[npIdx]);
-                hasMoreNp = true;
+          // At each round-robin depth, order topics by the priority score of their question at roundIdx
+          // so topics with Unattempted questions (-1050 / -900) or Fresh Mistakes (-1000) are never blocked by repeated questions
+          while (hasMore) {
+            hasMore = false;
+            const roundCandidates: { q: any; score: number }[] = [];
+            for (const t of tierTopics) {
+              const b = tierBuckets.get(t)!;
+              if (roundIdx < b.length) {
+                const q = b[roundIdx];
+                roundCandidates.push({
+                  q,
+                  score: computeActiveScore(q) + (Math.random() * 20 - 10)
+                });
+                hasMore = true;
               }
             }
-            npIdx++;
-          }
-
-          // 2. Interleave active unmastered questions in passing topics
-          const passingActive: any[] = [];
-          let hasMoreP = true;
-          let pIdx = 0;
-          while (hasMoreP) {
-            hasMoreP = false;
-            for (const t of tierPassingTopics) {
-              const b = tierBuckets.get(t)!.filter(q => !isQuestionMastered(q.id));
-              if (pIdx < b.length) {
-                passingActive.push(b[pIdx]);
-                hasMoreP = true;
-              }
+            roundCandidates.sort((a, b) => a.score - b.score);
+            for (const item of roundCandidates) {
+              interleaved.push(item.q);
             }
-            pIdx++;
+            roundIdx++;
           }
 
-          // 3. Mastered questions in this tier (sorted least-recently attempted)
-          const tierMastered = tierQuestions.filter(q => isQuestionMastered(q.id));
-          tierMastered.sort((a, b) => {
-            const dateA = attemptMap.get(a.id)?.lastAttempt ? new Date(attemptMap.get(a.id)!.lastAttempt).getTime() : 0;
-            const dateB = attemptMap.get(b.id)?.lastAttempt ? new Date(attemptMap.get(b.id)!.lastAttempt).getTime() : 0;
-            return dateA - dateB;
-          });
-
-          return [...nonPassingActive, ...passingActive, ...tierMastered];
+          return interleaved;
         };
 
-        const easyTier = buildTierPool('EASY');
-        const mediumTier = buildTierPool('MEDIUM');
-        const hardTier = buildTierPool('HARD');
+        const buildMasteredTierPool = (tierDiff: 'EASY' | 'MEDIUM' | 'HARD') => {
+          return masteredPool.filter(q => String(q.difficulty || 'EASY').toUpperCase() === tierDiff);
+        };
 
-        // Wave targets: Wave 1 (Easy), Wave 2 (Medium), Wave 3 (Hard)
-        const easyTarget = Math.max(1, Math.floor(limit * 0.3));
-        const hardTarget = Math.max(1, Math.floor(limit * 0.3));
-        const mediumTarget = limit - easyTarget - hardTarget;
+        const easyActive = buildActiveTierPool('EASY');
+        const mediumActive = buildActiveTierPool('MEDIUM');
+        const hardActive = buildActiveTierPool('HARD');
 
-        const easyChosen = easyTier.slice(0, easyTarget);
-        const hardChosen = hardTier.slice(0, hardTarget);
-        const mediumChosen = mediumTier.slice(0, mediumTarget);
+        const easyMastered = buildMasteredTierPool('EASY');
+        const mediumMastered = buildMasteredTierPool('MEDIUM');
+        const hardMastered = buildMasteredTierPool('HARD');
 
-        const combined = [...easyChosen, ...mediumChosen, ...hardChosen];
+        if (isBossBattle) {
+          // In Boss Battle mode (where limit=999), keep all active/unattempted questions at the front
+          // interleaved across topics & difficulties in balanced wave chunks so the player immediately
+          // faces unattempted & active questions first without mastered questions cutting in line
+          const allActiveInterleaved: any[] = [];
+          const maxLen = Math.max(easyActive.length, mediumActive.length, hardActive.length);
+          for (let i = 0; i < maxLen; i++) {
+            if (i < easyActive.length) allActiveInterleaved.push(easyActive[i]);
+            if (i < mediumActive.length) allActiveInterleaved.push(mediumActive[i]);
+            if (i < hardActive.length) allActiveInterleaved.push(hardActive[i]);
+          }
+          // Sort active questions by priority band (grouping within ~120 score points so unattempted & fresh mistakes lead)
+          allActiveInterleaved.sort((a, b) => {
+            const bandA = Math.floor(computeActiveScore(a) / 120);
+            const bandB = Math.floor(computeActiveScore(b) / 120);
+            if (bandA !== bandB) return bandA - bandB;
+            return 0;
+          });
+          candidateList = [...allActiveInterleaved, ...masteredPool];
+        } else {
+          // Wave targets: Wave 1 (Easy 30%), Wave 2 (Medium 40%), Wave 3 (Hard 30%)
+          const easyTarget = Math.max(1, Math.floor(limit * 0.3));
+          const hardTarget = Math.max(1, Math.floor(limit * 0.3));
+          const mediumTarget = Math.max(1, limit - easyTarget - hardTarget);
 
-        // If any tier had a shortfall, fill from remaining active candidates
-        if (combined.length < limit) {
+          const easyChosen = easyActive.slice(0, easyTarget);
+          const mediumChosen = mediumActive.slice(0, mediumTarget);
+          const hardChosen = hardActive.slice(0, hardTarget);
+
+          // In Learning mode, ensure each wave has at least 1 question if that difficulty exists in masteredPool
+          if (mode === 'learning') {
+            if (easyChosen.length === 0 && easyMastered.length > 0) easyChosen.push(easyMastered[0]);
+            if (mediumChosen.length === 0 && mediumMastered.length > 0) mediumChosen.push(mediumMastered[0]);
+            if (hardChosen.length === 0 && hardMastered.length > 0) hardChosen.push(hardMastered[0]);
+          }
+
+          const combined = [...easyChosen, ...mediumChosen, ...hardChosen];
           const chosenIds = new Set(combined.map(q => q.id));
-          const leftovers = [...mediumTier, ...easyTier, ...hardTier].filter(q => !chosenIds.has(q.id));
-          combined.push(...leftovers.slice(0, limit - combined.length));
-        }
 
-        candidateList = combined;
+          // 1. Fill any tier shortfall strictly from remaining ACTIVE (unmastered) questions first, sorted by priority
+          if (combined.length < limit) {
+            const activeLeftovers = [...easyActive, ...mediumActive, ...hardActive]
+              .filter(q => !chosenIds.has(q.id))
+              .sort((a, b) => computeActiveScore(a) - computeActiveScore(b));
+
+            for (const q of activeLeftovers) {
+              if (combined.length >= limit) break;
+              combined.push(q);
+              chosenIds.add(q.id);
+            }
+          }
+
+          // 2. Only if the entire subject has fewer active unmastered questions than limit, fill remaining slots from masteredPool
+          if (combined.length < limit) {
+            const masteredLeftovers = [...easyMastered, ...mediumMastered, ...hardMastered]
+              .filter(q => !chosenIds.has(q.id));
+            combined.push(...masteredLeftovers.slice(0, limit - combined.length));
+          }
+
+          candidateList = combined;
+        }
       }
 
       let finalSelection = candidateList.slice(0, limit);
@@ -549,7 +650,8 @@ export async function getQuestQuestions(
       const isTestMode = mode === 'test';
       if (isTestMode) {
         finalSelection = finalSelection.sort(() => 0.5 - Math.random());
-      } else {
+      } else if (!isBossBattle) {
+        // Preserve Wave 1 (EASY) -> Wave 2 (MEDIUM) -> Wave 3 (HARD) progression for Learning Mode
         finalSelection.sort((a, b) => {
           const diffA = difficultyOrder[String(a.difficulty || 'EASY').toUpperCase()] || 1;
           const diffB = difficultyOrder[String(b.difficulty || 'EASY').toUpperCase()] || 1;

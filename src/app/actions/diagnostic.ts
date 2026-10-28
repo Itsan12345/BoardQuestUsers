@@ -233,13 +233,14 @@ export async function getAiDiagnosticAction(options?: {
     const userObjId = ObjectId.isValid(userId) ? new ObjectId(userId) : null;
     const idQueries = userObjId ? [{ userId: userId }, { userId: userObjId }] : [{ userId: userId }];
 
-    // 1. Fetch user profile, settings, metrics, and attempts in parallel
-    const [userDoc, settingsDoc, metrics, categories, userAttempts] = await Promise.all([
+    // 1. Fetch user profile, settings, metrics, categories, attempts, and cached AI analysis in parallel
+    const [userDoc, settingsDoc, metrics, categories, userAttempts, cachedRecord] = await Promise.all([
       db.collection('User').findOne({ $or: userObjId ? [{ _id: userObjId }, { _id: userId as any }] : [{ _id: userId as any }] }),
       db.collection('UserSettings').findOne({ $or: idQueries }),
-      getSubjectMetrics().catch(() => []),
+      getSubjectMetrics(userId).catch(() => []),
       getCategories().catch(() => []),
       db.collection('UserQuestionAttempt').find({ $or: idQueries }).toArray().catch(() => []),
+      db.collection('AiAnalysis').findOne({ $or: idQueries }),
     ]);
 
     const activeSubjects = categories && categories.length > 0
@@ -295,7 +296,9 @@ export async function getAiDiagnosticAction(options?: {
             { _id: { $in: qObjIds } },
             { projection: { topic: 1, subjectId: 1, categoryId: 1 } }
           ).toArray().catch(() => []),
-          db.collection('Subject').find({}).toArray().catch(() => []),
+          categories && categories.length > 0
+            ? Promise.resolve(categories.map((c: any) => ({ _id: c.id, name: c.name })))
+            : db.collection('Subject').find({}).toArray().catch(() => []),
         ]);
 
         const qMap = new Map(questions.map((q: any) => [q._id.toString(), q]));
@@ -376,9 +379,7 @@ export async function getAiDiagnosticAction(options?: {
       .update(JSON.stringify(fingerprint))
       .digest('hex');
 
-    // 3. Check cached record in AiAnalysis table
-    const cachedRecord = await db.collection('AiAnalysis').findOne({ $or: idQueries });
-
+    // 3. Evaluate cached record in AiAnalysis table (fetched in parallel above)
     const lastUpdatedTime = cachedRecord?.updatedAt
       ? new Date(cachedRecord.updatedAt).getTime()
       : 0;

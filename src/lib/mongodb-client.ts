@@ -7,7 +7,7 @@ try {
   // Ignore in environments where setServers is restricted
 }
 
-import { MongoClient, ServerApiVersion } from 'mongodb';
+import { MongoClient, MongoClientOptions, ServerApiVersion } from 'mongodb';
 
 if (!process.env.DATABASE_URL) {
   throw new Error('Invalid/Missing environment variable: "DATABASE_URL"');
@@ -40,38 +40,35 @@ function getNormalizedMongoUri(rawUri: string): string {
 }
 
 const uri = getNormalizedMongoUri(process.env.DATABASE_URL);
-const options = {
+const options: MongoClientOptions = {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
   },
+  // Cap pool size per container so autoscaled instances never exhaust Atlas connection limits
+  maxPoolSize: 20,
+  minPoolSize: 2,
+  maxIdleTimeMS: 60000,
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
 };
 
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
+const globalWithMongo = globalThis as typeof globalThis & {
+  _mongoClientPromise?: Promise<MongoClient>;
+};
 
-if (process.env.NODE_ENV === 'development') {
-  // In development mode, use a global variable so that the value
-  // is preserved across module reloads caused by HMR (Hot Module Replacement).
-  const globalWithMongo = global as typeof globalThis & {
-    _mongoClientPromise?: Promise<MongoClient>;
-  };
-
+function getMongoClientPromise(): Promise<MongoClient> {
   if (!globalWithMongo._mongoClientPromise) {
-    client = new MongoClient(uri, options);
+    const client = new MongoClient(uri, options);
     globalWithMongo._mongoClientPromise = client.connect().catch((err) => {
       delete globalWithMongo._mongoClientPromise;
       throw err;
     });
   }
-  clientPromise = globalWithMongo._mongoClientPromise;
-} else {
-  // In production mode, it's best to not use a global variable.
-  client = new MongoClient(uri, options);
-  clientPromise = client.connect();
+  return globalWithMongo._mongoClientPromise;
 }
 
-// Export a module-scoped MongoClient promise. By doing this in a
-// separate module, the client can be shared across functions.
+const clientPromise: Promise<MongoClient> = getMongoClientPromise();
+
 export default clientPromise;

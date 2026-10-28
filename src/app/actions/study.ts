@@ -126,20 +126,23 @@ export async function syncSubjectMastery(userId: string, subject: string) {
       const validLessonIds = lessons.map(l => l.id);
       const totalLessons = lessons.length;
 
-      const completedLessons = await prisma.lessonCompletion.count({
-        where: {
-          userId,
-          subject,
-          status: 'completed',
-          lessonId: { in: validLessonIds }
-        },
-      });
-      const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
+      const [completedLessons, examResults, topicStats] = await Promise.all([
+        prisma.lessonCompletion.count({
+          where: {
+            userId,
+            subject,
+            status: 'completed',
+            lessonId: { in: validLessonIds }
+          },
+        }),
+        prisma.examResult.findMany({
+          where: { userId, subject },
+          select: { accuracy: true, score: true, total: true },
+        }),
+        getSubjectTopicMasteryAction(subject, userId).catch(() => null),
+      ]);
 
-      const examResults = await prisma.examResult.findMany({
-        where: { userId, subject },
-        select: { accuracy: true, score: true, total: true },
-      });
+      const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
 
       const totalQAnswered = examResults.reduce((sum, result) => sum + (result.total || 0), 0);
       const totalCorrect = examResults.reduce((sum, result) => sum + (result.score || 0), 0);
@@ -153,7 +156,6 @@ export async function syncSubjectMastery(userId: string, subject: string) {
         proficiency = Math.round(rawAccuracy * volumeWeight);
       }
 
-      const topicStats = await getSubjectTopicMasteryAction(subject, userId).catch(() => null);
       const totalTopics = topicStats?.totalTopics || 0;
       const passingTopics = (topicStats?.masteredCount || 0) + (topicStats?.proficientCount || 0);
       const topicCoverage = totalTopics > 0 ? Math.round((passingTopics / totalTopics) * 100) : 0;
@@ -242,43 +244,68 @@ export interface SubjectMetrics {
   passingTopics?: number;
 }
 
+let categoriesMemoryCache: { data: { id: string; name: string; icon?: string | null }[]; expiresAt: number } | null = null;
+let inFlightCategoriesPromise: Promise<{ id: string; name: string; icon?: string | null }[]> | null = null;
+const syllabusMetadataCache = new Map<string, { matchingSubjects: any[]; canonicalTopics: any[]; questionDocs: any[]; expiresAt: number }>();
+const inFlightSyllabusMetadata = new Map<string, Promise<{ matchingSubjects: any[]; canonicalTopics: any[]; questionDocs: any[] }>>();
+const STUDY_CACHE_TTL_MS = 60_000;
+
 export async function getCategories(): Promise<{ id: string; name: string; icon?: string | null }[]> {
-  // 1. Try Prisma ORM Subject table
-  if (typeof (prisma as any).subject?.findMany === 'function') {
-    try {
-      const subjects = await (prisma as any).subject.findMany({
-        select: { id: true, name: true, icon: true },
-        orderBy: { createdAt: 'asc' }
-      });
-      if (subjects && subjects.length > 0) {
-        return JSON.parse(JSON.stringify(subjects));
-      }
-    } catch (err) {}
+  if (categoriesMemoryCache && categoriesMemoryCache.expiresAt > Date.now()) {
+    return categoriesMemoryCache.data;
+  }
+  if (inFlightCategoriesPromise) {
+    return inFlightCategoriesPromise;
   }
 
-  // 2. Query MongoDB 'Subject' collection directly
-  try {
-    const client = await clientPromise;
-    const db = client.db('boardquest');
-    const subjectDocs = await db.collection('Subject').find({}).sort({ createdAt: 1 }).toArray();
-    if (subjectDocs && subjectDocs.length > 0) {
-      return subjectDocs.map(doc => ({
-        id: doc._id.toString(),
-        name: doc.name || 'Untitled Subject',
-        icon: doc.icon || null
-      }));
+  inFlightCategoriesPromise = (async () => {
+    // 1. Try Prisma ORM Subject table
+    if (typeof (prisma as any).subject?.findMany === 'function') {
+      try {
+        const subjects = await (prisma as any).subject.findMany({
+          select: { id: true, name: true, icon: true },
+          orderBy: { createdAt: 'asc' }
+        });
+        if (subjects && subjects.length > 0) {
+          const parsed = JSON.parse(JSON.stringify(subjects));
+          categoriesMemoryCache = { data: parsed, expiresAt: Date.now() + STUDY_CACHE_TTL_MS };
+          return parsed;
+        }
+      } catch (err) {}
     }
-  } catch (rawErr) {
-    console.error('Failed to fetch subjects via MongoDB client:', rawErr);
-  }
 
-  // If no subjects exist in Subject collection, return empty array
-  return [];
+    // 2. Query MongoDB 'Subject' collection directly
+    try {
+      const client = await clientPromise;
+      const db = client.db('boardquest');
+      const subjectDocs = await db.collection('Subject').find({}).sort({ createdAt: 1 }).toArray();
+      if (subjectDocs && subjectDocs.length > 0) {
+        const parsed = subjectDocs.map(doc => ({
+          id: doc._id.toString(),
+          name: doc.name || 'Untitled Subject',
+          icon: doc.icon || null
+        }));
+        categoriesMemoryCache = { data: parsed, expiresAt: Date.now() + STUDY_CACHE_TTL_MS };
+        return parsed;
+      }
+    } catch (rawErr) {
+      console.error('Failed to fetch subjects via MongoDB client:', rawErr);
+    }
+
+    // If no subjects exist in Subject collection, return empty array
+    return [];
+  })().finally(() => {
+    inFlightCategoriesPromise = null;
+  });
+
+  return inFlightCategoriesPromise;
 }
 
 export const getSubjects = getCategories;
 
 export async function revalidateCategoriesCache() {
+  categoriesMemoryCache = null;
+  syllabusMetadataCache.clear();
   try {
     revalidateTag('curriculum_categories');
   } catch (err) {}
@@ -328,17 +355,6 @@ export async function getSubjectMetrics(explicitUserId?: string): Promise<Subjec
         }
       }
     } catch (_) {}
-
-    if (!userId) {
-      try {
-        const client = await clientPromise;
-        const db = client.db('boardquest');
-        const latestSession = await db.collection('UserSession').findOne({}, { sort: { lastActive: -1, createdAt: -1 } });
-        if (latestSession?.userId) {
-          userId = latestSession.userId.toString();
-        }
-      } catch (_) {}
-    }
 
     if (!userId) {
       return [];
@@ -728,72 +744,105 @@ export async function getSubjectTopicMasteryAction(
     const client = await clientPromise;
     const db = client.db('boardquest');
 
-    // If still no userId, check if there is an active session in UserSession
-    if (!userId) {
-      try {
-        const latestSession = await db.collection('UserSession').findOne({}, { sort: { lastActive: -1, createdAt: -1 } });
-        if (latestSession?.userId) {
-          userId = latestSession.userId.toString();
-        }
-      } catch (_) {}
-    }
-
     const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const cleanSub = subjectName.trim();
+    const metaCacheKey = cleanSub.toLowerCase();
 
-    // 1. Resolve matching Subject records in database
-    const subjectRegexes: RegExp[] = [
-      new RegExp('^' + escapeRegex(cleanSub) + '$', 'i')
-    ];
+    let matchingSubjects: any[] = [];
+    let canonicalTopics: any[] = [];
+    let questionDocs: any[] = [];
 
-    if (cleanSub.toLowerCase().includes('histopath')) {
-      subjectRegexes.push(/^Histopathology and Medtech Laws$/i);
-      subjectRegexes.push(/^Histopathology & MT Laws$/i);
-    } else if (cleanSub.toLowerCase().includes('microscopy') || cleanSub.toLowerCase().includes('parasit')) {
-      subjectRegexes.push(/^Clinical Microscopy & Parasitology$/i);
-    } else if (cleanSub.toLowerCase().includes('immuno')) {
-      subjectRegexes.push(/^Immunology & Serology and Immunohematology$/i);
-    }
+    const cachedMeta = syllabusMetadataCache.get(metaCacheKey);
+    if (cachedMeta && cachedMeta.expiresAt > Date.now()) {
+      matchingSubjects = cachedMeta.matchingSubjects;
+      canonicalTopics = cachedMeta.canonicalTopics;
+      questionDocs = cachedMeta.questionDocs;
+    } else if (inFlightSyllabusMetadata.has(metaCacheKey)) {
+      const resolved = await inFlightSyllabusMetadata.get(metaCacheKey)!;
+      matchingSubjects = resolved.matchingSubjects;
+      canonicalTopics = resolved.canonicalTopics;
+      questionDocs = resolved.questionDocs;
+    } else {
+      const metaPromise = (async () => {
+        // 1. Resolve matching Subject records in database
+        const subjectRegexes: RegExp[] = [
+          new RegExp('^' + escapeRegex(cleanSub) + '$', 'i')
+        ];
 
-    const matchingSubjects = await db.collection('Subject').find({
-      $or: subjectRegexes.map(r => ({ name: r }))
-    }).toArray();
-
-    const idStrings: string[] = [];
-    const idObjects: any[] = [];
-    matchingSubjects.forEach(s => {
-      idStrings.push(s._id.toString());
-      idObjects.push(s._id);
-    });
-
-    // 2. Fetch canonical topics from Topic collection (if populated)
-    const canonicalTopics = (idStrings.length > 0)
-      ? await db.collection('Topic').find({
-          $or: [
-            { subjectId: { $in: idStrings } },
-            { subjectId: { $in: idObjects } }
-          ]
-        }).toArray()
-      : [];
-
-    // 3. Fetch questions assigned to this subject
-    const questionFilter: any = idStrings.length > 0
-      ? {
-          $or: [
-            { categoryId: { $in: idStrings } },
-            { categoryId: { $in: idObjects } },
-            { subjectId: { $in: idStrings } },
-            { subjectId: { $in: idObjects } }
-          ]
+        if (cleanSub.toLowerCase().includes('histopath')) {
+          subjectRegexes.push(/^Histopathology and Medtech Laws$/i);
+          subjectRegexes.push(/^Histopathology & MT Laws$/i);
+        } else if (cleanSub.toLowerCase().includes('microscopy') || cleanSub.toLowerCase().includes('parasit')) {
+          subjectRegexes.push(/^Clinical Microscopy & Parasitology$/i);
+        } else if (cleanSub.toLowerCase().includes('immuno')) {
+          subjectRegexes.push(/^Immunology & Serology and Immunohematology$/i);
         }
-      : { topic: new RegExp(escapeRegex(cleanSub), 'i') };
 
-    const questionDocs = await db.collection('Question').find(questionFilter).project({
-      _id: 1,
-      topic: 1,
-      difficulty: 1,
-      status: 1
-    }).toArray();
+        const fetchedSubjects = await db.collection('Subject').find({
+          $or: subjectRegexes.map(r => ({ name: r }))
+        }).toArray();
+
+        const idStrings: string[] = [];
+        const idObjects: any[] = [];
+        fetchedSubjects.forEach(s => {
+          idStrings.push(s._id.toString());
+          idObjects.push(s._id);
+        });
+
+        // 2. Fetch canonical topics and assigned approved questions concurrently
+        const approvedStatusFilter = {
+          $or: [
+            { status: { $regex: /^approved$/i } },
+            { isPublished: true },
+            { status: { $exists: false } }
+          ]
+        };
+
+        const subjectMatchFilter: any = idStrings.length > 0
+          ? {
+              $or: [
+                { categoryId: { $in: idStrings } },
+                { categoryId: { $in: idObjects } },
+                { subjectId: { $in: idStrings } },
+                { subjectId: { $in: idObjects } }
+              ]
+            }
+          : { topic: new RegExp(escapeRegex(cleanSub), 'i') };
+
+        const questionFilter: any = {
+          $and: [subjectMatchFilter, approvedStatusFilter]
+        };
+
+        const [fetchedTopics, fetchedQuestions] = await Promise.all([
+          idStrings.length > 0
+            ? db.collection('Topic').find({
+                $or: [
+                  { subjectId: { $in: idStrings } },
+                  { subjectId: { $in: idObjects } }
+                ]
+              }).toArray()
+            : Promise.resolve([]),
+          db.collection('Question').find(questionFilter).project({
+            _id: 1,
+            topic: 1,
+            difficulty: 1,
+            status: 1
+          }).toArray(),
+        ]);
+
+        const result = { matchingSubjects: fetchedSubjects, canonicalTopics: fetchedTopics, questionDocs: fetchedQuestions };
+        syllabusMetadataCache.set(metaCacheKey, { ...result, expiresAt: Date.now() + STUDY_CACHE_TTL_MS });
+        return result;
+      })().finally(() => {
+        inFlightSyllabusMetadata.delete(metaCacheKey);
+      });
+
+      inFlightSyllabusMetadata.set(metaCacheKey, metaPromise);
+      const resolved = await metaPromise;
+      matchingSubjects = resolved.matchingSubjects;
+      canonicalTopics = resolved.canonicalTopics;
+      questionDocs = resolved.questionDocs;
+    }
 
     // 4. Fetch User Question Attempts for this user across these questions
     const attemptMap = new Map<string, { attempts: number; correct: number; lastAttempt?: string }>();
@@ -911,7 +960,12 @@ export async function getSubjectTopicMasteryAction(
     let needsReviewCount = 0;
     let unattemptedCount = 0;
 
-    const topics: TopicMasteryDetail[] = Array.from(topicMap.values()).map(t => {
+    const allTopicEntries = Array.from(topicMap.values());
+    const activeTopicEntries = questionDocs.length > 0
+      ? allTopicEntries.filter(t => t.totalQuestions > 0)
+      : allTopicEntries;
+
+    const topics: TopicMasteryDetail[] = activeTopicEntries.map(t => {
       grandTotalQuestions += t.totalQuestions;
       grandTotalAnswered += t.attemptedQuestions;
       grandTotalAttempts += t.totalAttempts;
