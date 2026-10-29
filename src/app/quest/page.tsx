@@ -6319,20 +6319,27 @@ export default function LearningQuest() {
               </div>
             )}
 
-            <header className="px-4 py-3 flex items-center justify-between relative z-10 w-full drop-shadow-md">
-              <Button variant="ghost" size="icon" onClick={() => setLeaveConfirmDialogOpen(true)} className="rounded-full shrink-0 text-white hover:bg-white/20">
-                <ChevronLeft className="h-6 w-6" />
-              </Button>
-              <div className="text-center min-w-0 flex-1 px-4">
-                <h1 className="text-white font-black font-headline text-sm md:text-lg uppercase leading-none truncate">{selectedSubject}</h1>
+            <header className="px-3 sm:px-4 py-2.5 sm:py-3 relative z-10 w-full drop-shadow-md flex items-center justify-between">
+              {/* Left Leave Button */}
+              <div className="flex items-center shrink-0 z-20">
+                <Button variant="ghost" size="icon" onClick={() => setLeaveConfirmDialogOpen(true)} className="rounded-full h-8 w-8 text-white hover:bg-white/20">
+                  <ChevronLeft className="h-6 w-6" />
+                </Button>
+              </div>
+
+              {/* Absolute Centered Subject & Topic Titles (Locked in place, never shifts when controls expand) */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 text-center pointer-events-none z-10 max-w-[calc(100%-160px)] sm:max-w-[calc(100%-220px)] md:max-w-md px-2">
+                <h1 className="text-white font-black font-headline text-xs sm:text-sm md:text-lg uppercase leading-none truncate">{selectedSubject}</h1>
                 <p 
-                  className="text-[8px] md:text-[10px] font-bold text-white/80 uppercase tracking-widest mt-1 truncate max-w-[240px] xs:max-w-[300px] sm:max-w-md mx-auto"
+                  className="text-[7.5px] sm:text-[8.5px] md:text-[10px] font-bold text-white/80 uppercase tracking-widest mt-0.5 sm:mt-1 truncate mx-auto"
                   title={questions[activeQuizIndex]?.topic?.trim() || (quizMode === 'learning' ? 'Intel Gathering' : 'Battle Simulation')}
                 >
                   {questions[activeQuizIndex]?.topic?.trim() || (quizMode === 'learning' ? 'Intel Gathering' : 'Battle Simulation')}
                 </p>
               </div>
-              <div className="flex shrink-0 justify-end items-center gap-2" >
+
+              {/* Right Controls */}
+              <div className="flex shrink-0 justify-end items-center gap-1.5 sm:gap-2 z-20" >
                 {introPhase === 'cutscene' && (
                   <Button
                     variant="destructive"
@@ -6343,28 +6350,54 @@ export default function LearningQuest() {
                     Skip Cutscene
                   </Button>
                 )}
-                {/* Instant BGM Mute/Unmute Button during battle (strictly controls battle simulation music) */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  suppressHydrationWarning
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleBattleMusicMute();
-                  }}
+                {/* BGM Volume Hover-Expand Slider Pill */}
+                <div
                   className={cn(
-                    "rounded-full h-8 w-8 cursor-pointer pointer-events-auto transition-colors flex items-center justify-center",
-                    !battleMusicMuted
-                      ? "text-white/90 hover:text-white hover:bg-white/20"
-                      : "text-red-400 hover:text-red-300 hover:bg-red-500/20 bg-red-950/40 border border-red-500/40"
+                    "group/vol flex items-center h-8 rounded-full border backdrop-blur-md transition-all duration-300 pointer-events-auto p-0 select-none overflow-hidden",
+                    "w-8 hover:w-36 sm:hover:w-40 hover:pr-2",
+                    !battleMusicMuted && bgmVolume[0] > 0
+                      ? "bg-transparent border-transparent hover:bg-black/60 hover:border-white/30 text-white"
+                      : "bg-red-950/60 border-red-500/50 text-red-400 hover:bg-red-900/60 hover:border-red-400"
                   )}
-                  title={battleMusicMuted ? "Unmute Battle Music" : "Mute Battle Music"}
-                  aria-label={battleMusicMuted ? "Unmute Battle Music" : "Mute Battle Music"}
+                  title="Hover to adjust volume, click to mute/unmute"
                 >
-                  {battleMusicMuted ? <VolumeX className="h-4 w-4 text-red-400" /> : <Volume2 className="h-4 w-4" />}
-                </Button>
+                  <button
+                    type="button"
+                    suppressHydrationWarning
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleBattleMusicMute();
+                    }}
+                    className="h-8 w-8 rounded-full flex items-center justify-center text-white/90 hover:text-white transition-colors cursor-pointer shrink-0"
+                    aria-label={battleMusicMuted ? "Unmute Battle Music" : "Mute Battle Music"}
+                  >
+                    {battleMusicMuted || bgmVolume[0] === 0 ? (
+                      <VolumeX className="h-4 w-4 text-red-400" />
+                    ) : (
+                      <Volume2 className="h-4 w-4 text-white" />
+                    )}
+                  </button>
+                  <div className="flex-1 min-w-0 opacity-0 group-hover/vol:opacity-100 transition-opacity duration-200 flex items-center gap-1.5 pl-0.5">
+                    <Slider
+                      value={battleMusicMuted ? [0] : bgmVolume}
+                      onValueChange={(val) => {
+                        if (battleMusicMuted) {
+                          setBattleMusicMutedState(false);
+                          setBattleMusicMuted(false);
+                        }
+                        setBgmVolume(val);
+                        setAudioBgmVolume(val[0]);
+                      }}
+                      max={100}
+                      step={5}
+                      className="w-16 sm:w-20 py-1 cursor-pointer [&_[role=slider]]:!h-3 [&_[role=slider]]:!w-3 [&_[role=slider]]:!border [&_[role=slider]]:!border-white/80 [&_[role=slider]]:!bg-white [&_[role=slider]]:shadow-sm [&_[role=slider]]:focus-visible:ring-1 [&_[role=slider]]:focus-visible:ring-white/80"
+                    />
+                    <span className="text-[9px] font-mono font-bold text-white/90 shrink-0 w-6 text-right">
+                      {battleMusicMuted ? "0%" : bgmVolume[0] + "%"}
+                    </span>
+                  </div>
+                </div>
                 {quizMode === 'boss-battle' && (
                   <Button
                     variant="ghost"
@@ -7396,28 +7429,54 @@ export default function LearningQuest() {
 
       <header id="tour-quest-header" className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-2 sm:pb-3 space-y-1 relative z-10 shrink-0">
         <div className="absolute top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-8 z-50 pointer-events-auto flex items-center gap-2">
-          {/* Instant Map Selection BGM Mute/Unmute Button (strictly controls map_selection.mp3) */}
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            suppressHydrationWarning
+          {/* Map Selection BGM Volume Hover-Expand Slider Pill */}
+          <div
             className={cn(
-              "border-white/30 backdrop-blur-md transition-all shadow-xl cursor-pointer pointer-events-auto h-9 w-9 sm:h-10 sm:w-10 rounded-xl",
-              !mapMusicMuted
-                ? "bg-black/50 text-white hover:bg-black/70 hover:border-white/50"
+              "group/vol flex items-center h-9 sm:h-10 rounded-xl border backdrop-blur-md transition-all duration-300 shadow-xl pointer-events-auto p-0 select-none overflow-hidden",
+              "w-9 sm:w-10 hover:w-40 sm:hover:w-44 hover:pr-2.5",
+              !mapMusicMuted && bgmVolume[0] > 0
+                ? "bg-transparent border-white/30 hover:bg-black/60 hover:border-white/50 text-white"
                 : "bg-red-950/60 border-red-500/50 text-red-400 hover:bg-red-900/60 hover:border-red-400"
             )}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleMapMusicMute();
-            }}
-            title={mapMusicMuted ? "Unmute Map Music" : "Mute Map Music"}
-            aria-label={mapMusicMuted ? "Unmute Map Music" : "Mute Map Music"}
+            title="Hover to adjust volume, click to mute/unmute"
           >
-            {mapMusicMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
-          </Button>
+            <button
+              type="button"
+              suppressHydrationWarning
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMapMusicMute();
+              }}
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center text-white/90 hover:text-white transition-colors cursor-pointer shrink-0"
+              aria-label={mapMusicMuted ? "Unmute Map Music" : "Mute Map Music"}
+            >
+              {mapMusicMuted || bgmVolume[0] === 0 ? (
+                <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
+              ) : (
+                <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              )}
+            </button>
+            <div className="flex-1 min-w-0 opacity-0 group-hover/vol:opacity-100 transition-opacity duration-200 flex items-center gap-1.5 pl-0.5">
+              <Slider
+                value={mapMusicMuted ? [0] : bgmVolume}
+                onValueChange={(val) => {
+                  if (mapMusicMuted) {
+                    setMapMusicMutedState(false);
+                    setMapMusicMuted(false);
+                  }
+                  setBgmVolume(val);
+                  setAudioBgmVolume(val[0]);
+                }}
+                max={100}
+                step={5}
+                className="w-16 sm:w-20 py-1 cursor-pointer [&_[role=slider]]:!h-3 [&_[role=slider]]:!w-3 [&_[role=slider]]:!border [&_[role=slider]]:!border-white/80 [&_[role=slider]]:!bg-white [&_[role=slider]]:shadow-sm [&_[role=slider]]:focus-visible:ring-1 [&_[role=slider]]:focus-visible:ring-white/80"
+              />
+              <span className="text-[10px] font-mono font-bold text-white/90 shrink-0 w-6 text-right">
+                {mapMusicMuted ? "0%" : bgmVolume[0] + "%"}
+              </span>
+            </div>
+          </div>
           <Button
             type="button"
             variant="outline"

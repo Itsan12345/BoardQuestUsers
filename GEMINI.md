@@ -429,3 +429,12 @@
   - **50/50 Random Attack Variety**: On any correct answer in Boss-Battle Mode, Learning Mode, and Test Mode, the player triggers either Normal Attack or Heavy Attack with equal 50% probability (`Math.random() < 0.5`), keeping battle feedback dynamic and satisfying across all modes.
   - **STRICT PROHIBITION**: Under NO circumstances should any agent alter, modify, revert, override, cross-contaminate, or degrade the Female or Male Avatar sprite animations (`maleCharacter_idleAnimation.png`, `maleCharacter_normalAttackAnimation.png`, `maleCharacter_heavyAttackGlintAnimation-1.png`, `maleCharacter_heavyAttackBlastAnimation-2.png`), detonation timing, or sound effects (`MaleNormalAttack.mp3`, `MaleHeavyAttack.mp3`) in any game mode or viewport without explicit user instruction.
 
+---
+
+## 5. Code Editing & Tooling Invariant: Mandatory Interactive Accept / Reject Workflow
+
+> **CRITICAL WORKFLOW INVARIANT**:
+> - **Always use standard editor tools (`edit_file` / `write_file`)**: Every code modification must strictly be made using the standard editor tools (`edit_file` or `write_file` for new files) so that the Antigravity IDE surfaces the inline interactive diff with the **Accept / Reject** prompt in the chat/editor before changes are finalized.
+> - **Never bypass the diff interface via shell scripts**: Agents must NEVER modify or overwrite project source code via background terminal/CLI scripts (such as `node -e`, `powershell`, bash, python, or sed) to silently mutate files. The user must always have visual inspection and explicit Accept/Reject control over all file modifications.
+
+

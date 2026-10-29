@@ -524,7 +524,7 @@ function PerformanceContent() {
                 <Target className="w-8 h-8 text-muted-foreground/30 mx-auto" />
                 <p className="text-xs font-medium text-muted-foreground leading-relaxed" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   No active objective scheduled.{' '}
-                  <Link href="/study" className="text-primary font-semibold hover:underline">
+                  <Link href="/study?tab=timeline" className="text-primary font-semibold hover:underline">
                     Visit Study Subjects
                   </Link>{' '}
                   to deploy target milestones.
