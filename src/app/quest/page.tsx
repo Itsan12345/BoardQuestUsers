@@ -2043,19 +2043,19 @@ export default function LearningQuest() {
   });
   // Newly created accounts start with NO item equipped (clean slate RPG onboarding)
   const [equippedItem, setEquippedItem] = useState<string | null>(null);
-  const [shieldUsedThisBattle, setShieldUsedThisBattle] = useState(false);
+  const [playerShield, setPlayerShield] = useState<number>(0);
 
   const getPlayerMaxHp = useCallback(() => {
     if (quizMode !== 'boss-battle') return 100;
-    const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (shieldUsedThisBattle || (inventory.erlenmeyer_shield || 0) > 0);
-    return calculatePlayerMaxHp(userLevel, hasShieldEffect);
-  }, [quizMode, equippedItem, inventory.erlenmeyer_shield, userLevel, shieldUsedThisBattle]);
+    const base = calculatePlayerMaxHp(userLevel, false);
+    return base + playerShield;
+  }, [quizMode, userLevel, playerShield]);
 
-  // Ensure playerHealth never exceeds max HP when unequipping items or changing stats
+  // Ensure playerHealth never exceeds base max HP
   useEffect(() => {
-    const currentMax = getPlayerMaxHp();
-    setPlayerHealth(prev => Math.min(prev, currentMax));
-  }, [getPlayerMaxHp]);
+    const baseMax = quizMode === 'boss-battle' ? calculatePlayerMaxHp(userLevel, false) : 100;
+    setPlayerHealth(prev => Math.min(prev, baseMax));
+  }, [quizMode, userLevel]);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [selectedItemSlot, setSelectedItemSlot] = useState<string>('erlenmeyer_shield');
   const [salineUsedThisBattle, setSalineUsedThisBattle] = useState(false);
@@ -2066,7 +2066,7 @@ export default function LearningQuest() {
   const [heparinUsedThisBattle, setHeparinUsedThisBattle] = useState(false);
 
   const resetBattleConsumableStates = useCallback(() => {
-    setShieldUsedThisBattle(false);
+    setPlayerShield(0);
     setSalineUsedThisBattle(false);
     setClarityUsedThisBattle(false);
     setImmersionOilUsedThisBattle(false);
@@ -2304,8 +2304,8 @@ export default function LearningQuest() {
       icon: '🛡️',
       imageUrl: '/images/bossbattleItems/ErlenmayerShield.png',
       color: 'border-blue-500/60 bg-blue-950/50 text-blue-300',
-      effect: '+20 extra HP in boss battles',
-      desc: 'Gives +20 extra HP in boss battles.',
+      effect: '+20 blue shield HP in boss battles',
+      desc: 'Grants +20 blue shield HP in boss battles.',
       cost: getScaledCost(50, userLevel),
       baseCost: 50,
       requiredLevel: 1,
@@ -2742,8 +2742,7 @@ export default function LearningQuest() {
                         variant="destructive"
                         onClick={() => {
                           setEquippedItem(null);
-                          const newMax = calculatePlayerMaxHp(userLevel, false);
-                          setPlayerHealth(prev => Math.min(prev, newMax));
+                          setPlayerShield(0);
                         }}
                         className="bg-red-600 hover:bg-red-700 text-white font-bytebounce text-[10.5px] sm:text-xs md:text-sm lg:text-base font-bold uppercase tracking-wider h-6 sm:h-7.5 md:h-8.5 px-2 sm:px-3 md:px-4 border border-red-400 shadow-md whitespace-nowrap active:scale-95 leading-none rounded cursor-pointer"
                       >
@@ -2753,7 +2752,12 @@ export default function LearningQuest() {
                       <Button
                         size="sm"
                         disabled={(inventory[activeSelectedItem.id] || 0) <= 0}
-                        onClick={() => setEquippedItem(activeSelectedItem.id)}
+                        onClick={() => {
+                          setEquippedItem(activeSelectedItem.id);
+                          if (activeSelectedItem.id === 'erlenmeyer_shield' && quizMode === 'boss-battle') {
+                            setPlayerShield(20);
+                          }
+                        }}
                         className="bg-emerald-500 hover:bg-emerald-600 text-black font-bytebounce text-[10.5px] sm:text-xs md:text-sm lg:text-base font-bold uppercase tracking-wider h-6 sm:h-7.5 md:h-8.5 px-2 sm:px-3 md:px-4 border border-emerald-300 disabled:opacity-30 shadow-md whitespace-nowrap active:scale-95 leading-none rounded cursor-pointer"
                       >
                         Equip
@@ -3710,15 +3714,15 @@ export default function LearningQuest() {
 
       resetBattleConsumableStates();
       const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (inventory.erlenmeyer_shield || 0) > 0;
-      const startingHp = quizMode === 'boss-battle' ? calculatePlayerMaxHp(currentLevelForBattle, hasShieldEffect) : 100;
+      const baseStartingHp = quizMode === 'boss-battle' ? calculatePlayerMaxHp(currentLevelForBattle, false) : 100;
 
       // Erlenmeyer Shield Consumable Effect
       if (quizMode === 'boss-battle' && hasShieldEffect) {
-        setShieldUsedThisBattle(true);
-        addFloatingText('player', '+20 SHIELD HP! 🧪🛡️', 'text-blue-400 font-black');
+        setPlayerShield(20);
+        addFloatingText('player', '+20 BLUE SHIELD! 🧪🛡️', 'text-cyan-400 font-black');
         setInventory(prev => ({ ...prev, erlenmeyer_shield: Math.max(0, (prev.erlenmeyer_shield || 0) - 1) }));
       } else {
-        setShieldUsedThisBattle(false);
+        setPlayerShield(0);
       }
 
       // Immersion Oil Consumable Effect
@@ -3735,7 +3739,7 @@ export default function LearningQuest() {
         setImmersionOilUsedThisBattle(false);
       }
 
-      setPlayerHealth(startingHp);
+      setPlayerHealth(baseStartingHp);
 
       let bossStartingHp = 100;
       if (quizMode === 'boss-battle') {
@@ -4579,7 +4583,23 @@ export default function LearningQuest() {
     if (playerDmg > 0) {
       const applyPlayerDamage = () => {
         triggerHitAnimation('player');
-        let nextHp = Math.max(0, playerHealth - playerDmg);
+        const roundedDmg = Math.ceil(playerDmg);
+        let absorbed = 0;
+        let penetratingDmg = roundedDmg;
+
+        if (playerShield > 0) {
+          absorbed = Math.min(playerShield, roundedDmg);
+          const nextShield = Math.max(0, playerShield - absorbed);
+          setPlayerShield(nextShield);
+          penetratingDmg = roundedDmg - absorbed;
+          if (nextShield === 0) {
+            addFloatingText('player', `🛡️ -${absorbed} (BROKEN!)`, 'text-cyan-400 font-black');
+          } else {
+            addFloatingText('player', `🛡️ -${absorbed} SHIELD`, 'text-cyan-400 font-black');
+          }
+        }
+
+        let nextHp = Math.max(0, playerHealth - penetratingDmg);
 
         // Heparin Tube Consumable Effect (Survive 1st fatal blow with 1 HP - Clot Prevention)
         if (quizMode === 'boss-battle' && nextHp <= 0 && equippedItem === 'heparin_tube' && !heparinUsedThisBattle && (inventory.heparin_tube || 0) > 0) {
@@ -4596,10 +4616,18 @@ export default function LearningQuest() {
 
         setPlayerHealth(nextHp);
 
-        addFloatingText('player', `-${Math.ceil(playerDmg)} DMG!`, 'text-red-500');
+        if (penetratingDmg > 0) {
+          const delay = absorbed > 0 ? 250 : 0;
+          setTimeout(() => {
+            addFloatingText('player', `-${penetratingDmg} DMG!`, 'text-red-500 font-black');
+          }, delay);
+        }
         if (didInflictPoison) {
-          playDebuffSound();
-          addFloatingText('player', '☠️ POISONED!', 'text-purple-400 font-black');
+          const poisonDelay = (absorbed > 0 ? 250 : 0) + (penetratingDmg > 0 ? 250 : 0);
+          setTimeout(() => {
+            playDebuffSound();
+            addFloatingText('player', '☠️ POISONED!', 'text-purple-400 font-black');
+          }, poisonDelay);
         }
         const flashEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_hit_flash') !== 'false' : true;
         if (flashEnabled) {
@@ -5035,12 +5063,12 @@ export default function LearningQuest() {
     if (playerHeal > 0) {
       // Dynamically remove any damage floating texts on player so only the clean HEALED text appears
       setFloatingTexts(prev => prev.filter(ft => !(ft.target === 'player' && ft.text.includes('DMG!'))));
-      const currentMaxHp = getPlayerMaxHp();
-      const actualHeal = Math.min(playerHeal, Math.max(0, currentMaxHp - playerHealth));
+      const baseMaxHp = quizMode === 'boss-battle' ? calculatePlayerMaxHp(userLevel, false) : 100;
+      const actualHeal = Math.min(playerHeal, Math.max(0, baseMaxHp - playerHealth));
       if (actualHeal > 0) {
         triggerHitAnimation("player");
         playSfx('heal');
-        setPlayerHealth(prev => Math.min(currentMaxHp, prev + actualHeal));
+        setPlayerHealth(prev => Math.min(baseMaxHp, prev + actualHeal));
         addFloatingText('player', `+${Math.ceil(actualHeal)} HEALED!`, 'text-emerald-400 font-black');
       }
     }
@@ -6949,15 +6977,16 @@ export default function LearningQuest() {
                       <div className="h-full bg-primary transition-all duration-500 rounded-[2px] md:rounded-full" style={{ width: `${Math.min(100, (displayEnemyHp / stageMaxHp) * 100)}%` }} />
                     </div>
 
-                    {/* Enemy Floating Text - Anchored below HP Card directly over enemy, right-aligned to prevent any screen overflow */}
-                    {floatingTexts.filter(ft => ft.target === 'enemy').map(ft => (
+                    {/* Enemy Floating Text - Anchored below HP Card directly over enemy, vertically stacked so multiple messages never collide */}
+                    {floatingTexts.filter(ft => ft.target === 'enemy').map((ft, idx) => (
                       <div
                         key={ft.id}
-                        className="absolute top-full mt-2 sm:mt-3 md:mt-4 right-0 pointer-events-none z-50 whitespace-nowrap text-right"
+                        className="absolute right-0 pointer-events-none z-50 whitespace-nowrap text-right"
+                        style={{ top: `calc(100% + 8px + ${idx * 28}px)` }}
                       >
                         <div
                           className={cn(
-                            "font-bytebounce text-3xl md:text-5xl animate-float-up",
+                            "font-bytebounce text-2xl sm:text-3xl md:text-4xl animate-float-up",
                             ft.color
                           )}
                           style={{
@@ -7507,9 +7536,19 @@ export default function LearningQuest() {
                   hitEffectKey={hitEffectKey}
                 />
 
-                {/* Player Floating Text - Directly on top of player sprite head */}
-                {floatingTexts.filter(ft => ft.target === 'player').map(ft => (
-                  <div key={ft.id} className={cn("absolute top-6 sm:top-10 md:top-14 left-1/2 -translate-x-1/2 font-bytebounce text-3xl md:text-5xl animate-float-up pointer-events-none z-50 whitespace-nowrap", ft.color)} style={{ textShadow: '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000' }}>
+                {/* Player Floating Text - Stacked with clean vertical offsets so multiple messages never collide */}
+                {floatingTexts.filter(ft => ft.target === 'player').map((ft, idx) => (
+                  <div
+                    key={ft.id}
+                    className={cn(
+                      "absolute left-1/2 -translate-x-1/2 font-bytebounce text-2xl sm:text-3xl md:text-4xl animate-float-up pointer-events-none z-50 whitespace-nowrap",
+                      ft.color
+                    )}
+                    style={{
+                      top: `calc(${idx * 28}px + 0.5rem)`,
+                      textShadow: '2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000'
+                    }}
+                  >
                     {ft.text}
                   </div>
                 ))}
@@ -7517,7 +7556,12 @@ export default function LearningQuest() {
 
               {/* Player Health & Stats Card */}
               {(() => {
-                const maxPlayerHp = getPlayerMaxHp();
+                const basePlayerMaxHp = calculatePlayerMaxHp(userLevel, false);
+                const currentShieldHp = Math.max(0, Math.round(playerShield));
+                const totalMaxHp = basePlayerMaxHp + currentShieldHp;
+                const currentTotalHp = Math.min(totalMaxHp, Math.ceil(playerHealth) + currentShieldHp);
+                const baseHpPercent = totalMaxHp > 0 ? (Math.min(playerHealth, basePlayerMaxHp) / totalMaxHp) * 100 : 0;
+                const shieldHpPercent = totalMaxHp > 0 ? (currentShieldHp / totalMaxHp) * 100 : 0;
 
                 return (
                   <div className="order-1 md:order-2 bg-black/60 backdrop-blur-md border border-white/15 p-1.5 sm:p-2 md:p-3 rounded-[4px] md:rounded-lg shadow-2xl w-[136px] sm:w-[155px] md:min-w-[170px] md:w-auto relative mb-0 md:mb-3 ml-2 md:ml-1 z-20">
@@ -7561,11 +7605,35 @@ export default function LearningQuest() {
                       </div>
                     </div>
                     <div className="flex justify-between items-center mb-0.5 px-0.5 mt-0.5">
-                      <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase">HP</span>
-                      <span className="text-[7.5px] sm:text-[8.5px] md:text-[9.5px] font-black text-white">{Math.ceil(Math.min(playerHealth, maxPlayerHp))} / {maxPlayerHp}</span>
+                      <span className="text-[6px] md:text-[8px] font-bold text-white/70 tracking-widest uppercase flex items-center gap-1">
+                        HP
+                        {currentShieldHp > 0 && (
+                          <span className="text-[6.5px] md:text-[8px] text-cyan-300 font-black flex items-center gap-0.5" title={`Active Shield: ${currentShieldHp} HP`}>
+                            🛡️+{currentShieldHp}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[7.5px] sm:text-[8.5px] md:text-[9.5px] font-black text-white">
+                        {currentTotalHp} / {totalMaxHp}
+                      </span>
                     </div>
-                    <div className="h-1.5 md:h-2 w-full bg-background/10 rounded-[2px] md:rounded-full overflow-hidden border border-white/10">
-                      <div className="h-full bg-emerald-500 transition-all duration-500 rounded-[2px] md:rounded-full" style={{ width: `${Math.min(100, (Math.min(playerHealth, maxPlayerHp) / maxPlayerHp) * 100)}%` }} />
+                    <div className="h-1.5 md:h-2 w-full bg-background/20 rounded-[2px] md:rounded-full overflow-hidden border border-white/10 flex">
+                      {/* Green Base HP Segment */}
+                      <div
+                        className={cn(
+                          "h-full bg-emerald-500 transition-all duration-500",
+                          shieldHpPercent > 0 ? "rounded-l-[2px] md:rounded-l-full" : "rounded-[2px] md:rounded-full"
+                        )}
+                        style={{ width: `${Math.min(100, baseHpPercent)}%` }}
+                      />
+                      {/* Glowing Blue Shield HP Segment */}
+                      {shieldHpPercent > 0 && (
+                        <div
+                          className="h-full bg-gradient-to-r from-cyan-400 to-sky-400 border-l border-white/40 shadow-[0_0_8px_rgba(34,211,238,0.85)] transition-all duration-500 rounded-r-[2px] md:rounded-r-full"
+                          style={{ width: `${Math.min(100, shieldHpPercent)}%` }}
+                          title={`Erlenmeyer Shield: ${currentShieldHp} HP`}
+                        />
+                      )}
                     </div>
                   </div>
                 );

@@ -103,7 +103,7 @@ export function calculatePlayerStats(level: number, streak: number = 0, equipped
 
   if (hasShield) {
     equippedItemName = 'Erlenmeyer Shield';
-    equippedItemBuff = 'Gives +20 extra HP in boss battles';
+    equippedItemBuff = 'Grants +20 blue shield HP in boss battles';
     equippedItemIcon = '🛡️';
     equippedItemImageUrl = '/images/bossbattleItems/ErlenmayerShield.png';
   } else if (hasClarity) {
