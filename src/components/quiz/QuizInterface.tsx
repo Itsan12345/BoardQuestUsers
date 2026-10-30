@@ -8,6 +8,55 @@ import { Input } from '@/components/ui/input';
 import { CheckCircle2, XCircle, Loader2, Sparkles, BrainCircuit, Shield, Flame, Swords, ArrowRight, CornerDownLeft, ZoomIn, Maximize2, X, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const QUESTION_STOPWORDS = new Set([
+  'which', 'following', 'patient', 'presents', 'specimen', 'laboratory', 'clinical',
+  'method', 'result', 'results', 'normal', 'value', 'values', 'common', 'commonly',
+  'associated', 'condition', 'conditions', 'characterized', 'performed', 'detected',
+  'observed', 'finding', 'findings', 'testing', 'sample', 'samples', 'blood', 'serum',
+  'urine', 'plasma', 'determine', 'determined', 'measure', 'measured', 'indicate',
+  'indicates', 'except', 'correct', 'statement', 'statements', 'false', 'most', 'least',
+  'likely', 'cause', 'caused', 'causes', 'feature', 'features', 'primary', 'secondary',
+  'called', 'known', 'defined', 'between', 'during', 'within', 'without', 'through',
+  'before', 'after', 'should', 'would', 'could', 'because', 'although', 'however',
+  'therefore', 'where', 'there', 'their', 'these', 'those', 'about', 'above', 'below',
+  'under', 'while', 'using', 'based', 'level', 'levels', 'presence', 'absence', 'found',
+  'seen', 'shows', 'shown', 'given', 'select', 'identify', 'choose', 'answer', 'question'
+]);
+
+function extractClinicalBuzzword(questionText: string, explanationText?: string): string | null {
+  if (!questionText) return null;
+  const rawTokens = questionText.match(/[A-Za-z][A-Za-z0-9'-]{4,}/g);
+  if (!rawTokens || rawTokens.length === 0) return null;
+
+  const expLower = (explanationText || '').toLowerCase();
+  let bestWord: string | null = null;
+  let bestScore = -1;
+
+  for (const token of rawTokens) {
+    const clean = token.replace(/^['-]+|['-]+$/g, '');
+    const lower = clean.toLowerCase();
+    if (clean.length < 5 || QUESTION_STOPWORDS.has(lower)) continue;
+
+    let score = clean.length;
+    if (expLower && expLower.includes(lower)) {
+      score += 15;
+    }
+    if (/(emia|uria|osis|itis|pathy|cyte|blast|phil|philic|lysis|lytic|genic|gram|scope|scopy|metry|meter|ase|inogen|globulin|bacter|coccus|bacillus|ella|idia|plasma|virus|oma)$/i.test(clean)) {
+      score += 12;
+    }
+    if (/[A-Z]/.test(clean.slice(1)) || clean.includes('-')) {
+      score += 6;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestWord = clean;
+    }
+  }
+
+  return bestWord;
+}
+
 export type Question = {
   id?: string;
   question: string;
@@ -34,12 +83,16 @@ interface QuizInterfaceProps {
   playerPoisoned?: boolean;
   streak?: number;
   equippedItem?: string | null;
+  equippedItemCount?: number;
   clarityUsedThisBattle?: boolean;
   onUseClarity?: () => void;
+  bapUsedThisBattle?: boolean;
+  onUseBap?: () => void;
+  immersionOilActive?: boolean;
   onQuestionChange?: (index: number) => void;
 }
 
-export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, isFinalBoss, bossShieldActive, playerPoisoned, streak, equippedItem, clarityUsedThisBattle, onUseClarity, onQuestionChange }: QuizInterfaceProps) {
+export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, isFinalBoss, bossShieldActive, playerPoisoned, streak, equippedItem, equippedItemCount = 1, clarityUsedThisBattle, onUseClarity, bapUsedThisBattle, onUseBap, immersionOilActive, onQuestionChange }: QuizInterfaceProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -77,13 +130,41 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
   }, [zoomedImage]);
 
   const handleUsePipetteOfClarity = () => {
-    if (clarityUsedThisBattle || !onUseClarity || !currentQuestion?.options) return;
+    if (clarityUsedThisBattle || !onUseClarity || !currentQuestion?.options || equippedItemCount <= 0) return;
     if (currentQuestion.type === 'TRUE_FALSE' || currentQuestion.type === 'SHORT_ANSWER' || currentQuestion.options.length <= 2) return;
     const wrongOptions = optionLetters.filter(letter => letter !== currentQuestion.correctAnswer && !eliminatedOptionLetters.includes(letter));
     if (wrongOptions.length === 0) return;
     const randomWrong = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
     setEliminatedOptionLetters(prev => [...prev, randomWrong]);
     onUseClarity();
+  };
+
+  const handleUseBloodAgarPlate = () => {
+    if (bapUsedThisBattle || !onUseBap || isAnswered || isTransitioning || questions.length <= 1 || equippedItemCount <= 0) return;
+    const currentQIdx = turnMap[currentIndex] ?? currentIndex;
+    const targetDiff = activeMove === 'heavy' ? 'HARD' : activeMove === 'normal' ? 'MEDIUM' : 'EASY';
+    const newTurnMap = [...turnMap];
+
+    let candidatePos = newTurnMap.findIndex(
+      (qIdx, mapIdx) => mapIdx > currentIndex && qIdx !== currentQIdx && String(questions[qIdx]?.difficulty).toUpperCase() === targetDiff
+    );
+    if (candidatePos === -1) {
+      candidatePos = newTurnMap.findIndex((qIdx, mapIdx) => mapIdx > currentIndex && qIdx !== currentQIdx);
+    }
+    if (candidatePos === -1) {
+      candidatePos = newTurnMap.findIndex((qIdx, mapIdx) => mapIdx !== currentIndex && qIdx !== currentQIdx);
+    }
+
+    if (candidatePos !== -1) {
+      const temp = newTurnMap[currentIndex];
+      newTurnMap[currentIndex] = newTurnMap[candidatePos];
+      newTurnMap[candidatePos] = temp;
+      setTurnMap(newTurnMap);
+      setEliminatedOptionLetters([]);
+      setSelectedAnswer(null);
+      setZoomedImage(null);
+      onUseBap();
+    }
   };
 
   useEffect(() => {
@@ -331,24 +412,45 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
           </div>
         </div>
 
-        {mode === 'boss-battle' && equippedItem === 'pipette_clarity' && !clarityUsedThisBattle && !isAnswered && currentQuestion?.type !== 'TRUE_FALSE' && currentQuestion?.type !== 'SHORT_ANSWER' && (currentQuestion?.options?.length || 0) > 2 && (
-          <Button
-            size="sm"
-            onClick={handleUsePipetteOfClarity}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-[9px] md:text-[10px] uppercase tracking-wider h-8 px-3 rounded-full shadow-lg shadow-purple-500/30 animate-pulse flex items-center gap-1.5 shrink-0 border border-purple-300"
-          >
-            <Image
-              src="/images/bossbattleItems/PippeteofClarity.png"
-              alt="Pipette of Clarity"
-              width={18}
-              height={18}
-              className="w-4 h-4 object-contain filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
-              style={{ imageRendering: 'pixelated' }}
-              unoptimized
-            />
-            Pipette Hint (50:50)
-          </Button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {mode === 'boss-battle' && Boolean(activeMove) && equippedItem === 'pipette_clarity' && !clarityUsedThisBattle && equippedItemCount > 0 && !isAnswered && currentQuestion?.type !== 'TRUE_FALSE' && currentQuestion?.type !== 'SHORT_ANSWER' && (currentQuestion?.options?.length || 0) > 2 && (
+            <Button
+              size="sm"
+              onClick={handleUsePipetteOfClarity}
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-[9px] md:text-[10px] uppercase tracking-wider h-8 px-3 rounded-full shadow-lg shadow-purple-500/30 animate-pulse flex items-center gap-1.5 shrink-0 border border-purple-300"
+            >
+              <Image
+                src="/images/bossbattleItems/PippeteofClarity.png"
+                alt="Pipette of Clarity"
+                width={18}
+                height={18}
+                className="w-4 h-4 object-contain filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                style={{ imageRendering: 'pixelated' }}
+                unoptimized
+              />
+              Pipette Hint (50:50)
+            </Button>
+          )}
+
+          {mode === 'boss-battle' && Boolean(activeMove) && equippedItem === 'blood_agar_plate' && !bapUsedThisBattle && equippedItemCount > 0 && !isAnswered && questions.length > 1 && (
+            <Button
+              size="sm"
+              onClick={handleUseBloodAgarPlate}
+              className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-black text-[9px] md:text-[10px] uppercase tracking-wider h-8 px-3 rounded-full shadow-lg shadow-rose-500/30 animate-pulse flex items-center gap-1.5 shrink-0 border border-rose-300"
+            >
+              <Image
+                src="/images/bossbattleItems/BloodAgarPlate.svg"
+                alt="Blood Agar Plate"
+                width={18}
+                height={18}
+                className="w-4 h-4 object-contain filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                style={{ imageRendering: 'pixelated' }}
+                unoptimized
+              />
+              Subculture Redraw (1/1)
+            </Button>
+          )}
+        </div>
       </div>
 
       {mode === 'boss-battle' && !activeMove ? (
@@ -532,9 +634,55 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       ) : (
         <>
           <div className="px-6 mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold leading-snug font-headline text-foreground">
-              {currentQuestion.question}
-            </h2>
+            {(() => {
+              const showImmersionOil = mode === 'boss-battle' && (immersionOilActive || (equippedItem === 'immersion_oil' && equippedItemCount > 0));
+              const buzzword = showImmersionOil ? extractClinicalBuzzword(currentQuestion.question, currentQuestion.explanation) : null;
+
+              if (!showImmersionOil || !buzzword) {
+                return (
+                  <h2 className="text-xl sm:text-2xl font-bold leading-snug font-headline text-foreground">
+                    {currentQuestion.question}
+                  </h2>
+                );
+              }
+
+              const idx = currentQuestion.question.toLowerCase().indexOf(buzzword.toLowerCase());
+              if (idx === -1) {
+                return (
+                  <h2 className="text-xl sm:text-2xl font-bold leading-snug font-headline text-foreground">
+                    {currentQuestion.question}
+                  </h2>
+                );
+              }
+
+              const before = currentQuestion.question.slice(0, idx);
+              const matched = currentQuestion.question.slice(idx, idx + buzzword.length);
+              const after = currentQuestion.question.slice(idx + buzzword.length);
+
+              return (
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px] font-black uppercase tracking-wider shadow-xs">
+                    <Image
+                      src="/images/bossbattleItems/ImmersionOil.svg"
+                      alt="Immersion Oil"
+                      width={14}
+                      height={14}
+                      className="w-3.5 h-3.5 object-contain"
+                      style={{ imageRendering: 'pixelated' }}
+                      unoptimized
+                    />
+                    <span>100x Immersion Focus: Clinical Clue Highlighted</span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold leading-snug font-headline text-foreground">
+                    {before}
+                    <span className="bg-amber-400/25 dark:bg-amber-400/20 text-amber-950 dark:text-amber-200 px-1.5 py-0.5 rounded-md border border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.25)] underline decoration-amber-500 decoration-2 underline-offset-4">
+                      {matched}
+                    </span>
+                    {after}
+                  </h2>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Question Specimen Image with Zoom/Lightbox feature */}

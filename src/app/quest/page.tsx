@@ -48,7 +48,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { QuizInterface, Question } from '@/components/quiz/QuizInterface';
 import { ChapterWorldMap } from '@/components/quiz/ChapterWorldMap';
-import { XP_PER_QUESTION, calculatePlayerStats } from '@/lib/game-logic';
+import { XP_PER_QUESTION, calculatePlayerStats, REAGENT_LEVEL_REQUIREMENTS } from '@/lib/game-logic';
 import { provideExamFeedback } from '@/ai/flows/provide-exam-feedback';
 import { getQuestQuestions } from '@/app/actions/arena';
 import { completeQuest, getNodeClearsAction, saveNodeClearAction, recordQuestionAttemptAction } from '@/app/actions/quest';
@@ -2034,16 +2034,22 @@ export default function LearningQuest() {
   }, [userXp]);
   const [inventory, setInventory] = useState<Record<string, number>>({
     erlenmeyer_shield: 2,
-    pipette_clarity: 2,
     buffered_saline: 2,
+    pipette_clarity: 0,
+    immersion_oil: 0,
+    spectrophotometer_prism: 0,
+    blood_agar_plate: 0,
+    heparin_tube: 0,
   });
-  const [equippedItem, setEquippedItem] = useState<string | null>('erlenmeyer_shield');
+  // Newly created accounts start with NO item equipped (clean slate RPG onboarding)
+  const [equippedItem, setEquippedItem] = useState<string | null>(null);
+  const [shieldUsedThisBattle, setShieldUsedThisBattle] = useState(false);
 
   const getPlayerMaxHp = useCallback(() => {
     if (quizMode !== 'boss-battle') return 100;
-    const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (inventory.erlenmeyer_shield || 0) > 0;
+    const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (shieldUsedThisBattle || (inventory.erlenmeyer_shield || 0) > 0);
     return calculatePlayerMaxHp(userLevel, hasShieldEffect);
-  }, [quizMode, equippedItem, inventory.erlenmeyer_shield, userLevel]);
+  }, [quizMode, equippedItem, inventory.erlenmeyer_shield, userLevel, shieldUsedThisBattle]);
 
   // Ensure playerHealth never exceeds max HP when unequipping items or changing stats
   useEffect(() => {
@@ -2054,27 +2060,86 @@ export default function LearningQuest() {
   const [selectedItemSlot, setSelectedItemSlot] = useState<string>('erlenmeyer_shield');
   const [salineUsedThisBattle, setSalineUsedThisBattle] = useState(false);
   const [clarityUsedThisBattle, setClarityUsedThisBattle] = useState(false);
+  const [immersionOilUsedThisBattle, setImmersionOilUsedThisBattle] = useState(false);
+  const [prismUsedThisBattle, setPrismUsedThisBattle] = useState(false);
+  const [bapUsedThisBattle, setBapUsedThisBattle] = useState(false);
+  const [heparinUsedThisBattle, setHeparinUsedThisBattle] = useState(false);
+
+  const resetBattleConsumableStates = useCallback(() => {
+    setShieldUsedThisBattle(false);
+    setSalineUsedThisBattle(false);
+    setClarityUsedThisBattle(false);
+    setImmersionOilUsedThisBattle(false);
+    setPrismUsedThisBattle(false);
+    setBapUsedThisBattle(false);
+    setHeparinUsedThisBattle(false);
+  }, []);
 
   const MAX_REAGENT_CAP = 5;
   const [isInventoryLoaded, setIsInventoryLoaded] = useState(false);
 
-  // Load Inventory, Equipped Item, and User XP from localStorage on mount
+  // Load Inventory, Equipped Item, and User XP from localStorage on mount with strict level validation
   useEffect(() => {
     try {
       const savedInv = localStorage.getItem('boardquest_reagent_inventory');
+      let loadedInventory: Record<string, number> = {
+        erlenmeyer_shield: 2,
+        buffered_saline: 2,
+        pipette_clarity: 0,
+        immersion_oil: 0,
+        spectrophotometer_prism: 0,
+        blood_agar_plate: 0,
+        heparin_tube: 0,
+      };
+
       if (savedInv) {
-        setInventory(JSON.parse(savedInv));
+        const parsed = JSON.parse(savedInv);
+        loadedInventory = {
+          ...loadedInventory,
+          ...parsed,
+        };
+        setInventory(loadedInventory);
       }
+
       const savedEquipped = localStorage.getItem('boardquest_equipped_reagent');
-      if (savedEquipped !== null) {
-        setEquippedItem(savedEquipped === 'none' ? null : savedEquipped);
+      if (savedEquipped && savedEquipped !== 'none') {
+        const req = REAGENT_LEVEL_REQUIREMENTS[savedEquipped];
+        const count = loadedInventory[savedEquipped] || 0;
+        // Strictly validate that user level meets requirement AND player actually has charges
+        if (req && userLevel >= req.requiredLevel && count > 0) {
+          setEquippedItem(savedEquipped);
+        } else {
+          setEquippedItem(null);
+          localStorage.setItem('boardquest_equipped_reagent', 'none');
+        }
+      } else {
+        setEquippedItem(null);
       }
     } catch (e) {
       console.error('Error loading inventory from localStorage:', e);
     } finally {
       setIsInventoryLoaded(true);
     }
-  }, []);
+  }, [userLevel]);
+
+  // Reactive Level & Stock Validator: Immediately auto-unequips any item if level is insufficient.
+  // Outside of battle (!isStarted || isFinished), also auto-unequips if charges reach 0.
+  useEffect(() => {
+    if (equippedItem) {
+      const req = REAGENT_LEVEL_REQUIREMENTS[equippedItem];
+      const count = inventory[equippedItem] || 0;
+      const isLevelLocked = !req || userLevel < req.requiredLevel;
+      const isDepletedOutsideBattle = (!isStarted || isFinished) && count <= 0;
+
+      if (isLevelLocked || isDepletedOutsideBattle) {
+        setEquippedItem(null);
+        try {
+          localStorage.setItem('boardquest_equipped_reagent', 'none');
+          saveUserInventory(inventory, null).catch(() => {});
+        } catch (e) {}
+      }
+    }
+  }, [userLevel, equippedItem, inventory, isStarted, isFinished]);
 
   // Preload Battle & Inventory Assets on Mount for Instant Rendering
   useEffect(() => {
@@ -2239,21 +2304,12 @@ export default function LearningQuest() {
       icon: '🛡️',
       imageUrl: '/images/bossbattleItems/ErlenmayerShield.png',
       color: 'border-blue-500/60 bg-blue-950/50 text-blue-300',
-      effect: '+20 Bonus Max & Starting HP in Boss Battles',
-      desc: 'Reinforced lab flask infused with protective saline.',
+      effect: '+20 extra HP in boss battles',
+      desc: 'Gives +20 extra HP in boss battles.',
       cost: getScaledCost(50, userLevel),
       baseCost: 50,
-    },
-    {
-      id: 'pipette_clarity',
-      name: 'Pipette of Clarity',
-      icon: '✨',
-      imageUrl: '/images/bossbattleItems/PippeteofClarity.png',
-      color: 'border-purple-500/60 bg-purple-950/50 text-purple-300',
-      effect: 'Eliminates 1 incorrect option (50:50 hint)',
-      desc: 'Precision micro-pipette that filters erroneous choices.',
-      cost: getScaledCost(75, userLevel),
-      baseCost: 75,
+      requiredLevel: 1,
+      requiredXp: 0,
     },
     {
       id: 'buffered_saline',
@@ -2261,10 +2317,77 @@ export default function LearningQuest() {
       icon: '💧',
       imageUrl: '/images/bossbattleItems/BufferedSaline.png',
       color: 'border-emerald-500/60 bg-emerald-950/50 text-emerald-300',
-      effect: 'Nullifies 1st poison or debuff from boss',
-      desc: 'Neutralizes toxic afflictions and corrosive acid.',
+      effect: 'Blocks 1 poison or debuff',
+      desc: 'Blocks the first poison or negative effect from the boss.',
       cost: getScaledCost(60, userLevel),
       baseCost: 60,
+      requiredLevel: 1,
+      requiredXp: 0,
+    },
+    {
+      id: 'pipette_clarity',
+      name: 'Pipette of Clarity',
+      icon: '✨',
+      imageUrl: '/images/bossbattleItems/PippeteofClarity.png',
+      color: 'border-purple-500/60 bg-purple-950/50 text-purple-300',
+      effect: 'Removes 1 wrong answer (50:50 hint)',
+      desc: 'Removes 1 wrong answer choice during a question (50:50 hint).',
+      cost: getScaledCost(75, userLevel),
+      baseCost: 75,
+      requiredLevel: 2,
+      requiredXp: 100,
+    },
+    {
+      id: 'immersion_oil',
+      name: 'Immersion Oil',
+      icon: '🔬',
+      imageUrl: '/images/bossbattleItems/ImmersionOil.svg',
+      color: 'border-amber-500/60 bg-amber-950/50 text-amber-300',
+      effect: 'Highlights key clue word',
+      desc: 'Highlights the key clue word in the question.',
+      cost: getScaledCost(85, userLevel),
+      baseCost: 85,
+      requiredLevel: 3,
+      requiredXp: 400,
+    },
+    {
+      id: 'spectrophotometer_prism',
+      name: 'Spectrophotometer Prism',
+      icon: '🌈',
+      imageUrl: '/images/bossbattleItems/SpectroPrism.svg',
+      color: 'border-cyan-500/60 bg-cyan-950/50 text-cyan-300',
+      effect: '+25% attack damage on 2+ streak',
+      desc: 'Deals +25% bonus attack damage on a 2+ streak.',
+      cost: getScaledCost(95, userLevel),
+      baseCost: 95,
+      requiredLevel: 4,
+      requiredXp: 900,
+    },
+    {
+      id: 'blood_agar_plate',
+      name: 'Blood Agar Plate',
+      icon: '🧫',
+      imageUrl: '/images/bossbattleItems/BloodAgarPlate.svg',
+      color: 'border-rose-500/60 bg-rose-950/50 text-rose-300',
+      effect: 'Swaps question for a new one',
+      desc: 'Swaps your current question for a new one (1 per battle).',
+      cost: getScaledCost(110, userLevel),
+      baseCost: 110,
+      requiredLevel: 5,
+      requiredXp: 1600,
+    },
+    {
+      id: 'heparin_tube',
+      name: 'Heparin Tube',
+      icon: '🧪',
+      imageUrl: '/images/bossbattleItems/HeparinTube.svg',
+      color: 'border-emerald-500/60 bg-emerald-950/50 text-emerald-300',
+      effect: 'Survives fatal hit with 1 HP',
+      desc: 'Survives a fatal hit from the boss with 1 HP remaining.',
+      cost: getScaledCost(125, userLevel),
+      baseCost: 125,
+      requiredLevel: 6,
+      requiredXp: 2500,
     },
   ];
 
@@ -2316,8 +2439,12 @@ export default function LearningQuest() {
       localStorage.setItem('boardquest_last_reagent_restock', now.toString());
       setInventory(prev => ({
         erlenmeyer_shield: Math.min(5, (prev.erlenmeyer_shield || 0) + 1),
-        pipette_clarity: Math.min(5, (prev.pipette_clarity || 0) + 1),
         buffered_saline: Math.min(5, (prev.buffered_saline || 0) + 1),
+        pipette_clarity: Math.min(5, (prev.pipette_clarity || 0) + 1),
+        immersion_oil: Math.min(5, (prev.immersion_oil || 0) + 1),
+        spectrophotometer_prism: Math.min(5, (prev.spectrophotometer_prism || 0) + 1),
+        blood_agar_plate: Math.min(5, (prev.blood_agar_plate || 0) + 1),
+        heparin_tube: Math.min(5, (prev.heparin_tube || 0) + 1),
       }));
       toast({
         title: "🎁 Weekly Guild Supply Drop Claimed!",
@@ -2423,6 +2550,7 @@ export default function LearningQuest() {
                 const count = inventory[item.id] || 0;
                 const isEquipped = equippedItem === item.id;
                 const isSelected = selectedItemSlot === item.id;
+                const isLocked = userLevel < item.requiredLevel;
 
                 return (
                   <button
@@ -2430,7 +2558,8 @@ export default function LearningQuest() {
                     onClick={() => setSelectedItemSlot(item.id)}
                     className={cn(
                       "relative aspect-square flex items-center justify-center transition-all duration-150 active:scale-95 group cursor-pointer",
-                      isSelected ? "scale-105 z-30" : "hover:scale-102"
+                      isSelected ? "scale-105 z-30" : "hover:scale-102",
+                      isLocked && "opacity-80 grayscale-[25%]"
                     )}
                   >
                     {/* Slot Background */}
@@ -2483,6 +2612,13 @@ export default function LearningQuest() {
                       </span>
                     )}
 
+                    {/* Level Lock Badge */}
+                    {isLocked && (
+                      <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 z-30 bg-black/85 text-amber-300 text-[6.5px] sm:text-[7.5px] md:text-[9px] font-black uppercase px-1 py-0.5 rounded border border-amber-500/70 leading-none shadow flex items-center gap-0.5">
+                        🔒L{item.requiredLevel}
+                      </span>
+                    )}
+
                     {/* 16-Bit Gamified RPG Reticle Corner Brackets & Floating Pointer */}
                     {isSelected && (
                       <>
@@ -2505,8 +2641,8 @@ export default function LearningQuest() {
                 );
               })}
 
-              {/* 15 Empty Slots */}
-              {Array.from({ length: 15 }).map((_, idx) => (
+              {/* Dynamic Empty Slots to keep 18-grid format (6x3) */}
+              {Array.from({ length: Math.max(0, 18 - CONSUMABLE_ITEMS_LIST.length) }).map((_, idx) => (
                 <div
                   key={idx}
                   className="relative aspect-square flex items-center justify-center opacity-90"
@@ -2540,91 +2676,111 @@ export default function LearningQuest() {
               style={{ imageRendering: 'pixelated' }}
               unoptimized
             />
-            {activeSelectedItem ? (
-              <div className="relative z-10 flex items-center justify-between gap-1.5 sm:gap-3 md:gap-4 w-full">
-                {/* Left details */}
-                <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 min-w-0 flex-1">
-                  {activeSelectedItem.imageUrl ? (
-                    <div className="relative w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 shrink-0 flex items-center justify-center filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]">
-                      <Image
-                        src={activeSelectedItem.imageUrl}
-                        alt={activeSelectedItem.name}
-                        fill
-                        className="object-contain"
-                        style={{ imageRendering: 'pixelated' }}
-                        unoptimized
-                      />
-                    </div>
-                  ) : (
-                    <span className="text-xl sm:text-2xl md:text-3xl shrink-0 drop-shadow-[0_2px_5px_rgba(0,0,0,0.85)]">
-                      {activeSelectedItem.icon}
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
-                    <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 flex-wrap">
-                      <h4 className="font-bold text-amber-300 font-bytebounce text-xs sm:text-sm md:text-base lg:text-lg tracking-wide leading-tight drop-shadow-[1px_1px_0_#000] truncate">
-                        {activeSelectedItem.name}
-                      </h4>
-                      <span className="inline-flex items-center gap-1 sm:gap-1.5 font-bytebounce text-[9.5px] sm:text-[11px] md:text-xs lg:text-[12.5px] bg-[#140b07] px-1.5 sm:px-2 py-0.5 rounded border border-amber-500/80 shadow-[0_1px_3px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] leading-none shrink-0 select-none">
-                        <span className="text-amber-300 font-bold uppercase tracking-wider [text-shadow:1px_1px_0_#000]">Stock:</span>
-                        <span className="text-white font-bold [text-shadow:1px_1px_0_#000]">{inventory[activeSelectedItem.id] || 0}/{MAX_REAGENT_CAP}</span>
+            {activeSelectedItem ? (() => {
+              const isSelectedLocked = userLevel < activeSelectedItem.requiredLevel;
+
+              return (
+                <div className="relative z-10 flex items-center justify-between gap-1.5 sm:gap-3 md:gap-4 w-full">
+                  {/* Left details */}
+                  <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 min-w-0 flex-1">
+                    {activeSelectedItem.imageUrl ? (
+                      <div className="relative w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 shrink-0 flex items-center justify-center filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]">
+                        <Image
+                          src={activeSelectedItem.imageUrl}
+                          alt={activeSelectedItem.name}
+                          fill
+                          className="object-contain"
+                          style={{ imageRendering: 'pixelated' }}
+                          unoptimized
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-xl sm:text-2xl md:text-3xl shrink-0 drop-shadow-[0_2px_5px_rgba(0,0,0,0.85)]">
+                        {activeSelectedItem.icon}
                       </span>
-                      {equippedItem === activeSelectedItem.id && (
-                        <span className="inline-flex items-center font-bytebounce text-[9px] sm:text-[10.5px] md:text-xs uppercase tracking-wide bg-emerald-500 text-black px-1.5 sm:px-2 py-0.5 rounded border border-black leading-none animate-pulse shadow-sm font-bold shrink-0 select-none">
-                          EQUIPPED
+                    )}
+                    <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
+                      <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 flex-wrap">
+                        <h4 className="font-bold text-amber-300 font-bytebounce text-xs sm:text-sm md:text-base lg:text-lg tracking-wide leading-tight drop-shadow-[1px_1px_0_#000] truncate">
+                          {activeSelectedItem.name}
+                        </h4>
+                        <span className="inline-flex items-center gap-1 sm:gap-1.5 font-bytebounce text-[9.5px] sm:text-[11px] md:text-xs lg:text-[12.5px] bg-[#140b07] px-1.5 sm:px-2 py-0.5 rounded border border-amber-500/80 shadow-[0_1px_3px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] leading-none shrink-0 select-none">
+                          <span className="text-amber-300 font-bold uppercase tracking-wider [text-shadow:1px_1px_0_#000]">Stock:</span>
+                          <span className="text-white font-bold [text-shadow:1px_1px_0_#000]">{inventory[activeSelectedItem.id] || 0}/{MAX_REAGENT_CAP}</span>
                         </span>
-                      )}
+                        {equippedItem === activeSelectedItem.id && (
+                          <span className="inline-flex items-center font-bytebounce text-[9px] sm:text-[10.5px] md:text-xs uppercase tracking-wide bg-emerald-500 text-black px-1.5 sm:px-2 py-0.5 rounded border border-black leading-none animate-pulse shadow-sm font-bold shrink-0 select-none">
+                            EQUIPPED
+                          </span>
+                        )}
+                        {isSelectedLocked && (
+                          <span className="inline-flex items-center font-bytebounce text-[9px] sm:text-[10.5px] md:text-xs uppercase tracking-wide bg-amber-950 text-amber-300 px-1.5 sm:px-2 py-0.5 rounded border border-amber-500/80 leading-none shadow-sm font-bold shrink-0 select-none">
+                            🔒 LVL {activeSelectedItem.requiredLevel} ({activeSelectedItem.requiredXp} XP)
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] sm:text-xs md:text-[13px] text-amber-100 font-sans leading-tight sm:leading-snug drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                        {activeSelectedItem.desc}
+                      </p>
                     </div>
-                    <p className="text-[9.5px] sm:text-xs md:text-[12.5px] text-amber-100 font-sans leading-tight sm:leading-snug line-clamp-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-                      {activeSelectedItem.desc}
-                    </p>
-                    <p className="text-[9.5px] sm:text-xs md:text-[12.5px] font-bold text-amber-300 leading-tight sm:leading-snug drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] truncate">
-                      ✨ {activeSelectedItem.effect}
-                    </p>
+                  </div>
+
+                  {/* Right Action buttons */}
+                  <div className="flex flex-col gap-1 sm:gap-1.5 shrink-0">
+                    {isSelectedLocked ? (
+                      <Button
+                        size="sm"
+                        disabled
+                        className="bg-zinc-800 text-amber-300/60 font-bytebounce text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider h-6 sm:h-7.5 md:h-8.5 px-2 sm:px-3 border border-zinc-700 opacity-60 shadow-none leading-none rounded cursor-not-allowed whitespace-nowrap"
+                      >
+                        <span className="sm:hidden">🔒 Lvl {activeSelectedItem.requiredLevel}</span>
+                        <span className="hidden sm:inline">🔒 Locked (Lvl {activeSelectedItem.requiredLevel})</span>
+                      </Button>
+                    ) : equippedItem === activeSelectedItem.id ? (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setEquippedItem(null);
+                          const newMax = calculatePlayerMaxHp(userLevel, false);
+                          setPlayerHealth(prev => Math.min(prev, newMax));
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white font-bytebounce text-[10.5px] sm:text-xs md:text-sm lg:text-base font-bold uppercase tracking-wider h-6 sm:h-7.5 md:h-8.5 px-2 sm:px-3 md:px-4 border border-red-400 shadow-md whitespace-nowrap active:scale-95 leading-none rounded cursor-pointer"
+                      >
+                        Unequip
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        disabled={(inventory[activeSelectedItem.id] || 0) <= 0}
+                        onClick={() => setEquippedItem(activeSelectedItem.id)}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-black font-bytebounce text-[10.5px] sm:text-xs md:text-sm lg:text-base font-bold uppercase tracking-wider h-6 sm:h-7.5 md:h-8.5 px-2 sm:px-3 md:px-4 border border-emerald-300 disabled:opacity-30 shadow-md whitespace-nowrap active:scale-95 leading-none rounded cursor-pointer"
+                      >
+                        Equip
+                      </Button>
+                    )}
+
+                    <Button
+                      size="sm"
+                      disabled={isSelectedLocked || (inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP}
+                      onClick={() => handleBuyReagent(activeSelectedItem.id, activeSelectedItem.name, activeSelectedItem.cost)}
+                      className="bg-amber-500 hover:bg-amber-600 text-black font-bytebounce text-[10.5px] sm:text-xs md:text-sm lg:text-base font-bold uppercase tracking-wider h-6 sm:h-7.5 md:h-8.5 px-2 sm:px-3 md:px-4 border border-amber-300 shadow-md flex items-center justify-center gap-0.5 sm:gap-1 whitespace-nowrap disabled:opacity-40 active:scale-95 leading-none rounded cursor-pointer"
+                    >
+                      {isSelectedLocked ? (
+                        <>
+                          <span className="sm:hidden">🔒 Lvl {activeSelectedItem.requiredLevel}</span>
+                          <span className="hidden sm:inline">🔒 Req. Lvl {activeSelectedItem.requiredLevel} ({activeSelectedItem.requiredXp} XP)</span>
+                        </>
+                      ) : (inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP ? (
+                        `MAX (5/5)`
+                      ) : (
+                        `Buy +1 (⚡${activeSelectedItem.cost})`
+                      )}
+                    </Button>
                   </div>
                 </div>
-
-                {/* Right Action buttons */}
-                <div className="flex flex-col gap-1 sm:gap-1.5 shrink-0">
-                  {equippedItem === activeSelectedItem.id ? (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => {
-                        setEquippedItem(null);
-                        const newMax = calculatePlayerMaxHp(userLevel, false);
-                        setPlayerHealth(prev => Math.min(prev, newMax));
-                      }}
-                      className="bg-red-600 hover:bg-red-700 text-white font-bytebounce text-[10.5px] sm:text-xs md:text-sm lg:text-base font-bold uppercase tracking-wider h-6 sm:h-7.5 md:h-8.5 px-2 sm:px-3 md:px-4 border border-red-400 shadow-md whitespace-nowrap active:scale-95 leading-none rounded cursor-pointer"
-                    >
-                      Unequip
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      disabled={(inventory[activeSelectedItem.id] || 0) <= 0}
-                      onClick={() => setEquippedItem(activeSelectedItem.id)}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-black font-bytebounce text-[10.5px] sm:text-xs md:text-sm lg:text-base font-bold uppercase tracking-wider h-6 sm:h-7.5 md:h-8.5 px-2 sm:px-3 md:px-4 border border-emerald-300 disabled:opacity-30 shadow-md whitespace-nowrap active:scale-95 leading-none rounded cursor-pointer"
-                    >
-                      Equip
-                    </Button>
-                  )}
-
-                  <Button
-                    size="sm"
-                    disabled={(inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP}
-                    onClick={() => handleBuyReagent(activeSelectedItem.id, activeSelectedItem.name, activeSelectedItem.cost)}
-                    className="bg-amber-500 hover:bg-amber-600 text-black font-bytebounce text-[10.5px] sm:text-xs md:text-sm lg:text-base font-bold uppercase tracking-wider h-6 sm:h-7.5 md:h-8.5 px-2 sm:px-3 md:px-4 border border-amber-300 shadow-md flex items-center justify-center gap-0.5 sm:gap-1 whitespace-nowrap disabled:opacity-40 active:scale-95 leading-none rounded cursor-pointer"
-                  >
-                    {(inventory[activeSelectedItem.id] || 0) >= MAX_REAGENT_CAP ? (
-                      `MAX (5/5)`
-                    ) : (
-                      `Buy +1 (⚡${activeSelectedItem.cost})`
-                    )}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+              );
+            })() : null}
           </div>
         </div>
       </DialogContent>
@@ -3005,12 +3161,23 @@ export default function LearningQuest() {
   const handleUseClarity = () => {
     if (clarityUsedThisBattle || (inventory.pipette_clarity || 0) <= 0) return;
     setClarityUsedThisBattle(true);
-    addFloatingText('player', 'HINT ACTIVATED! 🧪✨', 'text-purple-400');
+    addFloatingText('player', 'HINT ACTIVATED! 🧪✨', 'text-purple-400 font-black');
     toast({
       title: "Pipette of Clarity! 🧪✨",
       description: "1 incorrect distractor has been eliminated!",
     });
     setInventory(prev => ({ ...prev, pipette_clarity: Math.max(0, (prev.pipette_clarity || 0) - 1) }));
+  };
+
+  const handleUseBap = () => {
+    if (bapUsedThisBattle || (inventory.blood_agar_plate || 0) <= 0) return;
+    setBapUsedThisBattle(true);
+    addFloatingText('player', '🧫 SPECIMEN REDRAWN!', 'text-rose-400 font-black');
+    toast({
+      title: "Blood Agar Plate Subcultured! 🧫",
+      description: "Question re-streaked from culture media! A fresh question was redrawn.",
+    });
+    setInventory(prev => ({ ...prev, blood_agar_plate: Math.max(0, (prev.blood_agar_plate || 0) - 1) }));
   };
 
   // Fetch User Info on mount & whenever synced
@@ -3541,18 +3708,34 @@ export default function LearningQuest() {
         console.warn("Failed to load user profile on startQuest", e);
       }
 
+      resetBattleConsumableStates();
       const hasShieldEffect = equippedItem === 'erlenmeyer_shield' && (inventory.erlenmeyer_shield || 0) > 0;
       const startingHp = quizMode === 'boss-battle' ? calculatePlayerMaxHp(currentLevelForBattle, hasShieldEffect) : 100;
 
       // Erlenmeyer Shield Consumable Effect
       if (quizMode === 'boss-battle' && hasShieldEffect) {
-        addFloatingText('player', '+20 SHIELD HP! 🧪🛡️', 'text-blue-400');
+        setShieldUsedThisBattle(true);
+        addFloatingText('player', '+20 SHIELD HP! 🧪🛡️', 'text-blue-400 font-black');
         setInventory(prev => ({ ...prev, erlenmeyer_shield: Math.max(0, (prev.erlenmeyer_shield || 0) - 1) }));
+      } else {
+        setShieldUsedThisBattle(false);
+      }
+
+      // Immersion Oil Consumable Effect
+      const hasImmersionOilEffect = equippedItem === 'immersion_oil' && (inventory.immersion_oil || 0) > 0;
+      if (quizMode === 'boss-battle' && hasImmersionOilEffect) {
+        addFloatingText('player', '🔬 100x IMMERSION FOCUS!', 'text-amber-400 font-black');
+        setImmersionOilUsedThisBattle(true);
+        setInventory(prev => ({ ...prev, immersion_oil: Math.max(0, (prev.immersion_oil || 0) - 1) }));
+        toast({
+          title: "🔬 Immersion Oil Applied!",
+          description: "Key clinical buzzwords will be highlighted under high-power focus throughout the battle!",
+        });
+      } else {
+        setImmersionOilUsedThisBattle(false);
       }
 
       setPlayerHealth(startingHp);
-      setSalineUsedThisBattle(false);
-      setClarityUsedThisBattle(false);
 
       let bossStartingHp = 100;
       if (quizMode === 'boss-battle') {
@@ -4254,6 +4437,21 @@ export default function LearningQuest() {
       // Apply difficulty multiplier to player attack
       enemyDmg = enemyDmg * playerMul;
 
+      // Spectrophotometer Prism Consumable Effect (+25% bonus attack damage on a 2+ streak in Boss Battles)
+      const currentBattleStreak = isCorrect ? (streak + 1) : 0;
+      if (quizMode === 'boss-battle' && isCorrect && equippedItem === 'spectrophotometer_prism' && currentBattleStreak >= 2 && (prismUsedThisBattle || (inventory.spectrophotometer_prism || 0) > 0)) {
+        if (!prismUsedThisBattle) {
+          setPrismUsedThisBattle(true);
+          setInventory(prev => ({ ...prev, spectrophotometer_prism: Math.max(0, (prev.spectrophotometer_prism || 0) - 1) }));
+          toast({
+            title: "🌈 Spectrophotometer Prism Surge!",
+            description: "2-streak achieved! Diffracted light amplifies your attack by +25%!",
+          });
+        }
+        enemyDmg = enemyDmg * 1.25;
+        addFloatingText('player', '🌈 +25% PRISM SURGE!', 'text-amber-300 font-black');
+      }
+
       // Apply Player Defense Attribute Mitigation to Incoming Boss Damage:
       const defenseMitigation = 100 / (100 + playerStats.defense);
       playerDmg = playerDmg * bossMul * defenseMitigation;
@@ -4381,7 +4579,21 @@ export default function LearningQuest() {
     if (playerDmg > 0) {
       const applyPlayerDamage = () => {
         triggerHitAnimation('player');
-        const nextHp = Math.max(0, playerHealth - playerDmg);
+        let nextHp = Math.max(0, playerHealth - playerDmg);
+
+        // Heparin Tube Consumable Effect (Survive 1st fatal blow with 1 HP - Clot Prevention)
+        if (quizMode === 'boss-battle' && nextHp <= 0 && equippedItem === 'heparin_tube' && !heparinUsedThisBattle && (inventory.heparin_tube || 0) > 0) {
+          nextHp = 1;
+          setHeparinUsedThisBattle(true);
+          setInventory(prev => ({ ...prev, heparin_tube: Math.max(0, (prev.heparin_tube || 0) - 1) }));
+          playSfx('heal');
+          addFloatingText('player', '🧪 HEPARIN PREVENTED CLOT! (1 HP)', 'text-emerald-400 font-black');
+          toast({
+            title: "🧪 Heparin Tube Activated! (Clot Prevention)",
+            description: "Fatal strike prevented! Anticoagulant surge stabilized your aspirant life at 1 HP.",
+          });
+        }
+
         setPlayerHealth(nextHp);
 
         addFloatingText('player', `-${Math.ceil(playerDmg)} DMG!`, 'text-red-500');
@@ -5016,6 +5228,7 @@ export default function LearningQuest() {
     const transitionToPostBattle = () => {
       setJudgementText(null);
       setIsFinished(true);
+      resetBattleConsumableStates();
       stopBgm();
 
       const confEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_confidence_prompts') !== 'false' : true;
@@ -5823,6 +6036,7 @@ export default function LearningQuest() {
                     stopTestModeMusic();
                     setIsStarted(false);
                     setIsFinished(false);
+                    resetBattleConsumableStates();
                     setBattleOutcome(null);
                     setJudgementText(null);
                     setShowBattleLog(false);
@@ -5849,6 +6063,7 @@ export default function LearningQuest() {
                     stopTestModeMusic();
                     setIsStarted(false);
                     setIsFinished(false);
+                    resetBattleConsumableStates();
                     setBattleOutcome(null);
                     setJudgementText(null);
                     setShowBattleLog(false);
@@ -5881,6 +6096,7 @@ export default function LearningQuest() {
                     stopTestModeMusic();
                     setIsStarted(false);
                     setIsFinished(false);
+                    resetBattleConsumableStates();
                     setBattleOutcome(null);
                     setJudgementText(null);
                     setShowBattleLog(false);
@@ -5933,6 +6149,7 @@ export default function LearningQuest() {
       setIsFleeing(false);
       setIsStarted(false);
       setIsFinished(false);
+      resetBattleConsumableStates();
       setBattleOutcome(null);
       setJudgementText(null);
       setSelectedTopicFilter(null);
@@ -7377,8 +7594,12 @@ export default function LearningQuest() {
               playerPoisoned={playerPoisoned}
               streak={streak}
               equippedItem={equippedItem}
+              equippedItemCount={equippedItem ? (inventory[equippedItem] || 0) : 0}
               clarityUsedThisBattle={clarityUsedThisBattle}
               onUseClarity={handleUseClarity}
+              bapUsedThisBattle={bapUsedThisBattle}
+              onUseBap={handleUseBap}
+              immersionOilActive={immersionOilUsedThisBattle || (equippedItem === 'immersion_oil' && (inventory.immersion_oil || 0) > 0)}
               onQuestionChange={handleQuestionChange}
             />
           </div>

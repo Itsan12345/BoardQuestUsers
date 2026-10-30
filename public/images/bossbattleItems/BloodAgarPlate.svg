@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="64" height="64" shape-rendering="crispEdges">
+  <!-- Petri Dish Dark Pixel Outline -->
+  <rect x="5" y="2" width="6" height="1" fill="#1c1917"/>
+  <rect x="3" y="3" width="2" height="1" fill="#1c1917"/>
+  <rect x="11" y="3" width="2" height="1" fill="#1c1917"/>
+  <rect x="2" y="4" width="1" height="2" fill="#1c1917"/>
+  <rect x="13" y="4" width="1" height="2" fill="#1c1917"/>
+  <rect x="1" y="6" width="1" height="5" fill="#1c1917"/>
+  <rect x="14" y="6" width="1" height="5" fill="#1c1917"/>
+  <rect x="2" y="11" width="1" height="2" fill="#1c1917"/>
+  <rect x="13" y="11" width="1" height="2" fill="#1c1917"/>
+  <rect x="3" y="13" width="2" height="1" fill="#1c1917"/>
+  <rect x="11" y="13" width="2" height="1" fill="#1c1917"/>
+  <rect x="5" y="14" width="6" height="1" fill="#1c1917"/>
+
+  <!-- Petri Dish Glass Rim Reflection (Top Edge) -->
+  <rect x="5" y="3" width="6" height="1" fill="#fecdd3"/>
+  <rect x="3" y="4" width="2" height="1" fill="#fecdd3"/>
+  <rect x="11" y="4" width="2" height="1" fill="#fda4af"/>
+  <rect x="2" y="6" width="1" height="4" fill="#ffffff"/>
+
+  <!-- Blood Agar 5% Sheep Blood Base Matrix -->
+  <rect x="5" y="4" width="6" height="1" fill="#be123c"/>
+  <rect x="3" y="5" width="10" height="1" fill="#9f1239"/>
+  <rect x="2" y="6" width="12" height="5" fill="#881337"/>
+  <rect x="3" y="11" width="10" height="1" fill="#9f1239"/>
+  <rect x="4" y="12" width="8" height="1" fill="#4c0519"/>
+  <rect x="5" y="13" width="6" height="1" fill="#2e020d"/>
+
+  <!-- Inoculation Flame-Loop Streak Colonies & Hemolytic Haloes -->
+  <!-- Primary heavy streak quadrant (Golden yellow staph/strep colonies) -->
+  <rect x="4" y="6" width="2" height="1" fill="#fef08a"/>
+  <rect x="7" y="6" width="3" height="1" fill="#fde047"/>
+  <rect x="11" y="6" width="1" height="1" fill="#fef08a"/>
+
+  <!-- Secondary zig-zag streak lines -->
+  <rect x="5" y="7" width="1" height="1" fill="#fef9c3"/>
+  <rect x="8" y="7" width="2" height="1" fill="#fde047"/>
+  <rect x="11" y="7" width="2" height="1" fill="#fef08a"/>
+  <rect x="4" y="8" width="3" height="1" fill="#fde047"/>
+  <rect x="9" y="8" width="1" height="1" fill="#fef9c3"/>
+
+  <!-- Isolated single colony dots (3rd & 4th quadrants) -->
+  <rect x="4" y="9" width="1" height="1" fill="#fef9c3"/>
+  <rect x="7" y="9" width="1" height="1" fill="#fef08a"/>
+  <rect x="10" y="9" width="1" height="1" fill="#fef9c3"/>
+  <rect x="6" y="10" width="1" height="1" fill="#fef08a"/>
+  <rect x="9" y="10" width="1" height="1" fill="#fde047"/>
+
+  <!-- Beta-hemolysis clear zones around colonies -->
+  <rect x="6" y="7" width="1" height="1" fill="#e11d48"/>
+  <rect x="8" y="9" width="1" height="1" fill="#e11d48"/>
+
+  <!-- Specular Glass Sparkle on Top-Right Rim -->
+  <rect x="13" y="1" width="1" height="3" fill="#fda4af"/>
+  <rect x="12" y="2" width="3" height="1" fill="#ffffff"/>
+</svg>
+

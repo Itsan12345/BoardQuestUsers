@@ -28,6 +28,16 @@ export const SUBJECT_AREAS = [
   "Histopathology and Medtech Laws"
 ];
 
+export const REAGENT_LEVEL_REQUIREMENTS: Record<string, { requiredLevel: number; requiredXp: number }> = {
+  erlenmeyer_shield: { requiredLevel: 1, requiredXp: 0 },
+  buffered_saline: { requiredLevel: 1, requiredXp: 0 },
+  pipette_clarity: { requiredLevel: 2, requiredXp: 100 },
+  immersion_oil: { requiredLevel: 3, requiredXp: 400 },
+  spectrophotometer_prism: { requiredLevel: 4, requiredXp: 900 },
+  blood_agar_plate: { requiredLevel: 5, requiredXp: 1600 },
+  heparin_tube: { requiredLevel: 6, requiredXp: 2500 },
+};
+
 export interface PlayerStats {
   maxHp: number;
   baseDamage: number;
@@ -44,9 +54,18 @@ export interface PlayerStats {
 
 export function calculatePlayerStats(level: number, streak: number = 0, equippedItem?: string | null): PlayerStats {
   const safeLevel = Math.max(1, level);
-  const hasShield = equippedItem === 'erlenmeyer_shield';
-  const hasClarity = equippedItem === 'pipette_clarity';
-  const hasSaline = equippedItem === 'buffered_saline';
+
+  // Validate that the equipped item is unlocked for the player's current level
+  const req = equippedItem ? REAGENT_LEVEL_REQUIREMENTS[equippedItem] : null;
+  const validEquippedItem = (req && safeLevel >= req.requiredLevel) ? equippedItem : null;
+
+  const hasShield = validEquippedItem === 'erlenmeyer_shield';
+  const hasClarity = validEquippedItem === 'pipette_clarity';
+  const hasSaline = validEquippedItem === 'buffered_saline';
+  const hasImmersionOil = validEquippedItem === 'immersion_oil';
+  const hasPrism = validEquippedItem === 'spectrophotometer_prism';
+  const hasBap = validEquippedItem === 'blood_agar_plate';
+  const hasHeparin = validEquippedItem === 'heparin_tube';
 
   // HP: Base 100 + (level - 1) * 15 + (+20 HP if Shield is equipped)
   const maxHp = 100 + (safeLevel - 1) * 15 + (hasShield ? 20 : 0);
@@ -64,11 +83,11 @@ export function calculatePlayerStats(level: number, streak: number = 0, equipped
   const bonusDamage = Math.round(baseDamage * streakMul);
   const totalDamage = baseDamage + bonusDamage;
 
-  // DEF: Base 5 + level * 1.2 (+15 if Shield equipped)
-  const defense = 5 + Math.floor(safeLevel * 1.2) + (hasShield ? 15 : 0);
+  // DEF: Base 5 + level * 1.2 (+15 if Shield equipped, +8 if Heparin Tube equipped)
+  const defense = 5 + Math.floor(safeLevel * 1.2) + (hasShield ? 15 : 0) + (hasHeparin ? 8 : 0);
 
-  // CRIT Rate: Base 15% + (streak * 2)% capped at +25% (+10% if Pipette of Clarity equipped)
-  const critRate = Math.min(50, 15 + Math.min(25, streak * 2) + (hasClarity ? 10 : 0));
+  // CRIT Rate: Base 15% + (streak * 2)% capped at +25% (+10% if Pipette of Clarity or Spectrophotometer Prism equipped)
+  const critRate = Math.min(50, 15 + Math.min(25, streak * 2) + (hasClarity || hasPrism ? 10 : 0));
 
   // Multiplier: 1.0x to 1.50x based on streak
   let multiplier = 1.0;
@@ -84,19 +103,39 @@ export function calculatePlayerStats(level: number, streak: number = 0, equipped
 
   if (hasShield) {
     equippedItemName = 'Erlenmeyer Shield';
-    equippedItemBuff = '+20 Max HP & +15 Armor (Blocks initial boss attacks)';
+    equippedItemBuff = 'Gives +20 extra HP in boss battles';
     equippedItemIcon = '🛡️';
     equippedItemImageUrl = '/images/bossbattleItems/ErlenmayerShield.png';
   } else if (hasClarity) {
     equippedItemName = 'Pipette of Clarity';
-    equippedItemBuff = '+10% Crit Rate (Eliminates 2 wrong options)';
+    equippedItemBuff = 'Removes 1 wrong answer choice (50:50 hint)';
     equippedItemIcon = '🧪';
     equippedItemImageUrl = '/images/bossbattleItems/PippeteofClarity.png';
   } else if (hasSaline) {
-    equippedItemName = 'Buffered Saline Solution';
-    equippedItemBuff = 'Cures Poison & restores +40 HP on activation';
+    equippedItemName = 'Buffered Saline';
+    equippedItemBuff = 'Blocks the first poison or negative effect from the boss';
     equippedItemIcon = '💧';
     equippedItemImageUrl = '/images/bossbattleItems/BufferedSaline.png';
+  } else if (hasImmersionOil) {
+    equippedItemName = 'Immersion Oil';
+    equippedItemBuff = 'Highlights the key clue word in the question';
+    equippedItemIcon = '🔬';
+    equippedItemImageUrl = '/images/bossbattleItems/ImmersionOil.svg';
+  } else if (hasPrism) {
+    equippedItemName = 'Spectrophotometer Prism';
+    equippedItemBuff = 'Deals +25% bonus attack damage on a 2+ streak';
+    equippedItemIcon = '🌈';
+    equippedItemImageUrl = '/images/bossbattleItems/SpectroPrism.svg';
+  } else if (hasBap) {
+    equippedItemName = 'Blood Agar Plate';
+    equippedItemBuff = 'Swaps your current question for a new one (1 per battle)';
+    equippedItemIcon = '🧫';
+    equippedItemImageUrl = '/images/bossbattleItems/BloodAgarPlate.svg';
+  } else if (hasHeparin) {
+    equippedItemName = 'Heparin Tube';
+    equippedItemBuff = 'Survives a fatal hit from the boss with 1 HP remaining';
+    equippedItemIcon = '🧪';
+    equippedItemImageUrl = '/images/bossbattleItems/HeparinTube.svg';
   }
 
   return {
@@ -113,4 +152,3 @@ export function calculatePlayerStats(level: number, streak: number = 0, equipped
     equippedItemImageUrl,
   };
 }
-
