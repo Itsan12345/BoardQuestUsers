@@ -157,8 +157,8 @@ export async function syncSubjectMastery(userId: string, subject: string) {
       }
 
       const totalTopics = topicStats?.totalTopics || 0;
-      const passingTopics = (topicStats?.masteredCount || 0) + (topicStats?.proficientCount || 0);
-      const topicCoverage = totalTopics > 0 ? Math.round((passingTopics / totalTopics) * 100) : 0;
+      const passingTopics = totalQAnswered > 0 ? (topicStats?.masteredCount || 0) + (topicStats?.proficientCount || 0) : 0;
+      const topicCoverage = (totalTopics > 0 && totalQAnswered > 0) ? Math.round((passingTopics / totalTopics) * 100) : 0;
       const meetsProficientTopicCoverage = totalTopics > 0 ? topicCoverage >= 75 : true;
       const meetsMasteredTopicCoverage = totalTopics > 0 ? topicCoverage >= 85 : true;
 
@@ -472,8 +472,8 @@ export async function getSubjectMetrics(explicitUserId?: string): Promise<Subjec
       // Compute topic coverage gate (≥75% topics with passing accuracy for Proficient, ≥85% for Mastered)
       const topicStats = topicBreakdowns[i];
       const totalTopics = topicStats?.totalTopics ?? 0;
-      const passingTopics = (topicStats?.masteredCount ?? 0) + (topicStats?.proficientCount ?? 0);
-      const topicCoverage = totalTopics > 0 ? Math.round((passingTopics / totalTopics) * 100) : 0;
+      const passingTopics = totalQAnswered > 0 ? (topicStats?.masteredCount ?? 0) + (topicStats?.proficientCount ?? 0) : 0;
+      const topicCoverage = (totalTopics > 0 && totalQAnswered > 0) ? Math.round((passingTopics / totalTopics) * 100) : 0;
       const meetsProficientTopicCoverage = totalTopics > 0 ? topicCoverage >= 75 : true;
       const meetsMasteredTopicCoverage = totalTopics > 0 ? topicCoverage >= 85 : true;
 
@@ -857,33 +857,52 @@ export async function getSubjectTopicMasteryAction(
         const qIdStrings = questionDocs.map(q => q._id.toString());
         const qObjIds = questionDocs.map(q => q._id);
 
-        const attempts = await db.collection('UserQuestionAttempt').find({
-          userId: { $in: userConditions },
-          questionId: { $in: [...qIdStrings, ...qObjIds] }
-        }).toArray();
-
-        attempts.forEach(a => {
-          const qId = a.questionId?.toString();
-          if (qId) {
-            const existing = attemptMap.get(qId);
-            const numAttempts = typeof a.attempts === 'number' ? a.attempts : 1;
-            const numCorrect = typeof a.correct === 'number' ? a.correct : 0;
-            const lastAtt = a.lastAttempt ? new Date(a.lastAttempt).toISOString() : undefined;
-            if (existing) {
-              existing.attempts += numAttempts;
-              existing.correct += numCorrect;
-              if (lastAtt && (!existing.lastAttempt || new Date(lastAtt) > new Date(existing.lastAttempt))) {
-                existing.lastAttempt = lastAtt;
-              }
-            } else {
-              attemptMap.set(qId, {
-                attempts: numAttempts,
-                correct: numCorrect,
-                lastAttempt: lastAtt
-              });
-            }
-          }
+        // Verify if user has actually completed any quest for this subject
+        const hasCompletedExam = await (prisma as any).examResult.findFirst({
+          where: {
+            userId,
+            subject: { equals: cleanSub, mode: 'insensitive' }
+          },
+          select: { id: true }
         });
+
+        if (!hasCompletedExam) {
+          // If no completed quest exists for this subject, clean up orphan attempts from fled/abandoned sessions
+          try {
+            await db.collection('UserQuestionAttempt').deleteMany({
+              userId: { $in: userConditions },
+              questionId: { $in: [...qIdStrings, ...qObjIds] }
+            });
+          } catch (_) {}
+        } else {
+          const attempts = await db.collection('UserQuestionAttempt').find({
+            userId: { $in: userConditions },
+            questionId: { $in: [...qIdStrings, ...qObjIds] }
+          }).toArray();
+
+          attempts.forEach(a => {
+            const qId = a.questionId?.toString();
+            if (qId) {
+              const existing = attemptMap.get(qId);
+              const numAttempts = typeof a.attempts === 'number' ? a.attempts : 1;
+              const numCorrect = typeof a.correct === 'number' ? a.correct : 0;
+              const lastAtt = a.lastAttempt ? new Date(a.lastAttempt).toISOString() : undefined;
+              if (existing) {
+                existing.attempts += numAttempts;
+                existing.correct += numCorrect;
+                if (lastAtt && (!existing.lastAttempt || new Date(lastAtt) > new Date(existing.lastAttempt))) {
+                  existing.lastAttempt = lastAtt;
+                }
+              } else {
+                attemptMap.set(qId, {
+                  attempts: numAttempts,
+                  correct: numCorrect,
+                  lastAttempt: lastAtt
+                });
+              }
+            }
+          });
+        }
       } catch (attErr) {
         console.warn('Failed to fetch user question attempts for topic mastery:', attErr);
       }

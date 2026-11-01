@@ -51,7 +51,7 @@ import { ChapterWorldMap } from '@/components/quiz/ChapterWorldMap';
 import { XP_PER_QUESTION, calculatePlayerStats, REAGENT_LEVEL_REQUIREMENTS } from '@/lib/game-logic';
 import { provideExamFeedback } from '@/ai/flows/provide-exam-feedback';
 import { getQuestQuestions } from '@/app/actions/arena';
-import { completeQuest, getNodeClearsAction, saveNodeClearAction, recordQuestionAttemptAction } from '@/app/actions/quest';
+import { completeQuest, getNodeClearsAction, saveNodeClearAction } from '@/app/actions/quest';
 import { getCategories, getSubjectTopicMasteryAction, type TopicMasteryDetail } from '@/app/actions/study';
 import { getUserProfile, saveUserInventory, purchaseReagentAction, getUserSettingsAction, saveUserSettingsAction, saveArenaOnboardingAction } from '@/app/actions/user';
 import { QuestArenaOnboardingModal } from '@/components/quest/QuestArenaOnboardingModal';
@@ -419,7 +419,6 @@ export default function LearningQuest() {
   }, [loadCategories]);
 
   const currentUserIdRef = useRef<string | null>(null);
-  const recordedQuestionIdsRef = useRef<Set<string>>(new Set());
 
   // Fetch topics dynamically for the selected quest region
   const loadSubjectTopics = useCallback(async (subjectName?: string) => {
@@ -3647,7 +3646,6 @@ export default function LearningQuest() {
     setConfidenceDialogOpen(false);
     setThankYouDialogOpen(false);
     setQuestStartTime(Date.now());
-    recordedQuestionIdsRef.current.clear();
     isFinishingRef.current = false;
     hasSubmittedConfidenceRef.current = false;
     hasShownThankYouRef.current = false;
@@ -4072,19 +4070,7 @@ export default function LearningQuest() {
       difficulty: questionData?.difficulty
     }]);
 
-    // Asynchronously record attempt on the fly so attempts/mastery are 100% dynamic even during partial sessions
-    const rawQuestionId = questionData?.id;
-    if (rawQuestionId) {
-      recordedQuestionIdsRef.current.add(rawQuestionId);
-      recordQuestionAttemptAction({
-        questionId: rawQuestionId,
-        isCorrect,
-        subject: selectedSubject,
-        userId: currentUserIdRef.current || undefined
-      }).catch(err => console.warn('Background question attempt record failed:', err));
-    }
-
-    // All XP, streaks, badges, and level-ups are strictly awarded upon completed quests via completeQuest
+    // All XP, streaks, badges, level-ups, and question attempts are strictly recorded upon completed quests via completeQuest
 
     const currentActiveNode = getResolvedActiveNode(selectedSubject, battleStage);
     const isChapter3FinalBoss = currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4;
@@ -5351,8 +5337,6 @@ export default function LearningQuest() {
         }
       }
 
-      const allRecorded = userAnswers.length > 0 && userAnswers.every(ua => ua.questionId && recordedQuestionIdsRef.current.has(ua.questionId));
-
       const result = await completeQuest({
         score,
         totalQuestions: questions.length,
@@ -5361,7 +5345,6 @@ export default function LearningQuest() {
         questMode: quizMode,
         subject: selectedSubject,
         userId: currentUserIdRef.current || undefined,
-        skipQuestionAttemptRecording: allRecorded,
         userAnswers: userAnswers.map(ua => ({
           questionId: ua.questionId || '',
           isCorrect: ua.isCorrect,
@@ -6181,6 +6164,7 @@ export default function LearningQuest() {
       setIsFleeing(false);
       setIsStarted(false);
       setIsFinished(false);
+      setUserAnswers([]);
       resetBattleConsumableStates();
       setBattleOutcome(null);
       setJudgementText(null);
