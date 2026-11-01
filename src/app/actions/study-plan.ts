@@ -408,10 +408,43 @@ export async function getGameDeadlineEvent(): Promise<CalendarEventData | null> 
       };
     }
 
-    return null;
+    // 3. Fallback to official Institutional Target Deadline if no custom Game Deadline event is found
+    let institutionName = 'SWU PHINMA';
+    try {
+      const client = await clientPromise;
+      const db = client.db('boardquest');
+      const settings = await db.collection('SystemSettings').findOne({});
+      if (settings?.institutionSubtitle) {
+        institutionName = settings.institutionSubtitle;
+      }
+    } catch (_) {}
+
+    return {
+      id: 'institutional-target-deadline',
+      title: 'Game Deadline',
+      category: 'Game Deadline',
+      endDate: new Date(2026, 10, 30, 23, 59, 59).toISOString(),
+      startDate: new Date(2026, 9, 1, 0, 0, 0).toISOString(),
+      authorName: 'Super Admin',
+      companyName: institutionName,
+      labels: ['MTLE Syllabus'],
+      description: 'All subject study blocks must conclude before this date.',
+      status: 'UPCOMING'
+    };
   } catch (error) {
     console.error('Failed to fetch Game Deadline from CalendarEvents:', error);
-    return null;
+    return {
+      id: 'institutional-target-deadline',
+      title: 'Game Deadline',
+      category: 'Game Deadline',
+      endDate: new Date(2026, 10, 30, 23, 59, 59).toISOString(),
+      startDate: new Date(2026, 9, 1, 0, 0, 0).toISOString(),
+      authorName: 'Super Admin',
+      companyName: 'SWU PHINMA',
+      labels: ['MTLE Syllabus'],
+      description: 'All subject study blocks must conclude before this date.',
+      status: 'UPCOMING'
+    };
   }
 }
 

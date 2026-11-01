@@ -3640,6 +3640,7 @@ export default function LearningQuest() {
     setIsLoading(true);
     setUserAnswers([]);
     setScore(0);
+    setStreak(0);
     setConfidence(null);
     setEarnedBadges([]);
     setConfidenceSubmitted(false);
@@ -6070,6 +6071,7 @@ export default function LearningQuest() {
                     setShowBattleLog(false);
                     setEarnedQuestXp(null);
                     setLeveledUpDetails(null);
+                    setStreak(0);
                     loadSubjectTopics(selectedSubject);
                     setSetupStep('mode');
                     setModeSelectDialogOpen(true);
@@ -6097,6 +6099,7 @@ export default function LearningQuest() {
                     setShowBattleLog(false);
                     setEarnedQuestXp(null);
                     setLeveledUpDetails(null);
+                    setStreak(0);
                     setSelectedTopicFilter(null);
                     loadSubjectTopics(selectedSubject);
                     fetchUser();
@@ -6130,6 +6133,7 @@ export default function LearningQuest() {
                     setShowBattleLog(false);
                     setEarnedQuestXp(null);
                     setLeveledUpDetails(null);
+                    setStreak(0);
                     setSelectedTopicFilter(null);
                     fetchUser();
                     playBgm('map_selection');
@@ -6181,6 +6185,7 @@ export default function LearningQuest() {
       setBattleOutcome(null);
       setJudgementText(null);
       setSelectedTopicFilter(null);
+      setStreak(0);
       loadSubjectTopics(selectedSubject);
       toast({
         title: "Tactical Retreat",
@@ -7556,8 +7561,9 @@ export default function LearningQuest() {
 
               {/* Player Health & Stats Card */}
               {(() => {
-                const basePlayerMaxHp = calculatePlayerMaxHp(userLevel, false);
-                const currentShieldHp = Math.max(0, Math.round(playerShield));
+                const isBossBattle = quizMode === 'boss-battle';
+                const basePlayerMaxHp = isBossBattle ? calculatePlayerMaxHp(userLevel, false) : 100;
+                const currentShieldHp = isBossBattle ? Math.max(0, Math.round(playerShield)) : 0;
                 const totalMaxHp = basePlayerMaxHp + currentShieldHp;
                 const currentTotalHp = Math.min(totalMaxHp, Math.ceil(playerHealth) + currentShieldHp);
                 const baseHpPercent = totalMaxHp > 0 ? (Math.min(playerHealth, basePlayerMaxHp) / totalMaxHp) * 100 : 0;

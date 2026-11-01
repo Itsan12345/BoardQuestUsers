@@ -44,17 +44,21 @@ import {
   type LearningModuleData
 } from '@/app/actions/study';
 import { getUserSettingsAction } from '@/app/actions/user';
-import { format, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
+import { calculateRemainingTime } from '@/lib/study-timer';
 import { useToast } from '@/hooks/use-toast';
 import { ModuleViewerDialog, type LearningModule as DialogLearningModule } from '@/components/study/ModuleViewerDialog';
 
 const ICON_MAP: Record<string, any> = {
   "FlaskConical": FlaskConical,
+  "Atom": FlaskConical,
   "Microscope": Microscope,
   "Database": Database,
+  "Syringe": Microscope,
   "Stethoscope": Stethoscope,
   "ShieldAlert": ShieldAlert,
   "BookMarked": BookMarked,
+  "BookOpen": BookOpen,
   "Clinical Chemistry": FlaskConical,
   "Hematology": Microscope,
   "Microbiology": Database,
@@ -491,15 +495,29 @@ export default function StudyPage() {
                       <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-primary">Final Deadline</span>
                     </div>
                     {(() => {
-                      const daysLeft = differenceInDays(new Date(program.endDate), new Date());
+                      const remaining = calculateRemainingTime(program.endDate);
                       return (
                         <span className={cn(
-                          "text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider border shrink-0",
-                          daysLeft <= 14
-                            ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/40"
+                          "text-[8px] sm:text-[9px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider border shrink-0 transition-colors",
+                          remaining.isCritical
+                            ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/40 animate-pulse font-black"
+                            : remaining.isEndingToday
+                            ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40 font-black"
+                            : remaining.isEndingTomorrow
+                            ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40"
+                            : remaining.isExpired
+                            ? "bg-muted text-muted-foreground border-border"
+                            : remaining.calendarDays <= 14
+                            ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40"
                             : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40"
                         )}>
-                          {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}
+                          {remaining.isEndingToday
+                            ? `Due Today (${remaining.short})`
+                            : remaining.isEndingTomorrow
+                            ? 'Ends Tomorrow'
+                            : remaining.isExpired
+                            ? 'Expired'
+                            : `${remaining.calendarDays} days left`}
                         </span>
                       );
                     })()}

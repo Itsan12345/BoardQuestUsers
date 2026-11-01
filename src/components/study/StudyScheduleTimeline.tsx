@@ -14,8 +14,8 @@ import {
   isSameDay,
   isWithinInterval,
   addDays,
-  differenceInDays,
   startOfDay,
+  differenceInCalendarDays,
 } from 'date-fns';
 import {
   Calendar as CalendarIcon,
@@ -28,6 +28,11 @@ import {
   Layers,
   Pencil,
   BookOpen,
+  Target,
+  Check,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +43,7 @@ import {
   type SubjectMetaConfig,
   type SubjectOption,
 } from '@/components/study/ScheduleBlockModal';
+import { calculateRemainingTime } from '@/lib/study-timer';
 import { getCategories } from '@/app/actions/study';
 import type { ReviewCenterProgramData } from '@/app/actions/study-plan';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +69,22 @@ interface StudyScheduleTimelineProps {
   subjectMetrics?: any[];
   onRefreshPlans?: () => Promise<void>;
   onSelectSubjectInCurriculum?: (subjectTitle: string) => void;
+}
+
+export function findSubjectMetric(subjectName: string, metrics: any[]): any | undefined {
+  if (!subjectName || !Array.isArray(metrics)) return undefined;
+  const target = subjectName.trim().toLowerCase();
+  return metrics.find((m: any) => {
+    const s = (m.subject || m.name || '').trim().toLowerCase();
+    if (s === target) return true;
+    if (target.includes('chem') && s.includes('chem')) return true;
+    if (target.includes('micro') && s.includes('micro')) return true;
+    if (target.includes('hema') && s.includes('hema') && !target.includes('immuno') && !s.includes('immuno')) return true;
+    if ((target.includes('immuno') || target.includes('serology')) && (s.includes('immuno') || s.includes('serology'))) return true;
+    if ((target.includes('microscopy') || target.includes('parasit')) && (s.includes('microscopy') || s.includes('parasit'))) return true;
+    if ((target.includes('histo') || target.includes('law')) && (s.includes('histo') || s.includes('law'))) return true;
+    return false;
+  });
 }
 
 export function StudyScheduleTimeline({
@@ -140,6 +162,151 @@ export function StudyScheduleTimeline({
     });
   }, [plans]);
 
+  // Next upcoming subject block if no active plan today
+  const upcomingFocusPlan = useMemo(() => {
+    if (activeFocusPlan) return null;
+    const today = startOfDay(new Date());
+    const futurePlans = plans
+      .filter((p) => {
+        try {
+          return startOfDay(new Date(p.startDate)) > today;
+        } catch {
+          return false;
+        }
+      })
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    return futurePlans[0] || null;
+  }, [activeFocusPlan, plans]);
+
+  // Live timer tick for accurate, real-time countdown updates
+  const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Progressive countdown for active study block
+  const focusPlanRemaining = useMemo(() => {
+    if (!activeFocusPlan) return null;
+    return calculateRemainingTime(activeFocusPlan.endDate, currentTime);
+  }, [activeFocusPlan, currentTime]);
+
+  // Effective Institutional Target Deadline
+  const effectiveDeadlineEndDate = useMemo(() => {
+    return program?.endDate || new Date(2026, 10, 30, 23, 59, 59).toISOString();
+  }, [program?.endDate]);
+
+  const effectiveDeadlineStartDate = useMemo(() => {
+    return program?.startDate || new Date(2026, 9, 1, 0, 0, 0).toISOString();
+  }, [program?.startDate]);
+
+  // Progressive countdown for institutional final deadline (always calculated and reactive)
+  const institutionalRemaining = useMemo(() => {
+    return calculateRemainingTime(effectiveDeadlineEndDate, currentTime);
+  }, [effectiveDeadlineEndDate, currentTime]);
+
+  // Horizon Progress % (from startDate to endDate)
+  const institutionalHorizonPercent = useMemo(() => {
+    try {
+      const startMs = new Date(effectiveDeadlineStartDate).getTime();
+      const endMs = new Date(effectiveDeadlineEndDate).getTime();
+      const currentMs = currentTime.getTime();
+      if (endMs <= startMs) return 100;
+      const elapsed = currentMs - startMs;
+      const total = endMs - startMs;
+      return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+    } catch {
+      return 50;
+    }
+  }, [effectiveDeadlineStartDate, effectiveDeadlineEndDate, currentTime]);
+
+  // Dynamic Schedule Alignment vs Institutional Target Deadline
+  const scheduleAlignment = useMemo(() => {
+    if (plans.length === 0) {
+      return {
+        bufferDays: institutionalRemaining?.calendarDays ?? 30,
+        isOnTrack: true,
+        message: 'No study schedule set yet',
+        subtext: 'Finish all review before this date',
+      };
+    }
+
+    let latestEndDate = new Date(plans[0].endDate);
+    for (const p of plans) {
+      const d = new Date(p.endDate);
+      if (d > latestEndDate) {
+        latestEndDate = d;
+      }
+    }
+    const deadlineDate = new Date(effectiveDeadlineEndDate);
+    const bufferDays = differenceInCalendarDays(deadlineDate, latestEndDate);
+    const isOnTrack = bufferDays >= 0;
+
+    return {
+      bufferDays,
+      isOnTrack,
+      latestEndDate,
+      message: isOnTrack
+        ? `Review ends ${format(latestEndDate, 'MMM dd')} (${bufferDays} days ahead)`
+        : `⚠️ Ends ${Math.abs(bufferDays)} days after deadline`,
+      subtext: isOnTrack
+        ? `${bufferDays} days ahead of deadline`
+        : 'Please adjust your dates',
+    };
+  }, [plans, effectiveDeadlineEndDate, institutionalRemaining]);
+
+  // Counts and Coverage
+  const scheduledCount = plans.length;
+  const totalSubjectCount = availableSubjectMetas.length;
+
+  // Card 3: Roadmap Unscheduled Subjects & Planning Dynamics
+  const unscheduledSubjects = useMemo(() => {
+    const scheduledTitles = new Set(plans.map((p) => p.subject.toLowerCase()));
+    return availableSubjectMetas.filter((s) => !scheduledTitles.has(s.title.toLowerCase()));
+  }, [plans, availableSubjectMetas]);
+
+  const unscheduledCount = unscheduledSubjects.length;
+  const coveragePercent = totalSubjectCount > 0
+    ? Math.min(100, Math.round((scheduledCount / totalSubjectCount) * 100))
+    : 0;
+
+  const nextRecommendedSubject = unscheduledSubjects[0] || null;
+
+  const totalDailyTargetSum = useMemo(() => {
+    return plans.reduce((acc, p) => acc + (p.targetQuestions || 0), 0);
+  }, [plans]);
+
+  // Active Focus Plan live quota and accuracy metrics
+  const activeMetric = useMemo(() => {
+    if (!activeFocusPlan) return null;
+    return findSubjectMetric(activeFocusPlan.subject, subjectMetrics);
+  }, [activeFocusPlan, subjectMetrics]);
+
+  const activeTargetQuestions = activeFocusPlan?.targetQuestions || 50;
+  const activeTargetAccuracy = activeFocusPlan?.targetAccuracy || 75;
+  const activeQuestionsAnswered = activeMetric
+    ? Number(activeMetric.totalQuestionsAnswered ?? activeMetric.questionsAnswered ?? 0)
+    : 0;
+  const activeAccuracy = activeMetric
+    ? Math.round(
+        Number(
+          activeMetric.proficiency !== undefined
+            ? activeMetric.proficiency
+            : activeMetric.mastery ?? activeMetric.accuracy ?? 0
+        )
+      )
+    : 0;
+  const activeQuotaProgressPercent = Math.min(
+    100,
+    Math.round((activeQuestionsAnswered / activeTargetQuestions) * 100)
+  );
+  const isActiveQuotaAchieved = activeQuestionsAnswered >= activeTargetQuestions;
+  const isActiveAccuracyAchieved = activeAccuracy >= activeTargetAccuracy;
+  const isActiveFullyAchieved =
+    isActiveQuotaAchieved && (activeQuestionsAnswered === 0 ? false : isActiveAccuracyAchieved);
+
   // Calendar Day Grid Computation
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -192,23 +359,69 @@ export function StudyScheduleTimeline({
     }
   };
 
-  const scheduledCount = plans.length;
-  const totalSubjectCount = availableSubjectMetas.length;
-
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-300">
       {/* Top Banner: Overview & Active Focus */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 sm:gap-4">
         {/* Card 1: Active Review Focus */}
-        <div className="bg-card border-2 border-border/80 hover:border-primary/40 transition-all rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
+        <div
+          className={cn(
+            "bg-card border-2 transition-all rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden",
+            isActiveFullyAchieved
+              ? "border-emerald-500/80 hover:border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)] bg-emerald-500/[0.02]"
+              : "border-border/80 hover:border-primary/40"
+          )}
+        >
           <div className="flex items-center justify-between gap-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               Active Review Focus
             </span>
-            {activeFocusPlan && (
-              <Badge className="bg-emerald-500/15 border-emerald-500/30 text-emerald-500 text-[9px] font-bold uppercase tracking-wider">
-                In Progress
+            {activeFocusPlan ? (
+              <Badge
+                className={cn(
+                  "text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition-all",
+                  focusPlanRemaining?.isExpired
+                    ? isActiveQuotaAchieved
+                      ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+                      : "bg-muted text-muted-foreground border-border"
+                    : isActiveFullyAchieved
+                    ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.3)] animate-pulse"
+                    : isActiveQuotaAchieved
+                    ? "bg-teal-500/15 border-teal-500/40 text-teal-600 dark:text-teal-400"
+                    : "bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-400"
+                )}
+              >
+                {focusPlanRemaining?.isExpired ? (
+                  isActiveQuotaAchieved ? (
+                    <>
+                      <Check className="w-3 h-3" /> Completed
+                    </>
+                  ) : (
+                    'Concluded'
+                  )
+                ) : isActiveFullyAchieved ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3" /> Target Achieved
+                  </>
+                ) : isActiveQuotaAchieved ? (
+                  <>
+                    <Check className="w-3 h-3" /> Quota Met
+                  </>
+                ) : (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    In Progress
+                  </>
+                )}
+              </Badge>
+            ) : upcomingFocusPlan ? (
+              <Badge className="bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-400 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
+                <Clock className="w-2.5 h-2.5" /> Upcoming
+              </Badge>
+            ) : (
+              <Badge className="bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase tracking-wider">
+                Not Scheduled
               </Badge>
             )}
           </div>
@@ -224,30 +437,168 @@ export function StudyScheduleTimeline({
                     {activeFocusPlan.subject}
                   </h3>
                 </div>
-                <p className="text-xs font-semibold text-muted-foreground mt-0.5">
-                  {format(new Date(activeFocusPlan.startDate), 'MMM dd')} –{' '}
-                  {format(new Date(activeFocusPlan.endDate), 'MMM dd, yyyy')}
-                  <span className="text-foreground/80 font-bold ml-1.5">
-                    (
-                    {Math.max(
-                      0,
-                      differenceInDays(new Date(activeFocusPlan.endDate), new Date())
-                    )}{' '}
-                    days remaining)
+                <p className="text-xs font-semibold text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                  <span>
+                    {format(new Date(activeFocusPlan.startDate), 'MMM dd')} –{' '}
+                    {format(new Date(activeFocusPlan.endDate), 'MMM dd, yyyy')}
                   </span>
+                  {focusPlanRemaining && (
+                    <span
+                      className={cn(
+                        "text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 border transition-colors",
+                        focusPlanRemaining.isCritical
+                          ? "bg-red-500/15 text-red-500 border-red-500/30 animate-pulse font-extrabold"
+                          : focusPlanRemaining.isEndingToday
+                          ? "bg-amber-500/15 text-amber-500 border-amber-500/30 font-extrabold"
+                          : focusPlanRemaining.isEndingTomorrow
+                          ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                          : focusPlanRemaining.isExpired
+                          ? "bg-muted text-muted-foreground border-border"
+                          : "bg-muted/40 text-foreground/85 border-border/60"
+                      )}
+                    >
+                      {focusPlanRemaining.isEndingToday && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                      )}
+                      {focusPlanRemaining.isCritical && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                      )}
+                      {focusPlanRemaining.formatted}
+                    </span>
+                  )}
                 </p>
                 {activeFocusPlan.goal && (
                   <p className="text-[11px] text-foreground/80 font-medium italic mt-1 line-clamp-1">
                     🎯 {activeFocusPlan.goal}
                   </p>
                 )}
+
+                {/* Target Quota & Accuracy Live Tracker */}
+                <div className="mt-2.5 pt-2 border-t border-border/40 space-y-1.5 bg-muted/20 -mx-1 px-2.5 py-2 rounded-xl border border-border/50">
+                  <div className="flex items-center justify-between text-[11px] gap-2">
+                    <span className="font-bold text-muted-foreground flex items-center gap-1 shrink-0">
+                      <Target className="w-3 h-3 text-primary" />
+                      Target Quota:
+                    </span>
+                    <span className="font-black text-foreground truncate">
+                      {activeQuestionsAnswered} / {activeTargetQuestions} Qs ({activeQuotaProgressPercent}%)
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="h-2 w-full bg-muted/80 rounded-full overflow-hidden border border-border/60 flex">
+                    <div
+                      className={cn(
+                        "h-full transition-all duration-500 rounded-full",
+                        isActiveQuotaAchieved
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(16,185,129,0.55)]"
+                          : "bg-primary"
+                      )}
+                      style={{ width: `${activeQuotaProgressPercent}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5 gap-2">
+                    <span className="flex items-center gap-1 truncate">
+                      ⚡ Subject Proficiency:
+                      <strong
+                        className={cn(
+                          "font-black",
+                          activeQuestionsAnswered === 0
+                            ? "text-muted-foreground"
+                            : isActiveAccuracyAchieved
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-amber-600 dark:text-amber-400"
+                        )}
+                      >
+                        {activeQuestionsAnswered > 0 ? `${activeAccuracy}%` : '0%'}
+                      </strong>
+                    </span>
+                    <span className="shrink-0 font-semibold">
+                      Target: ≥{activeTargetAccuracy}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : upcomingFocusPlan ? (
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">
+                    {availableSubjectMetas.find((s) => s.title.toLowerCase() === upcomingFocusPlan.subject.toLowerCase())?.icon || '📚'}
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black text-foreground truncate">
+                    {upcomingFocusPlan.subject}
+                  </h3>
+                </div>
+                <p className="text-xs font-semibold text-muted-foreground mt-0.5 truncate">
+                  Starts {format(new Date(upcomingFocusPlan.startDate), 'MMMM dd, yyyy')}
+                </p>
+
+                {/* Upcoming Plan Tracker */}
+                <div className="mt-2.5 pt-2 border-t border-border/40 space-y-1.5 bg-muted/20 -mx-1 px-2.5 py-2 rounded-xl border border-border/50">
+                  <div className="flex items-center justify-between text-[11px] gap-2">
+                    <span className="font-bold text-muted-foreground flex items-center gap-1 shrink-0">
+                      <Clock className="w-3 h-3 text-primary" />
+                      Next Review Block:
+                    </span>
+                    <span className="font-black text-foreground truncate">
+                      {differenceInCalendarDays(new Date(upcomingFocusPlan.startDate), currentTime)} Days Until Start
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="h-2 w-full bg-muted/80 rounded-full overflow-hidden border border-border/60 flex">
+                    <div className="h-full bg-gradient-to-r from-primary to-indigo-500 rounded-full w-full" />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5 gap-2">
+                    <span className="flex items-center gap-1 truncate text-muted-foreground">
+                      Planned: {format(new Date(upcomingFocusPlan.startDate), 'MMM dd')} – {format(new Date(upcomingFocusPlan.endDate), 'MMM dd')}
+                    </span>
+                    <span className="shrink-0 font-semibold text-foreground">
+                      {upcomingFocusPlan.targetQuestions || 50} Qs / day
+                    </span>
+                  </div>
+                </div>
               </div>
             ) : (
               <div>
-                <p className="text-sm font-bold text-foreground">No Active Block Today</p>
-                <p className="text-xs text-muted-foreground">
-                  Schedule a review period (e.g. Oct 14 – Oct 30) to track your daily progress.
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">📅</span>
+                  <h3 className="text-base sm:text-lg font-black text-foreground truncate">
+                    No Active Review Today
+                  </h3>
+                </div>
+                <p className="text-xs font-semibold text-muted-foreground mt-0.5 truncate">
+                  Set your review dates to track your daily question targets
                 </p>
+
+                {/* Getting Started Tracker Box */}
+                <div className="mt-2.5 pt-2 border-t border-border/40 space-y-1.5 bg-muted/20 -mx-1 px-2.5 py-2 rounded-xl border border-border/50">
+                  <div className="flex items-center justify-between text-[11px] gap-2">
+                    <span className="font-bold text-muted-foreground flex items-center gap-1 shrink-0">
+                      <Target className="w-3 h-3 text-primary" />
+                      Daily Review Goal:
+                    </span>
+                    <span className="font-semibold text-muted-foreground truncate">
+                      Not set yet
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="h-2 w-full bg-muted/80 rounded-full overflow-hidden border border-border/60 flex">
+                    <div className="h-full bg-muted-foreground/15 rounded-full w-full" />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5 gap-2">
+                    <span className="flex items-center gap-1 truncate text-muted-foreground">
+                      👉 Tap Schedule Now to pick your first subject
+                    </span>
+                    <span className="shrink-0 font-semibold text-primary">
+                      Target: ≥75%
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -264,10 +615,18 @@ export function StudyScheduleTimeline({
               >
                 Modify Block →
               </button>
+            ) : upcomingFocusPlan ? (
+              <button
+                type="button"
+                onClick={() => handleOpenEditModal(upcomingFocusPlan)}
+                className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+              >
+                View Block →
+              </button>
             ) : (
               <button
                 type="button"
-                onClick={() => handleOpenAddModal()}
+                onClick={() => handleOpenAddModal(undefined, nextRecommendedSubject?.title)}
                 className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
               >
                 Schedule Now →
@@ -277,62 +636,213 @@ export function StudyScheduleTimeline({
         </div>
 
         {/* Card 2: Institutional Final Deadline */}
-        <div className="bg-card border-2 border-border/80 hover:border-primary/40 transition-all rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-card border-2 border-border/80 hover:border-primary/40 transition-all rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
               <CalendarIcon className="w-3.5 h-3.5" />
               Institutional Target Deadline
             </span>
-            {program?.endDate && (
-              <Badge className="bg-primary/10 border-primary/20 text-primary text-[9px] font-bold uppercase tracking-wider">
-                {differenceInDays(new Date(program.endDate), new Date())} Days Left
+            {institutionalRemaining && (
+              <Badge
+                className={cn(
+                  "text-[9px] font-bold uppercase tracking-wider transition-colors shrink-0",
+                  institutionalRemaining.isCritical
+                    ? "bg-red-500/15 text-red-500 border-red-500/30 animate-pulse font-extrabold"
+                    : institutionalRemaining.isEndingToday
+                    ? "bg-amber-500/15 text-amber-500 border-amber-500/30 font-extrabold"
+                    : institutionalRemaining.isEndingTomorrow
+                    ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    : institutionalRemaining.isExpired
+                    ? "bg-muted text-muted-foreground border-border"
+                    : "bg-primary/10 border-primary/20 text-primary"
+                )}
+              >
+                {institutionalRemaining.isEndingToday
+                  ? `Due Today (${institutionalRemaining.short})`
+                  : institutionalRemaining.isEndingTomorrow
+                  ? 'Ends Tomorrow'
+                  : institutionalRemaining.isExpired
+                  ? 'Expired'
+                  : `${institutionalRemaining.calendarDays} Days Left`}
               </Badge>
             )}
           </div>
 
           <div className="my-2.5">
-            <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-              {program?.endDate
-                ? format(new Date(program.endDate), 'MMMM dd, yyyy')
-                : 'November 30, 2026'}
-            </p>
-            <p className="text-xs text-muted-foreground font-semibold mt-0.5">
-              {program?.authorName || program?.companyName || 'Super Admin'} • {program?.title || 'Game Deadline'}
-              {program?.labels && program.labels.length > 0 && ` • ${Array.isArray(program.labels) ? program.labels.join(', ') : String(program.labels)}`}
-            </p>
+            <div>
+              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                {format(new Date(effectiveDeadlineEndDate), 'MMMM dd, yyyy')}
+              </p>
+              <p className="text-xs text-muted-foreground font-semibold mt-0.5 truncate">
+                {program?.companyName || 'SWU PHINMA'} • Final Review Deadline
+              </p>
+            </div>
+
+            {/* Target Horizon & Schedule Alignment Tracker */}
+            <div className="mt-2.5 pt-2 border-t border-border/40 space-y-1.5 bg-muted/20 -mx-1 px-2.5 py-2 rounded-xl border border-border/50">
+              <div className="flex items-center justify-between text-[11px] gap-2">
+                <span className="font-bold text-muted-foreground flex items-center gap-1 shrink-0">
+                  <Clock className="w-3 h-3 text-primary" />
+                  Time Remaining:
+                </span>
+                <span className="font-black text-foreground truncate">
+                  {institutionalRemaining?.isExpired
+                    ? 'Deadline Passed'
+                    : `${institutionalRemaining?.calendarDays || 0} Days Left`}
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="h-2 w-full bg-muted/80 rounded-full overflow-hidden border border-border/60 flex">
+                <div
+                  className={cn(
+                    "h-full transition-all duration-500 rounded-full",
+                    institutionalRemaining?.isExpired
+                      ? "bg-muted-foreground"
+                      : institutionalRemaining?.isCritical
+                      ? "bg-red-500 animate-pulse"
+                      : "bg-gradient-to-r from-primary via-indigo-500 to-emerald-500"
+                  )}
+                  style={{ width: `${institutionalHorizonPercent}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5 gap-2">
+                <span className="flex items-center gap-1 truncate">
+                  {scheduleAlignment.isOnTrack ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 truncate">
+                      <CheckCircle2 className="w-3 h-3 shrink-0" />
+                      {scheduleAlignment.message}
+                    </span>
+                  ) : (
+                    <span className="text-red-500 font-bold flex items-center gap-1 truncate">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {scheduleAlignment.message}
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 font-semibold">
+                  {scheduleAlignment.isOnTrack ? '✓ On Track' : 'Needs Review'}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="pt-2 border-t border-border/50 flex items-center justify-between text-[10px] text-muted-foreground font-bold">
-            <span>All subject study blocks must conclude before this date.</span>
+          <div className="pt-2 border-t border-border/50 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase truncate">
+              Finish all review before this date
+            </span>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              On Track
+            </span>
           </div>
         </div>
 
-        {/* Card 3: Prioritization & Quick Actions */}
-        <div className="bg-gradient-to-br from-card via-card to-primary/5 border-2 border-border/80 hover:border-primary/40 transition-all rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-foreground/80 flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-amber-500" />
-                Study Roadmap Actions
-              </span>
-              <span className="text-[10px] font-mono text-muted-foreground font-bold">
-                MTLE Syllabus
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-              Designate review dates, prioritize critical focus areas, and align daily question targets.
-            </p>
+        {/* Card 3: Study Roadmap Actions */}
+        <div className="bg-gradient-to-br from-card via-card to-primary/5 border-2 border-border/80 hover:border-primary/40 transition-all rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-foreground/80 flex items-center gap-1.5">
+              <Flame className="w-3.5 h-3.5 text-amber-500" />
+              Study Roadmap Actions
+            </span>
+            <Badge
+              className={cn(
+                "text-[9px] font-bold uppercase tracking-wider shrink-0 transition-colors",
+                unscheduledCount === 0
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-extrabold"
+                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+              )}
+            >
+              {unscheduledCount === 0 ? (
+                <span className="flex items-center gap-1">
+                  <Check className="w-2.5 h-2.5" /> All Scheduled
+                </span>
+              ) : (
+                `${unscheduledCount} Left to Schedule`
+              )}
+            </Badge>
           </div>
 
-          <div className="pt-3 flex items-center gap-2">
+          <div className="my-2.5">
+            <div>
+              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                {scheduledCount} of {totalSubjectCount} Subjects Scheduled
+              </p>
+              <p className="text-xs text-muted-foreground font-semibold mt-0.5 truncate">
+                {unscheduledCount > 0
+                  ? `${unscheduledCount} subject${unscheduledCount > 1 ? 's' : ''} left to plan`
+                  : 'All board exam subjects planned'}
+              </p>
+            </div>
+
+            {/* Syllabus Coverage & Next Subject Tracker */}
+            <div className="mt-2.5 pt-2 border-t border-border/40 space-y-1.5 bg-muted/20 -mx-1 px-2.5 py-2 rounded-xl border border-border/50">
+              <div className="flex items-center justify-between text-[11px] gap-2">
+                <span className="font-bold text-muted-foreground flex items-center gap-1 shrink-0">
+                  <Layers className="w-3 h-3 text-amber-500" />
+                  Study Plan Progress:
+                </span>
+                <span className="font-black text-foreground truncate">
+                  {scheduledCount} of {totalSubjectCount} ({coveragePercent}%)
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="h-2 w-full bg-muted/80 rounded-full overflow-hidden border border-border/60 flex">
+                <div
+                  className={cn(
+                    "h-full transition-all duration-500 rounded-full",
+                    coveragePercent === 100
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(16,185,129,0.55)]"
+                      : "bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-500"
+                  )}
+                  style={{ width: `${coveragePercent}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5 gap-2">
+                <span className="flex items-center gap-1 min-w-0 truncate">
+                  {nextRecommendedSubject ? (
+                    <span className="truncate flex items-center gap-1 text-muted-foreground">
+                      👉 Next:{' '}
+                      <strong className="text-foreground font-bold truncate" title={nextRecommendedSubject.title}>
+                        {nextRecommendedSubject.shortTitle || nextRecommendedSubject.title}
+                      </strong>
+                    </span>
+                  ) : (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 truncate">
+                      <CheckCircle2 className="w-3 h-3 shrink-0" />
+                      All subjects scheduled
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 font-semibold">
+                  {totalDailyTargetSum > 0 ? `${totalDailyTargetSum} questions / day` : 'No targets yet'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
             <Button
               size="sm"
-              onClick={() => handleOpenAddModal()}
-              className="flex-1 rounded-2xl h-10 text-xs font-black uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 flex items-center justify-center gap-1.5"
+              onClick={() => handleOpenAddModal(undefined, nextRecommendedSubject?.title)}
+              className="w-full rounded-xl sm:rounded-2xl h-9 text-xs font-black uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
             >
               <Plus className="w-3.5 h-3.5" />
               Schedule Subject Block
             </Button>
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold px-0.5">
+              <span className="uppercase truncate">4 Board Exam Subjects</span>
+              <button
+                type="button"
+                onClick={() => setViewMode(viewMode === 'calendar' ? 'roadmap' : 'calendar')}
+                className="text-primary hover:underline cursor-pointer shrink-0 ml-1"
+              >
+                {viewMode === 'calendar' ? 'View All Subjects →' : 'View Calendar →'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -620,7 +1130,25 @@ export function StudyScheduleTimeline({
               {availableSubjectMetas.map((sub) => {
                 const plan = planBySubject.get(sub.title);
                 const isScheduled = !!plan;
-                const metric = subjectMetrics.find((m) => m.name === sub.title);
+                const metric = findSubjectMetric(sub.title, subjectMetrics);
+                const subAnswered = metric
+                  ? Number(metric.totalQuestionsAnswered ?? metric.questionsAnswered ?? 0)
+                  : 0;
+                const subAccuracy = metric
+                  ? Math.round(
+                      Number(
+                        metric.proficiency !== undefined
+                          ? metric.proficiency
+                          : metric.mastery ?? metric.accuracy ?? 0
+                      )
+                    )
+                  : null;
+                const subTargetQuestions = plan?.targetQuestions || 50;
+                const subTargetAccuracy = plan?.targetAccuracy || 75;
+                const isSubQuotaMet = subAnswered >= subTargetQuestions;
+                const isSubAccuracyMet = subAccuracy !== null && subAccuracy >= subTargetAccuracy;
+                const isSubFullyAchieved =
+                  isSubQuotaMet && (subAnswered === 0 ? false : isSubAccuracyMet);
 
                 const isTodayActive =
                   plan &&
@@ -635,7 +1163,9 @@ export function StudyScheduleTimeline({
                     className={cn(
                       'p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border-2 transition-all flex flex-col justify-between gap-3 relative overflow-hidden bg-card',
                       isScheduled
-                        ? 'border-border/80 hover:border-primary/50 shadow-xs'
+                        ? isSubFullyAchieved
+                          ? 'border-emerald-500/80 hover:border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.18)] bg-emerald-500/[0.02]'
+                          : 'border-border/80 hover:border-primary/50 shadow-xs'
                         : 'border-dashed border-border/60 bg-muted/10'
                     )}
                   >
@@ -659,19 +1189,32 @@ export function StudyScheduleTimeline({
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {isScheduled ? (
                           <>
-                            <Badge
-                              className={cn(
-                                'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5',
-                                plan.priority === 'HIGH'
-                                  ? 'bg-red-500/15 text-red-500 border-red-500/30'
-                                  : plan.priority === 'MEDIUM'
-                                  ? 'bg-amber-500/15 text-amber-500 border-amber-500/30'
-                                  : 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
-                              )}
-                            >
-                              <span className="sm:hidden">{plan.priority || 'HIGH'}</span>
-                              <span className="hidden sm:inline">{plan.priority || 'HIGH'} Priority</span>
-                            </Badge>
+                            <div className="flex items-center gap-1 flex-wrap justify-end">
+                              {isSubFullyAchieved ? (
+                                <Badge className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5" /> Target Met
+                                </Badge>
+                              ) : isSubQuotaMet ? (
+                                <Badge className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30 flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5" /> Quota Met
+                                </Badge>
+                              ) : null}
+
+                              <Badge
+                                className={cn(
+                                  'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5',
+                                  plan.priority === 'HIGH'
+                                    ? 'bg-red-500/15 text-red-500 border-red-500/30'
+                                    : plan.priority === 'MEDIUM'
+                                    ? 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                                    : 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
+                                )}
+                              >
+                                <span className="sm:hidden">{plan.priority || 'HIGH'}</span>
+                                <span className="hidden sm:inline">{plan.priority || 'HIGH'} Priority</span>
+                              </Badge>
+                            </div>
+
                             {isTodayActive && (
                               <span className="text-[8px] font-bold text-emerald-500 uppercase flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -689,7 +1232,14 @@ export function StudyScheduleTimeline({
 
                     {/* Middle: Scheduled Review Period & Targets */}
                     {isScheduled ? (
-                      <div className="space-y-2 sm:space-y-2.5 bg-muted/20 border border-border/60 rounded-xl sm:rounded-2xl p-2.5 sm:p-3">
+                      <div
+                        className={cn(
+                          'space-y-2 sm:space-y-2.5 border rounded-xl sm:rounded-2xl p-2.5 sm:p-3 transition-colors',
+                          isSubFullyAchieved
+                            ? 'bg-emerald-500/[0.04] border-emerald-500/30'
+                            : 'bg-muted/20 border-border/60'
+                        )}
+                      >
                         {/* Dates */}
                         <div className="flex flex-col xs:flex-row xs:items-center justify-between text-xs gap-1">
                           <span className="font-bold text-muted-foreground flex items-center gap-1.5 shrink-0 text-[11px] sm:text-xs">
@@ -711,24 +1261,34 @@ export function StudyScheduleTimeline({
                             <span className="font-black text-foreground text-[11px] sm:text-xs block mt-0.5 truncate">
                               🎯 {plan.targetQuestions || 50} Qs / day
                             </span>
-                            {metric?.questionsAnswered !== undefined && (
-                              <span className="text-[9px] text-muted-foreground block font-mono">
-                                ({metric.questionsAnswered} answered)
-                              </span>
-                            )}
+                            <span
+                              className={cn(
+                                "text-[9px] block font-mono font-bold mt-0.5 truncate",
+                                isSubQuotaMet
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-muted-foreground"
+                              )}
+                            >
+                              ({subAnswered} answered){isSubQuotaMet ? ' ✓' : ''}
+                            </span>
                           </div>
                           <div className="min-w-0">
                             <span className="text-[10px] font-bold text-muted-foreground block truncate">
-                              Target Accuracy:
+                              Target Subject Proficiency:
                             </span>
                             <span className="font-black text-foreground text-[11px] sm:text-xs block mt-0.5 truncate">
                               ⚡ ≥ {plan.targetAccuracy || 75}%
                             </span>
-                            {metric?.accuracy !== undefined && (
-                              <span className="text-[9px] text-muted-foreground block font-mono">
-                                (Current: {Math.round(metric.accuracy)}%)
-                              </span>
-                            )}
+                            <span
+                              className={cn(
+                                "text-[9px] block font-mono font-bold mt-0.5 truncate",
+                                subAccuracy !== null && isSubAccuracyMet
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-muted-foreground"
+                              )}
+                            >
+                              {subAccuracy !== null ? `(Current: ${subAccuracy}%)` : '(No attempts yet)'}
+                            </span>
                           </div>
                         </div>
 

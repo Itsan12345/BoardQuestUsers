@@ -1,5 +1,8 @@
 "use client";
 
+import { format } from 'date-fns';
+import { calculateRemainingTime } from '@/lib/study-timer';
+
 export type NotificationType =
   | 'guidance'
   | 'guidance_resolved'
@@ -7,7 +10,11 @@ export type NotificationType =
   | 'streak_lost'
   | 'daily_goal'
   | 'milestone'
-  | 'achievement';
+  | 'achievement'
+  | 'study_block_ending'
+  | 'study_block_today'
+  | 'study_block_achieved'
+  | 'institutional_deadline';
 
 export interface AppNotification {
   id: string;
@@ -130,7 +137,29 @@ export function buildGuidanceNotifications(guidanceList: any[] = []): AppNotific
   return notifications;
 }
 
-export function generateDynamicNotifications(user: any, guidanceList: any[] = []): AppNotification[] {
+export function findSubjectMetric(subjectName: string, metrics: any[]): any | undefined {
+  if (!subjectName || !Array.isArray(metrics)) return undefined;
+  const target = subjectName.trim().toLowerCase();
+  return metrics.find((m: any) => {
+    const s = (m.subject || m.name || '').trim().toLowerCase();
+    if (s === target) return true;
+    if (target.includes('chem') && s.includes('chem')) return true;
+    if (target.includes('micro') && s.includes('micro')) return true;
+    if (target.includes('hema') && s.includes('hema') && !target.includes('immuno') && !s.includes('immuno')) return true;
+    if ((target.includes('immuno') || target.includes('serology')) && (s.includes('immuno') || s.includes('serology'))) return true;
+    if ((target.includes('microscopy') || target.includes('parasit')) && (s.includes('microscopy') || s.includes('parasit'))) return true;
+    if ((target.includes('histo') || target.includes('law')) && (s.includes('histo') || s.includes('law'))) return true;
+    return false;
+  });
+}
+
+export function generateDynamicNotifications(
+  user: any,
+  guidanceList: any[] = [],
+  studyPlans: any[] = [],
+  institutionalProgram: any = null,
+  subjectMetrics: any[] = []
+): AppNotification[] {
   if (typeof window === 'undefined') return [];
 
   const notifications: AppNotification[] = [];
@@ -299,6 +328,190 @@ export function generateDynamicNotifications(user: any, guidanceList: any[] = []
       isUrgent: false,
       read: readIds.includes(achieveId),
     });
+  }
+
+  // 5. ⏳ Active Study Block Deadlines & Dynamic Target Achievements
+  if (countdownAlertsEnabled && Array.isArray(studyPlans)) {
+    const now = new Date();
+    studyPlans.forEach((plan) => {
+      if (!plan.endDate || plan.status === 'COMPLETED') return;
+      const remaining = calculateRemainingTime(plan.endDate, now);
+      if (remaining.isExpired) return;
+
+      const subjectName = plan.subject || 'Scheduled Subject';
+      const metric = findSubjectMetric(subjectName, subjectMetrics);
+      const answered = metric
+        ? Number(metric.totalQuestionsAnswered ?? metric.questionsAnswered ?? 0)
+        : 0;
+      const proficiency = metric
+        ? Math.round(
+            Number(
+              metric.proficiency !== undefined
+                ? metric.proficiency
+                : (metric.mastery ?? metric.accuracy ?? 0)
+            )
+          )
+        : 0;
+
+      const targetQuestions = plan.targetQuestions || 50;
+      const targetAccuracy = plan.targetAccuracy || 75;
+      const isQuotaMet = answered >= targetQuestions;
+      const isAccuracyMet = proficiency >= targetAccuracy;
+      const isFullyAchieved = isQuotaMet && (answered > 0 ? isAccuracyMet : false);
+
+      if (remaining.isEndingToday) {
+        if (isFullyAchieved) {
+          const blockTodayId = `study_block_today_achieved_${plan.id || subjectName}_${localToday}`;
+          notifications.push({
+            id: blockTodayId,
+            type: 'study_block_achieved',
+            title: `🎉 Review Block Goal Achieved: ${subjectName}`,
+            message: `Outstanding work! You achieved both your ${targetQuestions} Qs quota (${answered} answered) and ${targetAccuracy}% proficiency target (${proficiency}%) on the final day of your review block!`,
+            timestamp: `Due Today`,
+            link: '/study?tab=timeline',
+            actionLabel: 'View Progress',
+            isUrgent: false,
+            read: readIds.includes(blockTodayId),
+            subjectCategory: subjectName,
+          });
+        } else if (isQuotaMet) {
+          const blockTodayId = `study_block_today_quotamet_${plan.id || subjectName}_${localToday}`;
+          notifications.push({
+            id: blockTodayId,
+            type: 'study_block_today',
+            title: `⚡ Quota Reached - Final Day: ${subjectName}`,
+            message: `You hit your ${targetQuestions} Qs target (${answered} answered)! Today is the final day of your review block (${remaining.short}) to push your subject proficiency to ${targetAccuracy}% (currently ${proficiency}%).`,
+            timestamp: `Due Today`,
+            link: '/study?tab=timeline',
+            actionLabel: 'Review Block',
+            isUrgent: true,
+            read: readIds.includes(blockTodayId),
+            subjectCategory: subjectName,
+          });
+        } else {
+          const blockTodayId = `study_block_today_pending_${plan.id || subjectName}_${localToday}`;
+          notifications.push({
+            id: blockTodayId,
+            type: 'study_block_today',
+            title: `🚨 Final Day for ${subjectName}`,
+            message: `Today is the final day of your ${subjectName} review block (${remaining.short})! Complete your remaining ${Math.max(0, targetQuestions - answered)} questions to hit your ${targetQuestions} Qs target.`,
+            timestamp: `Due Today`,
+            link: '/study?tab=timeline',
+            actionLabel: 'Review Block',
+            isUrgent: true,
+            read: readIds.includes(blockTodayId),
+            subjectCategory: subjectName,
+          });
+        }
+      } else if (remaining.isEndingTomorrow) {
+        if (isFullyAchieved) {
+          const blockTomorrowId = `study_block_tomorrow_achieved_${plan.id || subjectName}_${localToday}`;
+          notifications.push({
+            id: blockTomorrowId,
+            type: 'study_block_achieved',
+            title: `🎉 Review Block Goal Achieved: ${subjectName}`,
+            message: `Great job! You achieved both your ${targetQuestions} Qs quota (${answered} answered) and ${targetAccuracy}% proficiency target (${proficiency}%) before tomorrow's conclusion!`,
+            timestamp: `Tomorrow`,
+            link: '/study?tab=timeline',
+            actionLabel: 'View Progress',
+            isUrgent: false,
+            read: readIds.includes(blockTomorrowId),
+            subjectCategory: subjectName,
+          });
+        } else if (isQuotaMet) {
+          const blockTomorrowId = `study_block_tomorrow_quotamet_${plan.id || subjectName}_${localToday}`;
+          notifications.push({
+            id: blockTomorrowId,
+            type: 'study_block_ending',
+            title: `🎯 Quota Reached: ${subjectName}`,
+            message: `You reached your ${targetQuestions} Qs quota (${answered} answered)! Practice more before tomorrow's deadline to reach your ${targetAccuracy}% proficiency target (currently ${proficiency}%).`,
+            timestamp: `Tomorrow`,
+            link: '/study?tab=timeline',
+            actionLabel: 'Review Block',
+            isUrgent: false,
+            read: readIds.includes(blockTomorrowId),
+            subjectCategory: subjectName,
+          });
+        } else {
+          const blockTomorrowId = `study_block_tomorrow_pending_${plan.id || subjectName}_${localToday}`;
+          notifications.push({
+            id: blockTomorrowId,
+            type: 'study_block_ending',
+            title: `⏳ Review Block Ending Tomorrow: ${subjectName}`,
+            message: `Your scheduled review block for ${subjectName} concludes tomorrow. You have completed ${answered}/${targetQuestions} questions—practice now to hit your target!`,
+            timestamp: `Tomorrow`,
+            link: '/study?tab=timeline',
+            actionLabel: 'Review Block',
+            isUrgent: false,
+            read: readIds.includes(blockTomorrowId),
+            subjectCategory: subjectName,
+          });
+        }
+      } else if (isFullyAchieved) {
+        // Milestone achievement notification for active review block achieved ahead of schedule
+        const blockAchievedId = `study_block_active_achieved_${plan.id || subjectName}_${localToday}`;
+        notifications.push({
+          id: blockAchievedId,
+          type: 'study_block_achieved',
+          title: `🎉 Subject Target Achieved: ${subjectName}`,
+          message: `Outstanding! You have hit both your ${targetQuestions} Qs quota (${answered} answered) and ${targetAccuracy}% proficiency target (${proficiency}%) ahead of time!`,
+          timestamp: `Goal Achieved`,
+          link: '/study?tab=timeline',
+          actionLabel: 'View Progress',
+          isUrgent: false,
+          read: readIds.includes(blockAchievedId),
+          subjectCategory: subjectName,
+        });
+      }
+    });
+  }
+
+  // 6. 🏛️ Institutional Final Game Deadline Alert
+  if (countdownAlertsEnabled && institutionalProgram?.endDate) {
+    const now = new Date();
+    const remaining = calculateRemainingTime(institutionalProgram.endDate, now);
+    if (!remaining.isExpired) {
+      if (remaining.isEndingToday) {
+        const instTodayId = `inst_deadline_today_${localToday}`;
+        notifications.push({
+          id: instTodayId,
+          type: 'institutional_deadline',
+          title: '⚠️ Institutional Game Deadline Today!',
+          message: `Today is the final institutional target deadline set by ${institutionalProgram.authorName || 'Super Admin'}. All subject study blocks conclude today!`,
+          timestamp: 'Due Today',
+          link: '/study?tab=timeline',
+          actionLabel: 'View Deadline',
+          isUrgent: true,
+          read: readIds.includes(instTodayId),
+        });
+      } else if (remaining.isEndingTomorrow) {
+        const instTomorrowId = `inst_deadline_tomorrow_${localToday}`;
+        notifications.push({
+          id: instTomorrowId,
+          type: 'institutional_deadline',
+          title: '⚠️ Institutional Game Deadline Tomorrow!',
+          message: `The final institutional deadline is tomorrow! Make sure all your subject blocks and targets are completed.`,
+          timestamp: 'Tomorrow',
+          link: '/study?tab=timeline',
+          actionLabel: 'View Deadline',
+          isUrgent: true,
+          read: readIds.includes(instTomorrowId),
+        });
+      } else if (remaining.calendarDays <= 7) {
+        const instWeekId = `inst_deadline_week_${localToday}`;
+        notifications.push({
+          id: instWeekId,
+          type: 'institutional_deadline',
+          title: '🏛️ Institutional Deadline Approaching',
+          message: `Only ${remaining.calendarDays} days remaining until the institutional target deadline (${format(new Date(institutionalProgram.endDate), 'MMM dd, yyyy')}).`,
+          timestamp: `${remaining.calendarDays}d left`,
+          link: '/study?tab=timeline',
+          actionLabel: 'Check Roadmap',
+          isUrgent: remaining.calendarDays <= 3,
+          read: readIds.includes(instWeekId),
+        });
+      }
+    }
   }
 
   // Sort urgent first, then unread first

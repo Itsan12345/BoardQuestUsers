@@ -136,13 +136,17 @@ const KNOWN_SUBJECT_MAP: Record<string, Omit<SubjectMetaConfig, 'id' | 'title'>>
 };
 
 const EMOJI_ICON_FALLBACKS: Record<string, string> = {
-  BookOpen: '📖',
+  Atom: '🧪',
   FlaskConical: '🧪',
+  Flask: '🧪',
   Microscope: '🔬',
   Database: '🧫',
+  Syringe: '🩸',
+  Droplet: '🩸',
   Stethoscope: '🩺',
   ShieldAlert: '📜',
   BookMarked: '📚',
+  BookOpen: '📖',
 };
 
 export function resolveSubjectMeta(
@@ -158,10 +162,10 @@ export function resolveSubjectMeta(
   let resolvedIcon = '📚';
   if (rawIcon && EMOJI_ICON_FALLBACKS[rawIcon]) {
     resolvedIcon = EMOJI_ICON_FALLBACKS[rawIcon];
-  } else if (rawIcon && rawIcon.length <= 4) {
-    resolvedIcon = rawIcon;
   } else if (known?.icon) {
     resolvedIcon = known.icon;
+  } else if (rawIcon && !/[a-zA-Z0-9]/.test(rawIcon) && rawIcon.trim().length > 0) {
+    resolvedIcon = rawIcon.trim();
   }
 
   if (known) {
@@ -640,6 +644,9 @@ export function ScheduleBlockModal({
             'MMM dd'
           )} to ${format(cleanEnd, 'MMM dd, yyyy')}.`,
         });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('bq_study_plan_updated'));
+        }
         onSaved();
         onOpenChange(false);
       } else {
@@ -670,6 +677,9 @@ export function ScheduleBlockModal({
           title: 'Schedule Removed',
           description: `Removed study block for ${selectedSubject}.`,
         });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('bq_study_plan_updated'));
+        }
         setStartDate(null);
         setEndDate(null);
         onSaved();
@@ -1107,7 +1117,7 @@ export function ScheduleBlockModal({
                   <div className="space-y-1">
                     <div className="h-4 sm:h-4.5 flex items-center justify-between">
                       <span className="text-[9.5px] sm:text-[10px] font-bold text-slate-700 dark:text-foreground leading-none">
-                        Accuracy Goal
+                        Target Subject Proficiency
                       </span>
                       <span className="text-[8.5px] sm:text-[9px] font-semibold text-slate-400 dark:text-muted-foreground/60 leading-none">
                         Target %

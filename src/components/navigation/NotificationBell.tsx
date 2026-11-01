@@ -9,11 +9,14 @@ import {
   Calendar,
   Trophy,
   Check,
+  CheckCircle2,
   Sparkles,
   ChevronRight,
   X,
   GraduationCap,
   UserCheck,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -28,6 +31,8 @@ import {
   getStudentGuidanceAssignmentsAction,
   type GuidanceAssignmentRecord,
 } from '@/app/actions/guidance';
+import { getStudyPlans, getGameDeadlineEvent } from '@/app/actions/study-plan';
+import { getSubjectMetrics } from '@/app/actions/study';
 import { GuidanceCounselingDialog } from '@/components/guidance/GuidanceCounselingDialog';
 import { cn } from '@/lib/utils';
 
@@ -44,10 +49,16 @@ export function NotificationBell({ user }: NotificationBellProps) {
 
   const fetchGuidanceAndSync = useCallback(async () => {
     try {
-      const res = await getStudentGuidanceAssignmentsAction();
-      const list = res.success && res.data ? res.data : [];
+      const [guidanceRes, plans, program, metrics] = await Promise.all([
+        getStudentGuidanceAssignmentsAction().catch(() => ({ success: false, data: [] })),
+        getStudyPlans().catch(() => []),
+        getGameDeadlineEvent().catch(() => null),
+        getSubjectMetrics().catch(() => []),
+      ]);
+
+      const list = guidanceRes.success && guidanceRes.data ? guidanceRes.data : [];
       setGuidanceList(list);
-      const notifs = generateDynamicNotifications(user, list);
+      const notifs = generateDynamicNotifications(user, list, plans, program, metrics);
       setNotifications(notifs);
     } catch (e) {
       const notifs = generateDynamicNotifications(user, []);
@@ -65,11 +76,13 @@ export function NotificationBell({ user }: NotificationBellProps) {
     window.addEventListener('bq_settings_updated', handleSync);
     window.addEventListener('bq_stats_updated', handleSync);
     window.addEventListener('bq_guidance_updated', handleSync);
+    window.addEventListener('bq_study_plan_updated', handleSync);
 
     return () => {
       window.removeEventListener('bq_settings_updated', handleSync);
       window.removeEventListener('bq_stats_updated', handleSync);
       window.removeEventListener('bq_guidance_updated', handleSync);
+      window.removeEventListener('bq_study_plan_updated', handleSync);
     };
   }, [fetchGuidanceAndSync]);
 
@@ -160,15 +173,22 @@ export function NotificationBell({ user }: NotificationBellProps) {
               notifications.map(n => {
                 const isGuidance = n.type === 'guidance';
                 const isGuidanceResolved = n.type === 'guidance_resolved';
+                const isAchieved = n.type === 'study_block_achieved';
 
                 const Icon = isGuidance || isGuidanceResolved
                   ? GraduationCap
+                  : isAchieved
+                  ? CheckCircle2
                   : n.type === 'streak_warning' || n.type === 'streak_lost'
                   ? Flame
                   : n.type === 'daily_goal'
                   ? Target
                   : n.type === 'achievement'
                   ? Trophy
+                  : n.type === 'study_block_today'
+                  ? AlertCircle
+                  : n.type === 'study_block_ending'
+                  ? Clock
                   : Calendar;
 
                 return (
@@ -179,10 +199,16 @@ export function NotificationBell({ user }: NotificationBellProps) {
                       'group relative p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-2',
                       isGuidance
                         ? 'bg-amber-500/10 border-amber-500/40 hover:border-amber-500/60 hover:bg-amber-500/15 shadow-sm'
-                        : isGuidanceResolved
+                        : isGuidanceResolved || isAchieved
                         ? 'bg-emerald-500/10 border-emerald-500/30 hover:border-emerald-500/50 hover:bg-emerald-500/15'
                         : n.type === 'streak_lost'
                         ? 'bg-rose-500/10 border-rose-500/30 hover:border-rose-500/50 hover:bg-rose-500/15'
+                        : n.type === 'study_block_today'
+                        ? 'bg-amber-500/10 border-amber-500/40 hover:border-amber-500/60 hover:bg-amber-500/15 shadow-sm'
+                        : n.type === 'study_block_ending'
+                        ? 'bg-amber-500/5 border-amber-500/25 hover:bg-amber-500/10'
+                        : n.type === 'institutional_deadline'
+                        ? (n.isUrgent ? 'bg-red-500/10 border-red-500/40 hover:bg-red-500/15 shadow-sm' : 'bg-primary/5 border-primary/20 hover:bg-primary/10')
                         : n.isUrgent
                         ? 'bg-red-500/5 border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10'
                         : n.type === 'achievement'
@@ -197,9 +223,9 @@ export function NotificationBell({ user }: NotificationBellProps) {
                         <div
                           className={cn(
                             'p-1.5 rounded-lg shrink-0',
-                            isGuidance
+                            isGuidance || n.type === 'study_block_today' || n.type === 'study_block_ending'
                               ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                              : isGuidanceResolved
+                              : isGuidanceResolved || isAchieved
                               ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
                               : n.type === 'streak_lost'
                               ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400'
@@ -216,12 +242,14 @@ export function NotificationBell({ user }: NotificationBellProps) {
                           <span
                             className={cn(
                               'text-xs font-bold block truncate',
-                              isGuidance
+                              isGuidance || n.type === 'study_block_today'
                                 ? 'text-amber-800 dark:text-amber-300'
-                                : isGuidanceResolved
+                                : isGuidanceResolved || isAchieved
                                 ? 'text-emerald-800 dark:text-emerald-300'
                                 : n.type === 'streak_lost'
                                 ? 'text-rose-700 dark:text-rose-400'
+                                : n.type === 'study_block_ending'
+                                ? 'text-amber-700 dark:text-amber-400'
                                 : n.isUrgent
                                 ? 'text-red-700 dark:text-red-400'
                                 : n.type === 'achievement'
@@ -262,6 +290,15 @@ export function NotificationBell({ user }: NotificationBellProps) {
                       </div>
                     )}
 
+                    {/* Study Block Subject Tag */}
+                    {!isGuidance && !isGuidanceResolved && n.subjectCategory && (
+                      <div className="flex items-center gap-2 pl-7 flex-wrap">
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                          {n.subjectCategory}
+                        </span>
+                      </div>
+                    )}
+
                     <p className="text-xs text-muted-foreground leading-relaxed pl-7">
                       {n.message}
                     </p>
@@ -290,10 +327,14 @@ export function NotificationBell({ user }: NotificationBellProps) {
                             size="sm"
                             className={cn(
                               'h-7 rounded-lg text-xs font-bold px-3 flex items-center gap-1',
-                              n.type === 'streak_lost'
+                              isAchieved
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                                : n.type === 'study_block_today' || n.type === 'study_block_ending'
+                                ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm'
+                                : n.type === 'streak_lost'
                                 ? 'bg-rose-600 hover:bg-rose-700 text-white'
                                 : n.isUrgent
-                                ? 'bg-red-600 hover:bg-red-700 text-white'
+                                ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
                                 : n.type === 'achievement'
                                 ? 'bg-amber-600 hover:bg-amber-700 text-white'
                                 : 'bg-primary hover:bg-primary/90 text-white'
@@ -310,7 +351,11 @@ export function NotificationBell({ user }: NotificationBellProps) {
                       <div
                         className={cn(
                           'absolute top-3 right-2 w-2 h-2 rounded-full',
-                          isGuidance ? 'bg-amber-500 ring-2 ring-amber-500/30' : 'bg-red-600'
+                          isAchieved
+                            ? 'bg-emerald-500 ring-2 ring-emerald-500/30'
+                            : isGuidance || n.type === 'study_block_today' || n.type === 'study_block_ending'
+                            ? 'bg-amber-500 ring-2 ring-amber-500/30'
+                            : 'bg-red-600'
                         )}
                       />
                     )}
