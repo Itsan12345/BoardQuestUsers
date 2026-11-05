@@ -5,6 +5,7 @@ import { Question as QuizQuestion } from '@/components/quiz/QuizInterface';
 import { cookies } from 'next/headers';
 import clientPromise from '@/lib/mongodb-client';
 import { ObjectId } from 'mongodb';
+import { normalizeSubjectName } from '@/lib/game-logic';
 
 const difficultyOrder: Record<string, number> = {
   'EASY': 1,
@@ -24,7 +25,8 @@ const inFlightQuestionPool = new Map<string, Promise<any[]>>();
 const CACHE_TTL_MS = 60_000; // 60s dynamic TTL for high-concurrency bursts
 
 async function resolveSubjectIds(subject: string) {
-  const normKey = subject.trim().toLowerCase();
+  const canonicalSubject = normalizeSubjectName(subject);
+  const normKey = canonicalSubject.trim().toLowerCase();
   const cached = subjectCache.get(normKey);
   if (cached && cached.expiresAt > Date.now()) {
     return { matchingSubjectIds: cached.matchingSubjectIds, matchingObjectIds: cached.matchingObjectIds };
@@ -47,18 +49,22 @@ async function resolveSubjectIds(subject: string) {
   try {
     const client = await clientPromise;
     const db = client.db('boardquest');
-    const nameRegex = new RegExp('^' + escapeRegex(subject) + '$', 'i');
-
-    const rawSubjects = await db.collection('Subject').find({ name: nameRegex }).toArray();
-    rawSubjects.forEach(s => addId(s._id.toString()));
+    const allSubjects = await db.collection('Subject').find({}).toArray();
+    allSubjects.forEach(s => {
+      if (s.name && normalizeSubjectName(s.name) === canonicalSubject) {
+        addId(s._id.toString());
+      }
+    });
   } catch (e) {}
 
   if (matchingSubjectIds.length === 0) {
     try {
-      const dbSubjects = await (prisma as any).subject?.findMany({
-        where: { name: { equals: subject, mode: 'insensitive' } }
+      const dbSubjects = await (prisma as any).subject?.findMany({});
+      dbSubjects?.forEach((s: any) => {
+        if (s.name && normalizeSubjectName(s.name) === canonicalSubject) {
+          addId(s.id);
+        }
       });
-      dbSubjects?.forEach((s: any) => addId(s.id));
     } catch (e) {}
   }
 
@@ -70,7 +76,7 @@ async function resolveSubjectIds(subject: string) {
 }
 
 export async function getSubjectTopics(subject: string): Promise<string[]> {
-  const normKey = subject.trim().toLowerCase();
+  const normKey = normalizeSubjectName(subject).trim().toLowerCase();
   const cachedTopics = subjectTopicsCache.get(normKey);
   if (cachedTopics && cachedTopics.expiresAt > Date.now()) {
     return cachedTopics.topics;
@@ -95,7 +101,9 @@ export async function getSubjectTopics(subject: string): Promise<string[]> {
         idOrConditions.push({ categoryId: objId });
         idOrConditions.push({ subjectId: objId });
       });
-      idOrConditions.push({ topic: new RegExp(escapeRegex(subject), 'i') });
+      if (idOrConditions.length === 0) {
+        idOrConditions.push({ topic: new RegExp('\\b' + escapeRegex(subject) + '\\b', 'i') });
+      }
 
       const queryFilter: any = idOrConditions.length > 0 ? { $or: idOrConditions } : {};
 
@@ -198,7 +206,7 @@ export async function getQuestQuestions(
     const cleanTopic = typeof specificTopic === 'string' ? specificTopic.trim() : '';
     const hasTopicFilter = cleanTopic.length > 0;
 
-    const poolCacheKey = `${subject.trim().toLowerCase()}|${isBossBattle ? 'boss' : (targetDiff || 'ALL')}|${cleanTopic.toLowerCase()}`;
+    const poolCacheKey = `${normalizeSubjectName(subject).trim().toLowerCase()}|${isBossBattle ? 'boss' : (targetDiff || 'ALL')}|${cleanTopic.toLowerCase()}`;
     let baseQuestions: any[] | null = null;
 
     const cachedPool = questionPoolCache.get(poolCacheKey);
@@ -227,10 +235,12 @@ export async function getQuestQuestions(
             idOrConditions.push({ subjectId: objId });
           });
 
-          idOrConditions.push({ topic: new RegExp(escapeRegex(subject), 'i') });
+          if (idOrConditions.length === 0) {
+            idOrConditions.push({ topic: new RegExp('\\b' + escapeRegex(subject) + '\\b', 'i') });
+          }
 
           const queryFilter: any = {
-            $or: idOrConditions.length > 0 ? idOrConditions : [{ topic: new RegExp(escapeRegex(subject), 'i') }]
+            $or: idOrConditions.length > 0 ? idOrConditions : [{ topic: new RegExp('\\b' + escapeRegex(subject) + '\\b', 'i') }]
           };
 
           const approvedStatusFilter = {
@@ -242,16 +252,28 @@ export async function getQuestQuestions(
           };
 
           if (hasTopicFilter) {
-            // Fast direct topic lookup
+            // Fast direct topic lookup scoped to subject first
             const topicRegex = new RegExp(escapeRegex(cleanTopic), 'i');
             const topicSubjectQuery: any = {
               $and: [
                 approvedStatusFilter,
                 { topic: topicRegex },
-                ...(idOrConditions.length > 0 ? [{ $or: [...idOrConditions, { topic: topicRegex }] }] : [])
+                ...(idOrConditions.length > 0 ? [{ $or: idOrConditions }] : []),
+                ...(!isBossBattle && targetDiff ? [{ difficulty: { $regex: new RegExp('^' + targetDiff + '$', 'i') } }] : [])
               ]
             };
             rawQuestions = await db.collection('Question').find(topicSubjectQuery).toArray();
+
+            // If no questions found with strict difficulty + subject binding, relax difficulty filter first
+            if (rawQuestions.length === 0 && !isBossBattle && targetDiff) {
+              rawQuestions = await db.collection('Question').find({
+                $and: [
+                  approvedStatusFilter,
+                  { topic: topicRegex },
+                  ...(idOrConditions.length > 0 ? [{ $or: idOrConditions }] : [])
+                ]
+              }).toArray();
+            }
 
             // If no questions found with strict subject binding, search topic across Question collection
             if (rawQuestions.length === 0) {
@@ -388,17 +410,19 @@ export async function getQuestQuestions(
       attempts.forEach(a => {
         const qId = a.questionId?.toString();
         if (qId) {
+          const safeCorrect = Math.max(0, Number(a.correct) || 0);
+          const safeAttempts = Math.max(1, Number(a.attempts) || 1, safeCorrect);
           const existing = attemptMap.get(qId);
           if (existing) {
-            existing.attempts += (a.attempts || 1);
-            existing.correct += (a.correct || 0);
+            existing.attempts += safeAttempts;
+            existing.correct += safeCorrect;
             if (a.lastAttempt && (!existing.lastAttempt || new Date(a.lastAttempt) > new Date(existing.lastAttempt))) {
               existing.lastAttempt = a.lastAttempt;
             }
           } else {
             attemptMap.set(qId, {
-              attempts: a.attempts || 1,
-              correct: a.correct || 0,
+              attempts: safeAttempts,
+              correct: safeCorrect,
               lastAttempt: a.lastAttempt
             });
           }
@@ -411,7 +435,7 @@ export async function getQuestQuestions(
       // - Answered correctly >= 5 times (prevents early wrong attempts from locking a question in Tier 1 forever)
       const isQuestionMastered = (qId: string) => {
         const att = attemptMap.get(qId);
-        if (!att) return false;
+        if (!att || att.attempts < 2) return false;
         const ratio = att.attempts > 0 ? (att.correct / att.attempts) : 0;
         return (att.correct >= 2 && ratio >= 0.70) || (att.correct >= 3 && ratio >= 0.60) || att.correct >= 5;
       };
@@ -430,11 +454,11 @@ export async function getQuestQuestions(
       }>();
 
       allQuestions.forEach(q => {
-        const topicName = (q.topic || 'General Concepts').trim();
-        let stats = topicStatsMap.get(topicName);
+        const topicKey = (q.topic || 'General Concepts').trim().toLowerCase();
+        let stats = topicStatsMap.get(topicKey);
         if (!stats) {
           stats = { totalQuestions: 0, attemptedQuestions: 0, totalAttempts: 0, totalCorrect: 0, isPassing: false };
-          topicStatsMap.set(topicName, stats);
+          topicStatsMap.set(topicKey, stats);
         }
         stats.totalQuestions++;
         const att = attemptMap.get(q.id);
@@ -446,35 +470,37 @@ export async function getQuestQuestions(
       });
 
       topicStatsMap.forEach(stats => {
-        const accuracy = stats.totalAttempts > 0 ? (stats.totalCorrect / stats.totalAttempts) : 0;
-        stats.isPassing = stats.totalAttempts >= 2 && accuracy >= 0.70;
+        const accuracyPct = stats.totalAttempts > 0 ? Math.round((stats.totalCorrect / stats.totalAttempts) * 100) : 0;
+        const isMasteredTopic = accuracyPct >= 85 && stats.attemptedQuestions >= Math.min(3, Math.max(1, stats.totalQuestions));
+        const isProficientTopic = accuracyPct >= 70 && stats.totalAttempts >= 2;
+        stats.isPassing = isMasteredTopic || isProficientTopic;
       });
 
       const nowMs = Date.now();
 
       // Dynamic Spaced Repetition Priority Score (lower score = higher priority):
-      // - Unattempted in non-passing / unattempted topics: -1050 to -1000 (immediately reduces Unattempted count & builds coverage)
-      // - Fresh struggling / incorrect questions (1-2 attempts): -1000 to -920
-      // - Unattempted in passing topics: -900 (ensures all unattempted questions are shown before repeating multi-attempt questions)
-      // - Repeated struggling questions (3+ attempts): -550 + progressive fatigue offset (prevents endless loops on the same question)
-      // - Answered correctly once (needs 1 more correct for mastery): +100
-      // - Recency cooldown: +800 if attempted within 15 mins (+400 within 60 mins) so back-to-back quests always rotate fresh questions
+      // - PRIORITY 1: Unattempted in non-passing / unattempted topics (-1200 to -1120) -> rescues failing topics & builds 75% Topic Mastery
+      // - PRIORITY 2: Fresh mistakes & struggles (1-2 attempts) (-1080 to -1025) -> immediate recall reinforcement while AI rationale is fresh
+      // - PRIORITY 3: Repeated struggles (3+ attempts) (-905 to -775) -> targeted remediation of confirmed weaknesses before exploring safe topics
+      // - PRIORITY 4: Unattempted in passing topics (-700) -> expands question bank exposure in topics already passing (≥70% accuracy)
+      // - PRIORITY 5: Answered correctly once (-580 to -550) -> confirmation drill toward Mastered status
+      // - Recency cooldown: +2000 if attempted within 15 mins (+1200 within 60 mins) so recently seen questions wait behind Priority 1-5
       const computeActiveScore = (q: any) => {
         const att = attemptMap.get(q.id);
-        const topicName = (q.topic || 'General Concepts').trim();
-        const topicStats = topicStatsMap.get(topicName);
+        const topicKey = (q.topic || 'General Concepts').trim().toLowerCase();
+        const topicStats = topicStatsMap.get(topicKey);
         const isTopicPassing = topicStats?.isPassing ?? false;
 
         const attempts = att ? att.attempts : 0;
-        const correct = att ? att.correct : 0;
+        const correct = att ? Math.min(att.attempts, att.correct) : 0;
 
         let recencyPenalty = 0;
         if (att?.lastAttempt) {
           const ageMs = nowMs - new Date(att.lastAttempt).getTime();
           if (ageMs < 15 * 60 * 1000) {
-            recencyPenalty = 800;
+            recencyPenalty = 2000;
           } else if (ageMs < 60 * 60 * 1000) {
-            recencyPenalty = 400;
+            recencyPenalty = 1200;
           }
         }
 
@@ -483,19 +509,40 @@ export async function getQuestQuestions(
             const topicProgress = topicStats && topicStats.totalQuestions > 0
               ? (topicStats.attemptedQuestions / topicStats.totalQuestions)
               : 0;
-            return -1050 + (topicProgress * 50);
+            return -1200 + (topicProgress * 80);
           }
-          return -900;
+          return -700;
         }
+
+        const topicBonus = !isTopicPassing ? -30 : 0;
 
         if (attempts > 0 && correct < attempts) {
           const accuracyRatio = correct / attempts;
-          const topicBonus = !isTopicPassing ? -40 : 0;
-          const repeatFatigue = attempts >= 3 ? Math.min(650, (attempts - 2) * 220) : 0;
-          return -1000 + (accuracyRatio * 80) + topicBonus + repeatFatigue + recencyPenalty;
+
+          // Fresh struggles (1-2 attempts): Priority 2 (-1080 to -1025)
+          if (attempts <= 2) {
+            return -1050 + (accuracyRatio * 50) + topicBonus + recencyPenalty;
+          }
+
+          // Repeated struggles (3+ attempts): Priority 3 (-905 to -775)
+          // Strictly prioritizes remediation over unattempted in passing topics (-700),
+          // while gentle fatigue offset breaks ties between multiple struggling questions
+          const repeatFatigue = Math.min(75, (attempts - 2) * 25);
+          return -900 + (accuracyRatio * 50) + topicBonus + repeatFatigue + recencyPenalty;
         }
 
-        return 100 + recencyPenalty;
+        // Priority 5: Answered 1/1 correctly (-580 to -550 when not on recency cooldown)
+        return -550 + topicBonus + recencyPenalty;
+      };
+
+      const getPriorityBand = (score: number) => {
+        if (score <= -1100) return 1; // Priority 1: Unattempted in non-passing topics (-1200 to -1120)
+        if (score <= -950) return 2;  // Priority 2: Fresh mistakes 1-2 attempts (-1080 to -1025)
+        if (score <= -740) return 3;  // Priority 3: Repeated struggles 3+ attempts (-905 to -775)
+        if (score <= -650) return 4;  // Priority 4: Unattempted in passing topics (-700)
+        if (score <= 0) return 5;     // Priority 5: Answered 1/1 correctly (-580 to -550)
+        if (score <= 800) return 6;   // Cooldown Tier A: Attempted 15-60m ago (+120 to +650)
+        return 7;                     // Cooldown Tier B: Attempted <15m ago (+920 to +1450)
       };
 
       // Sort active pool by priority with random tie-breaking for equal scores
@@ -514,9 +561,9 @@ export async function getQuestQuestions(
         return Math.random() - 0.5;
       });
 
-      // Interleave active pool across topics if not filtering by specific topic
+      // Interleave active pool across topics & difficulties (unless a single specific difficulty tier was explicitly requested)
       let candidateList = [...activePool, ...masteredPool];
-      if (!hasTopicFilter && allQuestions.length > 0) {
+      if ((!targetDiff || isBossBattle) && allQuestions.length > 0) {
         // Build prioritized, topic-interleaved ACTIVE (unmastered) pools for each difficulty tier
         const buildActiveTierPool = (tierDiff: 'EASY' | 'MEDIUM' | 'HARD') => {
           const tierActiveQuestions = activePool.filter(
@@ -525,7 +572,7 @@ export async function getQuestQuestions(
 
           const tierBuckets = new Map<string, any[]>();
           for (const q of tierActiveQuestions) {
-            const t = (q.topic || 'General Concepts').trim();
+            const t = (q.topic || 'General Concepts').trim().toLowerCase();
             if (!tierBuckets.has(t)) tierBuckets.set(t, []);
             tierBuckets.get(t)!.push(q);
           }
@@ -545,7 +592,7 @@ export async function getQuestQuestions(
           let hasMore = true;
 
           // At each round-robin depth, order topics by the priority score of their question at roundIdx
-          // so topics with Unattempted questions (-1050 / -900) or Fresh Mistakes (-1000) are never blocked by repeated questions
+          // so topics with Priority 1 (-1200), Priority 2 (-1080), or Priority 3 (-905) lead cleanly in exact priority order
           while (hasMore) {
             hasMore = false;
             const roundCandidates: { q: any; score: number }[] = [];
@@ -593,10 +640,10 @@ export async function getQuestQuestions(
             if (i < mediumActive.length) allActiveInterleaved.push(mediumActive[i]);
             if (i < hardActive.length) allActiveInterleaved.push(hardActive[i]);
           }
-          // Sort active questions by priority band (grouping within ~120 score points so unattempted & fresh mistakes lead)
+          // Sort active questions by explicit priority band so Priority 1, 2, 3, 4, and 5 never overlap while preserving interleaving within each band
           allActiveInterleaved.sort((a, b) => {
-            const bandA = Math.floor(computeActiveScore(a) / 120);
-            const bandB = Math.floor(computeActiveScore(b) / 120);
+            const bandA = getPriorityBand(computeActiveScore(a));
+            const bandB = getPriorityBand(computeActiveScore(b));
             if (bandA !== bandB) return bandA - bandB;
             return 0;
           });

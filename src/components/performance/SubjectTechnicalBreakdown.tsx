@@ -29,6 +29,10 @@ export interface SubjectMasteryItem {
   topicCoverage?: number;
   passingTopics?: number;
   totalTopics?: number;
+  totalQuestionsAnswered?: number;
+  totalCorrect?: number;
+  totalAvailableQuestions?: number;
+  volumeBenchmark?: number;
 }
 
 export interface SubjectTechnicalBreakdownProps {
@@ -89,7 +93,7 @@ export function SubjectTechnicalBreakdown({
         {items.map((item) => {
           const IconComponent = SUBJECT_ICONS[item.subject] || FlaskConical;
           const isMastered = item.status === "Mastered";
-          const estimatedPoints = item.points ?? Math.round(item.mastery * 10 + item.completion * 5);
+          const estimatedPoints = item.points ?? Math.round(item.mastery * 12 + item.completion * 6);
 
           return (
             <Card

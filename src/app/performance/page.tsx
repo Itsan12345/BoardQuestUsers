@@ -25,7 +25,7 @@ import { AiDiagnosticPrescription } from '@/components/performance/AiDiagnosticP
 import { SubjectTechnicalBreakdown, SubjectMasteryItem } from '@/components/performance/SubjectTechnicalBreakdown';
 import { PointScorecardModal } from '@/components/performance/PointScorecardModal';
 import { AccountSettingsDialog } from '@/components/profile/AccountSettingsDialog';
-import { SUBJECT_AREAS } from '@/lib/game-logic';
+import { SUBJECT_AREAS, normalizeSubjectName } from '@/lib/game-logic';
 import { format, differenceInDays } from 'date-fns';
 
 const RADAR_LABELS: Record<string, string> = {
@@ -153,13 +153,11 @@ function PerformanceContent() {
 
   const fullMastery: SubjectMasteryItem[] = activeCategories.map(subjectName => {
     const normTarget = subjectName.trim().toLowerCase();
+    const normCanonical = normalizeSubjectName(subjectName).toLowerCase();
     const metrics = subjectMetrics.find((m: any) => m.subject?.trim().toLowerCase() === normTarget)
-      || subjectMetrics.find((m: any) => {
-        if (!m.subject) return false;
-        const s1 = m.subject.trim().toLowerCase();
-        const s2 = normTarget;
-        return s1.includes(s2) || s2.includes(s1);
-      });
+      || subjectMetrics.find((m: any) => (
+        m.subject && normalizeSubjectName(m.subject).toLowerCase() === normCanonical
+      ));
     const completionVal = metrics?.completion ?? 0;
     const proficiencyVal = (metrics as any)?.proficiency ?? metrics?.mastery ?? 0;
     const totalCorrect = (metrics as any)?.totalCorrect ?? 0;
@@ -184,8 +182,8 @@ function PerformanceContent() {
       status = "Needs Focus";
     }
 
-    // Points earned = 25 Pts per correct question answered + 6 Pts per % completion (capped at 1200 max)
-    const points = Math.min(1200, Math.round(totalCorrect * 25 + completionVal * 6));
+    // Subject Points = 12 Pts per 1% Subject Proficiency + 6 Pts per 1% Syllabus Completion
+    const points = Math.round(proficiencyVal * 12 + completionVal * 6);
 
     return {
       subject: subjectName,
@@ -197,7 +195,11 @@ function PerformanceContent() {
       points: points,
       topicCoverage,
       passingTopics,
-      totalTopics
+      totalTopics,
+      totalQuestionsAnswered: totalQAnswered,
+      totalCorrect: totalCorrect,
+      totalAvailableQuestions: (metrics as any)?.totalAvailableQuestions ?? 0,
+      volumeBenchmark: (metrics as any)?.volumeBenchmark
     };
   });
 
@@ -224,7 +226,9 @@ function PerformanceContent() {
 
   // Total Points Calculation
   const totalEarnedPoints = fullMastery.reduce((acc, m) => acc + (m.points || 0), 0) + (user?.xp || 0);
-  const totalQuestionsAttempted = performanceHistory.reduce((acc, p) => acc + p.totalQuestions, 0) || 0;
+  const totalQuestionsAttempted = fullMastery.reduce((acc, m) => acc + (m.totalQuestionsAnswered || 0), 0)
+    || performanceHistory.reduce((acc, p) => acc + p.totalQuestions, 0)
+    || 0;
 
   return (
     <div className="max-w-6xl mx-auto py-5 sm:py-8 lg:py-10 px-3 sm:px-4 lg:px-6 space-y-6 sm:space-y-8 pb-24 lg:pb-12">

@@ -28,6 +28,58 @@ export const SUBJECT_AREAS = [
   "Histopathology and Medtech Laws"
 ];
 
+/**
+ * Normalizes subject name variants into their canonical BoardQuest discipline name.
+ * Checks Immunohematology before Hematology (since "immunohematology" contains "hematology")
+ * and Clinical Microscopy before Microbiology.
+ */
+export function normalizeSubjectName(name: string): string {
+  if (!name) return '';
+  const lower = name.trim().toLowerCase();
+  if (lower.includes('immuno') || lower.includes('serolog') || lower.includes('blood bank')) {
+    return 'Immunology & Serology and Immunohematology';
+  }
+  if (lower.includes('hemat')) {
+    return 'Hematology';
+  }
+  if (lower.includes('microscop') || lower.includes('parasit') || lower.includes('urinalysis')) {
+    return 'Clinical Microscopy & Parasitology';
+  }
+  if (lower.includes('microb') || lower.includes('bacteriolog')) {
+    return 'Microbiology';
+  }
+  if (lower.includes('chem')) {
+    return 'Clinical Chemistry';
+  }
+  if (lower.includes('histo') || lower.includes('law') || lower.includes('mtl')) {
+    return 'Histopathology and Medtech Laws';
+  }
+  return name.trim();
+}
+
+/**
+ * PRC Licensure Examination (MTLE) Volume Benchmark:
+ * - Major Disciplines (20% Board Exam Weight): Capped at 300 questions (Equivalent to 3 full 100-item PRC board papers)
+ * - Minor Disciplines (10% Board Exam Weight): Capped at 150 questions (Equivalent to 1.5 full 100-item PRC board papers)
+ * - Dynamic Bank Calibration: If the published question bank for the discipline currently has fewer questions
+ *   than the 300/150 PRC ceiling (e.g., 100 questions), the benchmark automatically adapts to the available bank size
+ *   (min(availableBankQuestions, 300/150)) so students are never penalized for questions not yet uploaded.
+ */
+export function getSubjectVolumeBenchmark(subject: string, availableQuestionsCount?: number): number {
+  const clean = subject ? normalizeSubjectName(subject).toLowerCase() : '';
+  const prcCap = (
+    clean.includes('microscopy') ||
+    clean.includes('parasit') ||
+    clean.includes('histopath') ||
+    clean.includes('law')
+  ) ? 150 : 300;
+
+  if (typeof availableQuestionsCount === 'number' && availableQuestionsCount > 0) {
+    return Math.min(availableQuestionsCount, prcCap);
+  }
+  return prcCap;
+}
+
 export const REAGENT_LEVEL_REQUIREMENTS: Record<string, { requiredLevel: number; requiredXp: number }> = {
   erlenmeyer_shield: { requiredLevel: 1, requiredXp: 0 },
   buffered_saline: { requiredLevel: 1, requiredXp: 0 },

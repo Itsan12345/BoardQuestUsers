@@ -58,7 +58,7 @@ export function PointScorecardModal({
           ? 'In Training' 
           : 'Needs Focus'
       );
-      const pts = s.points ?? Math.round(s.mastery * 10 + s.completion * 5);
+      const pts = s.points ?? Math.round(s.mastery * 12 + s.completion * 6);
       const statusStyle = statusText === 'Mastered' 
         ? 'background:#d1fae5; color:#047857; border:1px solid #a7f3d0;' 
         : statusText === 'Proficient'
@@ -277,7 +277,7 @@ export function PointScorecardModal({
                 </thead>
                 <tbody className="divide-y divide-border/50 text-[10.5px] sm:text-xs">
                   {subjects.map((s) => {
-                    const pts = s.points ?? Math.round(s.mastery * 10 + s.completion * 5);
+                    const pts = s.points ?? Math.round(s.mastery * 12 + s.completion * 6);
                     const meetsProficientTopics = typeof s.totalTopics === 'number' && s.totalTopics > 0 ? (s.topicCoverage ?? 0) >= 75 : true;
                     const meetsMasteredTopics = typeof s.totalTopics === 'number' && s.totalTopics > 0 ? (s.topicCoverage ?? 0) >= 85 : true;
                     const statusText = s.status || (

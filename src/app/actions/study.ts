@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import clientPromise from '@/lib/mongodb-client';
 import { cookies } from 'next/headers';
 import { unstable_cache, revalidateTag } from 'next/cache';
+import { getSubjectVolumeBenchmark, normalizeSubjectName } from '@/lib/game-logic';
 
 export interface LearningModuleData {
   id: string;
@@ -122,25 +123,44 @@ export async function syncSubjectMastery(userId: string, subject: string) {
 
   const syncPromise = (async () => {
     try {
-      const lessons = await getCurriculumLessonsForSubject(subject);
-      const validLessonIds = lessons.map(l => l.id);
-      const totalLessons = lessons.length;
-
-      const [completedLessons, examResults, topicStats] = await Promise.all([
-        prisma.lessonCompletion.count({
-          where: {
-            userId,
-            subject,
-            status: 'completed',
-            lessonId: { in: validLessonIds }
-          },
+      const normCanonical = normalizeSubjectName(subject).toLowerCase();
+      const [categoriesList, allModulesList, allCompletions, allExamResults, topicStats] = await Promise.all([
+        getCategories().catch(() => []),
+        getLearningModules().catch(() => []),
+        prisma.lessonCompletion.findMany({
+          where: { userId, status: 'completed' },
+          select: { subject: true, lessonId: true },
         }),
         prisma.examResult.findMany({
-          where: { userId, subject },
-          select: { accuracy: true, score: true, total: true },
+          where: { userId },
+          select: { subject: true, accuracy: true, score: true, total: true },
         }),
         getSubjectTopicMasteryAction(subject, userId).catch(() => null),
       ]);
+
+      const catMatch = categoriesList.find(c => normalizeSubjectName(c.name).toLowerCase() === normCanonical);
+      const catId = catMatch?.id;
+      const dynamicModulesForCat = catId ? allModulesList.filter(m => m.categoryId === catId) : [];
+
+      let validLessonIds: Set<string>;
+      let totalLessons = 0;
+
+      if (dynamicModulesForCat.length > 0) {
+        validLessonIds = new Set(dynamicModulesForCat.map(m => m.id));
+        totalLessons = dynamicModulesForCat.length;
+      } else {
+        const fallbackLessons = await getCurriculumLessonsForSubject(subject);
+        validLessonIds = new Set(fallbackLessons.map(l => l.id));
+        totalLessons = fallbackLessons.length;
+      }
+
+      const completedLessons = allCompletions.filter(
+        c => (c.subject === subject || (c.subject && normalizeSubjectName(c.subject).toLowerCase() === normCanonical)) && validLessonIds.has(c.lessonId)
+      ).length;
+
+      const examResults = allExamResults.filter(
+        e => e.subject === subject || (e.subject && normalizeSubjectName(e.subject).toLowerCase() === normCanonical)
+      );
 
       const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
 
@@ -148,8 +168,10 @@ export async function syncSubjectMastery(userId: string, subject: string) {
       const totalCorrect = examResults.reduce((sum, result) => sum + (result.score || 0), 0);
       const rawAccuracy = totalQAnswered > 0 ? (totalCorrect / totalQAnswered) * 100 : 0;
 
-      // Volume Weight Factor: Requires answering at least 100 questions for full accuracy weight (matches 1 full 100-question PRC board paper per subject)
-      const volumeWeight = Math.min(1.0, totalQAnswered / 100);
+      // Volume Weight Factor: Dynamically calibrated to min(Available Bank Questions, PRC 300/150 Ceiling)
+      const totalAvailableQuestions = topicStats?.totalQuestions || 0;
+      const volumeBenchmark = getSubjectVolumeBenchmark(subject, totalAvailableQuestions);
+      const volumeWeight = Math.min(1.0, totalQAnswered / volumeBenchmark);
 
       let proficiency = 0;
       if (totalQAnswered > 0) {
@@ -242,6 +264,8 @@ export interface SubjectMetrics {
   topicCoverage?: number; // 0-100: percentage of syllabus topics attempted with passing accuracy (≥70%)
   totalTopics?: number;
   passingTopics?: number;
+  totalAvailableQuestions?: number;
+  volumeBenchmark?: number;
 }
 
 let categoriesMemoryCache: { data: { id: string; name: string; icon?: string | null }[]; expiresAt: number } | null = null;
@@ -421,8 +445,8 @@ export async function getSubjectMetrics(explicitUserId?: string): Promise<Subjec
 
     for (let i = 0; i < subjects.length; i++) {
       const subject = subjects[i];
-      const normSubject = subject.trim().toLowerCase();
-      const catMatch = categoriesList.find(c => c.name.trim().toLowerCase() === normSubject);
+      const normCanonical = normalizeSubjectName(subject).toLowerCase();
+      const catMatch = categoriesList.find(c => normalizeSubjectName(c.name).toLowerCase() === normCanonical);
       const catId = catMatch?.id;
 
       let validLessonIds: Set<string>;
@@ -440,15 +464,15 @@ export async function getSubjectMetrics(explicitUserId?: string): Promise<Subjec
       }
 
       const completedLessons = allCompletions.filter(
-        c => (c.subject === subject || (c.subject && c.subject.trim().toLowerCase() === normSubject)) && validLessonIds.has(c.lessonId)
+        c => (c.subject === subject || (c.subject && normalizeSubjectName(c.subject).toLowerCase() === normCanonical)) && validLessonIds.has(c.lessonId)
       ).length;
 
       const examResults = allExamResults.filter(
-        e => e.subject === subject || (e.subject && e.subject.trim().toLowerCase() === normSubject)
+        e => e.subject === subject || (e.subject && normalizeSubjectName(e.subject).toLowerCase() === normCanonical)
       );
 
       const dbMastery = allMasteryRecords.find(
-        m => m.subject === subject || (m.subject && m.subject.trim().toLowerCase() === normSubject)
+        m => m.subject === subject || (m.subject && normalizeSubjectName(m.subject).toLowerCase() === normCanonical)
       );
 
       const completion = totalLessons > 0 ? Math.min(100, Math.round((completedLessons / totalLessons) * 100)) : 0;
@@ -457,8 +481,13 @@ export async function getSubjectMetrics(explicitUserId?: string): Promise<Subjec
       const totalCorrect = examResults.reduce((sum, result) => sum + (result.score || 0), 0);
       const rawAccuracy = totalQAnswered > 0 ? (totalCorrect / totalQAnswered) * 100 : 0;
 
-      // Volume Weight Factor: Requires answering at least 100 questions for full accuracy weight (matches 1 full 100-question PRC board paper per subject)
-      const volumeWeight = Math.min(1.0, totalQAnswered / 100);
+      // Compute topic coverage gate & dynamic bank benchmark
+      const topicStats = topicBreakdowns[i];
+      const totalAvailableQuestions = topicStats?.totalQuestions || 0;
+
+      // Volume Weight Factor: Dynamically calibrated to min(Available Bank Questions, PRC 300/150 Ceiling)
+      const volumeBenchmark = getSubjectVolumeBenchmark(subject, totalAvailableQuestions);
+      const volumeWeight = Math.min(1.0, totalQAnswered / volumeBenchmark);
 
       let proficiency = 0;
       if (totalQAnswered > 0) {
@@ -469,8 +498,6 @@ export async function getSubjectMetrics(explicitUserId?: string): Promise<Subjec
         proficiency = 0;
       }
 
-      // Compute topic coverage gate (≥75% topics with passing accuracy for Proficient, ≥85% for Mastered)
-      const topicStats = topicBreakdowns[i];
       const totalTopics = topicStats?.totalTopics ?? 0;
       const passingTopics = totalQAnswered > 0 ? (topicStats?.masteredCount ?? 0) + (topicStats?.proficientCount ?? 0) : 0;
       const topicCoverage = (totalTopics > 0 && totalQAnswered > 0) ? Math.round((passingTopics / totalTopics) * 100) : 0;
@@ -490,6 +517,18 @@ export async function getSubjectMetrics(explicitUserId?: string): Promise<Subjec
         masteryStatus = 'Needs Focus';
       }
 
+      // Automatically keep MongoDB SubjectMastery record synced in the background if dynamic bank calibration changed proficiency or status
+      if (
+        (totalQAnswered > 0 || completion > 0) &&
+        (!dbMastery || dbMastery.proficiency !== proficiency || dbMastery.status !== masteryStatus)
+      ) {
+        prisma.subjectMastery.upsert({
+          where: { userId_subject: { userId, subject } },
+          update: { proficiency, status: masteryStatus, topicCoverage, passingTopics, totalTopics },
+          create: { userId, subject, proficiency, status: masteryStatus, topicCoverage, passingTopics, totalTopics },
+        }).catch(() => {});
+      }
+
       metrics.push({
         subject,
         completion,
@@ -501,6 +540,8 @@ export async function getSubjectMetrics(explicitUserId?: string): Promise<Subjec
         topicCoverage,
         totalTopics,
         passingTopics,
+        totalAvailableQuestions,
+        volumeBenchmark,
       });
     }
 
@@ -563,8 +604,22 @@ export interface SubjectAccuracyHistoryItem {
 
 export async function getSubjectPerformanceHistoryAction(): Promise<SubjectAccuracyHistoryItem[]> {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('user_id')?.value;
+    let userId: string | undefined;
+    try {
+      const cookieStore = await cookies();
+      userId = cookieStore.get('user_id')?.value;
+      if (!userId) {
+        const sessionToken = cookieStore.get('bq_session_token')?.value;
+        if (sessionToken) {
+          const client = await clientPromise;
+          const db = client.db('boardquest');
+          const activeSession = await db.collection('UserSession').findOne({ sessionId: sessionToken });
+          if (activeSession?.userId) {
+            userId = activeSession.userId.toString();
+          }
+        }
+      }
+    } catch (_) {}
     if (!userId) return [];
 
     const [examResults, achievements] = await Promise.all([
@@ -608,16 +663,7 @@ export async function getSubjectPerformanceHistoryAction(): Promise<SubjectAccur
       'Histopathology & MT Laws': 'Histopath',
     };
 
-    const normalize = (name: string) => {
-      const lower = (name || '').toLowerCase();
-      if (lower.includes('chem')) return 'Clinical Chemistry';
-      if (lower.includes('hemat')) return 'Hematology';
-      if (lower.includes('microb')) return 'Microbiology';
-      if (lower.includes('immuno') || lower.includes('serolog') || lower.includes('blood bank')) return 'Immunology & Serology and Immunohematology';
-      if (lower.includes('microscop') || lower.includes('parasit') || lower.includes('urinalysis')) return 'Clinical Microscopy & Parasitology';
-      if (lower.includes('histo') || lower.includes('law')) return 'Histopathology and Medtech Laws';
-      return name;
-    };
+    const normalize = (name: string) => normalizeSubjectName(name);
 
     return standardSubjects.map((subName) => {
       const canonical = normalize(subName);
@@ -764,23 +810,12 @@ export async function getSubjectTopicMasteryAction(
       questionDocs = resolved.questionDocs;
     } else {
       const metaPromise = (async () => {
-        // 1. Resolve matching Subject records in database
-        const subjectRegexes: RegExp[] = [
-          new RegExp('^' + escapeRegex(cleanSub) + '$', 'i')
-        ];
-
-        if (cleanSub.toLowerCase().includes('histopath')) {
-          subjectRegexes.push(/^Histopathology and Medtech Laws$/i);
-          subjectRegexes.push(/^Histopathology & MT Laws$/i);
-        } else if (cleanSub.toLowerCase().includes('microscopy') || cleanSub.toLowerCase().includes('parasit')) {
-          subjectRegexes.push(/^Clinical Microscopy & Parasitology$/i);
-        } else if (cleanSub.toLowerCase().includes('immuno')) {
-          subjectRegexes.push(/^Immunology & Serology and Immunohematology$/i);
-        }
-
-        const fetchedSubjects = await db.collection('Subject').find({
-          $or: subjectRegexes.map(r => ({ name: r }))
-        }).toArray();
+        // 1. Resolve matching Subject records in database using canonical subject normalization
+        const targetCanonical = normalizeSubjectName(cleanSub);
+        const allDbSubjects = await db.collection('Subject').find({}).toArray();
+        const fetchedSubjects = allDbSubjects.filter(
+          s => s.name && normalizeSubjectName(s.name) === targetCanonical
+        );
 
         const idStrings: string[] = [];
         const idObjects: any[] = [];
@@ -857,24 +892,17 @@ export async function getSubjectTopicMasteryAction(
         const qIdStrings = questionDocs.map(q => q._id.toString());
         const qObjIds = questionDocs.map(q => q._id);
 
-        // Verify if user has actually completed any quest for this subject
-        const hasCompletedExam = await (prisma as any).examResult.findFirst({
-          where: {
-            userId,
-            subject: { equals: cleanSub, mode: 'insensitive' }
-          },
-          select: { id: true }
-        });
+        // Verify if user has actually completed any quest for this subject (matching all canonical aliases)
+        const canonicalSub = normalizeSubjectName(cleanSub);
+        const userExams = await db.collection('ExamResult').find(
+          { userId: { $in: userConditions } },
+          { projection: { subject: 1 } }
+        ).toArray();
+        const hasCompletedExam = userExams.some(
+          e => e.subject && normalizeSubjectName(e.subject) === canonicalSub
+        );
 
-        if (!hasCompletedExam) {
-          // If no completed quest exists for this subject, clean up orphan attempts from fled/abandoned sessions
-          try {
-            await db.collection('UserQuestionAttempt').deleteMany({
-              userId: { $in: userConditions },
-              questionId: { $in: [...qIdStrings, ...qObjIds] }
-            });
-          } catch (_) {}
-        } else {
+        if (hasCompletedExam) {
           const attempts = await db.collection('UserQuestionAttempt').find({
             userId: { $in: userConditions },
             questionId: { $in: [...qIdStrings, ...qObjIds] }
@@ -884,8 +912,8 @@ export async function getSubjectTopicMasteryAction(
             const qId = a.questionId?.toString();
             if (qId) {
               const existing = attemptMap.get(qId);
-              const numAttempts = typeof a.attempts === 'number' ? a.attempts : 1;
-              const numCorrect = typeof a.correct === 'number' ? a.correct : 0;
+              const numCorrect = Math.max(0, typeof a.correct === 'number' ? a.correct : (Number(a.correct) || 0));
+              const numAttempts = Math.max(1, typeof a.attempts === 'number' ? a.attempts : (Number(a.attempts) || 1), numCorrect);
               const lastAtt = a.lastAttempt ? new Date(a.lastAttempt).toISOString() : undefined;
               if (existing) {
                 existing.attempts += numAttempts;

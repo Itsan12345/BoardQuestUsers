@@ -44,6 +44,7 @@ import {
   type LearningModuleData
 } from '@/app/actions/study';
 import { getUserSettingsAction } from '@/app/actions/user';
+import { getSubjectVolumeBenchmark, normalizeSubjectName } from '@/lib/game-logic';
 import { format } from 'date-fns';
 import { calculateRemainingTime } from '@/lib/study-timer';
 import { useToast } from '@/hooks/use-toast';
@@ -405,11 +406,9 @@ export default function StudyPage() {
   const selectedMetric = selectedCategory ? (
     subjectMetrics[selectedCategory.title]
     || Object.values(subjectMetrics).find(m => m.subject?.trim().toLowerCase() === selectedCategory.title.trim().toLowerCase())
-    || Object.values(subjectMetrics).find(m => {
-      const s1 = m.subject?.trim().toLowerCase() || '';
-      const s2 = selectedCategory.title.trim().toLowerCase();
-      return s1.includes(s2) || s2.includes(s1);
-    })
+    || Object.values(subjectMetrics).find(m => (
+      m.subject && normalizeSubjectName(m.subject).toLowerCase() === normalizeSubjectName(selectedCategory.title).toLowerCase()
+    ))
   ) : undefined;
 
   const currentProficiency = selectedMetric?.proficiency ?? selectedMetric?.mastery ?? 0;
@@ -890,7 +889,7 @@ export default function StudyPage() {
                   <Progress value={currentProficiency} className="h-2 sm:h-2.5 bg-secondary" />
                   <p className="text-[8px] sm:text-[9px] text-muted-foreground font-semibold">
                     {selectedMetric && selectedMetric.totalQuestionsAnswered > 0
-                      ? `Based on Quest Arena performance (${selectedMetric.mastery}% accuracy • ${selectedMetric.totalQuestionsAnswered}/100 volume weight)`
+                      ? `Based on Quest Arena performance (${selectedMetric.mastery}% accuracy • ${selectedMetric.totalQuestionsAnswered}/${selectedMetric.volumeBenchmark || getSubjectVolumeBenchmark(selectedCategory?.title || selectedMetric.subject, selectedMetric.totalAvailableQuestions)} volume weight)`
                       : 'Based on your average performance in Quest Arena for this subject'}
                   </p>
                 </div>

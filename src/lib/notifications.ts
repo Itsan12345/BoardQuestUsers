@@ -2,6 +2,7 @@
 
 import { format } from 'date-fns';
 import { calculateRemainingTime } from '@/lib/study-timer';
+import { normalizeSubjectName } from '@/lib/game-logic';
 
 export type NotificationType =
   | 'guidance'
@@ -140,17 +141,11 @@ export function buildGuidanceNotifications(guidanceList: any[] = []): AppNotific
 export function findSubjectMetric(subjectName: string, metrics: any[]): any | undefined {
   if (!subjectName || !Array.isArray(metrics)) return undefined;
   const target = subjectName.trim().toLowerCase();
-  return metrics.find((m: any) => {
-    const s = (m.subject || m.name || '').trim().toLowerCase();
-    if (s === target) return true;
-    if (target.includes('chem') && s.includes('chem')) return true;
-    if (target.includes('micro') && s.includes('micro')) return true;
-    if (target.includes('hema') && s.includes('hema') && !target.includes('immuno') && !s.includes('immuno')) return true;
-    if ((target.includes('immuno') || target.includes('serology')) && (s.includes('immuno') || s.includes('serology'))) return true;
-    if ((target.includes('microscopy') || target.includes('parasit')) && (s.includes('microscopy') || s.includes('parasit'))) return true;
-    if ((target.includes('histo') || target.includes('law')) && (s.includes('histo') || s.includes('law'))) return true;
-    return false;
-  });
+  const targetCanonical = normalizeSubjectName(subjectName).toLowerCase();
+  return (
+    metrics.find((m: any) => (m.subject || m.name || '').trim().toLowerCase() === target) ||
+    metrics.find((m: any) => normalizeSubjectName(m.subject || m.name || '').toLowerCase() === targetCanonical)
+  );
 }
 
 export function generateDynamicNotifications(

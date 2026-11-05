@@ -8,12 +8,14 @@ import {
   FileText, 
   TrendingUp,
   Calculator,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { SubjectMasteryItem } from './SubjectTechnicalBreakdown';
+import { getSubjectVolumeBenchmark } from '@/lib/game-logic';
 
 interface StudentPointingCardProps {
   totalPoints: number;
@@ -52,7 +54,7 @@ export function StudentPointingCard({
 
   // Calculate live breakdown numbers for dynamic formula substitution
   const disciplinePointsSum = subjects.reduce((acc, s) => {
-    return acc + Math.round((s.mastery || 0) * 12 + (s.completion || 0) * 6);
+    return acc + (s.points ?? Math.round((s.mastery || 0) * 12 + (s.completion || 0) * 6));
   }, 0);
   const estimatedSystemXp = Math.max(0, totalPoints - disciplinePointsSum);
 
@@ -245,17 +247,83 @@ export function StudentPointingCard({
               </div>
 
               <div className="text-[11.5px] text-muted-foreground space-y-1.5 leading-relaxed pt-1">
-                <p>• <strong>Subject Proficiency:</strong> Your proficiency rating percentage stored in your <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-foreground font-bold">SubjectMastery</code> records.</p>
+                <p>• <strong>Subject Proficiency:</strong> The volume-weighted accuracy percentage for each discipline (detailed in Formula 3 below).</p>
                 <p>• <strong>Divided by 6:</strong> Simply add your 6 subject proficiencies together and divide by 6.</p>
               </div>
             </div>
 
-            {/* Formula 3: Average Completion */}
+            {/* Formula 3: Subject Proficiency */}
+            <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
+                <h4 className="font-bold text-cyan-500 flex items-center gap-2 text-xs uppercase tracking-wider">
+                  <Zap className="w-4 h-4 text-cyan-500 shrink-0" />
+                  3. Subject Proficiency
+                </h4>
+                <Badge variant="outline" className="text-[10px] font-bold border-cyan-500/30 text-cyan-500">
+                  Volume-Weighted Accuracy Formula
+                </Badge>
+              </div>
+
+              {/* Simple Direct Equation Box */}
+              <div className="p-3.5 rounded-xl bg-slate-950 text-slate-100 font-headline text-sm sm:text-base overflow-x-auto border border-slate-800 shadow-inner text-center font-bold space-y-1.5">
+                <div>
+                  <span className="text-cyan-400">Subject Proficiency</span> = <span className="text-emerald-400">Raw Accuracy (%)</span> × <span className="text-blue-400">Volume Weight Factor</span>
+                </div>
+                <div className="text-[11px] sm:text-xs text-slate-400 font-normal">
+                  where <span className="text-emerald-300">Raw Accuracy</span> = (<span className="text-emerald-300">Total Correct</span> ÷ <span className="text-emerald-300">Questions Answered</span>) × 100%
+                  <br className="sm:hidden" />
+                  <span className="hidden sm:inline"> &bull; </span>
+                  and <span className="text-blue-300">Volume Weight</span> = min(1.0, <span className="text-blue-300">Questions Answered</span> ÷ <span className="text-blue-300">Benchmark</span>)
+                  <span className="block text-[10px] text-slate-400 mt-0.5">
+                    (Benchmark = min(<strong>Available Bank Qs</strong>, <strong>300 Qs</strong> Major / <strong>150 Qs</strong> Minor PRC Ceiling))
+                  </span>
+                </div>
+              </div>
+
+              {/* Live Candidate Substitution */}
+              <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 space-y-1.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 block">
+                  Your Live Current Score Calculation:
+                </span>
+                <div className="text-xs sm:text-sm text-foreground font-black font-mono overflow-x-auto">
+                  {subjects.some(s => (s.totalQuestionsAnswered ?? 0) > 0) ? (
+                    <span>Raw Accuracy (%) × min(1.0, Questions ÷ Benchmark [min(Bank Qs, 300/150)]) = Subject Proficiency (%)</span>
+                  ) : (
+                    <span>No questions answered yet — Volume Weight is 0% (Answer questions in Quest Arena to build proficiency)</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-muted-foreground font-mono flex flex-wrap gap-x-2.5 gap-y-1 pt-1 border-t border-cyan-500/20">
+                  {subjects.map(s => {
+                    const q = s.totalQuestionsAnswered ?? 0;
+                    const c = s.totalCorrect ?? 0;
+                    const acc = q > 0 ? Math.round((c / q) * 100) : 0;
+                    const benchmark = s.volumeBenchmark || getSubjectVolumeBenchmark(s.subject, s.totalAvailableQuestions);
+                    const weightPct = Math.min(100, Math.round((q / benchmark) * 100));
+                    return (
+                      <span key={s.subject} className="whitespace-nowrap">
+                        {s.shortName || s.subject.split(' ')[0]}: <strong className="text-foreground">{s.mastery}%</strong>{' '}
+                        <span className="text-[10px] text-muted-foreground">
+                          ({acc}% acc × {weightPct}% wt &bull; {c}/{q} Qs &bull; target {benchmark})
+                        </span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="text-[11.5px] text-muted-foreground space-y-1.5 leading-relaxed pt-1">
+                <p>• <strong>Raw Accuracy:</strong> Percentage of correct answers scored in that subject: <code>(Total Correct ÷ Questions Answered) × 100%</code> across Quest Arena battles and practice quizzes.</p>
+                <p>• <strong>Volume Weight Factor:</strong> Calculated as <code>min(1.0, Questions Answered ÷ Benchmark)</code>, dynamically calibrated to <code>min(Available Bank Questions, PRC Ceiling)</code>: adapts to the published bank size (e.g., <strong>100 questions</strong>) and caps at official PRC Licensure weights once reached (<strong>300 questions</strong> for Major 20% disciplines, <strong>150 questions</strong> for Minor 10% disciplines).</p>
+                <p>• <strong>Status Gate Prerequisites:</strong> Requires <strong>≥75% Proficiency</strong> (along with ≥75% Topic Mastery & ≥25% Syllabus Completion) to unlock <span className="text-blue-500 font-bold">Proficient</span> status, and <strong>≥90% Proficiency</strong> (along with ≥85% Topic Mastery & ≥75% Syllabus Completion) to unlock <span className="text-emerald-500 font-bold">Mastered</span> status in that discipline.</p>
+              </div>
+            </div>
+
+            {/* Formula 4: Average Completion */}
             <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
                 <h4 className="font-bold text-blue-500 flex items-center gap-2 text-xs uppercase tracking-wider">
                   <BookOpen className="w-4 h-4 text-blue-500 shrink-0" />
-                  3. Average Completion
+                  4. Average Completion
                 </h4>
                 <Badge variant="outline" className="text-[10px] font-bold border-blue-500/30 text-blue-500">
                   Simple Syllabus Average
@@ -283,12 +351,12 @@ export function StudentPointingCard({
               </div>
             </div>
 
-            {/* Formula 4: Subject Topic Mastery */}
+            {/* Formula 5: Subject Topic Mastery */}
             <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
                 <h4 className="font-bold text-amber-500 flex items-center gap-2 text-xs uppercase tracking-wider">
                   <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                  4. Subject Topic Mastery
+                  5. Subject Topic Mastery
                 </h4>
                 <Badge variant="outline" className="text-[10px] font-bold border-amber-500/30 text-amber-500">
                   Topic Coverage Formula

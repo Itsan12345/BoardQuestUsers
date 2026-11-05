@@ -10,6 +10,7 @@ import {
   type GenerateDiagnosticOutput,
 } from '@/ai/flows/generate-diagnostic-analysis';
 import { getSubjectMetrics, getCategories } from '@/app/actions/study';
+import { normalizeSubjectName } from '@/lib/game-logic';
 
 export interface AiDiagnosticResponse {
   success: boolean;
@@ -249,18 +250,21 @@ export async function getAiDiagnosticAction(options?: {
 
     const fullMastery = activeSubjects.map((subjectName: string) => {
       const normTarget = subjectName.trim().toLowerCase();
+      const normCanonical = normalizeSubjectName(subjectName).toLowerCase();
       const match = metrics.find((m: any) => m.subject?.trim().toLowerCase() === normTarget)
         || metrics.find((m: any) => m.subject && (
-          m.subject.toLowerCase().includes(normTarget) || normTarget.includes(m.subject.toLowerCase())
+          normalizeSubjectName(m.subject).toLowerCase() === normCanonical
         ));
 
       const masteryVal = match ? Math.round(match.proficiency || 0) : 0;
       const completionVal = match ? Math.round(match.completion || 0) : 0;
 
-      let status = 'Not Started';
-      if (masteryVal >= 80) status = 'Mastered';
-      else if (masteryVal >= 60) status = 'Proficient';
-      else if (masteryVal > 0 || completionVal > 0) status = 'Needs Review';
+      let status = match?.masteryStatus || 'Not Started';
+      if (!match?.masteryStatus) {
+        if (masteryVal >= 90 && completionVal >= 75) status = 'Mastered';
+        else if (masteryVal >= 75 && completionVal >= 25) status = 'Proficient';
+        else if (masteryVal > 0 || completionVal > 0) status = 'In Training';
+      }
 
       return {
         subject: subjectName,
