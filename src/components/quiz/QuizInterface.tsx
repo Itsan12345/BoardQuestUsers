@@ -116,6 +116,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
   useEffect(() => {
     setEliminatedOptionLetters([]);
     setZoomedImage(null);
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     onQuestionChangeRef.current?.(currentIndex);
   }, [currentIndex]);
 
@@ -163,6 +166,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       setEliminatedOptionLetters([]);
       setSelectedAnswer(null);
       setZoomedImage(null);
+      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
       onUseBap();
     }
   };
@@ -243,6 +249,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
 
   const handleSubmit = (letter: string) => {
     if (isAnswered || isTransitioning) return;
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     
     setSelectedAnswer(letter);
     const isCorrect = currentQuestion.type === 'SHORT_ANSWER' 
@@ -366,8 +375,8 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
   };
 
   return (
-    <div ref={containerRef} className="w-full flex flex-col h-full overflow-y-auto pb-20 no-scrollbar relative select-none">
-      <div className="px-6 pt-6 flex justify-between items-center mb-4 gap-4">
+    <div ref={containerRef} className="w-full flex flex-col h-full overflow-y-auto pb-16 sm:pb-20 no-scrollbar relative select-none">
+      <div className="px-4 sm:px-6 pt-3 sm:pt-4 lg:pt-6 flex justify-between items-center mb-2.5 sm:mb-3 lg:mb-4 gap-4">
         <div className="flex flex-col">
           {mode !== 'boss-battle' && (
             <span className="text-xs sm:text-[13px] font-bold text-foreground/80 uppercase tracking-wider">
@@ -633,14 +642,14 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
         </div>
       ) : (
         <>
-          <div className="px-6 mb-6">
+          <div className="px-4 sm:px-6 mb-3 sm:mb-4 lg:mb-6">
             {(() => {
               const showImmersionOil = mode === 'boss-battle' && (immersionOilActive || (equippedItem === 'immersion_oil' && equippedItemCount > 0));
               const buzzword = showImmersionOil ? extractClinicalBuzzword(currentQuestion.question, currentQuestion.explanation) : null;
 
               if (!showImmersionOil || !buzzword) {
                 return (
-                  <h2 className="text-xl sm:text-2xl font-bold leading-snug font-headline text-foreground">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground">
                     {currentQuestion.question}
                   </h2>
                 );
@@ -649,7 +658,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
               const idx = currentQuestion.question.toLowerCase().indexOf(buzzword.toLowerCase());
               if (idx === -1) {
                 return (
-                  <h2 className="text-xl sm:text-2xl font-bold leading-snug font-headline text-foreground">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground">
                     {currentQuestion.question}
                   </h2>
                 );
@@ -673,7 +682,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                     />
                     <span>100x Immersion Focus: Clinical Clue Highlighted</span>
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold leading-snug font-headline text-foreground">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground">
                     {before}
                     <span className="bg-amber-400/25 dark:bg-amber-400/20 text-amber-950 dark:text-amber-200 px-1.5 py-0.5 rounded-md border border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.25)] underline decoration-amber-500 decoration-2 underline-offset-4">
                       {matched}
@@ -687,7 +696,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
 
           {/* Question Specimen Image with Zoom/Lightbox feature */}
           {hasQuestionImage && (
-            <div className="px-4 sm:px-6 mb-6">
+            <div className="px-4 sm:px-6 mb-4 sm:mb-5 lg:mb-6">
               <div 
                 onClick={() => setZoomedImage({ url: currentQuestion.imageUrl!, title: "Clinical Specimen / Reference Slide" })}
                 className="group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-border/80 bg-muted/20 hover:border-primary/60 transition-all duration-300 shadow-sm hover:shadow-xl max-w-xl mx-auto flex flex-col p-2.5 sm:p-3 bg-gradient-to-b from-card to-muted/20 backdrop-blur-sm"
@@ -703,7 +712,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                   </span>
                 </div>
 
-                <div className="relative w-full h-[220px] sm:h-[280px] md:h-[320px] flex items-center justify-center overflow-hidden rounded-xl bg-black/10 dark:bg-black/50 border border-border/40">
+                <div className="relative w-full h-[200px] sm:h-[250px] lg:h-[320px] flex items-center justify-center overflow-hidden rounded-xl bg-black/10 dark:bg-black/50 border border-border/40">
                   <Image
                     src={currentQuestion.imageUrl!}
                     alt="Question Specimen Reference"
@@ -784,7 +793,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
 
                       return (
                         <div
-                          key={letter}
+                          key={`${currentIndex}-${currentQuestionIndex}-${letter}`}
                           onClick={() => {
                             if (!isAnswered && !isTransitioning && !isEliminated) {
                               handleSubmit(letter);
@@ -792,7 +801,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                           }}
                           className={cn(
                             "flex flex-col p-3 sm:p-4 rounded-2xl border-2 transition-all text-left shadow-xs relative overflow-hidden cursor-pointer group select-none",
-                            !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border hover:border-primary/60 hover:bg-primary/5 hover:shadow-md dark:hover:bg-primary/10",
+                            !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border [@media(hover:hover)]:hover:border-primary/60 [@media(hover:hover)]:hover:bg-primary/5 [@media(hover:hover)]:hover:shadow-md dark:[@media(hover:hover)]:hover:bg-primary/10",
                             isCorrect && "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 shadow-emerald-500/20 text-emerald-950 dark:text-emerald-200 ring-2 ring-emerald-500/30",
                             isWrong && "bg-red-50 dark:bg-red-950/40 border-red-500 shadow-red-500/20 text-red-950 dark:text-red-200 ring-2 ring-red-500/30",
                             isAnswered && !isSelected && !isCorrect && "opacity-50 grayscale",
@@ -884,7 +893,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
               }
 
               return (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-2.5 lg:space-y-3">
                   {currentQuestion.options.map((option, idx) => {
                     const letter = optionLetters[idx];
                     const isSelected = selectedAnswer === letter;
@@ -895,12 +904,12 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
 
                     return (
                       <button
-                        key={letter}
+                        key={`${currentIndex}-${currentQuestionIndex}-${letter}`}
                         disabled={isAnswered || isTransitioning || isEliminated}
                         onClick={() => handleSubmit(letter)}
                         className={cn(
-                          "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left shadow-sm relative overflow-hidden text-foreground",
-                          !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border hover:border-primary/50 hover:bg-primary/5 dark:hover:bg-primary/10",
+                          "w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-3.5 lg:p-4 rounded-2xl border-2 transition-all text-left shadow-sm relative overflow-hidden text-foreground focus:outline-none",
+                          !isAnswered && !isTransitioning && !isEliminated && "bg-card border-border [@media(hover:hover)]:hover:border-primary/50 [@media(hover:hover)]:hover:bg-primary/5 dark:[@media(hover:hover)]:hover:bg-primary/10",
                           isCorrect && "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-950 dark:text-emerald-200",
                           isWrong && "bg-red-50 dark:bg-red-950/40 border-red-500 text-red-950 dark:text-red-200",
                           isAnswered && !isSelected && !isCorrect && "opacity-50 grayscale",

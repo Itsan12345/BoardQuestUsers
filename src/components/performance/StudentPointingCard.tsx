@@ -111,60 +111,60 @@ export function StudentPointingCard({
       </div>
 
       {/* Primary Point KPI Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 relative z-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5 xl:gap-4 relative z-10">
         
         {/* Metric 1: Total Earned Points */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-muted/20 border border-primary/20 space-y-1">
-          <div className="flex items-center justify-between text-primary">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Total Earned Points</span>
-            <Trophy className="w-4 h-4" />
+        <div className="p-3.5 xl:p-4 rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-muted/20 border border-primary/20 space-y-1 min-w-0">
+          <div className="flex items-center justify-between gap-1 text-primary min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider truncate">Total Earned Points</span>
+            <Trophy className="w-4 h-4 shrink-0" />
           </div>
-          <div className="text-3xl sm:text-4xl font-black font-headline text-primary tracking-tight">
-            {totalPoints.toLocaleString()} <span className="text-base font-bold text-primary/70">Pts</span>
+          <div className="text-3xl sm:text-3xl lg:text-2xl xl:text-4xl font-black font-headline text-primary tracking-tight truncate">
+            {totalPoints.toLocaleString()} <span className="text-sm xl:text-base font-bold text-primary/70">Pts</span>
           </div>
-          <p className="text-[10.5px] text-muted-foreground font-medium truncate">
+          <p className="text-[10px] xl:text-[10.5px] text-muted-foreground font-medium truncate">
             Accumulated from exams & quests
           </p>
         </div>
 
         {/* Metric 2: Average Proficiency */}
-        <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-1">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Average Proficiency</span>
-            <TrendingUp className="w-4 h-4 text-emerald-500" />
+        <div className="p-3.5 xl:p-4 rounded-2xl bg-muted/40 border border-border space-y-1 min-w-0">
+          <div className="flex items-center justify-between gap-1 text-muted-foreground min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider truncate">Average Proficiency</span>
+            <TrendingUp className="w-4 h-4 text-emerald-500 shrink-0" />
           </div>
-          <div className="text-3xl sm:text-4xl font-black font-headline text-foreground tracking-tight">
-            {avgProficiency.toFixed(1)}<span className="text-xl font-bold text-muted-foreground">%</span>
+          <div className="text-3xl sm:text-3xl lg:text-2xl xl:text-4xl font-black font-headline text-foreground tracking-tight truncate">
+            {avgProficiency.toFixed(1)}<span className="text-lg xl:text-xl font-bold text-muted-foreground">%</span>
           </div>
-          <p className="text-[10.5px] text-muted-foreground font-medium truncate">
+          <p className="text-[10px] xl:text-[10.5px] text-muted-foreground font-medium truncate">
             Mean discipline proficiency rating
           </p>
         </div>
 
         {/* Metric 3: Average Completion */}
-        <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-1">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Average Completion</span>
-            <BookOpen className="w-4 h-4 text-blue-500" />
+        <div className="p-3.5 xl:p-4 rounded-2xl bg-muted/40 border border-border space-y-1 min-w-0">
+          <div className="flex items-center justify-between gap-1 text-muted-foreground min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider truncate">Average Completion</span>
+            <BookOpen className="w-4 h-4 text-blue-500 shrink-0" />
           </div>
-          <div className="text-3xl sm:text-4xl font-black font-headline text-foreground tracking-tight">
-            {avgCompletion.toFixed(0)}<span className="text-xl font-bold text-muted-foreground">%</span>
+          <div className="text-3xl sm:text-3xl lg:text-2xl xl:text-4xl font-black font-headline text-foreground tracking-tight truncate">
+            {avgCompletion.toFixed(0)}<span className="text-lg xl:text-xl font-bold text-muted-foreground">%</span>
           </div>
-          <p className="text-[10.5px] text-muted-foreground font-medium truncate">
+          <p className="text-[10px] xl:text-[10.5px] text-muted-foreground font-medium truncate">
             Mean syllabus module progress
           </p>
         </div>
 
         {/* Metric 4: Mastered Disciplines */}
-        <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-1">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Mastered Disciplines</span>
-            <Award className="w-4 h-4 text-amber-500" />
+        <div className="p-3.5 xl:p-4 rounded-2xl bg-muted/40 border border-border space-y-1 min-w-0">
+          <div className="flex items-center justify-between gap-1 text-muted-foreground min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider truncate">Mastered Disciplines</span>
+            <Award className="w-4 h-4 text-amber-500 shrink-0" />
           </div>
-          <div className="text-3xl sm:text-4xl font-black font-headline text-foreground tracking-tight">
-            {masteredCount} <span className="text-base font-bold text-muted-foreground">/ {totalSubjects}</span>
+          <div className="text-3xl sm:text-3xl lg:text-2xl xl:text-4xl font-black font-headline text-foreground tracking-tight truncate">
+            {masteredCount} <span className="text-sm xl:text-base font-bold text-muted-foreground">/ {totalSubjects}</span>
           </div>
-          <p className="text-[10.5px] text-muted-foreground font-medium truncate">
+          <p className="text-[10px] xl:text-[10.5px] text-muted-foreground font-medium truncate">
             {masteredCount >= 6 ? "All Disciplines Ready" : `${totalSubjects - masteredCount} Subjects In Training`}
           </p>
         </div>

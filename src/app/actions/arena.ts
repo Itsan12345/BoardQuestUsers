@@ -49,9 +49,12 @@ async function resolveSubjectIds(subject: string) {
   try {
     const client = await clientPromise;
     const db = client.db('boardquest');
-    const allSubjects = await db.collection('Subject').find({}).toArray();
-    allSubjects.forEach(s => {
-      if (s.name && normalizeSubjectName(s.name) === canonicalSubject) {
+    const [allSubjects, allCategories] = await Promise.all([
+      db.collection('Subject').find({}).toArray().catch(() => []),
+      db.collection('Category').find({}).toArray().catch(() => []),
+    ]);
+    [...allSubjects, ...allCategories].forEach(s => {
+      if (s?.name && normalizeSubjectName(s.name) === canonicalSubject) {
         addId(s._id.toString());
       }
     });

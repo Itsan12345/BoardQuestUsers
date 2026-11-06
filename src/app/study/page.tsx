@@ -470,11 +470,11 @@ export default function StudyPage() {
 
   return (
     <div className="min-h-full pb-20 lg:pb-12 bg-background">
-      <header id="tour-study-header" className="bg-background border-b px-4 py-5 sm:px-6 sm:py-8 lg:py-10">
-        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+      <header id="tour-study-header" className="bg-background border-b px-4 py-4 sm:px-6 sm:py-6 xl:py-10">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-5 xl:space-y-6">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6">
             <div className="space-y-1 sm:space-y-1.5">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground tracking-tight leading-none uppercase" style={{ fontFamily: "'Inter-bold', sans-serif" }}>
+              <h1 className="text-2xl sm:text-3xl xl:text-4xl font-black text-foreground tracking-tight leading-none uppercase" style={{ fontFamily: "'Inter-bold', sans-serif" }}>
                 Study <span className="text-primary">Subjects</span>
               </h1>
               <p className="text-[10px] lg:text-xs font-semibold text-muted-foreground uppercase tracking-[0.2em]">
@@ -485,7 +485,7 @@ export default function StudyPage() {
             {/* Dynamic Review Center Program Deadline - Only displayed in Syllabus Curriculum tab */}
             {activeTab === 'modules' && (
               program ? (
-                <div id="tour-study-program" className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-3.5 sm:p-4 lg:p-5 shadow-xs space-y-2 w-full sm:w-auto min-w-0 sm:min-w-[280px] lg:min-w-[340px]">
+                <div id="tour-study-program" className="bg-card border-2 border-border/80 hover:border-primary/30 transition-all rounded-2xl p-3.5 sm:p-4 xl:p-5 shadow-xs space-y-2 w-full sm:w-auto min-w-0 sm:min-w-[280px] xl:min-w-[340px]">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -631,7 +631,7 @@ export default function StudyPage() {
       </header>
 
       {activeTab === 'timeline' ? (
-        <main className="p-3.5 sm:p-6 max-w-7xl mx-auto">
+        <main className="p-3.5 sm:p-5 xl:p-6 max-w-7xl mx-auto">
           <StudyScheduleTimeline
             initialPlans={rawPlans}
             program={program}
@@ -648,9 +648,9 @@ export default function StudyPage() {
           />
         </main>
       ) : (
-        <main className="p-3.5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 max-w-7xl mx-auto">
+        <main className="p-3.5 sm:p-5 xl:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 xl:gap-8 max-w-7xl mx-auto">
         {/* Subjects Sidebar / Mobile Carousel Selector */}
-        <aside id="tour-study-subjects" className="lg:col-span-4 space-y-3 sm:space-y-4">
+        <aside id="tour-study-subjects" className="lg:col-span-4 space-y-3 sm:space-y-4 min-w-0">
           <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 sm:px-2">Subjects</h2>
 
           {displayCurriculum.length === 0 ? (
@@ -722,22 +722,22 @@ export default function StudyPage() {
                       key={cat.id}
                       onClick={() => setSelectedCategoryId(cat.id)}
                       className={cn(
-                        "w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 lg:p-5 rounded-2xl sm:rounded-3xl transition-all text-left border-2",
+                        "w-full flex items-center gap-3 xl:gap-4 p-3 xl:p-5 rounded-2xl xl:rounded-3xl transition-all text-left border-2 min-w-0",
                         isActive
                           ? "bg-background border-primary shadow-lg"
                           : "hover:bg-muted border-border bg-background"
                       )}
                     >
                       <div className={cn(
-                        "p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shrink-0 transition-colors relative",
+                        "p-2.5 xl:p-3 rounded-xl xl:rounded-2xl shrink-0 transition-colors relative",
                         isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
                       )}>
-                        <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                        <Icon className="h-5 w-5 xl:h-6 xl:w-6" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 justify-between">
+                        <div className="flex items-center gap-1.5 justify-between min-w-0">
                           <p className={cn(
-                            "font-semibold text-xs sm:text-sm uppercase tracking-tight truncate",
+                            "font-semibold text-xs xl:text-sm uppercase tracking-tight truncate",
                             isActive ? "text-primary" : "text-foreground"
                           )}>
                             {cat.title}
@@ -748,10 +748,10 @@ export default function StudyPage() {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-muted-foreground uppercase truncate">
+                        <div className="flex items-center gap-1.5 xl:gap-2 mt-1 min-w-0">
+                          <div className="flex items-center gap-1 text-[9px] xl:text-[10px] font-semibold text-muted-foreground uppercase min-w-0 truncate">
                             <CalendarIcon className="w-3 h-3 shrink-0" />
-                            <span>
+                            <span className="truncate">
                               {mounted && catPlan ? (
                                 `${format(catPlan.startDate, "MMM dd")} - ${format(catPlan.endDate, "MMM dd")}`
                               ) : (
@@ -761,7 +761,7 @@ export default function StudyPage() {
                           </div>
 
                           <Badge variant="outline" className={cn(
-                            "text-[9px] px-1.5 py-0 font-bold shrink-0",
+                            "text-[8.5px] xl:text-[9px] px-1.5 py-0 font-bold shrink-0 whitespace-nowrap",
                             uploadedCount > 0
                               ? "bg-primary/10 text-primary border-primary/30"
                               : "bg-secondary text-muted-foreground border-border"

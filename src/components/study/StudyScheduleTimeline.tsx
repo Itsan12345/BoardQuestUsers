@@ -357,25 +357,25 @@ export function StudyScheduleTimeline({
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-300">
       {/* Top Banner: Overview & Active Focus */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-3.5 xl:gap-4">
         {/* Card 1: Active Review Focus */}
         <div
           className={cn(
-            "bg-card border-2 transition-all rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden",
+            "bg-card border-2 transition-all rounded-2xl xl:rounded-3xl p-3.5 sm:p-4 xl:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden min-w-0",
             isActiveFullyAchieved
               ? "border-emerald-500/80 hover:border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)] bg-emerald-500/[0.02]"
               : "border-border/80 hover:border-primary/40"
           )}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Active Review Focus
+          <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <span className="text-[9.5px] xl:text-[10px] font-black uppercase tracking-wider xl:tracking-widest text-primary flex items-center gap-1.5 min-w-0 truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="truncate">Active Review Focus</span>
             </span>
             {activeFocusPlan ? (
               <Badge
                 className={cn(
-                  "text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition-all",
+                  "text-[8.5px] xl:text-[9px] px-1.5 xl:px-2 py-0.5 font-black uppercase tracking-wider flex items-center gap-1 transition-all shrink-0 whitespace-nowrap",
                   focusPlanRemaining?.isExpired
                     ? isActiveQuotaAchieved
                       ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
@@ -411,11 +411,11 @@ export function StudyScheduleTimeline({
                 )}
               </Badge>
             ) : upcomingFocusPlan ? (
-              <Badge className="bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-400 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
+              <Badge className="bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-400 text-[8.5px] xl:text-[9px] px-1.5 xl:px-2 py-0.5 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0 whitespace-nowrap">
                 <Clock className="w-2.5 h-2.5" /> Upcoming
               </Badge>
             ) : (
-              <Badge className="bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase tracking-wider">
+              <Badge className="bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400 text-[8.5px] xl:text-[9px] px-1.5 xl:px-2 py-0.5 font-bold uppercase tracking-wider shrink-0 whitespace-nowrap">
                 Not Scheduled
               </Badge>
             )}
@@ -598,15 +598,15 @@ export function StudyScheduleTimeline({
             )}
           </div>
 
-          <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">
+          <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-2 min-w-0">
+            <span className="text-[9.5px] xl:text-[10px] font-bold text-muted-foreground uppercase min-w-0 truncate">
               Coverage: {scheduledCount} / {totalSubjectCount} Subjects Scheduled
             </span>
             {activeFocusPlan ? (
               <button
                 type="button"
                 onClick={() => handleOpenEditModal(activeFocusPlan)}
-                className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+                className="text-[9.5px] xl:text-[10px] font-bold text-primary hover:underline cursor-pointer shrink-0 whitespace-nowrap"
               >
                 Modify Block →
               </button>
@@ -614,7 +614,7 @@ export function StudyScheduleTimeline({
               <button
                 type="button"
                 onClick={() => handleOpenEditModal(upcomingFocusPlan)}
-                className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+                className="text-[9.5px] xl:text-[10px] font-bold text-primary hover:underline cursor-pointer shrink-0 whitespace-nowrap"
               >
                 View Block →
               </button>
@@ -622,7 +622,7 @@ export function StudyScheduleTimeline({
               <button
                 type="button"
                 onClick={() => handleOpenAddModal(undefined, nextRecommendedSubject?.title)}
-                className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+                className="text-[9.5px] xl:text-[10px] font-bold text-primary hover:underline cursor-pointer shrink-0 whitespace-nowrap"
               >
                 Schedule Now →
               </button>
@@ -631,16 +631,16 @@ export function StudyScheduleTimeline({
         </div>
 
         {/* Card 2: Institutional Final Deadline */}
-        <div className="bg-card border-2 border-border/80 hover:border-primary/40 transition-all rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
-              <CalendarIcon className="w-3.5 h-3.5" />
-              Institutional Target Deadline
+        <div className="bg-card border-2 border-border/80 hover:border-primary/40 transition-all rounded-2xl xl:rounded-3xl p-3.5 sm:p-4 xl:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden min-w-0">
+          <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <span className="text-[9.5px] xl:text-[10px] font-black uppercase tracking-wider xl:tracking-widest text-primary flex items-center gap-1.5 min-w-0 truncate">
+              <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Institutional Target Deadline</span>
             </span>
             {institutionalRemaining && (
               <Badge
                 className={cn(
-                  "text-[9px] font-bold uppercase tracking-wider transition-colors shrink-0",
+                  "text-[8.5px] xl:text-[9px] px-1.5 xl:px-2 py-0.5 font-bold uppercase tracking-wider transition-colors shrink-0 whitespace-nowrap",
                   institutionalRemaining.isCritical
                     ? "bg-red-500/15 text-red-500 border-red-500/30 animate-pulse font-extrabold"
                     : institutionalRemaining.isEndingToday
@@ -665,7 +665,7 @@ export function StudyScheduleTimeline({
 
           <div className="my-2.5">
             <div>
-              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+              <p className="text-xl md:text-lg xl:text-2xl font-black text-foreground tracking-tight leading-tight">
                 {format(new Date(effectiveDeadlineEndDate), 'MMMM dd, yyyy')}
               </p>
               <p className="text-xs text-muted-foreground font-semibold mt-0.5 truncate">
@@ -702,32 +702,32 @@ export function StudyScheduleTimeline({
                 />
               </div>
 
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5 gap-2">
-                <span className="flex items-center gap-1 truncate">
+              <div className="flex items-center justify-between text-[9.5px] xl:text-[10px] text-muted-foreground pt-0.5 gap-1.5 min-w-0">
+                <span className="flex items-center gap-1 min-w-0 truncate">
                   {scheduleAlignment.isOnTrack ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 truncate">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 min-w-0 truncate" title={scheduleAlignment.message}>
                       <CheckCircle2 className="w-3 h-3 shrink-0" />
-                      {scheduleAlignment.message}
+                      <span className="truncate">{scheduleAlignment.message}</span>
                     </span>
                   ) : (
-                    <span className="text-red-500 font-bold flex items-center gap-1 truncate">
+                    <span className="text-red-500 font-bold flex items-center gap-1 min-w-0 truncate" title={scheduleAlignment.message}>
                       <AlertCircle className="w-3 h-3 shrink-0" />
-                      {scheduleAlignment.message}
+                      <span className="truncate">{scheduleAlignment.message}</span>
                     </span>
                   )}
                 </span>
-                <span className="shrink-0 font-semibold">
+                <span className="shrink-0 whitespace-nowrap font-semibold">
                   {scheduleAlignment.isOnTrack ? '✓ On Track' : 'Needs Review'}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase truncate">
+          <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-2 min-w-0">
+            <span className="text-[9.5px] xl:text-[10px] font-bold text-muted-foreground uppercase min-w-0 truncate">
               Finish all review before this date
             </span>
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0 flex items-center gap-1">
+            <span className="text-[9.5px] xl:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0 whitespace-nowrap flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" />
               On Track
             </span>
@@ -735,15 +735,15 @@ export function StudyScheduleTimeline({
         </div>
 
         {/* Card 3: Study Roadmap Actions */}
-        <div className="bg-gradient-to-br from-card via-card to-primary/5 border-2 border-border/80 hover:border-primary/40 transition-all rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-foreground/80 flex items-center gap-1.5">
-              <Flame className="w-3.5 h-3.5 text-amber-500" />
-              Study Roadmap Actions
+        <div className="bg-gradient-to-br from-card via-card to-primary/5 border-2 border-border/80 hover:border-primary/40 transition-all rounded-2xl xl:rounded-3xl p-3.5 sm:p-4 xl:p-5 shadow-xs flex flex-col justify-between relative overflow-hidden min-w-0">
+          <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <span className="text-[9.5px] xl:text-[10px] font-black uppercase tracking-wider xl:tracking-widest text-foreground/80 flex items-center gap-1.5 min-w-0 truncate">
+              <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="truncate">Study Roadmap Actions</span>
             </span>
             <Badge
               className={cn(
-                "text-[9px] font-bold uppercase tracking-wider shrink-0 transition-colors",
+                "text-[8.5px] xl:text-[9px] px-1.5 xl:px-2 py-0.5 font-bold uppercase tracking-wider shrink-0 whitespace-nowrap transition-colors",
                 unscheduledCount === 0
                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-extrabold"
                   : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
@@ -761,7 +761,7 @@ export function StudyScheduleTimeline({
 
           <div className="my-2.5">
             <div>
-              <p className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+              <p className="text-xl md:text-lg xl:text-2xl font-black text-foreground tracking-tight leading-tight">
                 {scheduledCount} of {totalSubjectCount} Subjects Scheduled
               </p>
               <p className="text-xs text-muted-foreground font-semibold mt-0.5 truncate">
@@ -796,11 +796,11 @@ export function StudyScheduleTimeline({
                 />
               </div>
 
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5 gap-2">
-                <span className="flex items-center gap-1 min-w-0 truncate">
+              <div className="flex items-center justify-between text-[9.5px] xl:text-[10px] text-muted-foreground pt-0.5 gap-2 min-w-0">
+                <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
                   {nextRecommendedSubject ? (
-                    <span className="truncate flex items-center gap-1 text-muted-foreground">
-                      👉 Next:{' '}
+                    <span className="flex items-center gap-1 text-muted-foreground min-w-0 overflow-hidden">
+                      <span className="shrink-0">👉 Next:</span>
                       <strong className="text-foreground font-bold truncate" title={nextRecommendedSubject.title}>
                         {nextRecommendedSubject.shortTitle || nextRecommendedSubject.title}
                       </strong>
@@ -811,8 +811,8 @@ export function StudyScheduleTimeline({
                       All subjects scheduled
                     </span>
                   )}
-                </span>
-                <span className="shrink-0 font-semibold">
+                </div>
+                <span className="shrink-0 whitespace-nowrap font-semibold">
                   {totalDailyTargetSum > 0 ? `${totalDailyTargetSum} questions / day` : 'No targets yet'}
                 </span>
               </div>
@@ -828,12 +828,12 @@ export function StudyScheduleTimeline({
               <Plus className="w-3.5 h-3.5" />
               Schedule Subject Block
             </Button>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold px-0.5">
-              <span className="uppercase truncate">4 Board Exam Subjects</span>
+            <div className="flex items-center justify-between gap-2 text-[9.5px] xl:text-[10px] text-muted-foreground font-bold px-0.5 min-w-0">
+              <span className="uppercase min-w-0 truncate">4 Board Exam Subjects</span>
               <button
                 type="button"
                 onClick={() => setViewMode(viewMode === 'calendar' ? 'roadmap' : 'calendar')}
-                className="text-primary hover:underline cursor-pointer shrink-0 ml-1"
+                className="text-primary hover:underline cursor-pointer shrink-0 whitespace-nowrap"
               >
                 {viewMode === 'calendar' ? 'View All Subjects →' : 'View Calendar →'}
               </button>

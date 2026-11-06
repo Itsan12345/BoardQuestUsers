@@ -305,10 +305,10 @@ function PerformanceContent() {
       </section>
 
       {/* 5. Section III: Competency Diagnostics & Active Objectives */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-5 xl:gap-8 items-start">
         
         {/* Left 2-Column: Visual Analytics Tabbed Hub (Radar + Quest History) */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-7 xl:col-span-8 min-w-0">
           <Card className="border border-border shadow-xl rounded-2xl sm:rounded-3xl overflow-hidden bg-background">
             <Tabs defaultValue="radar" className="w-full">
               <CardHeader className="bg-muted/30 border-b border-border p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -461,18 +461,18 @@ function PerformanceContent() {
         </div>
 
         {/* Right 1-Column: Active Mission Objective Milestone */}
-        <div className="space-y-6">
-          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background p-4 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+        <div className="lg:col-span-5 xl:col-span-4 space-y-6 min-w-0">
+          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background p-4 sm:p-5 xl:p-6 space-y-4 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
                   <Target className="w-3.5 h-3.5" />
                 </div>
-                <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-primary" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                <h3 className="text-[11px] xl:text-xs font-semibold uppercase tracking-wider xl:tracking-widest text-primary" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   Active Mission Objective
                 </h3>
               </div>
-              <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary shrink-0">
+              <Badge variant="outline" className="text-[9px] xl:text-[10px] font-bold border-primary/30 text-primary px-2 py-0.5 shrink-0">
                 Curriculum Milestone
               </Badge>
             </div>

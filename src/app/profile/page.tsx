@@ -350,11 +350,11 @@ function ProfileContent() {
     .slice(0, 2);
 
   return (
-    <div className="min-h-screen bg-background p-3 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-3 sm:p-5 xl:p-8">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Profile Header Card */}
         <Card id="tour-profile-card" className="border border-border shadow-xl rounded-2xl sm:rounded-3xl bg-background overflow-hidden">
-          <CardContent className="p-4 sm:p-6 lg:p-8">
+          <CardContent className="p-4 sm:p-5 xl:p-8">
             <div className="flex flex-col gap-6 sm:gap-8 w-full">
               <div className="flex flex-col md:flex-row gap-6 sm:gap-8 items-start md:items-center justify-between">
                 {/* Avatar and Info */}
@@ -430,9 +430,9 @@ function ProfileContent() {
         </Card>
 
         {/* Stats and Achievements Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-6">
           {/* Left Column - Stats */}
-          <div id="tour-profile-stats" className="space-y-6">
+          <div id="tour-profile-stats" className="lg:col-span-5 xl:col-span-4 space-y-5 xl:space-y-6 min-w-0">
             {/* Subtle & Minimalistic RPG Combat Stats Card */}
             {(() => {
               const localEquipped = typeof window !== 'undefined' ? localStorage.getItem('boardquest_equipped_reagent') : null;
@@ -565,7 +565,7 @@ function ProfileContent() {
           </div>
 
           {/* Right Column - Achievements and Activity */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-7 xl:col-span-8 space-y-5 xl:space-y-6 min-w-0">
             {/* Achievements/Badges Grid (Dynamic Earned Badges Only) */}
             <Card id="tour-profile-badges" className="border border-border shadow-lg rounded-2xl overflow-hidden bg-background">
               <CardHeader className="pb-2">

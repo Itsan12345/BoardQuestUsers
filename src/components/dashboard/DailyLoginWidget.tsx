@@ -53,16 +53,16 @@ export function DailyLoginWidget({
         id="tour-dashboard-daily-login"
         className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden"
       >
-        <CardHeader className="p-4 sm:p-6 pb-3 border-b border-border flex flex-row items-center justify-between">
+        <CardHeader className="p-4 sm:p-5 xl:p-6 pb-3 border-b border-border flex flex-row items-center justify-between gap-2">
           <p
-            className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest"
+            className="text-xs xl:text-sm font-medium text-primary uppercase tracking-wider xl:tracking-widest truncate"
             style={{ fontFamily: "'Poppins', sans-serif" }}
           >
             Daily Login
           </p>
           <Badge
             className={cn(
-              "text-[10px] font-bold px-2 py-0.5",
+              "text-[10px] font-bold px-2 py-0.5 shrink-0 whitespace-nowrap",
               hasClaimedToday
                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                 : "bg-primary text-primary-foreground"
@@ -72,24 +72,24 @@ export function DailyLoginWidget({
           </Badge>
         </CardHeader>
 
-        <CardContent className="p-4 sm:p-6 space-y-3.5">
+        <CardContent className="p-4 sm:p-5 xl:p-6 space-y-3.5">
           {/* Streak Overview */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
                 <Flame className="w-4 h-4 fill-current" />
               </div>
-              <div>
-                <p className="text-xs sm:text-sm font-semibold text-foreground leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-semibold text-foreground leading-tight truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'} Streak
                 </p>
-                <p className="text-[10.5px] text-muted-foreground">
+                <p className="text-[10.5px] text-muted-foreground truncate">
                   {streakInfo.tierName} • Cycle Day {cycleDay}/7
                 </p>
               </div>
             </div>
 
-            <span className="text-[11px] text-muted-foreground font-medium">
+            <span className="text-[11px] text-muted-foreground font-medium shrink-0 whitespace-nowrap">
               +{todayReward?.xp || 50} XP Today
             </span>
           </div>
@@ -162,15 +162,15 @@ export function DailyLoginWidget({
                 size="sm"
                 variant="outline"
                 onClick={handleOpenModal}
-                className="w-full h-9 rounded-xl border-border hover:bg-muted text-xs font-normal text-muted-foreground flex items-center justify-between px-3"
+                className="w-full h-9 rounded-xl border-border hover:bg-muted text-[11px] xl:text-xs font-normal text-muted-foreground flex items-center justify-between gap-1.5 px-2.5 xl:px-3 overflow-hidden"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
               >
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  Attendance Recorded
+                <span className="flex items-center gap-1.5 min-w-0 truncate">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="truncate">Attendance Recorded</span>
                 </span>
-                <span className="text-[11px] text-primary flex items-center font-medium">
-                  View 7-Day Track <ChevronRight className="w-3 h-3 ml-0.5" />
+                <span className="text-[10.5px] xl:text-[11px] text-primary flex items-center font-medium shrink-0 whitespace-nowrap">
+                  View 7-Day Track <ChevronRight className="w-3 h-3 ml-0.5 shrink-0" />
                 </span>
               </Button>
             )}

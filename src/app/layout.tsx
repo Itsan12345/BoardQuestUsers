@@ -44,7 +44,7 @@ export default async function RootLayer({
 
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${poppins.variable} ${spaceGrotesk.variable}`}>
-      <body className="font-body antialiased min-h-screen bg-background text-foreground transition-colors duration-200">
+      <body suppressHydrationWarning className="font-body antialiased min-h-screen bg-background text-foreground transition-colors duration-200">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

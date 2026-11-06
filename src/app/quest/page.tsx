@@ -303,6 +303,8 @@ export default function LearningQuest() {
   const [fetchingExplanations, setFetchingExplanations] = useState<Record<number, boolean>>({});
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>('Clinical Chemistry');
+  const selectedSubjectRef = useRef<string>('Clinical Chemistry');
+  selectedSubjectRef.current = selectedSubject;
   const [currentFocusSubject, setCurrentFocusSubject] = useState<string | null>(null);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -315,6 +317,7 @@ export default function LearningQuest() {
   const programmaticScrollTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialCategoryLoadRef = useRef(true);
   const hasConsumedUrlTopicRef = useRef(false);
+  const hasUserSelectedSubjectRef = useRef(false);
 
   // Fetch dynamic categories directly from MongoDB Category collection
   const loadCategories = useCallback(async (forcedFocus?: string | null) => {
@@ -388,15 +391,19 @@ export default function LearningQuest() {
         }
         setDynamicCategories(orderedNames);
 
-        if (effectivePriority) {
+        if (matchedUrl) {
+          isProgrammaticScrollRef.current = true;
+          hasUserSelectedSubjectRef.current = true;
+          setSelectedSubject(matchedUrl);
+        } else if (forcedFocus !== undefined && effectivePriority) {
           isProgrammaticScrollRef.current = true;
           setSelectedSubject(effectivePriority);
-        } else if (isInitialCategoryLoadRef.current) {
+        } else if (isInitialCategoryLoadRef.current && !hasUserSelectedSubjectRef.current) {
           isProgrammaticScrollRef.current = true;
-          setSelectedSubject(orderedNames[0]);
+          setSelectedSubject(effectivePriority || orderedNames[0]);
         } else {
           // Preserve currently selected subject if it still exists in updated categories
-          setSelectedSubject(prev => (orderedNames.includes(prev) ? prev : orderedNames[0]));
+          setSelectedSubject(prev => (orderedNames.includes(prev) ? prev : (effectivePriority || orderedNames[0])));
         }
         if (urlSubject && typeof window !== 'undefined') {
           const cleanUrl = new URL(window.location.href);
@@ -3490,8 +3497,11 @@ export default function LearningQuest() {
     });
 
     if (closestIdx > 0) {
+      hasUserSelectedSubjectRef.current = true;
       isProgrammaticScrollRef.current = true;
-      setSelectedSubject(dynamicCategories[closestIdx - 1]);
+      const nextSubj = dynamicCategories[closestIdx - 1];
+      selectedSubjectRef.current = nextSubj;
+      setSelectedSubject(nextSubj);
     } else {
       carousel.scrollBy({ left: -300, behavior: 'smooth' });
     }
@@ -3517,8 +3527,11 @@ export default function LearningQuest() {
     });
 
     if (closestIdx >= 0 && closestIdx < dynamicCategories.length - 1) {
+      hasUserSelectedSubjectRef.current = true;
       isProgrammaticScrollRef.current = true;
-      setSelectedSubject(dynamicCategories[closestIdx + 1]);
+      const nextSubj = dynamicCategories[closestIdx + 1];
+      selectedSubjectRef.current = nextSubj;
+      setSelectedSubject(nextSubj);
     } else {
       carousel.scrollBy({ left: 300, behavior: 'smooth' });
     }
@@ -3585,6 +3598,8 @@ export default function LearningQuest() {
         });
 
         if (closestSubject && closestSubject !== selectedSubject) {
+          hasUserSelectedSubjectRef.current = true;
+          selectedSubjectRef.current = closestSubject;
           setSelectedSubject(closestSubject);
         }
       }, 150);
@@ -3632,6 +3647,7 @@ export default function LearningQuest() {
     topicOverride?: string | null,
     targetNodeId?: string
   ) => {
+    const activeSubject = selectedSubjectRef.current || selectedSubject;
     stopBossBattleMusic();
     stopFinalBossMusic();
     stopLearningModeMusic();
@@ -3662,7 +3678,7 @@ export default function LearningQuest() {
       }
       const topicToUse = topicOverride !== undefined ? topicOverride : selectedTopicFilter;
       const [selected, freshProfile] = await Promise.all([
-        getQuestQuestions(selectedSubject, quizMode, limit, specificDifficulty, topicToUse || undefined, currentUserIdRef.current || undefined),
+        getQuestQuestions(activeSubject, quizMode, limit, specificDifficulty, topicToUse || undefined, currentUserIdRef.current || undefined),
         getUserProfile().catch(() => null)
       ]);
 
@@ -3742,24 +3758,31 @@ export default function LearningQuest() {
 
       let bossStartingHp = 100;
       if (quizMode === 'boss-battle') {
-        const effectiveNodeId = targetNodeId || selectedNodeIdRef.current || selectedNodeId;
+        const activeNodes = getSubjectNodes(activeSubject);
+        let effectiveNodeId = targetNodeId || selectedNodeIdRef.current || selectedNodeId;
+        if (activeNodes.length > 0 && !activeNodes.some(n => n.id === effectiveNodeId)) {
+          effectiveNodeId = activeNodes[0].id;
+        }
         setSelectedNodeId(effectiveNodeId);
         selectedNodeIdRef.current = effectiveNodeId;
-        const currentActiveNode = getResolvedActiveNode(selectedSubject, undefined, effectiveNodeId);
+        const currentActiveNode = getResolvedActiveNode(activeSubject, undefined, effectiveNodeId);
         const initialStage = (currentActiveNode.nodeNumber as 1 | 2 | 3 | 4) || 1;
 
         setBattleStage(initialStage);
         bossStartingHp = calculateEnemyStageHp(initialStage, currentLevelForBattle, specificDifficulty || 'MEDIUM');
       } else if (quizMode === 'learning') {
         setLearningStage(1);
-        const effectiveNodeId = targetNodeId || selectedNodeIdRef.current || selectedNodeId;
-        const activeNodes = getSubjectNodes(selectedSubject);
+        const activeNodes = getSubjectNodes(activeSubject);
+        let effectiveNodeId = targetNodeId || selectedNodeIdRef.current || selectedNodeId;
+        if (activeNodes.length > 0 && !activeNodes.some(n => n.id === effectiveNodeId)) {
+          effectiveNodeId = activeNodes[0].id;
+        }
         const minionNode = activeNodes.find(n => n.tier === 'minion' || n.nodeNumber === 1) || activeNodes[0];
         const miniBossNode = activeNodes.find(n => n.tier === 'mini-boss' || n.nodeNumber === 2) || activeNodes[1] || activeNodes[0];
         const ch1BossNode = activeNodes.find(n => n.tier === 'boss' || n.nodeNumber === 3) || activeNodes[2] || activeNodes[0];
         const finalBossNode = activeNodes.find(n => n.tier === 'final-boss' || n.nodeNumber === 4) || activeNodes[activeNodes.length - 1];
         const currentActiveNode = activeNodes.find(n => n.id === effectiveNodeId) || minionNode;
-        const subjectMeta = getSubjectMeta(selectedSubject);
+        const subjectMeta = getSubjectMeta(activeSubject);
         const wave3BossNode = (currentActiveNode?.tier === 'final-boss' || currentActiveNode?.nodeNumber === 4) ? finalBossNode : ch1BossNode;
 
         setLearningWaveEnemies({
@@ -3840,11 +3863,11 @@ export default function LearningQuest() {
           },
         });
       } else if (quizMode === 'test') {
-        const activeNodes = getSubjectNodes(selectedSubject);
+        const activeNodes = getSubjectNodes(activeSubject);
         const miniBossNode = activeNodes.find(n => n.tier === 'mini-boss' || n.nodeNumber === 2) || activeNodes[1];
         const ch1BossNode = activeNodes.find(n => n.tier === 'boss' || n.nodeNumber === 3) || activeNodes[2];
         const finalBossNode = activeNodes.find(n => n.tier === 'final-boss' || n.nodeNumber === 4) || activeNodes[activeNodes.length - 1];
-        const subjectMeta = getSubjectMeta(selectedSubject);
+        const subjectMeta = getSubjectMeta(activeSubject);
 
         type TestCandidate = NonNullable<typeof testModeEnemy>;
         const candidates: TestCandidate[] = [];
@@ -7870,8 +7893,10 @@ export default function LearningQuest() {
                       key={subject}
                       data-subject={subject}
                       onClick={() => {
+                        hasUserSelectedSubjectRef.current = true;
                         isProgrammaticScrollRef.current = true;
                         setSelectedTopicFilter(null);
+                        selectedSubjectRef.current = subject;
                         setSelectedSubject(subject);
                       }}
                       className={cn(

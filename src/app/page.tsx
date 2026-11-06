@@ -313,17 +313,17 @@ function DashboardContent() {
   }
 
   return (
-    <div className="min-h-full bg-background p-3.5 sm:p-6 lg:p-8 space-y-6 sm:space-y-8" style={{ fontFamily: "'Poppins', sans-serif" }}>
+    <div className="min-h-full bg-background p-3.5 sm:p-5 lg:p-5 xl:p-8 space-y-5 sm:space-y-6 xl:space-y-8" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* Hero Section */}
-      <section id="tour-dashboard-hero" className="space-y-4 sm:space-y-6">
-        <div className="space-y-2 sm:space-y-3">
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <section id="tour-dashboard-hero" className="space-y-3 sm:space-y-4 xl:space-y-6">
+        <div className="space-y-1.5 sm:space-y-2.5">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-semibold tracking-tight leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Master Your Boards,<br />
             <span className="text-primary font-semibold">Level Up Your Knowledge</span>
           </h1>
         </div>
-        <Link href="/quest">
-          <Button size="lg" className="h-11 sm:h-12 px-6 sm:px-8 rounded-xl mt-2 sm:mt-4 text-xs sm:text-sm font-medium shadow-lg bg-primary hover:bg-primary/90" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <Link href="/quest" className="inline-block">
+          <Button size="lg" className="h-10 sm:h-11 xl:h-12 px-5 sm:px-7 xl:px-8 rounded-xl mt-1 sm:mt-2 text-xs sm:text-sm font-medium shadow-lg bg-primary hover:bg-primary/90" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Start Quest <Zap className="h-4 w-4 sm:h-5 sm:w-5 ml-2 fill-current" />
           </Button>
         </Link>
@@ -338,13 +338,13 @@ function DashboardContent() {
 
       {/* Your Study Dashboard Section */}
       <section className="space-y-0.5">
-        <h2 className="text-xl sm:text-2xl lg:text-3xl font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Your Study Dashboard</h2>
+        <h2 className="text-xl sm:text-2xl xl:text-3xl font-medium" style={{ fontFamily: "'Poppins', sans-serif" }}>Your Study Dashboard</h2>
         <p className="text-xs sm:text-sm text-muted-foreground font-normal">Real-time tracking of your journey to professional certification</p>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
-        {/* Left 2-Column: Target Exam & Current Course */}
-        <div className="lg:col-span-2 space-y-5 sm:space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 xl:gap-8">
+        {/* Left Column: Target Exam, Current Course & Leaderboard */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-4 sm:space-y-5 xl:space-y-6 min-w-0">
           {/* Target Board Exam (MTLE) Countdown Card */}
           <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
             <CardContent className="p-4 sm:p-6 flex items-center justify-between gap-3 sm:gap-4">
@@ -626,18 +626,18 @@ function DashboardContent() {
         </div>
 
         {/* Right Sidebar - Active Objectives, Daily Target & Missions */}
-        <div id="tour-dashboard-dailygoal" className="space-y-5 sm:space-y-6">
+        <div id="tour-dashboard-dailygoal" className="lg:col-span-5 xl:col-span-4 space-y-4 sm:space-y-5 xl:space-y-6 min-w-0">
 
           {/* Active Mission Objective Card */}
-          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background p-4 sm:p-6 space-y-4 overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          <Card className="border-2 border-border shadow-sm rounded-2xl bg-background p-4 sm:p-5 xl:p-6 space-y-3.5 xl:space-y-4 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <Target className="w-4 h-4 text-primary shrink-0" />
-                <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-primary" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                <h3 className="text-[11px] xl:text-xs font-semibold uppercase tracking-wider xl:tracking-widest text-primary truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>
                   Active Mission Objective
                 </h3>
               </div>
-              <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary shrink-0">
+              <Badge variant="outline" className="text-[9.5px] xl:text-[10px] font-bold border-primary/30 text-primary px-2 py-0.5 shrink-0">
                 Curriculum Milestone
               </Badge>
             </div>
@@ -724,25 +724,25 @@ function DashboardContent() {
 
             return (
               <Card className="border-2 border-border shadow-sm rounded-2xl bg-background overflow-hidden">
-                <CardHeader className="p-4 sm:p-6 pb-3 border-b border-border flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs sm:text-sm font-medium text-primary uppercase tracking-widest" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
+                <CardHeader className="p-4 sm:p-5 xl:p-6 pb-3 border-b border-border flex flex-row items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="text-xs xl:text-sm font-medium text-primary uppercase tracking-wider xl:tracking-widest truncate" style={{ fontFamily: "'Poppins', sans-serif" }}>Daily Target</p>
                     <Link href="/profile?openSettings=true&tab=goals">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        className="h-6 w-6 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
                         title="Edit Daily Goals"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
                     </Link>
                   </div>
-                  <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5">
+                  <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 shrink-0 whitespace-nowrap">
                     {todayDone} / {dailyQuota} Qs
                   </Badge>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 space-y-3">
+                <CardContent className="p-4 sm:p-5 xl:p-6 space-y-3">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>Today's Progress</span>
                     <span className="font-semibold text-foreground">{percent}% Completed</span>
