@@ -210,6 +210,8 @@ model User {
   email     String   @unique
   password  String
   name      String
+  firstName String?
+  lastName  String?
   verified  Boolean  @default(false)
   level     Int      @default(1)
   xp        Int      @default(0)

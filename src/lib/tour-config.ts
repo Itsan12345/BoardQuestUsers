@@ -245,7 +245,7 @@ export const TOUR_CONFIGS: Record<string, PageTourConfig> = {
         element: '#tour-profile-academic',
         popover: {
           title: '🏛️ Academic Institution & Hub',
-          description: 'Set your full name, registered email, university / review center, and regional exam testing hub.',
+          description: 'Set your first and last name, registered email, university / review center, and regional exam testing hub.',
           side: 'top',
           align: 'start',
         },

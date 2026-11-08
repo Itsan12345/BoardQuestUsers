@@ -10,10 +10,14 @@ import clientPromise from '@/lib/mongodb-client';
 import { sendVerificationEmail, sendPasswordResetEmail } from '@/lib/mail';
 
 export async function sendVerificationCode(email: string, name?: string) {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = (email || '').trim().toLowerCase();
 
-  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || /\s/.test(normalizedEmail)) {
     return { success: false, error: 'Please provide a valid email address.' };
+  }
+
+  if (name !== undefined && !name.replace(/\s+/g, ' ').trim()) {
+    return { success: false, error: 'Please provide both your First Name and Last Name.' };
   }
 
   try {
@@ -77,11 +81,37 @@ export async function sendVerificationCode(email: string, name?: string) {
 export async function verifyEmailAndSignUp(formData: FormData) {
   const email = (formData.get('email') as string || '').trim().toLowerCase();
   const password = formData.get('password') as string;
-  const name = (formData.get('name') as string || '').trim();
+  const rawFirstName = (formData.get('firstName') as string || '').replace(/\s+/g, ' ').trim();
+  const rawLastName = (formData.get('lastName') as string || '').replace(/\s+/g, ' ').trim();
+  const rawName = (formData.get('name') as string || '').replace(/\s+/g, ' ').trim();
   const code = (formData.get('code') as string || '').trim();
 
+  if ((formData.has('firstName') || formData.has('lastName')) && (!rawFirstName || !rawLastName)) {
+    return { success: false, error: 'Both First Name and Last Name are required.' };
+  }
+
+  const composedName = rawFirstName && rawLastName
+    ? `${rawFirstName} ${rawLastName}`.replace(/\s+/g, ' ').trim()
+    : (rawName || [rawFirstName, rawLastName].filter(Boolean).join(' ').trim());
+
+  const nameParts = composedName.split(/\s+/);
+  const firstName = rawFirstName || (nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : composedName);
+  const lastName = rawLastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : '');
+  const name = composedName;
+
   if (!email || !password || !name || !code) {
-    return { success: false, error: 'All fields and the verification code are required.' };
+    return { success: false, error: 'All fields (First Name, Last Name, Email, Password) and the verification code are required.' };
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || /\s/.test(email)) {
+    return { success: false, error: 'Please provide a valid email address.' };
+  }
+
+  if (password.length < 8 || !/\d/.test(password) || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    return {
+      success: false,
+      error: 'Password must be at least 8 characters and contain at least one number and one special character.',
+    };
   }
 
   try {
@@ -134,10 +164,10 @@ export async function verifyEmailAndSignUp(formData: FormData) {
       },
     });
 
-    // Mark user as verified in MongoDB
+    // Mark user as verified and store firstName and lastName in MongoDB
     await db.collection('User').updateOne(
       { email },
-      { $set: { verified: true } }
+      { $set: { verified: true, firstName, lastName, name } }
     );
 
     // 4. Initialize Subject Mastery for dynamically created categories
@@ -214,6 +244,14 @@ export async function verifyEmailAndSignUp(formData: FormData) {
         await recordDailyLoginAction();
       } catch (loginTrackErr) {
         console.warn('Daily login tracking notice on signup:', loginTrackErr);
+      }
+
+      // Dynamically record active device session
+      try {
+        const { trackActiveSessionAction } = await import('@/app/actions/session');
+        await trackActiveSessionAction();
+      } catch (sessionErr) {
+        console.warn('Active session tracking notice on signup:', sessionErr);
       }
     } catch {
       // Cookies context not available in non-HTTP environments (e.g. testing)

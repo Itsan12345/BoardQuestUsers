@@ -79,6 +79,8 @@ interface AccountSettingsDialogProps {
   userProfile: {
     id: string;
     name: string;
+    firstName?: string;
+    lastName?: string;
     email: string;
     level: number;
     xp: number;
@@ -106,7 +108,14 @@ export function AccountSettingsDialog({
   const [activeTab, setActiveTab] = useState(initialTab);
 
   // Form states - Profile
-  const [name, setName] = useState(userProfile.name || '');
+  const initialNameParts = (userProfile.name || '').trim().split(/\s+/);
+  const [firstName, setFirstName] = useState(
+    userProfile.firstName || (initialNameParts.length > 1 ? initialNameParts.slice(0, -1).join(' ') : (initialNameParts[0] || ''))
+  );
+  const [lastName, setLastName] = useState(
+    userProfile.lastName || (initialNameParts.length > 1 ? initialNameParts[initialNameParts.length - 1] : '')
+  );
+  const name = [firstName.replace(/\s+/g, ' ').trim(), lastName.replace(/\s+/g, ' ').trim()].filter(Boolean).join(' ');
   const [location, setLocation] = useState(userProfile.location || 'Cebu, Philippines');
   const [school, setSchool] = useState('');
   const [targetBatch, setTargetBatch] = useState('');
@@ -204,7 +213,13 @@ export function AccountSettingsDialog({
   // Sync initial user values
   useEffect(() => {
     if (userProfile) {
-      setName(userProfile.name || '');
+      const parts = (userProfile.name || '').trim().split(/\s+/);
+      setFirstName(
+        userProfile.firstName || (parts.length > 1 ? parts.slice(0, -1).join(' ') : (parts[0] || ''))
+      );
+      setLastName(
+        userProfile.lastName || (parts.length > 1 ? parts[parts.length - 1] : '')
+      );
       setLocation(userProfile.location || 'Cebu, Philippines');
       if ((userProfile as any).reviewCenterEnrollment) {
         const rcInfo = (userProfile as any).reviewCenterEnrollment;
@@ -342,11 +357,13 @@ export function AccountSettingsDialog({
   // Handle Profile Update
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
+    const cleanFirst = firstName.replace(/\s+/g, ' ').trim();
+    const cleanLast = lastName.replace(/\s+/g, ' ').trim();
+    if (!cleanFirst || !cleanLast) {
       toast({
         variant: 'destructive',
         title: 'Validation Error',
-        description: 'Please enter your full name.',
+        description: 'Please enter both your First Name and Last Name.',
       });
       return;
     }
@@ -354,7 +371,9 @@ export function AccountSettingsDialog({
     setIsSavingProfile(true);
     try {
       const res = await updateUserProfileDetails({
-        name,
+        name: `${cleanFirst} ${cleanLast}`,
+        firstName: cleanFirst,
+        lastName: cleanLast,
         location,
       });
 
@@ -787,14 +806,16 @@ export function AccountSettingsDialog({
               <form onSubmit={handleSaveProfile} className="space-y-3.5 min-w-0 max-w-full">
                 <div id="tour-profile-identity" className="p-2.5 sm:p-3 bg-muted/30 border border-border rounded-xl sm:rounded-2xl flex items-center gap-2.5 sm:gap-3.5 w-full min-w-0 max-w-full overflow-hidden">
                   <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm sm:text-lg font-bold border-2 border-primary/20 shadow-md shrink-0">
-                    {name
-                      ? name
-                        .split(' ')
-                        .map(n => n[0])
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 2)
-                      : 'A'}
+                    {(((firstName.trim()[0] || '') + (lastName.trim()[0] || '')).toUpperCase()) ||
+                      (name
+                        ? name
+                          .split(' ')
+                          .filter(Boolean)
+                          .map(n => n[0])
+                          .join('')
+                          .toUpperCase()
+                          .slice(0, 2)
+                        : 'A')}
                   </div>
                   <div className="space-y-0.5 min-w-0 flex-1 overflow-hidden">
                     <div className="flex flex-wrap items-center gap-1.5 min-w-0">
@@ -860,27 +881,27 @@ export function AccountSettingsDialog({
                   </div>
                 )}
 
-                {/* Row 1: Full Legal Name & Target MTLE Board Schedule */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
+                {/* Row 1: First Name & Last Name (Side by Side) */}
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
                   <div className="space-y-1 w-full min-w-0">
-                    <Label htmlFor="name" className="text-[11px] sm:text-xs font-semibold flex items-center justify-between">
+                    <Label htmlFor="settings-first-name" className="text-[11px] sm:text-xs font-semibold flex items-center justify-between gap-1">
                       <span className="flex items-center gap-1 truncate">
                         <User className="w-3.5 h-3.5 text-primary shrink-0" />
-                        Full Legal Name
+                        First Name
                       </span>
                       {isEditingName && (
-                        <span className="text-[10px] text-primary font-bold animate-pulse">Editing Enabled</span>
+                        <span className="text-[10px] text-primary font-bold animate-pulse hidden sm:inline">Editing</span>
                       )}
                     </Label>
                     <div className="relative flex items-center">
                       <Input
-                        id="name"
-                        value={name}
+                        id="settings-first-name"
+                        value={firstName}
                         disabled={!isEditingName}
-                        onChange={e => setName(e.target.value)}
-                        placeholder="Ethan Gabriel Rolloque"
+                        onChange={e => setFirstName(e.target.value)}
+                        placeholder="Alex"
                         className={cn(
-                          "rounded-xl h-9 sm:h-10 text-xs sm:text-sm w-full min-w-0 pr-9 transition-all",
+                          "rounded-xl h-9 sm:h-10 text-xs sm:text-sm w-full min-w-0 pr-8 transition-all",
                           !isEditingName
                             ? "bg-muted/50 text-foreground cursor-not-allowed border-border/60"
                             : "bg-background text-foreground ring-2 ring-primary/40 border-primary"
@@ -892,20 +913,67 @@ export function AccountSettingsDialog({
                           const nextState = !isEditingName;
                           setIsEditingName(nextState);
                           if (nextState) {
-                            setTimeout(() => document.getElementById('name')?.focus(), 50);
+                            setTimeout(() => document.getElementById('settings-first-name')?.focus(), 50);
                           }
                         }}
                         className={cn(
-                          "absolute right-2 text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg",
+                          "absolute right-1.5 text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg",
                           isEditingName && "text-primary bg-primary/10"
                         )}
-                        title={isEditingName ? "Click to lock name editing" : "Click edit icon to change full name"}
+                        title={isEditingName ? "Click to lock name editing" : "Click edit icon to change name"}
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
 
+                  <div className="space-y-1 w-full min-w-0">
+                    <Label htmlFor="settings-last-name" className="text-[11px] sm:text-xs font-semibold flex items-center justify-between gap-1">
+                      <span className="flex items-center gap-1 truncate">
+                        <User className="w-3.5 h-3.5 text-primary shrink-0" />
+                        Last Name
+                      </span>
+                      {isEditingName && (
+                        <span className="text-[10px] text-primary font-bold animate-pulse hidden sm:inline">Editing</span>
+                      )}
+                    </Label>
+                    <div className="relative flex items-center">
+                      <Input
+                        id="settings-last-name"
+                        value={lastName}
+                        disabled={!isEditingName}
+                        onChange={e => setLastName(e.target.value)}
+                        placeholder="Rivera"
+                        className={cn(
+                          "rounded-xl h-9 sm:h-10 text-xs sm:text-sm w-full min-w-0 pr-8 transition-all",
+                          !isEditingName
+                            ? "bg-muted/50 text-foreground cursor-not-allowed border-border/60"
+                            : "bg-background text-foreground ring-2 ring-primary/40 border-primary"
+                        )}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextState = !isEditingName;
+                          setIsEditingName(nextState);
+                          if (nextState) {
+                            setTimeout(() => document.getElementById('settings-last-name')?.focus(), 50);
+                          }
+                        }}
+                        className={cn(
+                          "absolute right-1.5 text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-lg",
+                          isEditingName && "text-primary bg-primary/10"
+                        )}
+                        title={isEditingName ? "Click to lock name editing" : "Click edit icon to change name"}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2: Target MTLE Board Schedule & Registered Email */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
                   <div id="tour-profile-target-exam" className="space-y-1 w-full min-w-0">
                     <div className="flex items-center justify-between min-w-0 gap-1">
                       <Label className="text-[11px] sm:text-xs font-semibold flex items-center gap-1 truncate">
@@ -956,10 +1024,7 @@ export function AccountSettingsDialog({
                       </PopoverContent>
                     </Popover>
                   </div>
-                </div>
 
-                {/* Row 2: Registered Email & Review Center */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
                   <div className="space-y-1 w-full min-w-0">
                     <Label htmlFor="email" className="text-[11px] sm:text-xs font-semibold">
                       Registered Email Address
@@ -971,7 +1036,10 @@ export function AccountSettingsDialog({
                       className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted text-muted-foreground cursor-not-allowed w-full min-w-0 truncate border-border/60"
                     />
                   </div>
+                </div>
 
+                {/* Row 3: Review Center & Regional Testing Hub / City */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5 items-end w-full max-w-full min-w-0">
                   <div className="space-y-1 w-full min-w-0">
                     <Label htmlFor="school" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1 truncate">
                       <School className="w-3.5 h-3.5 text-primary shrink-0" /> Review Center
@@ -988,20 +1056,19 @@ export function AccountSettingsDialog({
                       className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted/50 text-muted-foreground cursor-not-allowed w-full min-w-0 truncate border-border/60"
                     />
                   </div>
-                </div>
 
-                {/* Row 3: Regional Testing Hub / City */}
-                <div className="space-y-1 w-full min-w-0">
-                  <Label htmlFor="location" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-primary shrink-0" /> Regional Testing Hub / City
-                  </Label>
-                  <Input
-                    id="location"
-                    value={location || 'Philippines'}
-                    disabled
-                    placeholder="Philippines"
-                    className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted/50 text-muted-foreground cursor-not-allowed w-full min-w-0 border-border/60"
-                  />
+                  <div className="space-y-1 w-full min-w-0">
+                    <Label htmlFor="location" className="text-[11px] sm:text-xs font-semibold flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-primary shrink-0" /> Regional Testing Hub / City
+                    </Label>
+                    <Input
+                      id="location"
+                      value={location || 'Philippines'}
+                      disabled
+                      placeholder="Philippines"
+                      className="rounded-xl h-9 sm:h-10 text-xs sm:text-sm bg-muted/50 text-muted-foreground cursor-not-allowed w-full min-w-0 border-border/60"
+                    />
+                  </div>
                 </div>
                 </div>
 

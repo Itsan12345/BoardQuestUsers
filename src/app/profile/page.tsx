@@ -175,6 +175,8 @@ const ALL_BADGE_TYPES = [
 interface UserProfile {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   level: number;
   xp: number;
@@ -341,13 +343,17 @@ function ProfileContent() {
     return null;
   }
 
-  // Extract initials from name
-  const initialsFromName = userProfile.name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  // Extract initials from First Name & Last Name (or full name fallback)
+  const initialsFromName =
+    (((userProfile.firstName?.[0] || '') + (userProfile.lastName?.[0] || '')).toUpperCase()) ||
+    userProfile.name
+      .split(' ')
+      .filter(Boolean)
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) ||
+    'A';
 
   return (
     <div className="min-h-screen bg-background p-3 sm:p-5 xl:p-8">

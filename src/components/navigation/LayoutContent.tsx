@@ -29,11 +29,13 @@ export function LayoutContent({
   const [user, setUser] = useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password';
+
   useEffect(() => {
     let isSubscribed = true;
 
     async function loadUser() {
-      if (isLoggedIn) {
+      if (isLoggedIn || !isAuthPage) {
         try {
           const profile = await getUserProfile();
           if (profile && isSubscribed) {
@@ -58,10 +60,7 @@ export function LayoutContent({
       window.removeEventListener('bq_settings_updated', handleUpdate);
       window.removeEventListener('bq_stats_updated', handleUpdate);
     };
-  }, [isLoggedIn]); // Re-fetch on auth and event triggers, avoiding redundant calls on route navigation
-
-  // Hide navigation on auth pages
-  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password';
+  }, [isLoggedIn, isAuthPage]);
 
   if (isAuthPage) {
     return <div className="w-full min-h-screen bg-background">{children}</div>;
@@ -115,7 +114,9 @@ export function LayoutContent({
               <Avatar className="h-8 w-8 lg:h-9 lg:w-9 border border-border shadow-sm hover:ring-2 ring-primary/20 transition-all cursor-pointer">
                 <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'default'}`} />
                 <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-black">
-                  {user?.name?.substring(0, 2).toUpperCase() || 'AR'}
+                  {(((user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')).toUpperCase()) ||
+                    user?.name?.split(' ').filter(Boolean).map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) ||
+                    'AR'}
                 </AvatarFallback>
               </Avatar>
             </Link>

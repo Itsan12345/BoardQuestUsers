@@ -49,7 +49,11 @@ export default function SignupPage() {
   }
 
   // Form fields
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const cleanFirstName = firstName.replace(/\s+/g, ' ').trim();
+  const cleanLastName = lastName.replace(/\s+/g, ' ').trim();
+  const fullName = [cleanFirstName, cleanLastName].filter(Boolean).join(' ');
   const [email, setEmail] = useState('');
   const [isEmailFocused, setIsEmailFocused] = useState(false);
 
@@ -88,7 +92,9 @@ export default function SignupPage() {
   const hasPasswordSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
   const isPasswordValid = isPasswordLongEnough && hasPasswordNumber && hasPasswordSpecial;
 
-  const isInfoFormValid = name.trim().length > 0 && isEmailValid && hasNoSpacesEmail && isPasswordValid && hasAgreedToTerms;
+  const isFirstNameValid = cleanFirstName.length > 0;
+  const isLastNameValid = cleanLastName.length > 0;
+  const isInfoFormValid = isFirstNameValid && isLastNameValid && isEmailValid && hasNoSpacesEmail && isPasswordValid && hasAgreedToTerms;
 
   // Countdown timer for Resend Code
   useEffect(() => {
@@ -112,6 +118,15 @@ export default function SignupPage() {
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
 
+    if (!isFirstNameValid || !isLastNameValid) {
+      toast({
+        variant: "destructive",
+        title: "Name Required",
+        description: "Please enter both your First Name and Last Name.",
+      });
+      return;
+    }
+
     if (!hasAgreedToTerms) {
       setTermsError(true);
       toast({
@@ -133,7 +148,7 @@ export default function SignupPage() {
 
     setIsLoading(true);
     try {
-      const result = await sendVerificationCode(email, name);
+      const result = await sendVerificationCode(email, fullName);
 
       if (result.success) {
         setStep('verify');
@@ -169,7 +184,7 @@ export default function SignupPage() {
     if (resendCooldown > 0 || isResending) return;
     setIsResending(true);
     try {
-      const result = await sendVerificationCode(email, name);
+      const result = await sendVerificationCode(email, fullName);
       if (result.success) {
         setResendCooldown(60);
         if (result.devCode) {
@@ -265,7 +280,9 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       const formData = new FormData();
-      formData.append('name', name);
+      formData.append('firstName', cleanFirstName);
+      formData.append('lastName', cleanLastName);
+      formData.append('name', fullName);
       formData.append('email', email);
       formData.append('password', password);
       formData.append('code', fullCode);
@@ -349,7 +366,7 @@ export default function SignupPage() {
             : "animate-in fade-in-0 zoom-in-[0.98] slide-in-from-bottom-2 duration-300 ease-out"
         )}
       >
-        <CardHeader className="px-8 pt-7 pb-2 text-center space-y-1">
+        <CardHeader className="px-5 sm:px-8 pt-7 pb-2 text-center space-y-1">
           {/* Logo Mark */}
           <div className="flex items-center justify-center">
             <Image
@@ -397,28 +414,76 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="px-8 pt-2 pb-6">
+        <CardContent className="px-5 sm:px-8 pt-2 pb-6">
           {step === 'info' ? (
             /* ================= STEP 1: ASPIRANT INFORMATION ================= */
             <form onSubmit={handleSendCode} className="space-y-3 animate-in fade-in-0 zoom-in-[0.99] duration-250 ease-out">
-              {/* Full Name */}
-              <div className="space-y-1">
-                <label
-                  className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-wider block"
-                  style={{ fontFamily: "'Inter-bold', sans-serif" }}
-                >
-                  FULL NAME*
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    name="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Aspirant Alex Rivera"
-                    required
-                    className="pl-10 h-11 bg-muted border border-slate-300 dark:border-slate-700 text-foreground placeholder:text-muted-foreground rounded-xl focus-visible:ring-primary/20 text-sm font-medium"
-                  />
+              {/* First Name & Last Name (Side by Side) */}
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full">
+                {/* First Name */}
+                <div className="space-y-1 min-w-0">
+                  <label
+                    htmlFor="signup-first-name"
+                    className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-wider block truncate"
+                    style={{ fontFamily: "'Inter-bold', sans-serif" }}
+                  >
+                    FIRST NAME*
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="signup-first-name"
+                      name="firstName"
+                      autoComplete="given-name"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      onBlur={() => {
+                        if (firstName.length > 0 && cleanFirstName) {
+                          setFirstName(cleanFirstName);
+                        }
+                      }}
+                      placeholder="Alex"
+                      required
+                      className={`pl-9 sm:pl-10 pr-2.5 sm:pr-3 h-11 w-full min-w-0 bg-muted border ${
+                        firstName.length > 0 && !isFirstNameValid
+                          ? 'border-red-500 ring-1 ring-red-500'
+                          : 'border-slate-300 dark:border-slate-700'
+                      } text-foreground placeholder:text-muted-foreground rounded-xl focus-visible:ring-primary/20 text-xs sm:text-sm font-medium`}
+                    />
+                  </div>
+                </div>
+
+                {/* Last Name */}
+                <div className="space-y-1 min-w-0">
+                  <label
+                    htmlFor="signup-last-name"
+                    className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-wider block truncate"
+                    style={{ fontFamily: "'Inter-bold', sans-serif" }}
+                  >
+                    LAST NAME*
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="signup-last-name"
+                      name="lastName"
+                      autoComplete="family-name"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      onBlur={() => {
+                        if (lastName.length > 0 && cleanLastName) {
+                          setLastName(cleanLastName);
+                        }
+                      }}
+                      placeholder="Rivera"
+                      required
+                      className={`pl-9 sm:pl-10 pr-2.5 sm:pr-3 h-11 w-full min-w-0 bg-muted border ${
+                        lastName.length > 0 && !isLastNameValid
+                          ? 'border-red-500 ring-1 ring-red-500'
+                          : 'border-slate-300 dark:border-slate-700'
+                      } text-foreground placeholder:text-muted-foreground rounded-xl focus-visible:ring-primary/20 text-xs sm:text-sm font-medium`}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -657,7 +722,7 @@ export default function SignupPage() {
                 >
                   ENTER 6-DIGIT CODE*
                 </label>
-                <div className="flex items-center justify-center gap-2" onPaste={handleOtpPaste}>
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2" onPaste={handleOtpPaste}>
                   {otp.map((digit, idx) => (
                     <input
                       key={idx}
@@ -670,7 +735,7 @@ export default function SignupPage() {
                       value={digit}
                       onChange={(e) => handleOtpChange(idx, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      className={`w-11 h-12 text-center text-xl font-black rounded-xl bg-muted border ${digit
+                      className={`w-10 sm:w-11 h-11 sm:h-12 text-center text-lg sm:text-xl font-black rounded-xl bg-muted border ${digit
                         ? 'border-[#851315] dark:border-[#dc2626] ring-2 ring-[#851315]/20 bg-background text-foreground'
                         : 'border-slate-300 dark:border-slate-700 text-foreground'
                         } focus:outline-none focus:border-[#851315] focus:ring-2 focus:ring-[#851315]/20 transition-all font-mono`}

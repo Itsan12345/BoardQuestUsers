@@ -14,6 +14,8 @@ export interface StreakValidationResult {
   streak: number;
   streakBroken: boolean;
   previousStreak?: number;
+  firstName?: string;
+  lastName?: string;
 }
 
 /**
@@ -27,7 +29,7 @@ export async function syncAndValidateUserStreak(userId: string, currentStreak: n
     let userObjId: ObjectId | null = null;
     try {
       userObjId = new ObjectId(userId);
-    } catch {}
+    } catch { }
 
     const [lastAchievement, lastExam, mongoData] = await Promise.all([
       prisma.achievement.findFirst({
@@ -82,12 +84,12 @@ export async function syncAndValidateUserStreak(userId: string, currentStreak: n
     if (latestDailyLogin?.dateKey) {
       try {
         activityDates.push(parseISO(latestDailyLogin.dateKey));
-      } catch {}
+      } catch { }
     }
     if (mongoUser?.lastLoginDate) {
       try {
         activityDates.push(parseISO(mongoUser.lastLoginDate));
-      } catch {}
+      } catch { }
     }
     if (mongoUser?.lastLoginAt) activityDates.push(new Date(mongoUser.lastLoginAt));
 
@@ -96,7 +98,7 @@ export async function syncAndValidateUserStreak(userId: string, currentStreak: n
         await prisma.user.update({
           where: { id: userId },
           data: { streak: 0 }
-        }).catch(() => {});
+        }).catch(() => { });
       }
       return { streak: 0, streakBroken: false };
     }
@@ -114,7 +116,7 @@ export async function syncAndValidateUserStreak(userId: string, currentStreak: n
         await prisma.user.update({
           where: { id: userId },
           data: { streak: 0 }
-        }).catch(() => {});
+        }).catch(() => { });
         try {
           const client = await clientPromise;
           const db = client.db();
@@ -123,7 +125,7 @@ export async function syncAndValidateUserStreak(userId: string, currentStreak: n
             updateQuery,
             { $set: { loginStreak: 0 } }
           );
-        } catch {}
+        } catch { }
         return { streak: 0, streakBroken: true, previousStreak: Math.max(currentStreak, loginStreak) };
       }
       return { streak: 0, streakBroken: true };
@@ -136,10 +138,15 @@ export async function syncAndValidateUserStreak(userId: string, currentStreak: n
       await prisma.user.update({
         where: { id: userId },
         data: { streak: finalStreak }
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
-    return { streak: finalStreak, streakBroken: false };
+    return {
+      streak: finalStreak,
+      streakBroken: false,
+      firstName: mongoUser?.firstName,
+      lastName: mongoUser?.lastName,
+    };
   } catch (err) {
     console.error('Error in syncAndValidateUserStreak:', err);
     return { streak: currentStreak, streakBroken: false };
@@ -165,7 +172,7 @@ export async function getUserStats(): Promise<any> {
         }
       }
     });
-    
+
     if (!user) return null;
 
     // Dynamically validate and sync streak
@@ -179,7 +186,7 @@ export async function getUserStats(): Promise<any> {
     if (user.level !== expectedLevel) {
       user.level = expectedLevel;
       Promise.all([
-        prisma.user.update({ where: { id: user.id }, data: { level: expectedLevel } }).catch(() => {}),
+        prisma.user.update({ where: { id: user.id }, data: { level: expectedLevel } }).catch(() => { }),
         (async () => {
           try {
             const client = await clientPromise;
@@ -187,9 +194,9 @@ export async function getUserStats(): Promise<any> {
             const userObjId = ObjectId.isValid(user.id) ? new ObjectId(user.id) : null;
             const uQuery: any = userObjId ? { $or: [{ _id: userObjId }, { _id: user.id }] } : { _id: user.id };
             await db.collection('User').updateOne(uQuery, { $set: { level: expectedLevel } });
-          } catch {}
+          } catch { }
         })()
-      ]).catch(() => {});
+      ]).catch(() => { });
     }
 
     const curriculumCount = await prisma.lessonCompletion.count({
@@ -225,6 +232,9 @@ export async function getUserStats(): Promise<any> {
     if (parsedUser._count) {
       parsedUser._count.lessonCompletions = curriculumCount;
     }
+    const statsNameParts = (parsedUser.name || '').trim().split(/\s+/);
+    parsedUser.firstName = streakResult.firstName || parsedUser.firstName || (statsNameParts.length > 1 ? statsNameParts.slice(0, -1).join(' ') : (statsNameParts[0] || ''));
+    parsedUser.lastName = streakResult.lastName || parsedUser.lastName || (statsNameParts.length > 1 ? statsNameParts[statsNameParts.length - 1] : '');
     parsedUser.todayQuestions = todayQuestions;
     return parsedUser;
   } catch (error) {
@@ -246,7 +256,7 @@ export async function getUserProfile() {
       let userObjId: ObjectId | null = null;
       try {
         userObjId = new ObjectId(userId);
-      } catch (e) {}
+      } catch (e) { }
 
       const query = userObjId
         ? { $or: [{ userId }, { userId: userObjId }], sessionId: sessionToken }
@@ -286,7 +296,7 @@ export async function getUserProfile() {
     if (user.level !== expectedProfileLevel) {
       user.level = expectedProfileLevel;
       Promise.all([
-        prisma.user.update({ where: { id: user.id }, data: { level: expectedProfileLevel } }).catch(() => {}),
+        prisma.user.update({ where: { id: user.id }, data: { level: expectedProfileLevel } }).catch(() => { }),
         (async () => {
           try {
             const client = await clientPromise;
@@ -294,9 +304,9 @@ export async function getUserProfile() {
             const userObjId = ObjectId.isValid(user.id) ? new ObjectId(user.id) : null;
             const uQuery: any = userObjId ? { $or: [{ _id: userObjId }, { _id: user.id }] } : { _id: user.id };
             await db.collection('User').updateOne(uQuery, { $set: { level: expectedProfileLevel } });
-          } catch {}
+          } catch { }
         })()
-      ]).catch(() => {});
+      ]).catch(() => { });
     }
 
     // Calculate global ranking
@@ -341,7 +351,7 @@ export async function getUserProfile() {
       let userObjId: ObjectId | null = null;
       try {
         userObjId = new ObjectId(user.id);
-      } catch (e) {}
+      } catch (e) { }
 
       const normalizedEmail = user.email ? String(user.email).trim().toLowerCase() : '';
       const candidateQueries: any[] = [];
@@ -377,14 +387,26 @@ export async function getUserProfile() {
     }
 
     let userSettings = null;
+    let mongoUserDoc: any = null;
     try {
       const client = await clientPromise;
       const db = client.db();
-      userSettings = await db.collection('UserSettings').findOne({ userId: user.id });
-    } catch {}
+      const userObjId = ObjectId.isValid(user.id) ? new ObjectId(user.id) : null;
+      const uQuery: any = userObjId ? { $or: [{ _id: userObjId }, { _id: user.id }] } : { _id: user.id };
+      [userSettings, mongoUserDoc] = await Promise.all([
+        db.collection('UserSettings').findOne({ userId: user.id }),
+        db.collection('User').findOne(uQuery),
+      ]);
+    } catch { }
+
+    const nameParts = (user.name || '').trim().split(/\s+/);
+    const derivedFirstName = mongoUserDoc?.firstName || (nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : (nameParts[0] || ''));
+    const derivedLastName = mongoUserDoc?.lastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : '');
 
     const result = {
       ...user,
+      firstName: derivedFirstName,
+      lastName: derivedLastName,
       streak: streakResult.streak,
       loginStreak: streakResult.streak,
       todayQuestions,
@@ -432,7 +454,7 @@ export async function getLeaderboard() {
 
     const cookieStore = await cookies();
     const userId = cookieStore.get('user_id')?.value;
-    
+
     // Fetch user details for all users in weeklyXp to correctly calculate rank
     const userIds = weeklyXp.map(item => item.userId);
     const users = await prisma.user.findMany({
@@ -685,7 +707,9 @@ export async function purchaseReagentAction(itemId: string, cost: number, newInv
 }
 
 export async function updateUserProfileDetails(data: {
-  name: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   location?: string;
 }) {
   try {
@@ -693,21 +717,68 @@ export async function updateUserProfileDetails(data: {
     const userId = cookieStore.get('user_id')?.value;
     if (!userId) return { success: false, error: 'Not authenticated' };
 
-    if (!data.name || data.name.trim().length === 0) {
+    const rawFirst = (data.firstName || '').trim();
+    const rawLast = (data.lastName || '').trim();
+    const composedName = rawFirst && rawLast
+      ? `${rawFirst} ${rawLast}`.replace(/\s+/g, ' ').trim()
+      : (data.name || [rawFirst, rawLast].filter(Boolean).join(' ')).trim();
+
+    if (!composedName || composedName.length === 0) {
       return { success: false, error: 'Name cannot be empty' };
     }
+
+    const nameParts = composedName.split(/\s+/);
+    const firstName = rawFirst || (nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : composedName);
+    const lastName = rawLast || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : '');
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        name: data.name.trim(),
+        name: composedName,
         location: data.location?.trim() || 'Philippines',
       }
     });
 
+    try {
+      const client = await clientPromise;
+      const db = client.db();
+      const userObjId = ObjectId.isValid(userId) ? new ObjectId(userId) : null;
+      const uQuery: any = userObjId ? { $or: [{ _id: userObjId }, { _id: userId }] } : { _id: userId };
+      const relQuery: any = userObjId ? { $or: [{ userId: userObjId }, { userId }, { studentId: userObjId }, { studentId: userId }] } : { $or: [{ userId }, { studentId: userId }] };
+
+      await Promise.all([
+        db.collection('User').updateOne(uQuery, {
+          $set: {
+            name: composedName,
+            firstName,
+            lastName,
+          }
+        }),
+        db.collection('DailyLogin').updateMany(relQuery, {
+          $set: { studentName: composedName }
+        }).catch(() => {}),
+        db.collection('StudentWarningSummaries').updateMany(relQuery, {
+          $set: { userName: composedName }
+        }).catch(() => {}),
+        db.collection('StudentWarningIncidents').updateMany(relQuery, {
+          $set: { userName: composedName }
+        }).catch(() => {}),
+      ]);
+    } catch { }
+
+    revalidatePath('/');
     revalidatePath('/profile');
-    revalidatePath('/dashboard');
-    return { success: true, user: JSON.parse(JSON.stringify(updatedUser)) };
+    revalidatePath('/ranks');
+    revalidatePath('/performance');
+    revalidatePath('/quest');
+    return {
+      success: true,
+      user: JSON.parse(JSON.stringify({
+        ...updatedUser,
+        firstName,
+        lastName,
+      })),
+    };
   } catch (error) {
     console.error('Failed to update user profile details:', error);
     return { success: false, error: 'Failed to update profile' };
@@ -775,8 +846,14 @@ export async function exportUserStudyData() {
     const streakResult = await syncAndValidateUserStreak(user.id, user.streak);
     user.streak = streakResult.streak;
 
+    const exportNameParts = (user.name || '').trim().split(/\s+/);
+    const exportFirstName = streakResult.firstName || (user as any).firstName || (exportNameParts.length > 1 ? exportNameParts.slice(0, -1).join(' ') : (exportNameParts[0] || ''));
+    const exportLastName = streakResult.lastName || (user as any).lastName || (exportNameParts.length > 1 ? exportNameParts[exportNameParts.length - 1] : '');
+
     const exportData = {
       aspirantName: user.name,
+      firstName: exportFirstName,
+      lastName: exportLastName,
       email: user.email,
       level: user.level,
       totalXp: user.xp,
@@ -876,7 +953,7 @@ export async function saveUserSettingsAction(settingsData: any) {
     revalidatePath('/');
     try {
       revalidateTag('curriculum_categories');
-    } catch {}
+    } catch { }
     return { success: true };
   } catch (error) {
     console.error('Failed to save user settings to MongoDB:', error);
@@ -957,7 +1034,7 @@ export async function deleteUserAccountAction(data: {
     let userObjectId: ObjectId | null = null;
     try {
       userObjectId = new ObjectId(userId);
-    } catch (e) {}
+    } catch (e) { }
 
     const idQueries = userObjectId ? [{ userId }, { userId: userObjectId }] : [{ userId }];
     const userDocQueries = userObjectId ? [{ _id: userObjectId }, { _id: userId as any }] : [{ _id: userId as any }];
@@ -1046,7 +1123,7 @@ export async function checkUserReviewCenterEnrollmentAction(): Promise<ReviewCen
     let userObjId: ObjectId | null = null;
     try {
       userObjId = new ObjectId(user.id);
-    } catch (e) {}
+    } catch (e) { }
 
     const normalizedEmail = user?.email ? String(user.email).trim().toLowerCase() : '';
 
@@ -1090,7 +1167,7 @@ export async function checkUserReviewCenterEnrollmentAction(): Promise<ReviewCen
 export async function getRankTiersAction() {
   try {
     let rankTiers: any[] = [];
-    
+
     // First try via Prisma
     if (typeof (prisma as any).rankTier?.findMany === 'function') {
       try {
@@ -1098,7 +1175,7 @@ export async function getRankTiersAction() {
           where: { isActive: true },
           orderBy: { minLevel: 'asc' }
         });
-      } catch {}
+      } catch { }
     }
 
     // Direct MongoDB fallback if prisma model query returned empty or failed

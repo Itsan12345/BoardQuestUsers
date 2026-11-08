@@ -24,6 +24,8 @@ interface MobileFloatingSidebarProps {
   onClose: () => void;
   user?: {
     name?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
     email?: string | null;
     image?: string | null;
   } | null;
@@ -126,7 +128,9 @@ export function MobileFloatingSidebar({
                   alt={user?.name || 'User avatar'}
                 />
                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                  {user?.name?.substring(0, 2).toUpperCase() || 'BQ'}
+                  {(((user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')).toUpperCase()) ||
+                    user?.name?.split(' ').filter(Boolean).map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) ||
+                    'BQ'}
                 </AvatarFallback>
               </Avatar>
 
