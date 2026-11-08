@@ -20,6 +20,12 @@ enum QuestionDifficulty {
   HARD
 }
 
+enum CognitiveLevel {
+  LOTS
+  MOTS
+  HOTS
+}
+
 enum QuestionType {
   MCQ
   TRUE_FALSE
@@ -86,7 +92,7 @@ model Question {
   choiceImages  String[] @default([])
   imageUrl      String?
   correctAnswer String
-  status        QuestionStatus
+  status        QuestionStatus @default(APPROVED)
   isPublished   Boolean  @default(false)
 
   categoryId    String?  @db.ObjectId
@@ -98,14 +104,18 @@ model Question {
   subject     Subject? @relation(fields: [subjectId], references: [id])
   topic       String
 
-  difficulty QuestionDifficulty
+  difficulty     QuestionDifficulty
+  cognitiveLevel CognitiveLevel @default(LOTS)
 
-  type QuestionType
+  type         QuestionType
+  isCaseStudy  Boolean  @default(false)
+  clinicalClue String?
 
   author   AdminUser @relation("QuestionAuthor", fields: [authorId], references: [id])
   authorId String    @db.ObjectId
 
-  feedback String? @default("")
+  schoolYear String? @default("S.Y. 2025-2026")
+  feedback   String? @default("")
 
   aiExplanation QuestionExplanation?
   attempts      UserQuestionAttempt[]
@@ -165,8 +175,9 @@ model LearningModule {
   order       Int      @default(0)
   isPublished Boolean  @default(true)
 
-  subjectId   String   @db.ObjectId
-  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  categoryId  String?  @db.ObjectId
+  subjectId   String?  @db.ObjectId
+  subject     Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   authorId    String?  @db.ObjectId
   author      AdminUser? @relation("ModuleAuthor", fields: [authorId], references: [id])
@@ -175,6 +186,7 @@ model LearningModule {
   updatedAt   DateTime @updatedAt
 
   @@index([subjectId, isPublished, order])
+  @@index([categoryId, isPublished, order])
 }
 
 model Topic {

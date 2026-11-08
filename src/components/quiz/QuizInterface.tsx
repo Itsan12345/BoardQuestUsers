@@ -23,40 +23,6 @@ const QUESTION_STOPWORDS = new Set([
   'seen', 'shows', 'shown', 'given', 'select', 'identify', 'choose', 'answer', 'question'
 ]);
 
-function extractClinicalBuzzword(questionText: string, explanationText?: string): string | null {
-  if (!questionText) return null;
-  const rawTokens = questionText.match(/[A-Za-z][A-Za-z0-9'-]{4,}/g);
-  if (!rawTokens || rawTokens.length === 0) return null;
-
-  const expLower = (explanationText || '').toLowerCase();
-  let bestWord: string | null = null;
-  let bestScore = -1;
-
-  for (const token of rawTokens) {
-    const clean = token.replace(/^['-]+|['-]+$/g, '');
-    const lower = clean.toLowerCase();
-    if (clean.length < 5 || QUESTION_STOPWORDS.has(lower)) continue;
-
-    let score = clean.length;
-    if (expLower && expLower.includes(lower)) {
-      score += 15;
-    }
-    if (/(emia|uria|osis|itis|pathy|cyte|blast|phil|philic|lysis|lytic|genic|gram|scope|scopy|metry|meter|ase|inogen|globulin|bacter|coccus|bacillus|ella|idia|plasma|virus|oma)$/i.test(clean)) {
-      score += 12;
-    }
-    if (/[A-Z]/.test(clean.slice(1)) || clean.includes('-')) {
-      score += 6;
-    }
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestWord = clean;
-    }
-  }
-
-  return bestWord;
-}
-
 export type Question = {
   id?: string;
   question: string;
@@ -65,10 +31,197 @@ export type Question = {
   imageUrl?: string | null;
   correctAnswer: string;
   explanation?: string;
+  feedback?: string;
   difficulty?: string;
+  cognitiveLevel?: string;
+  isCaseStudy?: boolean;
+  clinicalClue?: string | null;
   type?: 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER';
   topic?: string;
 };
+
+export function isCaseStudyOrHighLevelQuestion(questionObj?: Question | null): boolean {
+  if (!questionObj?.question) return false;
+  
+  // 1. Explicit admin toggle from MongoDB Question schema tailored for Immersion Oil
+  if (questionObj.isCaseStudy === true || String(questionObj.isCaseStudy).toLowerCase() === 'true') return true;
+
+  const qText = questionObj.question.trim();
+
+  // 2. Clinical vignette / patient scenario / lab panel patterns
+  const hasVignettePatientPattern = /\b(case\s+study|patient\s+presentation|\d+[- ]year[- ]old|patient\s+(?:presents|admitted|complains|with\s+a\s+history|experiencing|is\s+brought)|brought\s+to\s+the\s+ER|admitted\s+to\s+the|initial\s+laboratory|laboratory\s+(?:evaluation|findings|results|workup|analysis)|urinalysis\s+(?:reveals|shows|was\s+done)|peripheral\s+blood\s+smear|coagulation\s+studies)\b/i.test(qText);
+  const hasLabValuePattern = /\b(\d+(?:\.\d+)?\s*(?:mg\/dL|g\/dL|mmol\/L|mEq\/L|U\/L|IU\/L|ng\/mL|pg\/mL|µg\/dL|mcg\/dL|fL|pg|mm\/hr|mmHg|mOsm\/kg)|specific\s+gravity\s*[><=(]?\s*1\.\d+|ratio\s*[><=]\s*\d+:\d+|\b(?:SG|pH|Protein|Glucose|Nitrite|RBC|WBCs?|Casts?)\s*:\s*)/i.test(qText);
+
+  if ((hasVignettePatientPattern || hasLabValuePattern) && qText.length >= 85) {
+    return true;
+  }
+
+  // Multi-line scenario check (e.g. clinical vignettes formatted across multiple paragraphs)
+  const lines = qText.split(/\n+/).filter(l => l.trim().length > 0);
+  if (lines.length >= 3 && qText.length >= 100) {
+    return true;
+  }
+
+  return false;
+}
+
+function cleanDiagnosticClause(rawClause: string): string {
+  let c = rawClause.trim();
+
+  const leadingBoilerplates = [
+    /^(?:Case\s+Study\s*\d*\s*:\s*[^\n]+\n+)?(?:Patient\s+Presentation\s*:\s*\n*)?/i,
+    /^(?:In\s+a\s+[^,]{3,40},\s*)?(?:Which|What)\s+(?:of\s+the\s+following\s+)?(?:[a-z-]+\s+){0,4}?(?:is|are)\s+(?:most\s+commonly\s+|typically\s+|best\s+|characteristically\s+)?(?:characterized\s+by|associated\s+with|indicated\s+by|defined\s+by|seen\s+in|caused\s+by|demonstrated\s+by)\s+(?:an?\s+|the\s+)?/i,
+    /^(?:The\s+)?(?:triage\s+nurse|attending\s+physician|emergency\s+physician|physician|doctor|clinician|nurse|medical\s+technologist|examiner)\s+(?:notes?|observes?|finds?|reports?|detects?|documents?|identifies?)\s+(?:that\s+)?(?:an?\s+|the\s+)?/i,
+    /^(?:Initial\s+|Routine\s+|Follow-up\s+|Further\s+|Subsequent\s+|Direct\s+|Microscopic\s+)?(?:laboratory|clinical|microscopic|hematologic|biochemical|serologic|coagulation|urinalysis|blood\s+smear|peripheral\s+blood\s+smear|physical|diagnostic|gram\s+stain|CSF|bone\s+marrow)?\s*(?:evaluation|examination|studies|testing|analysis|workup|findings|results|inspection|smear|aspirate|biopsy|panel|assay)?\s*(?:reveals?|shows?|demonstrates?|indicates?|yields?|exhibits?|is\s+notable\s+for|is\s+characterized\s+by)\s+(?:that\s+)?(?:an?\s+|the\s+)?/i,
+    /^(?:A|An)\s+\d+[- ]year[- ]old\s+(?:male|female|man|woman|patient|child|infant|boy|girl|neonate|newborn)\s+(?:with\s+a\s+history\s+of\s+[^,.]+?\s+)?(?:is\s+(?:admitted|brought)\s+to\s+(?:the\s+)?(?:ER|emergency\s+department|hospital|clinic)\s+(?:in\s+a\s+state\s+of\s+|with\s+|experiencing\s+)?)?(?:presents?\s+with|complains?\s+of|exhibits?|experiencing|has)?\s*(?:an?\s+|the\s+)?/i,
+    /^(?:The\s+)?(?:presence|finding|observation|detection|appearance)\s+of\s+(?:an?\s+|the\s+)?/i,
+    /^(?:A|An|The)\s+(?=(?:sudden|marked|severe|prolonged|elevated|decreased|increased|intracellular|hypersegmented|biphasic|persistent|progressive|abnormal|fruity)\b)/i,
+  ];
+
+  for (const regex of leadingBoilerplates) {
+    const next = c.replace(regex, '').trim();
+    if (next.length >= 12) {
+      c = next;
+    }
+  }
+
+  const trailingPrompts = [
+    /\s*(?:,\s*)?(?:on\s+a\s+Levey-Jennings\s+(?:control\s+)?chart\s+)?(?:indicates?|suggests?|points?\s+to|is\s+characteristic\s+of|is\s+pathognomonic\s+for|is\s+presumptive\s+for|is\s+consistent\s+with|is\s+most\s+likely|is\s+known\s+as|is\s+called|is\s+defined\s+as|is\s+associated\s+with)\s*(?:which|what|:|\?).*$/i,
+    /\s*,\s*(?:which|what)\s+(?:of\s+the\s+following|condition|disorder|organism|disease|error|test|finding).*$/i,
+    /[.?!:;]+$/,
+  ];
+
+  for (const regex of trailingPrompts) {
+    const next = c.replace(regex, '').trim();
+    if (next.length >= 12) {
+      c = next;
+    }
+  }
+
+  return c.trim();
+}
+
+export function extractClinicalDiagnosticClue(
+  questionObj?: Question | null
+): string | null {
+  if (!questionObj?.question) return null;
+  const qText = questionObj.question;
+
+  // 1. Check explicit clinicalClue from DB first
+  const explicitClue = (questionObj.clinicalClue || '').trim();
+  if (explicitClue.length >= 6) {
+    const idx = qText.toLowerCase().indexOf(explicitClue.toLowerCase());
+    if (idx !== -1) {
+      return qText.slice(idx, idx + explicitClue.length);
+    }
+  }
+
+  const refContext = `${questionObj.feedback || ''} ${questionObj.explanation || ''} ${questionObj.correctAnswer || ''}`.toLowerCase();
+
+  // 2. Split question into lines and sentences without breaking decimal values (e.g. 84 mg/dL, 1.8 mg/dL, 1.030)
+  const rawSegments = qText
+    .split(/\n+|(?<!\b(?:Dr|Mr|Mrs|Ms|St|sp|spp|vs|etc|Fig|No))[.?!]+(?=\s+[A-Z]|$)/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  // Filter out section titles ("Case Study 1: ...", "Patient Presentation:") and pure trailing question prompts
+  const isHeaderOrPromptSegment = (s: string) => {
+    if (/^(?:Case\s+Study\s*\d*|Patient\s+Presentation|Clinical\s+Scenario|Clinical\s+History|Laboratory\s+Data|The\s+result\s+of\s+the\s+.*are\s+as\s+follows)\s*:?$/i.test(s)) {
+      return true;
+    }
+    if (/^Case\s+Study\s*\d*\s*:/i.test(s) && s.split(/\s+/).length <= 10) {
+      return true;
+    }
+    if (
+      /^(?:\d+[\.\)]\s*)?(?:Which|What|Identify|Select|Choose|How\s+should|Based\s+on\s+(?:these|the\s+provided))\b/i.test(s) &&
+      !/\b(characterized\s+by|associated\s+with|elevated|decreased|increased|prolonged|mg\/dL|g\/dL|mmol\/L|mEq\/L|ratio\s*[><=]|abrupt\s+jump|intracellular|hypersegmented|fruity\s+odor|kussmaul)\b/i.test(s)
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const candidateSentences = rawSegments.filter(s => !isHeaderOrPromptSegment(s));
+  const pool = candidateSentences.length > 0 ? candidateSentences : rawSegments;
+
+  let bestClause: string | null = null;
+  let bestScore = -1;
+
+  for (const sent of pool) {
+    const cleaned = cleanDiagnosticClause(sent);
+    const words = cleaned.split(/\s+/).filter(Boolean);
+    if (words.length < 2 || cleaned.length < 10) continue;
+
+    // Verify cleaned is a verbatim substring of qText
+    const subIdx = qText.toLowerCase().indexOf(cleaned.toLowerCase());
+    const candidate = subIdx !== -1 ? qText.slice(subIdx, subIdx + cleaned.length) : sent;
+
+    let score = 0;
+
+    // Quantitative lab units & ratios (+30 per match)
+    const unitMatches = candidate.match(/\b(\d+(?:\.\d+)?\s*(?:mg\/dL|g\/dL|mmol\/L|mEq\/L|U\/L|IU\/L|ng\/mL|pg\/mL|µg\/dL|mcg\/dL|fL|pg|mm\/hr|mmHg|mOsm\/kg|%|\/HPF|\/LPF)|1\.0\d{2}|pH\s*\d\.\d+|ratio\s*[><=]\s*\d+:\d+|\d+:\d+|[1-4]\+)\b/gi);
+    if (unitMatches) {
+      score += unitMatches.length * 30;
+    }
+
+    // Diagnostic qualifiers, pathognomonic signs & clinical findings (+16 per match)
+    const qualifierMatches = candidate.match(/\b(elevated|decreased|increased|prolonged|reduced|normal|abnormal|positive|negative|absent|marked|severe|abrupt\s+jump|one\s+side\s+of\s+the\s+mean|hypersegmented|intracellular|diplococci|biphasic|hemolysis|agglutination|crystals|casts|rods|bodies|dots|sucrose-fermenting|oxidase|catalase|coagulase|ristocetin|ferritin|creatinine|bilirubin|ketones|urobilinogen|specific\s+gravity|fruity\s+odor|kussmaul|respirations|rapid\s+breathing|confusion|lethargy|anion\s+gap|pseudohyponatremia|hyperosmolarity|jaundice|oliguria|hypotension|dehydration|petechiae|1_2s|1_3s|2_2s|R_4s|4_1s|10_x)\b/gi);
+    if (qualifierMatches) {
+      score += qualifierMatches.length * 16;
+    }
+
+    // Overlap with faculty feedback / AI explanation / correct answer (+18 per shared clinical token)
+    if (refContext.length > 3) {
+      const tokens = candidate.match(/[A-Za-z][A-Za-z0-9'-]{4,}/g) || [];
+      for (const t of tokens) {
+        const lower = t.toLowerCase();
+        if (!QUESTION_STOPWORDS.has(lower) && refContext.includes(lower)) {
+          score += 18;
+        }
+      }
+    }
+
+    // Medical pathology/morphology terms (+8 per match)
+    const medMatches = candidate.match(/[A-Za-z0-9'-]+(?:emia|uria|osis|itis|pathy|cyte|blast|phil|lysis|lytic|globulin|coccus|bacillus|ella|idia|plasma)\b/gi);
+    if (medMatches) {
+      score += medMatches.length * 8;
+    }
+
+    // Ideal multi-word diagnostic phrase length bonus (3 to 22 words)
+    if (words.length >= 3 && words.length <= 22) {
+      score += 20;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestClause = candidate;
+    }
+  }
+
+  // If the selected clause covers almost the entire question on a single-sentence item (>82%),
+  // extract the tightest clinical phrase inside it so we don't highlight the whole sentence.
+  if (bestClause && rawSegments.length === 1 && bestClause.length > qText.length * 0.82) {
+    const targetedPhraseMatch = bestClause.match(
+      /\b((?:elevated|decreased|increased|prolonged|reduced|marked|severe|sudden\s+and\s+sustained|intracellular|hypersegmented|biphasic|positive|negative|abnormal|fruity\s+odor)\s+[^.?!(]{8,95})/i
+    );
+    if (targetedPhraseMatch?.[1]) {
+      const sub = cleanDiagnosticClause(targetedPhraseMatch[1]);
+      const idx = qText.toLowerCase().indexOf(sub.toLowerCase());
+      if (idx !== -1 && sub.split(/\s+/).length >= 2) {
+        return qText.slice(idx, idx + sub.length);
+      }
+    }
+  }
+
+  if (bestClause && bestClause.split(/\s+/).length >= 2) {
+    const idx = qText.toLowerCase().indexOf(bestClause.toLowerCase());
+    if (idx !== -1) {
+      return qText.slice(idx, idx + bestClause.length);
+    }
+  }
+
+  return null;
+}
 
 interface QuizInterfaceProps {
   questions: Question[];
@@ -89,16 +242,18 @@ interface QuizInterfaceProps {
   bapUsedThisBattle?: boolean;
   onUseBap?: () => void;
   immersionOilActive?: boolean;
+  onUseImmersionOil?: () => void;
   onQuestionChange?: (index: number) => void;
 }
 
-export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, isFinalBoss, bossShieldActive, playerPoisoned, streak, equippedItem, equippedItemCount = 1, clarityUsedThisBattle, onUseClarity, bapUsedThisBattle, onUseBap, immersionOilActive, onQuestionChange }: QuizInterfaceProps) {
+export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, isFinalBoss, bossShieldActive, playerPoisoned, streak, equippedItem, equippedItemCount = 1, clarityUsedThisBattle, onUseClarity, bapUsedThisBattle, onUseBap, immersionOilActive, onUseImmersionOil, onQuestionChange }: QuizInterfaceProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [score, setScore] = useState(0);
   const [isFetchingExplanation, setIsFetchingExplanation] = useState(false);
+  const [revealedFeedbackIndices, setRevealedFeedbackIndices] = useState<Record<number, boolean>>({});
 
   const [activeMove, setActiveMove] = useState<'heavy' | 'normal' | 'defend' | null>(null);
   const [turnMap, setTurnMap] = useState<number[]>([]);
@@ -146,11 +301,24 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
     if (bapUsedThisBattle || !onUseBap || isAnswered || isTransitioning || questions.length <= 1 || equippedItemCount <= 0) return;
     const currentQIdx = turnMap[currentIndex] ?? currentIndex;
     const targetDiff = activeMove === 'heavy' ? 'HARD' : activeMove === 'normal' ? 'MEDIUM' : 'EASY';
+    const hasOilReady = immersionOilActive || (equippedItem === 'immersion_oil' && equippedItemCount > 0);
     const newTurnMap = [...turnMap];
 
-    let candidatePos = newTurnMap.findIndex(
-      (qIdx, mapIdx) => mapIdx > currentIndex && qIdx !== currentQIdx && String(questions[qIdx]?.difficulty).toUpperCase() === targetDiff
-    );
+    let candidatePos = -1;
+    if (hasOilReady) {
+      candidatePos = newTurnMap.findIndex(
+        (qIdx, mapIdx) =>
+          mapIdx > currentIndex &&
+          qIdx !== currentQIdx &&
+          String(questions[qIdx]?.difficulty).toUpperCase() === targetDiff &&
+          isCaseStudyOrHighLevelQuestion(questions[qIdx])
+      );
+    }
+    if (candidatePos === -1) {
+      candidatePos = newTurnMap.findIndex(
+        (qIdx, mapIdx) => mapIdx > currentIndex && qIdx !== currentQIdx && String(questions[qIdx]?.difficulty).toUpperCase() === targetDiff
+      );
+    }
     if (candidatePos === -1) {
       candidatePos = newTurnMap.findIndex((qIdx, mapIdx) => mapIdx > currentIndex && qIdx !== currentQIdx);
     }
@@ -189,9 +357,34 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
     }
   }, [questions, mode, turnMap.length]);
 
+  const currentQuestionIndex = turnMap[currentIndex] ?? currentIndex;
+  const currentQuestion = questions?.[currentQuestionIndex];
+  const hasImmersionOilReady = mode === 'boss-battle' && Boolean(immersionOilActive || (equippedItem === 'immersion_oil' && equippedItemCount > 0));
+  const isCurrentQuestionCaseStudy = isCaseStudyOrHighLevelQuestion(currentQuestion);
+  const effectiveExplanation = currentQuestion?.explanation || (revealedFeedbackIndices[currentQuestionIndex] ? currentQuestion?.feedback : undefined);
+
   useEffect(() => {
     setIsFetchingExplanation(false);
-  }, [currentIndex]);
+  }, [currentIndex, currentQuestion?.explanation]);
+
+  useEffect(() => {
+    if (isLoading || !currentQuestion || !hasImmersionOilReady) return;
+    if (mode === 'boss-battle' && !activeMove) return;
+    if (!isCurrentQuestionCaseStudy) return;
+
+    const initialClue = extractClinicalDiagnosticClue(currentQuestion);
+    if (initialClue) {
+      onUseImmersionOil?.();
+    }
+  }, [
+    isLoading,
+    currentQuestion,
+    hasImmersionOilReady,
+    mode,
+    activeMove,
+    isCurrentQuestionCaseStudy,
+    onUseImmersionOil,
+  ]);
 
   if (isLoading) {
     return (
@@ -212,8 +405,6 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
     return <div className="text-center p-12 text-muted-foreground font-medium">No challenges in this region yet.</div>;
   }
 
-  const currentQuestionIndex = turnMap[currentIndex] ?? currentIndex;
-  const currentQuestion = questions[currentQuestionIndex];
   const optionLetters = Array.from({ length: currentQuestion?.options?.length || 0 }, (_, i) => String.fromCharCode(65 + i));
 
   const isValidImageUrl = (url: any): boolean => {
@@ -231,9 +422,37 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
   const handleSelectMove = (move: 'heavy' | 'normal' | 'defend') => {
     setActiveMove(move);
     const targetDiff = move === 'heavy' ? 'HARD' : move === 'normal' ? 'MEDIUM' : 'EASY';
+    const hasOilReady = immersionOilActive || (equippedItem === 'immersion_oil' && equippedItemCount > 0);
     
     const newTurnMap = [...turnMap];
-    let foundIdxMapPos = newTurnMap.findIndex((qIdx, mapIdx) => mapIdx >= currentIndex && questions[qIdx]?.difficulty === targetDiff);
+    let foundIdxMapPos = -1;
+
+    // When Immersion Oil is equipped or active, prioritize Case Study & High-Level (HOTS) questions
+    if (hasOilReady) {
+      foundIdxMapPos = newTurnMap.findIndex(
+        (qIdx, mapIdx) =>
+          mapIdx >= currentIndex &&
+          questions[qIdx]?.difficulty === targetDiff &&
+          Boolean(questions[qIdx]?.isCaseStudy)
+      );
+      if (foundIdxMapPos === -1 && move === 'heavy') {
+        foundIdxMapPos = newTurnMap.findIndex(
+          (qIdx, mapIdx) => mapIdx >= currentIndex && Boolean(questions[qIdx]?.isCaseStudy)
+        );
+      }
+      if (foundIdxMapPos === -1 && (move === 'heavy' || move === 'normal')) {
+        foundIdxMapPos = newTurnMap.findIndex(
+          (qIdx, mapIdx) =>
+            mapIdx >= currentIndex &&
+            questions[qIdx]?.difficulty === targetDiff &&
+            isCaseStudyOrHighLevelQuestion(questions[qIdx])
+        );
+      }
+    }
+
+    if (foundIdxMapPos === -1) {
+      foundIdxMapPos = newTurnMap.findIndex((qIdx, mapIdx) => mapIdx >= currentIndex && questions[qIdx]?.difficulty === targetDiff);
+    }
     
     if (foundIdxMapPos === -1) {
       foundIdxMapPos = newTurnMap.findIndex((qIdx, mapIdx) => mapIdx >= currentIndex);
@@ -416,6 +635,12 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                <Badge className="h-4 bg-gradient-to-r from-orange-500 via-amber-500 to-red-600 border border-amber-300 text-white font-black text-[8px] uppercase tracking-wider px-2 shadow-[0_0_8px_rgba(249,115,22,0.5)] flex items-center gap-1 animate-pulse">
                  <Flame className="w-2.5 h-2.5 text-yellow-200 fill-yellow-200" />
                  <span>{streak}x STREAK</span>
+               </Badge>
+             )}
+             {(mode !== 'boss-battle' || Boolean(activeMove)) && Boolean(currentQuestion?.isCaseStudy) && (
+               <Badge className="h-4 bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40 font-black text-[8px] uppercase tracking-wider px-2 flex items-center gap-1">
+                 <span>🔬</span>
+                 <span>Case Study</span>
                </Badge>
              )}
           </div>
@@ -644,33 +869,64 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
         <>
           <div className="px-4 sm:px-6 mb-3 sm:mb-4 lg:mb-6">
             {(() => {
-              const showImmersionOil = mode === 'boss-battle' && (immersionOilActive || (equippedItem === 'immersion_oil' && equippedItemCount > 0));
-              const buzzword = showImmersionOil ? extractClinicalBuzzword(currentQuestion.question, currentQuestion.explanation) : null;
-
-              if (!showImmersionOil || !buzzword) {
+              const showImmersionOil = hasImmersionOilReady;
+              if (!showImmersionOil) {
                 return (
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground whitespace-pre-line">
                     {currentQuestion.question}
                   </h2>
                 );
               }
 
-              const idx = currentQuestion.question.toLowerCase().indexOf(buzzword.toLowerCase());
+              // On basic recall / non-case-study items, keep Immersion Oil on standby rather than highlighting random words
+              if (!isCurrentQuestionCaseStudy) {
+                return (
+                  <div className="space-y-2">
+                    <div className="inline-flex flex-wrap items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-500/10 border border-amber-500/30 text-muted-foreground text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                      <Image
+                        src="/images/bossbattleItems/ImmersionOil.svg"
+                        alt="Immersion Oil"
+                        width={14}
+                        height={14}
+                        className="w-3.5 h-3.5 object-contain opacity-75"
+                        style={{ imageRendering: 'pixelated' }}
+                        unoptimized
+                      />
+                      <span>100x Immersion Oil Standby: Engages on Case Study &amp; High-Level (HOTS) Questions</span>
+                    </div>
+                    <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground whitespace-pre-line">
+                      {currentQuestion.question}
+                    </h2>
+                  </div>
+                );
+              }
+
+              const diagnosticClue = extractClinicalDiagnosticClue(currentQuestion);
+
+              if (!diagnosticClue) {
+                return (
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground whitespace-pre-line">
+                    {currentQuestion.question}
+                  </h2>
+                );
+              }
+
+              const idx = currentQuestion.question.toLowerCase().indexOf(diagnosticClue.toLowerCase());
               if (idx === -1) {
                 return (
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground whitespace-pre-line">
                     {currentQuestion.question}
                   </h2>
                 );
               }
 
               const before = currentQuestion.question.slice(0, idx);
-              const matched = currentQuestion.question.slice(idx, idx + buzzword.length);
-              const after = currentQuestion.question.slice(idx + buzzword.length);
+              const matched = currentQuestion.question.slice(idx, idx + diagnosticClue.length);
+              const after = currentQuestion.question.slice(idx + diagnosticClue.length);
 
               return (
                 <div className="space-y-2">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px] font-black uppercase tracking-wider shadow-xs">
+                  <div className="inline-flex flex-wrap items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-700 dark:text-amber-300 text-[10px] font-black uppercase tracking-wider shadow-xs">
                     <Image
                       src="/images/bossbattleItems/ImmersionOil.svg"
                       alt="Immersion Oil"
@@ -680,11 +936,11 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                       style={{ imageRendering: 'pixelated' }}
                       unoptimized
                     />
-                    <span>100x Immersion Focus: Clinical Clue Highlighted</span>
+                    <span>100x Immersion Focus: Diagnostic Case Clue Spotlighted</span>
                   </div>
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground whitespace-pre-line">
                     {before}
-                    <span className="bg-amber-400/25 dark:bg-amber-400/20 text-amber-950 dark:text-amber-200 px-1.5 py-0.5 rounded-md border border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.25)] underline decoration-amber-500 decoration-2 underline-offset-4">
+                    <span className="bg-amber-400/25 dark:bg-amber-400/20 text-amber-950 dark:text-amber-200 px-1.5 py-0.5 rounded-md border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.3)] underline decoration-amber-500 decoration-2 underline-offset-4 box-decoration-clone">
                       {matched}
                     </span>
                     {after}
@@ -979,9 +1235,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                               </p>
                             </div>
                             
-                            {currentQuestion.explanation ? (
+                            {effectiveExplanation ? (
                               <p className="text-xs text-muted-foreground italic leading-relaxed whitespace-pre-line">
-                                {currentQuestion.explanation}
+                                {effectiveExplanation}
                               </p>
                             ) : isFetchingExplanation ? (
                               <div className="flex items-center gap-2.5 py-3">
@@ -994,7 +1250,11 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                                   variant="outline" 
                                   size="sm" 
                                   onClick={() => {
-                                    setIsFetchingExplanation(true);
+                                    if (currentQuestion?.feedback?.trim()) {
+                                      setRevealedFeedbackIndices(prev => ({ ...prev, [currentQuestionIndex]: true }));
+                                    } else {
+                                      setIsFetchingExplanation(true);
+                                    }
                                     if (onRequestExplanation) onRequestExplanation(currentQuestionIndex);
                                   }}
                                   className="w-full text-xs text-primary border-primary hover:bg-primary hover:text-white"

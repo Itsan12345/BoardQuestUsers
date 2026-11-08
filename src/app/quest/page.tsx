@@ -2067,6 +2067,7 @@ export default function LearningQuest() {
   const [salineUsedThisBattle, setSalineUsedThisBattle] = useState(false);
   const [clarityUsedThisBattle, setClarityUsedThisBattle] = useState(false);
   const [immersionOilUsedThisBattle, setImmersionOilUsedThisBattle] = useState(false);
+  const immersionOilUsedThisBattleRef = useRef(false);
   const [prismUsedThisBattle, setPrismUsedThisBattle] = useState(false);
   const [bapUsedThisBattle, setBapUsedThisBattle] = useState(false);
   const [heparinUsedThisBattle, setHeparinUsedThisBattle] = useState(false);
@@ -2075,6 +2076,7 @@ export default function LearningQuest() {
     setPlayerShield(0);
     setSalineUsedThisBattle(false);
     setClarityUsedThisBattle(false);
+    immersionOilUsedThisBattleRef.current = false;
     setImmersionOilUsedThisBattle(false);
     setPrismUsedThisBattle(false);
     setBapUsedThisBattle(false);
@@ -2292,7 +2294,7 @@ export default function LearningQuest() {
     });
   };
 
-  const addFloatingText = (target: 'player' | 'enemy', text: string, color: string) => {
+  const addFloatingText = useCallback((target: 'player' | 'enemy', text: string, color: string) => {
     const floatingEnabled = typeof window !== 'undefined' ? localStorage.getItem('bq_pref_floating_damage') !== 'false' : true;
     if (!floatingEnabled) return;
 
@@ -2301,7 +2303,7 @@ export default function LearningQuest() {
     setTimeout(() => {
       setFloatingTexts(prev => prev.filter(ft => ft.id !== id));
     }, 1500);
-  };
+  }, []);
 
   const CONSUMABLE_ITEMS_LIST = [
     {
@@ -2349,8 +2351,8 @@ export default function LearningQuest() {
       icon: '🔬',
       imageUrl: '/images/bossbattleItems/ImmersionOil.svg',
       color: 'border-amber-500/60 bg-amber-950/50 text-amber-300',
-      effect: 'Highlights key clue word',
-      desc: 'Highlights the key clue word in the question.',
+      effect: 'Spotlights clinical clues in Case Studies',
+      desc: '100x Oil Objective: Spotlights key diagnostic findings in Case Study & high-level (HOTS) questions.',
       cost: getScaledCost(85, userLevel),
       baseCost: 85,
       requiredLevel: 3,
@@ -3190,6 +3192,18 @@ export default function LearningQuest() {
     setInventory(prev => ({ ...prev, blood_agar_plate: Math.max(0, (prev.blood_agar_plate || 0) - 1) }));
   };
 
+  const handleUseImmersionOil = useCallback(() => {
+    if (immersionOilUsedThisBattleRef.current || (inventory.immersion_oil || 0) <= 0) return;
+    immersionOilUsedThisBattleRef.current = true;
+    setImmersionOilUsedThisBattle(true);
+    addFloatingText('player', '🔬 100x IMMERSION FOCUS!', 'text-amber-400 font-black');
+    toast({
+      title: "🔬 100x Immersion Oil Engaged!",
+      description: "High-power resolution locked onto the key clinical diagnostic clue for this battle!",
+    });
+    setInventory(prev => ({ ...prev, immersion_oil: Math.max(0, (prev.immersion_oil || 0) - 1) }));
+  }, [inventory.immersion_oil, addFloatingText, toast]);
+
   // Fetch User Info on mount & whenever synced
   const fetchUser = useCallback(async () => {
     try {
@@ -3740,18 +3754,15 @@ export default function LearningQuest() {
         setPlayerShield(0);
       }
 
-      // Immersion Oil Consumable Effect
+      // Immersion Oil Consumable Effect (Standby until a Case Study / High-Level HOTS question engages it)
       const hasImmersionOilEffect = equippedItem === 'immersion_oil' && (inventory.immersion_oil || 0) > 0;
+      immersionOilUsedThisBattleRef.current = false;
+      setImmersionOilUsedThisBattle(false);
       if (quizMode === 'boss-battle' && hasImmersionOilEffect) {
-        addFloatingText('player', '🔬 100x IMMERSION FOCUS!', 'text-amber-400 font-black');
-        setImmersionOilUsedThisBattle(true);
-        setInventory(prev => ({ ...prev, immersion_oil: Math.max(0, (prev.immersion_oil || 0) - 1) }));
         toast({
-          title: "🔬 Immersion Oil Applied!",
-          description: "Key clinical buzzwords will be highlighted under high-power focus throughout the battle!",
+          title: "🔬 100x Immersion Oil Ready!",
+          description: "Will automatically spotlight key diagnostic clues on Case Study & high-level (HOTS) questions!",
         });
-      } else {
-        setImmersionOilUsedThisBattle(false);
       }
 
       setPlayerHealth(baseStartingHp);
@@ -5123,7 +5134,23 @@ export default function LearningQuest() {
     const qToExplain = questions[index];
     const userAns = userAnswers.find(ua => ua.questionIndex === index);
 
-    if (!qToExplain || !userAns || qToExplain.explanation) return;
+    if (!qToExplain || qToExplain.explanation) return;
+
+    // Instantly display Admin-encoded feedback from MongoDB if present so zero AI tokens are consumed
+    const adminFeedback = typeof qToExplain.feedback === 'string' ? qToExplain.feedback.trim() : '';
+    if (adminFeedback.length > 0) {
+      setQuestions(prev => {
+        const updated = [...prev];
+        if (updated[index]) {
+          updated[index] = { ...updated[index], explanation: adminFeedback };
+        }
+        return updated;
+      });
+      setFetchingExplanations(prev => ({ ...prev, [index]: false }));
+      return;
+    }
+
+    if (!userAns) return;
 
     setFetchingExplanations(prev => ({ ...prev, [index]: true }));
     try {
@@ -5889,6 +5916,11 @@ export default function LearningQuest() {
                                 <Badge variant="outline" className="text-[7.5px] sm:text-[8px] h-4 font-black uppercase tracking-tighter border-primary/20 text-primary">
                                   {q.type?.replace('_', ' ') || "MCQ"}
                                 </Badge>
+                                {q.isCaseStudy && (
+                                  <Badge className="text-[7.5px] sm:text-[8px] h-4 font-black uppercase tracking-tighter bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/40">
+                                    🔬 Case Study
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -6023,7 +6055,7 @@ export default function LearningQuest() {
                               </h4>
                               <div className="bg-card/90 dark:bg-card/60 p-3 sm:p-4 md:p-6 rounded-xl border border-dashed border-primary/20">
                                 {q.explanation ? (
-                                  <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground italic">
+                                  <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground italic whitespace-pre-line break-words">
                                     {q.explanation}
                                   </p>
                                 ) : fetchingExplanations[idx] ? (
@@ -7681,6 +7713,7 @@ export default function LearningQuest() {
               bapUsedThisBattle={bapUsedThisBattle}
               onUseBap={handleUseBap}
               immersionOilActive={immersionOilUsedThisBattle || (equippedItem === 'immersion_oil' && (inventory.immersion_oil || 0) > 0)}
+              onUseImmersionOil={handleUseImmersionOil}
               onQuestionChange={handleQuestionChange}
             />
           </div>

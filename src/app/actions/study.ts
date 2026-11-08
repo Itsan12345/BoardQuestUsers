@@ -21,21 +21,6 @@ export interface LearningModuleData {
 
 export const getLearningModules = unstable_cache(
   async (): Promise<LearningModuleData[]> => {
-    if (typeof (prisma as any).learningModule?.findMany === 'function') {
-      try {
-        const modules = await (prisma as any).learningModule.findMany({
-          where: { isPublished: true },
-          orderBy: { order: 'asc' },
-        });
-        return JSON.parse(JSON.stringify(modules)).map((m: any) => ({
-          ...m,
-          categoryId: m.subjectId ? m.subjectId.toString() : (m.categoryId ? m.categoryId.toString() : '')
-        }));
-      } catch (err) {
-        // Fallback silently to raw MongoDB client
-      }
-    }
-
     try {
       const client = await clientPromise;
       const db = client.db('boardquest');

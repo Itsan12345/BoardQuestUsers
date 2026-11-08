@@ -332,9 +332,13 @@ export async function getQuestQuestions(
                 imageUrl: true,
                 correctAnswer: true,
                 difficulty: true,
+                cognitiveLevel: true,
+                isCaseStudy: true,
+                clinicalClue: true,
+                feedback: true,
                 type: true,
                 topic: true,
-              }
+              } as any
             });
             rawQuestions = prismaQuestions;
           } catch (prismaErr) {
@@ -358,6 +362,10 @@ export async function getQuestQuestions(
             : null,
           correctAnswer: q.correctAnswer || '',
           difficulty: String(q.difficulty || 'EASY').toUpperCase(),
+          cognitiveLevel: typeof q.cognitiveLevel === 'string' ? q.cognitiveLevel.trim().toUpperCase() : undefined,
+          isCaseStudy: q.isCaseStudy === true || q.isCaseStudy === 'true',
+          clinicalClue: (typeof q.clinicalClue === 'string' && q.clinicalClue.trim().length > 0) ? q.clinicalClue.trim() : null,
+          feedback: (typeof q.feedback === 'string' && q.feedback.trim().length > 0) ? q.feedback.trim() : undefined,
           type: q.type || 'MCQ',
           topic: typeof q.topic === 'string' ? q.topic.trim() : ''
         }));
@@ -808,6 +816,10 @@ export async function getQuestQuestions(
         correctAnswer: correctAnswerLetter,
         explanation: undefined,
         difficulty: String(q.difficulty || 'EASY').toUpperCase(),
+        cognitiveLevel: q.cognitiveLevel || undefined,
+        isCaseStudy: q.isCaseStudy === true || q.isCaseStudy === 'true',
+        clinicalClue: q.clinicalClue || null,
+        feedback: q.feedback || undefined,
         type: q.type || 'MCQ',
         topic: typeof q.topic === 'string' ? q.topic.trim() : '',
       };
