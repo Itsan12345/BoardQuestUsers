@@ -237,16 +237,15 @@ interface QuizInterfaceProps {
   streak?: number;
   equippedItem?: string | null;
   equippedItemCount?: number;
-  clarityUsedThisBattle?: boolean;
   onUseClarity?: () => void;
-  bapUsedThisBattle?: boolean;
-  onUseBap?: () => void;
+  onUseBap?: () => boolean | void;
+  bapUsesLeftThisBattle?: number;
   immersionOilActive?: boolean;
   onUseImmersionOil?: () => void;
   onQuestionChange?: (index: number) => void;
 }
 
-export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, isFinalBoss, bossShieldActive, playerPoisoned, streak, equippedItem, equippedItemCount = 1, clarityUsedThisBattle, onUseClarity, bapUsedThisBattle, onUseBap, immersionOilActive, onUseImmersionOil, onQuestionChange }: QuizInterfaceProps) {
+export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanation, isLoading, mode, battleStage = 1, isFinalBoss, bossShieldActive, playerPoisoned, streak, equippedItem, equippedItemCount = 1, onUseClarity, onUseBap, bapUsesLeftThisBattle = 3, immersionOilActive, onUseImmersionOil, onQuestionChange }: QuizInterfaceProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -256,6 +255,8 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
   const [revealedFeedbackIndices, setRevealedFeedbackIndices] = useState<Record<number, boolean>>({});
 
   const [activeMove, setActiveMove] = useState<'heavy' | 'normal' | 'defend' | null>(null);
+  const [clarityUsedThisTurn, setClarityUsedThisTurn] = useState(false);
+  const [isRedrawing, setIsRedrawing] = useState(false);
   const [turnMap, setTurnMap] = useState<number[]>([]);
   const [eliminatedOptionLetters, setEliminatedOptionLetters] = useState<string[]>([]);
   const [zoomedImage, setZoomedImage] = useState<{ url: string; title: string } | null>(null);
@@ -270,6 +271,8 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
 
   useEffect(() => {
     setEliminatedOptionLetters([]);
+    setClarityUsedThisTurn(false);
+    setIsRedrawing(false);
     setZoomedImage(null);
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
@@ -288,17 +291,18 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
   }, [zoomedImage]);
 
   const handleUsePipetteOfClarity = () => {
-    if (clarityUsedThisBattle || !onUseClarity || !currentQuestion?.options || equippedItemCount <= 0) return;
+    if (clarityUsedThisTurn || !onUseClarity || !currentQuestion?.options || equippedItemCount <= 0) return;
     if (currentQuestion.type === 'TRUE_FALSE' || currentQuestion.type === 'SHORT_ANSWER' || currentQuestion.options.length <= 2) return;
     const wrongOptions = optionLetters.filter(letter => letter !== currentQuestion.correctAnswer && !eliminatedOptionLetters.includes(letter));
     if (wrongOptions.length === 0) return;
     const randomWrong = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
     setEliminatedOptionLetters(prev => [...prev, randomWrong]);
+    setClarityUsedThisTurn(true);
     onUseClarity();
   };
 
   const handleUseBloodAgarPlate = () => {
-    if (bapUsedThisBattle || !onUseBap || isAnswered || isTransitioning || questions.length <= 1 || equippedItemCount <= 0) return;
+    if (isRedrawing || !onUseBap || isAnswered || isTransitioning || questions.length <= 1 || equippedItemCount <= 0 || bapUsesLeftThisBattle <= 0) return;
     const currentQIdx = turnMap[currentIndex] ?? currentIndex;
     const targetDiff = activeMove === 'heavy' ? 'HARD' : activeMove === 'normal' ? 'MEDIUM' : 'EASY';
     const hasOilReady = immersionOilActive || (equippedItem === 'immersion_oil' && equippedItemCount > 0);
@@ -327,6 +331,9 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
     }
 
     if (candidatePos !== -1) {
+      // Parent is the source of truth for stock + per-battle limit; only swap if it approves
+      if (onUseBap() === false) return;
+      setIsRedrawing(true);
       const temp = newTurnMap[currentIndex];
       newTurnMap[currentIndex] = newTurnMap[candidatePos];
       newTurnMap[candidatePos] = temp;
@@ -334,10 +341,13 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
       setEliminatedOptionLetters([]);
       setSelectedAnswer(null);
       setZoomedImage(null);
+      setClarityUsedThisTurn(false);
+      setTimeout(() => {
+        setIsRedrawing(false);
+      }, 500);
       if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
-      onUseBap();
     }
   };
 
@@ -647,7 +657,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {mode === 'boss-battle' && Boolean(activeMove) && equippedItem === 'pipette_clarity' && !clarityUsedThisBattle && equippedItemCount > 0 && !isAnswered && currentQuestion?.type !== 'TRUE_FALSE' && currentQuestion?.type !== 'SHORT_ANSWER' && (currentQuestion?.options?.length || 0) > 2 && (
+          {mode === 'boss-battle' && Boolean(activeMove) && equippedItem === 'pipette_clarity' && !clarityUsedThisTurn && equippedItemCount > 0 && !isAnswered && currentQuestion?.type !== 'TRUE_FALSE' && currentQuestion?.type !== 'SHORT_ANSWER' && (currentQuestion?.options?.length || 0) > 2 && (
             <Button
               size="sm"
               onClick={handleUsePipetteOfClarity}
@@ -662,11 +672,11 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                 style={{ imageRendering: 'pixelated' }}
                 unoptimized
               />
-              Pipette Hint (50:50)
+              Pipette Hint ({equippedItemCount})
             </Button>
           )}
 
-          {mode === 'boss-battle' && Boolean(activeMove) && equippedItem === 'blood_agar_plate' && !bapUsedThisBattle && equippedItemCount > 0 && !isAnswered && questions.length > 1 && (
+          {mode === 'boss-battle' && Boolean(activeMove) && equippedItem === 'blood_agar_plate' && !isRedrawing && equippedItemCount > 0 && bapUsesLeftThisBattle > 0 && !isAnswered && questions.length > 1 && (
             <Button
               size="sm"
               onClick={handleUseBloodAgarPlate}
@@ -681,7 +691,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                 style={{ imageRendering: 'pixelated' }}
                 unoptimized
               />
-              Subculture Redraw (1/1)
+              Redraw Question ({Math.min(equippedItemCount, bapUsesLeftThisBattle)})
             </Button>
           )}
         </div>
@@ -892,7 +902,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                         style={{ imageRendering: 'pixelated' }}
                         unoptimized
                       />
-                      <span>100x Immersion Oil Standby: Engages on Case Study &amp; High-Level (HOTS) Questions</span>
+                      <span>Immersion Oil on Standby: Activates on Case Study questions</span>
                     </div>
                     <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground whitespace-pre-line">
                       {currentQuestion.question}
@@ -936,7 +946,7 @@ export function QuizInterface({ questions, onFinish, onAnswer, onRequestExplanat
                       style={{ imageRendering: 'pixelated' }}
                       unoptimized
                     />
-                    <span>100x Immersion Focus: Diagnostic Case Clue Spotlighted</span>
+                    <span>Immersion Oil: Key Clue Highlighted</span>
                   </div>
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-snug font-headline text-foreground whitespace-pre-line">
                     {before}

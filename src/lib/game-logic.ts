@@ -160,17 +160,17 @@ export function calculatePlayerStats(level: number, streak: number = 0, equipped
     equippedItemImageUrl = '/images/bossbattleItems/ErlenmayerShield.png';
   } else if (hasClarity) {
     equippedItemName = 'Pipette of Clarity';
-    equippedItemBuff = 'Removes 1 wrong answer choice (50:50 hint)';
+    equippedItemBuff = 'Removes 1 wrong answer choice';
     equippedItemIcon = '🧪';
     equippedItemImageUrl = '/images/bossbattleItems/PippeteofClarity.png';
   } else if (hasSaline) {
     equippedItemName = 'Buffered Saline';
-    equippedItemBuff = 'Blocks the first poison or negative effect from the boss';
+    equippedItemBuff = 'Neutralizes poison and toxic debuffs from the boss';
     equippedItemIcon = '💧';
     equippedItemImageUrl = '/images/bossbattleItems/BufferedSaline.png';
   } else if (hasImmersionOil) {
     equippedItemName = 'Immersion Oil';
-    equippedItemBuff = 'Highlights the key clue word in the question';
+    equippedItemBuff = 'Highlights the key clue in Case Study questions';
     equippedItemIcon = '🔬';
     equippedItemImageUrl = '/images/bossbattleItems/ImmersionOil.svg';
   } else if (hasPrism) {
@@ -180,12 +180,12 @@ export function calculatePlayerStats(level: number, streak: number = 0, equipped
     equippedItemImageUrl = '/images/bossbattleItems/SpectroPrism.svg';
   } else if (hasBap) {
     equippedItemName = 'Blood Agar Plate';
-    equippedItemBuff = 'Swaps your current question for a new one (1 per battle)';
+    equippedItemBuff = 'Swaps your current question for a fresh one (up to 3 per battle)';
     equippedItemIcon = '🧫';
     equippedItemImageUrl = '/images/bossbattleItems/BloodAgarPlate.svg';
   } else if (hasHeparin) {
     equippedItemName = 'Heparin Tube';
-    equippedItemBuff = 'Survives a fatal hit from the boss with 1 HP remaining';
+    equippedItemBuff = 'Prevents defeat by surviving a fatal blow with 1 HP (once per battle)';
     equippedItemIcon = '🧪';
     equippedItemImageUrl = '/images/bossbattleItems/HeparinTube.svg';
   }

@@ -2064,23 +2064,24 @@ export default function LearningQuest() {
   }, [quizMode, userLevel]);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [selectedItemSlot, setSelectedItemSlot] = useState<string>('erlenmeyer_shield');
-  const [salineUsedThisBattle, setSalineUsedThisBattle] = useState(false);
-  const [clarityUsedThisBattle, setClarityUsedThisBattle] = useState(false);
   const [immersionOilUsedThisBattle, setImmersionOilUsedThisBattle] = useState(false);
   const immersionOilUsedThisBattleRef = useRef(false);
   const [prismUsedThisBattle, setPrismUsedThisBattle] = useState(false);
-  const [bapUsedThisBattle, setBapUsedThisBattle] = useState(false);
-  const [heparinUsedThisBattle, setHeparinUsedThisBattle] = useState(false);
+  // Heparin Tube: max 1 activation per battle (ref = synchronous guard inside handleAnswer)
+  const heparinUsedThisBattleRef = useRef(false);
+  // Blood Agar Plate: max BAP_MAX_USES_PER_BATTLE redraws per battle
+  const BAP_MAX_USES_PER_BATTLE = 3;
+  const [bapUsesThisBattle, setBapUsesThisBattle] = useState(0);
+  const bapUsesThisBattleRef = useRef(0);
 
   const resetBattleConsumableStates = useCallback(() => {
     setPlayerShield(0);
-    setSalineUsedThisBattle(false);
-    setClarityUsedThisBattle(false);
     immersionOilUsedThisBattleRef.current = false;
     setImmersionOilUsedThisBattle(false);
     setPrismUsedThisBattle(false);
-    setBapUsedThisBattle(false);
-    setHeparinUsedThisBattle(false);
+    heparinUsedThisBattleRef.current = false;
+    bapUsesThisBattleRef.current = 0;
+    setBapUsesThisBattle(0);
   }, []);
 
   const MAX_REAGENT_CAP = 5;
@@ -2325,8 +2326,8 @@ export default function LearningQuest() {
       icon: '💧',
       imageUrl: '/images/bossbattleItems/BufferedSaline.png',
       color: 'border-emerald-500/60 bg-emerald-950/50 text-emerald-300',
-      effect: 'Blocks 1 poison or debuff',
-      desc: 'Blocks the first poison or negative effect from the boss.',
+      effect: 'Neutralizes poison & debuffs',
+      desc: 'Neutralizes toxic afflictions and debuffs from the boss (Consumes 1 charge per debuff).',
       cost: getScaledCost(60, userLevel),
       baseCost: 60,
       requiredLevel: 1,
@@ -2338,8 +2339,8 @@ export default function LearningQuest() {
       icon: '✨',
       imageUrl: '/images/bossbattleItems/PippeteofClarity.png',
       color: 'border-purple-500/60 bg-purple-950/50 text-purple-300',
-      effect: 'Removes 1 wrong answer (50:50 hint)',
-      desc: 'Removes 1 wrong answer choice during a question (50:50 hint).',
+      effect: 'Removes 1 wrong answer',
+      desc: 'Removes 1 wrong answer choice during a question (1 per question, consumes 1 charge).',
       cost: getScaledCost(75, userLevel),
       baseCost: 75,
       requiredLevel: 2,
@@ -2351,8 +2352,8 @@ export default function LearningQuest() {
       icon: '🔬',
       imageUrl: '/images/bossbattleItems/ImmersionOil.svg',
       color: 'border-amber-500/60 bg-amber-950/50 text-amber-300',
-      effect: 'Spotlights clinical clues in Case Studies',
-      desc: '100x Oil Objective: Spotlights key diagnostic findings in Case Study & high-level (HOTS) questions.',
+      effect: 'Highlights key clues in Case Studies',
+      desc: 'Highlights the most important clue in Case Study questions to help you find the right answer.',
       cost: getScaledCost(85, userLevel),
       baseCost: 85,
       requiredLevel: 3,
@@ -2377,8 +2378,8 @@ export default function LearningQuest() {
       icon: '🧫',
       imageUrl: '/images/bossbattleItems/BloodAgarPlate.svg',
       color: 'border-rose-500/60 bg-rose-950/50 text-rose-300',
-      effect: 'Swaps question for a new one',
-      desc: 'Swaps your current question for a new one (1 per battle).',
+      effect: 'Swaps question for a fresh one',
+      desc: 'Swaps your current question for a fresh one (Up to 3 times per battle, consumes 1 charge per swap).',
       cost: getScaledCost(110, userLevel),
       baseCost: 110,
       requiredLevel: 5,
@@ -2391,7 +2392,7 @@ export default function LearningQuest() {
       imageUrl: '/images/bossbattleItems/HeparinTube.svg',
       color: 'border-emerald-500/60 bg-emerald-950/50 text-emerald-300',
       effect: 'Survives fatal hit with 1 HP',
-      desc: 'Survives a fatal hit from the boss with 1 HP remaining.',
+      desc: 'Prevents defeat by surviving a fatal blow with 1 HP (Once per battle, consumes 1 charge).',
       cost: getScaledCost(125, userLevel),
       baseCost: 125,
       requiredLevel: 6,
@@ -3170,36 +3171,40 @@ export default function LearningQuest() {
     </Dialog>
   );
 
-  const handleUseClarity = () => {
-    if (clarityUsedThisBattle || (inventory.pipette_clarity || 0) <= 0) return;
-    setClarityUsedThisBattle(true);
+  const handleUseClarity = useCallback(() => {
+    if ((inventory.pipette_clarity || 0) <= 0) return;
+    const remaining = Math.max(0, (inventory.pipette_clarity || 0) - 1);
+    setInventory(prev => ({ ...prev, pipette_clarity: Math.max(0, (prev.pipette_clarity || 0) - 1) }));
     addFloatingText('player', 'HINT ACTIVATED! 🧪✨', 'text-purple-400 font-black');
     toast({
       title: "Pipette of Clarity! 🧪✨",
-      description: "1 incorrect distractor has been eliminated!",
+      description: `1 incorrect distractor eliminated! (${remaining} left)`,
     });
-    setInventory(prev => ({ ...prev, pipette_clarity: Math.max(0, (prev.pipette_clarity || 0) - 1) }));
-  };
+  }, [inventory.pipette_clarity, addFloatingText, toast]);
 
-  const handleUseBap = () => {
-    if (bapUsedThisBattle || (inventory.blood_agar_plate || 0) <= 0) return;
-    setBapUsedThisBattle(true);
+  const handleUseBap = useCallback((): boolean => {
+    if ((inventory.blood_agar_plate || 0) <= 0) return false;
+    if (bapUsesThisBattleRef.current >= BAP_MAX_USES_PER_BATTLE) return false;
+    bapUsesThisBattleRef.current += 1;
+    const usesLeft = BAP_MAX_USES_PER_BATTLE - bapUsesThisBattleRef.current;
+    setBapUsesThisBattle(bapUsesThisBattleRef.current);
+    setInventory(prev => ({ ...prev, blood_agar_plate: Math.max(0, (prev.blood_agar_plate || 0) - 1) }));
     addFloatingText('player', '🧫 SPECIMEN REDRAWN!', 'text-rose-400 font-black');
     toast({
       title: "Blood Agar Plate Subcultured! 🧫",
-      description: "Question re-streaked from culture media! A fresh question was redrawn.",
+      description: `Fresh question drawn! (${usesLeft}/${BAP_MAX_USES_PER_BATTLE} redraws left this battle)`,
     });
-    setInventory(prev => ({ ...prev, blood_agar_plate: Math.max(0, (prev.blood_agar_plate || 0) - 1) }));
-  };
+    return true;
+  }, [inventory.blood_agar_plate, addFloatingText, toast]);
 
   const handleUseImmersionOil = useCallback(() => {
     if (immersionOilUsedThisBattleRef.current || (inventory.immersion_oil || 0) <= 0) return;
     immersionOilUsedThisBattleRef.current = true;
     setImmersionOilUsedThisBattle(true);
-    addFloatingText('player', '🔬 100x IMMERSION FOCUS!', 'text-amber-400 font-black');
+    addFloatingText('player', '🔬 KEY CLUE REVEALED!', 'text-amber-400 font-black');
     toast({
-      title: "🔬 100x Immersion Oil Engaged!",
-      description: "High-power resolution locked onto the key clinical diagnostic clue for this battle!",
+      title: "🔬 Immersion Oil Active!",
+      description: "The most important clue has been highlighted in the question!",
     });
     setInventory(prev => ({ ...prev, immersion_oil: Math.max(0, (prev.immersion_oil || 0) - 1) }));
   }, [inventory.immersion_oil, addFloatingText, toast]);
@@ -3760,8 +3765,8 @@ export default function LearningQuest() {
       setImmersionOilUsedThisBattle(false);
       if (quizMode === 'boss-battle' && hasImmersionOilEffect) {
         toast({
-          title: "🔬 100x Immersion Oil Ready!",
-          description: "Will automatically spotlight key diagnostic clues on Case Study & high-level (HOTS) questions!",
+          title: "🔬 Immersion Oil Ready!",
+          description: "Will automatically highlight the key clue when a Case Study question appears!",
         });
       }
 
@@ -4422,16 +4427,18 @@ export default function LearningQuest() {
           });
         }
 
-        // Buffered Saline Consumable Effect (Nullifies 1st Poison/Debuff)
-        if (equippedItem === 'buffered_saline' && !salineUsedThisBattle && (inventory.buffered_saline || 0) > 0) {
-          if (newPoisonedState || (!isCorrect && playerDmg > 0)) {
+        // Buffered Saline Consumable Effect (Neutralizes Poison/Debuff)
+        if (equippedItem === 'buffered_saline' && (inventory.buffered_saline || 0) > 0) {
+          // Only consume a charge when the player would actually remain/become poisoned
+          // (newly inflicted poison, or carried-over poison NOT already cured by a correct Defend)
+          if (newPoisonedState) {
             newPoisonedState = false;
             didInflictPoison = false;
-            setSalineUsedThisBattle(true);
             addFloatingText('player', 'DEBUFF NULLIFIED! 🧪💧', 'text-emerald-400');
+            const remaining = Math.max(0, (inventory.buffered_saline || 0) - 1);
             toast({
               title: "Buffered Saline Activated! 🧪💧",
-              description: "Your Buffered Saline neutralized the toxic affliction!",
+              description: `Neutralized the toxic affliction! (${remaining} left)`,
             });
             setInventory(prev => ({ ...prev, buffered_saline: Math.max(0, (prev.buffered_saline || 0) - 1) }));
           }
@@ -4622,16 +4629,16 @@ export default function LearningQuest() {
 
         let nextHp = Math.max(0, playerHealth - penetratingDmg);
 
-        // Heparin Tube Consumable Effect (Survive 1st fatal blow with 1 HP - Clot Prevention)
-        if (quizMode === 'boss-battle' && nextHp <= 0 && equippedItem === 'heparin_tube' && !heparinUsedThisBattle && (inventory.heparin_tube || 0) > 0) {
+        // Heparin Tube Consumable Effect (Survive fatal blow with 1 HP - Clot Prevention)
+        if (quizMode === 'boss-battle' && nextHp <= 0 && equippedItem === 'heparin_tube' && !heparinUsedThisBattleRef.current && (inventory.heparin_tube || 0) > 0) {
           nextHp = 1;
-          setHeparinUsedThisBattle(true);
+          heparinUsedThisBattleRef.current = true;
           setInventory(prev => ({ ...prev, heparin_tube: Math.max(0, (prev.heparin_tube || 0) - 1) }));
           playSfx('heal');
           addFloatingText('player', '🧪 HEPARIN PREVENTED CLOT! (1 HP)', 'text-emerald-400 font-black');
           toast({
             title: "🧪 Heparin Tube Activated! (Clot Prevention)",
-            description: "Fatal strike prevented! Anticoagulant surge stabilized your aspirant life at 1 HP.",
+            description: "Fatal strike prevented! You survived with 1 HP. (Once per battle)",
           });
         }
 
@@ -7708,10 +7715,9 @@ export default function LearningQuest() {
               streak={streak}
               equippedItem={equippedItem}
               equippedItemCount={equippedItem ? (inventory[equippedItem] || 0) : 0}
-              clarityUsedThisBattle={clarityUsedThisBattle}
               onUseClarity={handleUseClarity}
-              bapUsedThisBattle={bapUsedThisBattle}
               onUseBap={handleUseBap}
+              bapUsesLeftThisBattle={Math.max(0, BAP_MAX_USES_PER_BATTLE - bapUsesThisBattle)}
               immersionOilActive={immersionOilUsedThisBattle || (equippedItem === 'immersion_oil' && (inventory.immersion_oil || 0) > 0)}
               onUseImmersionOil={handleUseImmersionOil}
               onQuestionChange={handleQuestionChange}
