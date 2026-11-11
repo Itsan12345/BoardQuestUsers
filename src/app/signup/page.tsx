@@ -324,30 +324,35 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center lg:justify-end overflow-x-hidden overflow-y-auto p-4 sm:p-6 pt-20 sm:pt-24 lg:py-6 lg:pr-14 xl:pr-24">
+    <div className="relative min-h-screen min-h-[100dvh] w-full flex items-center justify-center lg:justify-end overflow-x-hidden overflow-y-auto p-4 sm:p-6 pt-16 sm:pt-20 md:pt-24 xl:py-6 lg:pr-14 xl:pr-24">
       {/* Smooth Animated Pixel Art Background */}
       <LoginBackgroundAnimator fps={8.5} enableSmoothing={true} />
 
-      {/* Institutional Logos at Top Left */}
-      <div className="fixed top-4 left-4 sm:top-6 sm:left-6 z-50 flex items-center gap-2.5 sm:gap-3.5 select-none pointer-events-auto">
-        <div className="relative w-11 h-11 sm:w-14 sm:h-14 transition-transform hover:scale-105 duration-200">
-          <Image
-            src="/images/login-signup/SWU_Logo.png"
-            alt="Southwestern University PHINMA Logo"
-            width={64}
-            height={64}
-            priority
-            className="w-full h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
-          />
-        </div>
-        <div className="relative w-11 h-11 sm:w-14 sm:h-14 transition-transform hover:scale-105 duration-200">
+      {/* Institutional Logos (Top-Left on Mobile & Tablet/iPad, Bottom-Left on Desktop) */}
+      <div
+        suppressHydrationWarning
+        className="fixed top-3 left-3 sm:top-4 sm:left-4 md:top-5 md:left-5 xl:top-auto xl:bottom-8 xl:left-8 z-30 flex items-center gap-2.5 sm:gap-3 md:gap-3.5 xl:gap-4 select-none pointer-events-auto"
+      >
+        {/* MedTech Shield Logo first */}
+        <div suppressHydrationWarning className="relative transition-transform hover:scale-105 duration-200">
           <Image
             src="/images/login-signup/MedTech_Logo.png"
             alt="Medical Technology Logo"
-            width={64}
-            height={64}
+            width={316}
+            height={322}
             priority
-            className="w-full h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+            className="h-8 sm:h-9 md:h-11 xl:h-14 2xl:h-16 w-auto object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+          />
+        </div>
+        {/* SWU Text Logo beside it */}
+        <div suppressHydrationWarning className="relative transition-transform hover:scale-105 duration-200">
+          <Image
+            src="/images/login-signup/SWU_Text_Logo.png"
+            alt="Southwestern University PHINMA"
+            width={389}
+            height={69}
+            priority
+            className="h-6 sm:h-7 md:h-8 xl:h-10 2xl:h-11 w-auto object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
           />
         </div>
       </div>

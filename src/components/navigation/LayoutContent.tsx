@@ -63,7 +63,7 @@ export function LayoutContent({
   }, [isLoggedIn, isAuthPage]);
 
   if (isAuthPage) {
-    return <div className="w-full min-h-screen bg-background">{children}</div>;
+    return <div className="w-full min-h-screen min-h-[100dvh] bg-background">{children}</div>;
   }
 
   return (
